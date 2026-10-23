@@ -59,6 +59,11 @@
 #include <float.h>
 #include <math.h>
 
+#ifdef TARGET_PC
+#include "port_console.h"
+#include <string.h>
+#endif
+
 CVector3f gGrenchlerAimOffset(0.f, 0.f, 0.5f); // Guessed name
 
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
@@ -4270,6 +4275,66 @@ bool CGrenchler::IsNearAvoidHint(CStateManager& mgr) const {
 void CGrenchler::ResetBodyVulnerabilities(CStateManager& mgr) {
   ResetBodyVulnerabilities(mgr, *CPatterned::GetDamageVulnerability());
 }
+
+// Host: the console's `var <id> gren.<field> [value]`. gren.scanned is the scan-done flag
+// OnScanStateChange sets (a guardian's crystals take damage only once scanned), gren.crystal the
+// crystal state (4 = ForceGrapple), gren.crystaldmg / gren.grappledmg the two crystal damage sums
+// (whole units), gren.tailhp the health the tail breaks at, gren.action the attack state (read),
+// gren.tail the tail-destroyed flag: setting it to 1 runs DestroyTail, as a breaking hit does.
+bool CGrenchler::PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current) {
+  if (strncmp(name, "gren.", 5) != 0) {
+    return false;
+  }
+  CGrenchler* gren = dynamic_cast< CGrenchler* >(&ent); // a host-only helper
+  if (gren == nullptr) {
+    return false;
+  }
+  if (strcmp(name, "gren.scanned") == 0) {
+    if (value != nullptr) {
+      gren->mScanned = *value != 0;
+    }
+    current = gren->mScanned ? 1 : 0;
+    return true;
+  }
+  if (strcmp(name, "gren.action") == 0) {
+    current = static_cast< int >(gren->mCurrentAction);
+    return true;
+  }
+  if (strcmp(name, "gren.tail") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    if (value != nullptr && *value == 1 && gren->mTailDestroyed != 1 && mgr != nullptr) {
+      gren->DestroyTail(*mgr);
+    }
+    current = gren->mTailDestroyed;
+    return true;
+  }
+  if (strcmp(name, "gren.crystal") == 0) {
+    if (value != nullptr) {
+      gren->mCrystalState = *value;
+    }
+    current = gren->mCrystalState;
+    return true;
+  }
+  float* field = nullptr;
+  if (strcmp(name, "gren.crystaldmg") == 0) {
+    field = &gren->mCrystalDamage;
+  } else if (strcmp(name, "gren.grappledmg") == 0) {
+    field = &gren->mGrappleCrystalDamage;
+  } else if (strcmp(name, "gren.tailhp") == 0) {
+    field = &gren->mTailHealth;
+  } else {
+    return false;
+  }
+  if (value != nullptr) {
+    *field = static_cast< float >(*value);
+  }
+  current = static_cast< int >(*field);
+  return true;
+}
+
+namespace {
+const bool sGrenchlerConsoleVars = PortConsole::RegisterVar(&CGrenchler::PortConsoleVar);
+} // namespace
 #endif
 
 #ifndef MONOLITHIC
