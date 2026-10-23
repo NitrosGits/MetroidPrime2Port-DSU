@@ -990,7 +990,19 @@ void CIngSpaceJumpGuardian::CameraShake(CStateManager& mgr, const rstl::string& 
   }
 }
 
+void CIngSpaceJumpGuardian::SpawnShockWave(CStateManager& mgr) {
+  if (mJumpMode == kJM_Waypoint) {
+    const CVector3f origin = GetLctrTransform(rstl::string_l("Collar_SDK")).GetTranslation();
+    const CShockWaveInfo shockWaveInfo(mData.shockWaveInfo);
+    CShockWave* shockWave = rs_new CShockWave(
+        mgr.AllocateUniqueId(), rstl::string_l("Shock Wave"),
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
+        CTransform4f::Translate(origin), GetUniqueId(), shockWaveInfo, 0.f, 1.75f);
+    mgr.AddObject(shockWave);
+  }
+}
 #ifdef TARGET_PC
+
 // 0x1928-0x1930: retail passes the caller's locator name (r5) to GetLctrTransform.
 void CIngSpaceJumpGuardian::SpawnShockWave(CStateManager& mgr, const rstl::string& locatorName) {
   if (mJumpMode == kJM_Waypoint) {
@@ -1004,18 +1016,6 @@ void CIngSpaceJumpGuardian::SpawnShockWave(CStateManager& mgr, const rstl::strin
   }
 }
 #endif
-
-void CIngSpaceJumpGuardian::SpawnShockWave(CStateManager& mgr) {
-  if (mJumpMode == kJM_Waypoint) {
-    const CVector3f origin = GetLctrTransform(rstl::string_l("Collar_SDK")).GetTranslation();
-    const CShockWaveInfo shockWaveInfo(mData.shockWaveInfo);
-    CShockWave* shockWave = rs_new CShockWave(
-        mgr.AllocateUniqueId(), rstl::string_l("Shock Wave"),
-        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
-        CTransform4f::Translate(origin), GetUniqueId(), shockWaveInfo, 0.f, 1.75f);
-    mgr.AddObject(shockWave);
-  }
-}
 
 const SLdrIngSpaceJumpGuardianStruct* CIngSpaceJumpGuardian::GetCurrentStruct() const {
   const float hp = GetHealthInfo()->GetHP();
