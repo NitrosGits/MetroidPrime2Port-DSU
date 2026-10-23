@@ -1,0 +1,195 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_80_0	3C	B	CSwarmBasics::GetLockOnLocationValid	-	upstream body (CSwarmBasics)	no
+0003C	fn_80_3C	28	B	CSwarmBasics::GetLockOnLocation	-	upstream body (CSwarmBasics)	no
+00064	fn_80_64	24	H	RELExit	-	weak copy / template instance	no
+00088	fn_80_88	20	H	RELMain	-	weak copy / template instance	no
+000A8	fn_80_A8	30	B	SetFuncPtrs	-	upstream body (CSwarmBasics)	no
+000D8	fn_80_D8	8	B	NullSwarmBasicsFactory	-	upstream body (CSwarmBasics)	no
+000E0	fn_80_E0	4	B	CSwarmBasics::FinishConstruction	swarm1	upstream body (CSwarmBasics)	yes
+000E4	fn_80_E4	8	B	CSwarmBasics::GetHealthInfo	swarm1	upstream body (CSwarmBasics)	yes
+000EC	fn_80_EC	8	B	CSwarmBasics::HealthInfo	swarm1	upstream body (CSwarmBasics)	yes
+000F4	fn_80_F4	74	B	CSwarmBasics::GetSeekerTargetLockedOn	-	upstream body (CSwarmBasics)	no
+00168	fn_80_168	324	B	CSwarmBasics::UpdateSeekerTargets	-	upstream body (CSwarmBasics)	no
+0048C	fn_80_48C	54	H	rstl::vector<unsigned int, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+004E0	fn_80_4E0	54	H	rstl::vector<TUniqueId, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+00534	fn_80_534	78	B	CSwarmBasics::FreezeBoids	-	upstream body (CSwarmBasics)	no
+005AC	fn_80_5AC	BC	B	CSwarmBasics::FlushDeathMessages	-	upstream body (CSwarmBasics)	no
+00668	fn_80_668	B0	B	CSwarmBasics::QueueDeathMessage	-	upstream body (CSwarmBasics)	no
+00718	fn_80_718	74	B	CSwarmBasics::BoidCollidedWithPlayerCallback	-	upstream body (CSwarmBasics)	no
+0078C	fn_80_78C	4	B	CSwarmBasics::BoidCollidedCallback	-	upstream body (CSwarmBasics)	no
+00790	fn_80_790	8	B	CSwarmBasics::ShouldBuildAreaCollisionCacheForPartition	swarm1	upstream body (CSwarmBasics)	yes
+00798	fn_80_798	4C	B	CSwarmBasics::GetAreaCollisionCacheForPartition	swarm1	upstream body (CSwarmBasics)	yes
+007E4	fn_80_7E4	1E8	B	CSwarmBasics::UpdateEffects	-	upstream body (CSwarmBasics)	no
+009CC	fn_80_9CC	D0	B	CSwarmBasics::AddLoopedEmitter	swarm1	upstream body (CSwarmBasics)	yes
+00A9C	fn_80_A9C	70	B	CSwarmBasics::CanStartLoopedSound	-	upstream body (CSwarmBasics)	no
+00B0C	fn_80_B0C	A4	B	CSwarmBasics::UpdateLoopedSoundPositions	-	upstream body (CSwarmBasics)	no
+00BB0	fn_80_BB0	A0	B	CSwarmBasics::StartLoopedSound	swarm1	upstream body (CSwarmBasics)	yes
+00C50	fn_80_C50	60	B	CSwarmBasics::AddLoopedSoundToHandlesList	-	upstream body (CSwarmBasics)	no
+00CB0	fn_80_CB0	198	B	CSwarmBasics::UpdateClosestPartitionLoopedSounds	swarm1	upstream body (CSwarmBasics)	yes
+00E48	fn_80_E48	124	B	CSwarmBasics::UpdateLoopedSounds	swarm1	upstream body (CSwarmBasics)	yes
+00F6C	fn_80_F6C	154	B	CSwarmBasics::GetClosestPartitionList	swarm1	upstream body (CSwarmBasics)	yes
+010C0	fn_80_10C0	1C0	B	CSwarmBasics::FindClosestCell	-	upstream body (CSwarmBasics)	no
+01280	fn_80_1280	40	B	CSwarmBasics::EvaluateActiveBoidCount	-	upstream body (CSwarmBasics)	no
+012C0	fn_80_12C0	164	B	CSwarmBasics::FreezeCollision	-	upstream body (CSwarmBasics)	no
+01424	fn_80_1424	44	B	CSwarmBasics::RenderParticles	-	upstream body (CSwarmBasics)	no
+01468	fn_80_1468	38	B	CSwarmBasics::UpdateParticles	-	upstream body (CSwarmBasics)	no
+014A0	fn_80_14A0	A8	B	CSwarmBasics::AddParticle	-	upstream body (CSwarmBasics)	no
+01548	fn_80_1548	A0	B	CSwarmBasics::StopLoopedSound	-	upstream body (CSwarmBasics)	no
+015E8	fn_80_15E8	1C0	B	CSwarmBasics::KillBoid	-	upstream body (CSwarmBasics)	no
+017A8	fn_80_17A8	1C	B	CSwarmBasics::GetOrbitPosition	swarm1	upstream body (CSwarmBasics)	yes
+017C4	fn_80_17C4	F8	B	CSwarmBasics::GetAimPosition	-	upstream body (CSwarmBasics)	no
+018BC	fn_80_18BC	BC	B	CSwarmBasics::UpdateLockOnBlend	-	upstream body (CSwarmBasics)	no
+01978	fn_80_1978	2AC	B	CSwarmBasics::AssignSeekerBoids	-	upstream body (CSwarmBasics)	no
+01C24	fn_80_1C24	54	H	rstl::vector<rstl::pair<unsigned int, float>, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+01C78	fn_80_1C78	1C8	B	CSwarmBasics::FindBestLockOnIndex	-	upstream body (CSwarmBasics)	no
+01E40	fn_80_1E40	13C	B	CSwarmBasics::GetLockOnIndex	-	upstream body (CSwarmBasics)	no
+01F7C	fn_80_1F7C	160	B	CSwarmBasics::IsBoidVisibleForLockOn	swarm1	upstream body (CSwarmBasics)	yes
+020DC	fn_80_20DC	5C	H	CRayCastResult::CRayCastResult	-	weak copy / template instance	no
+02138	fn_80_2138	D4	B	CSwarmBasics::SetExplodeTimers	-	upstream body (CSwarmBasics)	no
+0220C	fn_80_220C	854	B	CSwarmBasics::Touch	-	upstream body (CSwarmBasics)	no
+02A60	fn_80_2A60	3C	H	rstl::optional_object<CAABox>::~optional_object	-	weak copy / template instance	no
+02A9C	fn_80_2A9C	118	B	CSwarmBasics::ApplyRadiusDamage	-	upstream body (CSwarmBasics)	no
+02BB4	fn_80_2BB4	174	B	CSwarmBasics::GetWaypointForState	-	upstream body (CSwarmBasics)	no
+02D28	fn_80_2D28	31C	B	CSwarmBasics::MoveToWayPoint	-	upstream body (CSwarmBasics)	no
+03044	fn_80_3044	180	B	CSwarmBasics::ApplyBoundsAvoidance	-	upstream body (CSwarmBasics)	no
+031C4	fn_80_31C4	15C	B	GetClosestBoxFacePlane	-	upstream body (CSwarmBasics)	no
+03320	fn_80_3320	6C	H	CTri::CTri	-	weak copy / template instance	no
+0338C	fn_80_338C	178	B	CSwarmBasics::ApplyAlignment	swarm1	upstream body (CSwarmBasics)	yes
+03504	fn_80_3504	124	B	CSwarmBasics::ApplyAttraction	-	upstream body (CSwarmBasics)	no
+03628	fn_80_3628	120	B	CSwarmBasics::ApplyCohesion	-	upstream body (CSwarmBasics)	no
+03748	fn_80_3748	F4	B	CSwarmBasics::ApplyCohesion	swarm1	upstream body (CSwarmBasics)	yes
+0383C	fn_80_383C	124	B	CSwarmBasics::ApplySeparation	-	upstream body (CSwarmBasics)	no
+03960	fn_80_3960	CC	B	CSwarmBasics::ApplySeparation	-	upstream body (CSwarmBasics)	no
+03A2C	fn_80_3A2C	108	B	CSwarmBasics::BuildBoidNearList	-	upstream body (CSwarmBasics)	no
+03B34	fn_80_3B34	46C	B	CSwarmBasics::Render	-	upstream body (CSwarmBasics)	no
+03FA0	fn_80_3FA0	98	B	CSwarmBasics::AddToRenderer	-	upstream body (CSwarmBasics)	no
+04038	fn_80_4038	F0	B	CSwarmBasics::DrawBoidSkinnedModel	-	upstream body (CSwarmBasics)	no
+04128	fn_80_4128	6C	B	CSwarmBasics::RenderBoid	-	upstream body (CSwarmBasics)	no
+04194	fn_80_4194	7C	B	CSwarmBasics::PreRenderBoid	-	upstream body (CSwarmBasics)	no
+04210	fn_80_4210	68	B	CSwarmBasics::CachePose	-	upstream body (CSwarmBasics)	no
+04278	fn_80_4278	8	B	CSwarmBasics::CanRenderUnsorted	swarm1	upstream body (CSwarmBasics)	yes
+04280	fn_80_4280	2B8	B	CSwarmBasics::SoftwareLight	swarm1	upstream body (CSwarmBasics)	yes
+04538	fn_80_4538	108	B	CSwarmBasics::HardwareLight	-	upstream body (CSwarmBasics)	no
+04640	fn_80_4640	138	B	CSwarmBasics::PreRender	-	upstream body (CSwarmBasics)	no
+04778	fn_80_4778	1CC	B	CSwarmBasics::BoxForPosition	swarm1	upstream body (CSwarmBasics)	yes
+04944	fn_80_4944	114	B	CSwarmBasics::GetListAt	swarm1	upstream body (CSwarmBasics)	yes
+04A58	fn_80_4A58	328	B	CSwarmBasics::UpdatePartition	-	upstream body (CSwarmBasics)	no
+04D80	fn_80_4D80	C	H	rstl::vector<unsigned int, rstl::rmemory_allocator>::clear	-	weak copy / template instance	no
+04D8C	fn_80_4D8C	174	B	CSwarmBasics::MoveBoid	-	upstream body (CSwarmBasics)	no
+04F00	fn_80_4F00	124	B	CSwarmBasics::UpdateSwarmAnimations	-	upstream body (CSwarmBasics)	no
+05024	fn_80_5024	94	B	CSwarmBasics::UpdateAllBoidMovement	-	upstream body (CSwarmBasics)	no
+050B8	fn_80_50B8	768	B	CSwarmBasics::Think	-	upstream body (CSwarmBasics)	no
+05820	fn_80_5820	7C	H	CAreaCollisionCache::CAreaCollisionCache	-	weak copy / template instance	no
+0589C	fn_80_589C	50	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::~reserved_vector	-	weak copy / template instance	no
+058EC	fn_80_58EC	84	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::destroy_elements	-	weak copy / template instance	no
+05970	fn_80_5970	44	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::reserved_vector	-	weak copy / template instance	no
+059B4	fn_80_59B4	68	H	rstl::uninitialized_copy_n<const CMetroidAreaCollider::COctreeLeafCache*, CMetroidAreaCollider::COctreeLeafCache*>	-	weak copy / template instance	no
+05A1C	fn_80_5A1C	20	H	rstl::construct<CMetroidAreaCollider::COctreeLeafCache>	-	weak copy / template instance	no
+05A3C	fn_80_5A3C	28	H	rstl::construction_policy<CMetroidAreaCollider::COctreeLeafCache, 0>::construct	-	weak copy / template instance	no
+05A64	fn_80_5A64	5C	H	CMetroidAreaCollider::COctreeLeafCache::COctreeLeafCache	-	weak copy / template instance	no
+05AC0	fn_80_5AC0	8C	H	rstl::reserved_vector<CAreaOctTree::Node, 64>::~reserved_vector	-	weak copy / template instance	no
+05B4C	fn_80_5B4C	44	H	rstl::reserved_vector<CAreaOctTree::Node, 64>::reserved_vector	-	weak copy / template instance	no
+05B90	fn_80_5B90	68	H	rstl::uninitialized_copy_n<const CAreaOctTree::Node*, CAreaOctTree::Node*>	-	weak copy / template instance	no
+05BF8	fn_80_5BF8	20	H	rstl::construct<CAreaOctTree::Node>	-	weak copy / template instance	no
+05C18	fn_80_5C18	28	H	rstl::construction_policy<CAreaOctTree::Node, 0>::construct	-	weak copy / template instance	no
+05C40	fn_80_5C40	4C	H	CAreaOctTree::Node::Node	-	weak copy / template instance	no
+05C8C	fn_80_5C8C	58	H	CAreaCollisionCache::~CAreaCollisionCache	-	weak copy / template instance	no
+05CE4	fn_80_5CE4	218	B	CSwarmBasics::AddDoorRepulsors	-	upstream body (CSwarmBasics)	no
+05EFC	fn_80_5EFC	208	B	CSwarmBasics::ApplySteeringBehaviors	-	upstream body (CSwarmBasics)	no
+06104	fn_80_6104	980	B	CSwarmBasics::UpdateBoid	-	upstream body (CSwarmBasics)	no
+06A84	fn_80_6A84	3C	H	rstl::reserved_vector<CSwarmBasics::CBoid*, 50>::~reserved_vector	-	weak copy / template instance	no
+06AC0	fn_80_6AC0	54	H	CCollisionSurface::CCollisionSurface	-	weak copy / template instance	no
+06B14	fn_80_6B14	19C	B	CSwarmBasics::UpdateLightComboBeam	-	upstream body (CSwarmBasics)	no
+06CB0	fn_80_6CB0	24C	B	CSwarmBasics::FindBestSurface	swarm1	upstream body (CSwarmBasics)	yes
+06EFC	fn_80_6EFC	5C	H	CCollisionSurface::CCollisionSurface	-	weak copy / template instance	no
+06F58	fn_80_6F58	344	B	CSwarmBasics::FindBestCollisionInBox	-	upstream body (CSwarmBasics)	no
+0729C	fn_80_729C	1A4	B	CSwarmBasics::PointOnSurface	swarm1	upstream body (CSwarmBasics)	yes
+07440	fn_80_7440	40	H	fn_80_7440	-	weak copy / template instance	no
+07480	fn_80_7480	4C	B	CSwarmBasics::ProjectVectorToPlane	swarm1	upstream body (CSwarmBasics)	yes
+074CC	fn_80_74CC	78	B	CSwarmBasics::ProjectPointToPlane	swarm1	upstream body (CSwarmBasics)	yes
+07544	fn_80_7544	3C	B	CSwarmBasics::GetTouchBounds	swarm1	upstream body (CSwarmBasics)	yes
+07580	fn_80_7580	98	B	CSwarmBasics::GetBoundingBox	swarm1	upstream body (CSwarmBasics)	yes
+07618	fn_80_7618	DC	B	CSwarmBasics::PreRenderAllViewports	swarm1	upstream body (CSwarmBasics)	yes
+076F4	fn_80_76F4	488	B	CSwarmBasics::CreateBoid	-	upstream body (CSwarmBasics)	no
+07B7C	fn_80_7B7C	23C	B	CSwarmBasics::AllocateSkinnedModels	-	upstream body (CSwarmBasics)	no
+07DB8	fn_80_7DB8	9C	H	rstl::single_ptr<SwarmRenderHelpers::CSwarmSkinnedModelState>::operator=	-	weak copy / template instance	no
+07E54	fn_80_7E54	50	H	fn_80_7E54	-	weak copy / template instance	no
+07EA4	fn_80_7EA4	8C	H	rstl::vector<SwarmRenderHelpers::CSwarmSkinnedModelState, rstl::rmemory_allocator>::push_back_unsafe	-	weak copy / template instance	no
+07F30	fn_80_7F30	60	H	rstl::auto_ptr<CVector3f>::~auto_ptr	-	weak copy / template instance	no
+07F90	fn_80_7F90	90	H	SwarmRenderHelpers::CSwarmSkinnedModelState::~CSwarmSkinnedModelState	-	weak copy / template instance	no
+08020	fn_80_8020	60	H	rstl::vector<SwarmRenderHelpers::CSwarmSkinnedModelState, rstl::rmemory_allocator>::clear	-	weak copy / template instance	no
+08080	fn_80_8080	38	H	rstl::destroy<rstl::pointer_iterator<SwarmRenderHelpers::CSwarmSkinnedModelState, rstl::vector<SwarmRenderHelpers::CSwarmSkinnedModelState, rstl::rmemory_allocator>, rstl::rmemory_allocator>>	-	weak copy / template instance	no
+080B8	fn_80_80B8	94	H	rstl::destroy_impl<rstl::pointer_iterator<SwarmRenderHelpers::CSwarmSkinnedModelState, rstl::vector<SwarmRenderHelpers::CSwarmSkinnedModelState, rstl::rmemory_allocator>, rstl::rmemory_allocator>>	-	weak copy / template instance	no
+0814C	fn_80_814C	7C	B	CSwarmBasics::StopLocomotionSounds	swarm1	upstream body (CSwarmBasics)	yes
+081C8	fn_80_81C8	588	B	CSwarmBasics::AcceptScriptMsg	-	upstream body (CSwarmBasics)	no
+08750	fn_80_8750	68	H	SMoverData::SMoverData	-	weak copy / template instance	no
+087B8	fn_80_87B8	20	H	fn_80_87B8	-	weak copy / template instance	no
+087D8	fn_80_87D8	58	H	fn_80_87D8	-	weak copy / template instance	no
+08830	fn_80_8830	54	H	rstl::vector<SConnection, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+08884	fn_80_8884	38	H	rstl::vector<CSwarmBasics::CBoid, rstl::rmemory_allocator>::push_back_unsafe	-	weak copy / template instance	no
+088BC	fn_80_88BC	20	H	rstl::construct<CSwarmBasics::CBoid>	-	weak copy / template instance	no
+088DC	fn_80_88DC	28	H	rstl::construction_policy<CSwarmBasics::CBoid, 0>::construct	-	weak copy / template instance	no
+08904	fn_80_8904	F0	H	CSwarmBasics::CBoid::CBoid	-	implicit copy ctor	no
+089F4	fn_80_89F4	1B8	B	CSwarmBasics::~CSwarmBasics	-	upstream body (CSwarmBasics)	no
+08BAC	fn_80_8BAC	84	H	rstl::vector<CSwarmBasics::CBoid, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+08C30	fn_80_8C30	84	H	rstl::vector<SwarmRenderHelpers::CSwarmSkinnedModelState, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+08CB4	fn_80_8CB4	A0	H	rstl::vector<CModelData, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+08D54	fn_80_8D54	84	H	rstl::vector<CAdvancementDeltas, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+08DD8	fn_80_8DD8	AC	H	rstl::single_ptr<SwarmRenderHelpers::CSwarmSkinnedModelState>::~single_ptr	-	weak copy / template instance	no
+08E84	fn_80_8E84	84	H	rstl::vector<CSwarmBasics::CRepulsor, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+08F08	fn_80_8F08	84	H	rstl::vector<rstl::pair<CSfxHandle, unsigned short>, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+08F8C	fn_80_8F8C	54	H	rstl::vector<int, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+08FE0	fn_80_8FE0	8AC	B	CSwarmBasics::CSwarmBasics	-	upstream body (CSwarmBasics)	no
+0988C	fn_80_988C	C8	H	rstl::optional_object<TLockedToken<CGenDescription>>::operator=	-	weak copy / template instance	no
+09954	fn_80_9954	58	H	TLockedToken<CGenDescription>::~TLockedToken	-	weak copy / template instance	no
+099AC	fn_80_99AC	54	H	TToken<CGenDescription>::~TToken	-	weak copy / template instance	no
+09A00	fn_80_9A00	58	H	rstl::vector<CAdvancementDeltas, rstl::rmemory_allocator>::push_back_unsafe	-	weak copy / template instance	no
+09A58	fn_80_9A58	38	H	fn_80_9A58	-	weak copy / template instance	no
+09A90	fn_80_9A90	20	H	fn_80_9A90	-	weak copy / template instance	no
+09AB0	fn_80_9AB0	28	H	fn_80_9AB0	-	weak copy / template instance	no
+09AD8	fn_80_9AD8	13C	H	fn_80_9AD8	-	weak copy / template instance	no
+09C14	fn_80_9C14	6C	H	fn_80_9C14	-	weak copy / template instance	no
+09C80	fn_80_9C80	54	H	fn_80_9C80	-	weak copy / template instance	no
+09CD4	fn_80_9CD4	64	H	fn_80_9CD4	-	weak copy / template instance	no
+09D38	fn_80_9D38	60	H	rstl::auto_ptr<CSwarmBasics::CUnknownBuffer>::~auto_ptr	-	weak copy / template instance	no
+09D98	fn_80_9D98	6C	H	rstl::single_ptr<CElementGen>::~single_ptr	-	weak copy / template instance	no
+09E04	fn_80_9E04	6C	H	rstl::optional_object<TLockedToken<CGenDescription>>::~optional_object	-	weak copy / template instance	no
+09E70	fn_80_9E70	84	H	rstl::single_ptr<SwarmRenderHelpers::CSwarmDisplayList>::~single_ptr	-	weak copy / template instance	no
+09EF4	fn_80_9EF4	58	H	rstl::single_ptr<CModelData>::~single_ptr	-	weak copy / template instance	no
+09F4C	fn_80_9F4C	5C	H	CDamageVulnerability::CDamageVulnerability	-	weak copy / template instance	no
+09FA8	fn_80_9FA8	54	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+09FFC	fn_80_9FFC	130	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::vector	-	weak copy / template instance	no
+0A12C	fn_80_A12C	54	H	CHealthInfo::CHealthInfo	-	weak copy / template instance	no
+0A180	fn_80_A180	3C	H	rstl::reserved_vector<CSwarmBasics::CBoid*, 125>::~reserved_vector	-	weak copy / template instance	no
+0A1BC	fn_80_A1BC	44	B	GetModelDataForAnimRes	-	upstream body (CSwarmBasics)	no
+0A200	fn_80_A200	34	B	CompareBoidsByListenerDistance	-	upstream body (CSwarmBasics)	no
+0A234	fn_80_A234	34	H	CompareBoidsByListenerDistanceReverse	-	weak copy / template instance	no
+0A268	fn_80_A268	2C	H	CompareBoidRefsByListenerDistance	-	weak copy / template instance	no
+0A294	fn_80_A294	21C	B	CSwarmBasics::CBoid::CBoid	swarm1	upstream body (CSwarmBasics)	yes
+0A4B0	fn_80_A4B0	1A8	B	CSwarmBasics::ShortestRotationArcWrapped	-	upstream body (CSwarmBasics)	no
+0A658	fn_80_A658	1C4	H	rstl::sort<rstl::pointer_iterator<rstl::pair<unsigned int, float>, rstl::vector<rstl::pair<unsigned int, float>, rstl::rmemory_allocator>, rstl::rmemory_allocator>, SSeekerCandidateSorter>	-	weak copy / template instance	no
+0A81C	fn_80_A81C	A4	H	rstl::vector<unsigned int, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+0A8C0	fn_80_A8C0	A4	H	rstl::vector<int, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+0A964	fn_80_A964	A4	H	rstl::vector<TUniqueId, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+0AA08	fn_80_AA08	AC	H	rstl::vector<rstl::pair<unsigned int, float>, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+0AAB4	fn_80_AAB4	B8	H	rstl::vector<CSwarmBasics::CBoid, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+0AB6C	fn_80_AB6C	68	H	rstl::uninitialized_copy<rstl::pointer_iterator<CSwarmBasics::CBoid, rstl::vector<CSwarmBasics::CBoid, rstl::rmemory_allocator>, rstl::rmemory_allocator>, CSwarmBasics::CBoid*>	-	weak copy / template instance	no
+0ABD4	fn_80_ABD4	B8	H	rstl::vector<rstl::pair<CSfxHandle, unsigned short>, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+0AC8C	fn_80_AC8C	3C	H	rstl::uninitialized_copy<rstl::pointer_iterator<rstl::pair<CSfxHandle, unsigned short>, rstl::vector<rstl::pair<CSfxHandle, unsigned short>, rstl::rmemory_allocator>, rstl::rmemory_allocator>, rstl::pair<CSfxHandle, unsigned short>*>	-	weak copy / template instance	no
+0ACC8	fn_80_ACC8	B8	H	rstl::vector<CSwarmBasics::CRepulsor, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+0AD80	fn_80_AD80	4C	H	rstl::uninitialized_copy<rstl::pointer_iterator<CSwarmBasics::CRepulsor, rstl::vector<CSwarmBasics::CRepulsor, rstl::rmemory_allocator>, rstl::rmemory_allocator>, CSwarmBasics::CRepulsor*>	-	weak copy / template instance	no
+0ADCC	fn_80_ADCC	AC	H	rstl::vector<SwarmRenderHelpers::CSwarmSkinnedModelState, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+0AE78	fn_80_AE78	20	H	rstl::destroy<SwarmRenderHelpers::CSwarmSkinnedModelState*>	-	weak copy / template instance	no
+0AE98	fn_80_AE98	90	H	rstl::destroy_impl<SwarmRenderHelpers::CSwarmSkinnedModelState*>	-	weak copy / template instance	no
+0AF28	fn_80_AF28	AC	H	rstl::uninitialized_copy<rstl::pointer_iterator<SwarmRenderHelpers::CSwarmSkinnedModelState, rstl::vector<SwarmRenderHelpers::CSwarmSkinnedModelState, rstl::rmemory_allocator>, rstl::rmemory_allocator>, SwarmRenderHelpers::CSwarmSkinnedModelState*>	-	weak copy / template instance	no
+0AFD4	fn_80_AFD4	B4	H	rstl::vector<CModelData, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+0B088	fn_80_B088	68	H	fn_80_B088	-	weak copy / template instance	no
+0B0F0	fn_80_B0F0	B8	H	rstl::vector<CAdvancementDeltas, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+0B1A8	fn_80_B1A8	64	H	rstl::uninitialized_copy<rstl::pointer_iterator<CAdvancementDeltas, rstl::vector<CAdvancementDeltas, rstl::rmemory_allocator>, rstl::rmemory_allocator>, CAdvancementDeltas*>	-	weak copy / template instance	no
+0B20C	fn_80_B20C	84	H	rstl::__sort3<rstl::pair<unsigned int, float>, SSeekerCandidateSorter>	-	weak copy / template instance	no
+0B290	fn_80_B290	7C	H	rstl::__insertion_sort<rstl::pointer_iterator<rstl::pair<unsigned int, float>, rstl::vector<rstl::pair<unsigned int, float>, rstl::rmemory_allocator>, rstl::rmemory_allocator>, SSeekerCandidateSorter>	-	weak copy / template instance	no
+0B30C	fn_80_B30C	C4	T	_unresolved	-	REL runtime	no
+0B3D0	fn_80_B3D0	24	T	_epilog	-	REL runtime	no
+0B3F4	fn_80_B3F4	24	T	_prolog	-	REL runtime	no
+0B418	fn_80_B418	4C	T	ModuleDestructors	-	REL runtime	no
+0B464	fn_80_B464	4C	T	ModuleConstructors	-	REL runtime	no

@@ -153,6 +153,7 @@ bool SwarmModelReady(const CModelData* modelData) {
 } // namespace
 #endif
 
+// @ fn_80_A294
 CSwarmBasics::CBoid::CBoid(const CTransform4f& xf, uint index)
 : mTransform(xf)
 , mVelocity(0.f, 0.f, 0.f)
@@ -291,6 +292,7 @@ CSwarmBasics::CSwarmBasics(TUniqueId uid, const rstl::string& name, const CEntit
 
 CSwarmBasics::~CSwarmBasics() {}
 
+// @ fn_80_7580
 CAABox CSwarmBasics::GetBoundingBox() const {
   const CVector3f extent(0.5f * mBoundingBoxExtent.GetX(), 0.5f * mBoundingBoxExtent.GetY(),
                          0.5f * mBoundingBoxExtent.GetZ());
@@ -298,6 +300,7 @@ CAABox CSwarmBasics::GetBoundingBox() const {
   return bounds.GetTransformedAABox(GetTransform());
 }
 
+// @ fn_80_7544
 rstl::optional_object< CAABox > CSwarmBasics::GetTouchBounds() const { return mAabox; }
 
 void CSwarmBasics::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
@@ -380,6 +383,7 @@ void CSwarmBasics::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_80_814C
 void CSwarmBasics::StopLocomotionSounds() {
   uint count = mLocomotionSounds.size();
   if (count != 0) {
@@ -460,6 +464,7 @@ void CSwarmBasics::CreateBoid(CStateManager& mgr, int index) {
   }
 }
 
+// @ fn_80_7618
 void CSwarmBasics::PreRenderAllViewports(CStateManager& mgr) {
   const CAABox bounds = GetBoundingBox();
   SetOtherBounds(bounds);
@@ -467,15 +472,18 @@ void CSwarmBasics::PreRenderAllViewports(CStateManager& mgr) {
   UpdatePortalSystemState(mgr);
 }
 
+// @ fn_80_74CC
 CVector3f CSwarmBasics::ProjectPointToPlane(const CVector3f& point, const CVector3f& planePoint,
                                             const CVector3f& normal) {
   return point - CVector3f::Dot(point - planePoint, normal) * normal;
 }
 
+// @ fn_80_7480
 CVector3f CSwarmBasics::ProjectVectorToPlane(const CVector3f& point, const CVector3f& normal) {
   return point - CVector3f::Dot(point, normal) * normal;
 }
 
+// @ fn_80_729C
 bool CSwarmBasics::PointOnSurface(const CCollisionSurface& surface, const CVector3f& pos,
                                   const CPlane& plane) {
   const CVector3f projected = ProjectPointToPlane(pos, surface.GetVert(0), plane.GetNormal());
@@ -508,6 +516,7 @@ CCollisionSurface CSwarmBasics::FindBestCollisionInBox(CStateManager& mgr, const
   return result;
 }
 
+// @ fn_80_6CB0
 bool CSwarmBasics::FindBestSurface(const CAreaCollisionCache& cache, CVector3f pos, float radius,
                                    CCollisionSurface& out) {
   bool found = false;
@@ -926,6 +935,7 @@ void CSwarmBasics::UpdatePartition() {
   }
 }
 
+// @ fn_80_4944
 CSwarmBasics::CBoid* CSwarmBasics::GetListAt(const CVector3f& pos) {
   const CAABox bounds = GetBoundingBox();
   const CVector3f delta = pos - bounds.GetMinPoint();
@@ -938,6 +948,7 @@ CSwarmBasics::CBoid* CSwarmBasics::GetListAt(const CVector3f& pos) {
   return mPartitionedBoidLists[index];
 }
 
+// @ fn_80_4778
 CAABox CSwarmBasics::BoxForPosition(int x, int y, int z, float margin) const {
   const CAABox bounds = GetBoundingBox();
   const CVector3f extent = bounds.GetMaxPoint() - bounds.GetMinPoint();
@@ -959,6 +970,7 @@ void CSwarmBasics::HardwareLight(const CStateManager& mgr, const CAABox& bounds)
   lights.ActivateLights();
 }
 
+// @ fn_80_4280
 CColor CSwarmBasics::SoftwareLight(const CStateManager& mgr, const CAABox& bounds) const {
   CActorLights lights(8, CVector3f::Zero(), 4, 4);
   lights.SetNeedsRelight(true);
@@ -1010,6 +1022,7 @@ void CSwarmBasics::PreRender(CStateManager& mgr) {
   SetPreRenderClipped(!active);
 }
 
+// @ fn_80_4278
 bool CSwarmBasics::CanRenderUnsorted(const CStateManager& mgr) const { return true; }
 
 void CSwarmBasics::CachePose(CModelData& modelData,
@@ -1058,10 +1071,13 @@ void CSwarmBasics::PortDescribe(char* buf, int size) const {
   }
   int n = std::snprintf(buf, size,
                         "  swarm active=%d gen=%d pending=%d boids=%d/%d created=%d/%d rate=%.2f "
-                        "models=%d dl=%d animated=%d\n",
+                        "models=%d dl=%d animated=%d\n"
+                        "  sfx loco=%04x x%d/%d attack=%04x x%d/%d seekers=%d\n",
                         GetActive() ? 1 : 0, x4f0_30_ ? 1 : 0, x52c_, active, mBoids.size(),
                         mCreatedBoids, mMaxCreatedBoids, mBoidGenRate, mModelDatas.size(),
-                        mDisplayList.null() ? 0 : 1, mAnimated ? 1 : 0);
+                        mDisplayList.null() ? 0 : 1, mAnimated ? 1 : 0, mLocomotionLoopedSound,
+                        mLocomotionSounds.size(), mMaxLocomotionEmitters, mAttackLoopedSound,
+                        mAttackSounds.size(), mMaxAttackEmitters, mSeekerTargets.size());
   for (int i = 0, shown = 0; i < mBoids.size() && shown < 4 && n > 0 && n < size; ++i) {
     const CBoid& b = mBoids[i];
     if (!b.mActive) {
@@ -1247,6 +1263,7 @@ void CSwarmBasics::ApplySeparation(CBoid& boid, const CVector3f& pos, float radi
   }
 }
 
+// @ fn_80_3748
 void CSwarmBasics::ApplyCohesion(CBoid& boid, const rstl::reserved_vector< CBoid*, 50 >& nearList,
                                  CVector3f& ahead) {
   if (nearList.size() > 0) {
@@ -1282,6 +1299,7 @@ void CSwarmBasics::ApplyAttraction(CBoid& boid, const CVector3f& pos, float radi
   }
 }
 
+// @ fn_80_338C
 void CSwarmBasics::ApplyAlignment(CBoid& boid, const rstl::reserved_vector< CBoid*, 50 >& nearList,
                                   CVector3f& ahead) {
   if (nearList.size() > 0) {
@@ -1526,6 +1544,7 @@ void CSwarmBasics::SetExplodeTimers(const CVector3f& pos, float radius, float mi
   }
 }
 
+// @ fn_80_1F7C
 bool CSwarmBasics::IsBoidVisibleForLockOn(const CStateManager& mgr, const CBoid& boid,
                                           const CVector3f& cameraPos,
                                           const CVector3f& cameraForward) const {
@@ -1672,6 +1691,7 @@ CVector3f CSwarmBasics::GetAimPosition(const CStateManager& mgr, float dt) const
   return mLastOrbitPosition + dt * mBoids[mLockOnIndex].mVelocity;
 }
 
+// @ fn_80_17A8
 CVector3f CSwarmBasics::GetOrbitPosition(const CStateManager& mgr) const {
   return mLastOrbitPosition;
 }
@@ -1784,6 +1804,7 @@ CVector3f CSwarmBasics::FindClosestCell(const CVector3f& pos) const {
   return result;
 }
 
+// @ fn_80_F6C
 CSwarmBasics::CBoid* CSwarmBasics::GetClosestPartitionList(const CVector3f& pos) const {
   float minDistance = FLT_MAX;
   CBoid* result = nullptr;
@@ -1806,6 +1827,7 @@ CSwarmBasics::CBoid* CSwarmBasics::GetClosestPartitionList(const CVector3f& pos)
   return result;
 }
 
+// @ fn_80_E48
 uint CSwarmBasics::UpdateLoopedSounds(uint maxEmitters, int partitionIndex,
                                       rstl::vector< TLoopedSound >& sounds) {
   uint active = 0;
@@ -1829,6 +1851,7 @@ uint CSwarmBasics::UpdateLoopedSounds(uint maxEmitters, int partitionIndex,
   return active;
 }
 
+// @ fn_80_CB0
 void CSwarmBasics::UpdateClosestPartitionLoopedSounds(const CVector3f& listener,
                                                       rstl::vector< TLoopedSound >& sounds,
                                                       uint maxEmitters, ushort sfx,
@@ -1880,6 +1903,7 @@ bool CSwarmBasics::AddLoopedSoundToHandlesList(CBoid& boid, rstl::vector< TLoope
   return false;
 }
 
+// @ fn_80_BB0
 void CSwarmBasics::StartLoopedSound(CBoid& boid, rstl::vector< TLoopedSound >& sounds, ushort sfx,
                                     uint slot) {
   sounds[slot].first = AddLoopedEmitter(boid.GetTranslation(), sfx);
@@ -1908,6 +1932,7 @@ bool CSwarmBasics::CanStartLoopedSound(const CBoid& boid, ELoopedSoundType type)
   }
 }
 
+// @ fn_80_9CC
 CSfxHandle CSwarmBasics::AddLoopedEmitter(const CVector3f& pos, ushort sfx) {
   const uchar maxVol = mMaxVolume;
   const uchar minVol = mMinVolume;
@@ -1950,6 +1975,7 @@ void CSwarmBasics::UpdateEffects(CStateManager& mgr, CAnimData& animData, int vo
   }
 }
 
+// @ fn_80_798
 CAreaCollisionCache CSwarmBasics::GetAreaCollisionCacheForPartition(int x, int y, int z) const {
   return CAreaCollisionCache(BoxForPosition(x, y, z, mBoidRadius + 0.5f));
 }
@@ -1960,6 +1986,7 @@ void CSwarmBasics::BoidCollidedWithPlayerCallback(CStateManager& mgr, CBoid& boi
   }
 }
 
+// @ fn_80_790
 bool CSwarmBasics::ShouldBuildAreaCollisionCacheForPartition(int partitionIndex) const {
   return true;
 }
@@ -2076,10 +2103,13 @@ TUniqueId CSwarmBasics::GetSeekerTargetLockedOn() const {
   return kInvalidUniqueId;
 }
 
+// @ fn_80_E4
 const CHealthInfo* CSwarmBasics::GetHealthInfo() const { return &mHealthInfo; }
 
+// @ fn_80_EC
 CHealthInfo* CSwarmBasics::HealthInfo() { return &mHealthInfo; }
 
+// @ fn_80_E0
 void CSwarmBasics::FinishConstruction() {}
 
 static void* NullSwarmBasicsFactory() { return nullptr; }

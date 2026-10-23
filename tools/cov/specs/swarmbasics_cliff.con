@@ -1,0 +1,55 @@
+# Sanctuary 0a_cliff_hall layer 0: CMetareeSwarm u0457. For tools/cov/specs/swarmbasics.py: god-mode player stands in swarm u0457, lets
+# the boids touch it, shoots every beam/charge/missile at it, boosts through it in morph ball, then
+# drives the swarm's script messages (Increment/Decrement, InternalMessage0 x12 and boost kills for
+# the >10 death-message queue, Deactivate/Activate, Delete at the end).
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give screwAttack 1; fastmorph 1
+@f380 send u0457 Activate; send u0457 Activate
+@f400 obj u0457
+@f420 tp 64.3 -314.6 -142.0
+@f700 obj u0457
+@f720 lockon 1
+@f740 shoot u0457
+@f770 shoot u0457 charged
+@f800 shoot u0457 missile
+@f830 beam dark
+@f840 shoot u0457; shoot u0457
+@f870 shoot u0457 charged
+@f900 beam light
+@f910 shoot u0457
+@f940 shoot u0457 charged
+@f980 beam annihilator
+@f990 shoot u0457; shoot u0457 charged
+@f1030 beam power
+@f1040 noise 6
+@f1060 tp 64.3 -314.6 -142.0
+@f1080 press x 30
+@f1200 boost
+@f1260 boost
+@f1320 damage u0457 5 0 boostball
+@f1340 damage u0457 50 0 cannonball
+@f1380 press x 30
+@f1450 send u0457 Decrement
+@f1500 send u0457 Increment
+@f1520 send u0457 InternalMessage0; send u0457 InternalMessage0; send u0457 InternalMessage0; send u0457 InternalMessage0
+@f1600 send u0457 Deactivate
+@f1640 send u0457 Activate
+@f1700 obj u0457
+@f1720 send u0457 InternalMessage0; send u0457 InternalMessage0; send u0457 InternalMessage0; send u0457 InternalMessage0; send u0457 InternalMessage0; send u0457 InternalMessage0; send u0457 InternalMessage0; send u0457 InternalMessage0
+@f1740 tp 64.3 -314.6 -142.0
+@f1760 press x 30
+@f1840 boost
+@f1880 tp 64.3 -314.6 -142.0
+@f1900 boost
+@f1940 tp 64.3 -314.6 -142.0
+@f1960 boost
+@f2000 tp 64.3 -314.6 -142.0
+@f2020 boost
+@f2060 tp 64.3 -314.6 -142.0
+@f2080 boost
+@f2120 press x 30
+@f2140 obj u0457
+@f2200 tp 364.3 -314.6 -62.0
+@f2500 obj u0457
+@f2600 tp 64.3 -314.6 -142.0
+@f2800 send u0457 Delete
+@f2900 obj u0457

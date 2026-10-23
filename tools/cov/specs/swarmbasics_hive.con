@@ -1,0 +1,55 @@
+# Temple Grounds 0e_temple_hive_hall layer 0: CIngBlobSwarm u044e, u0445. For tools/cov/specs/swarmbasics.py: god-mode player stands in swarm u044e, lets
+# the boids touch it, shoots every beam/charge/missile at it, boosts through it in morph ball, then
+# drives the swarm's script messages (Increment/Decrement, InternalMessage0 x12 and boost kills for
+# the >10 death-message queue, Deactivate/Activate, Delete at the end).
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give screwAttack 1; fastmorph 1
+@f380 send u044e Activate; send u0445 Activate
+@f400 obj u044e
+@f420 tp 90.3 -353.4 -96.0
+@f700 obj u044e
+@f720 lockon 1
+@f740 shoot u044e
+@f770 shoot u044e charged
+@f800 shoot u044e missile
+@f830 beam dark
+@f840 shoot u044e; shoot u0445
+@f870 shoot u044e charged
+@f900 beam light
+@f910 shoot u044e
+@f940 shoot u044e charged
+@f980 beam annihilator
+@f990 shoot u044e; shoot u0445 charged
+@f1030 beam power
+@f1040 noise 6
+@f1060 tp 90.3 -353.4 -96.0
+@f1080 press x 30
+@f1200 boost
+@f1260 boost
+@f1320 damage u044e 5 0 boostball
+@f1340 damage u044e 50 0 cannonball
+@f1380 press x 30
+@f1450 send u044e Decrement
+@f1500 send u044e Increment
+@f1520 send u044e InternalMessage0; send u044e InternalMessage0; send u044e InternalMessage0; send u044e InternalMessage0
+@f1600 send u044e Deactivate
+@f1640 send u044e Activate
+@f1700 obj u044e
+@f1720 send u044e InternalMessage0; send u044e InternalMessage0; send u044e InternalMessage0; send u044e InternalMessage0; send u044e InternalMessage0; send u044e InternalMessage0; send u044e InternalMessage0; send u044e InternalMessage0
+@f1740 tp 90.3 -353.4 -96.0
+@f1760 press x 30
+@f1840 boost
+@f1880 tp 90.3 -353.4 -96.0
+@f1900 boost
+@f1940 tp 90.3 -353.4 -96.0
+@f1960 boost
+@f2000 tp 90.3 -353.4 -96.0
+@f2020 boost
+@f2060 tp 90.3 -353.4 -96.0
+@f2080 boost
+@f2120 press x 30
+@f2140 obj u044e
+@f2200 tp 390.3 -353.4 -16.0
+@f2500 obj u044e
+@f2600 tp 90.3 -353.4 -96.0
+@f2800 send u044e Delete
+@f2900 obj u044e

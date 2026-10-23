@@ -1,0 +1,56 @@
+# Torvus Bog 0g_swamp_hall layer 3: CPlantScarabSwarm u049e. For tools/cov/specs/swarmbasics.py: god-mode player stands in swarm u049e, lets
+# the boids touch it, shoots every beam/charge/missile at it, boosts through it in morph ball, then
+# drives the swarm's script messages (Increment/Decrement, InternalMessage0 x12 and boost kills for
+# the >10 death-message queue, Deactivate/Activate, Delete at the end).
+@f220 layer 3
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give screwAttack 1; fastmorph 1
+@f380 send u049e Activate; send u049e Activate
+@f400 obj u049e
+@f420 tp -157.4 -63.1 39.5
+@f700 obj u049e
+@f720 lockon 1
+@f740 shoot u049e
+@f770 shoot u049e charged
+@f800 shoot u049e missile
+@f830 beam dark
+@f840 shoot u049e; shoot u049e
+@f870 shoot u049e charged
+@f900 beam light
+@f910 shoot u049e
+@f940 shoot u049e charged
+@f980 beam annihilator
+@f990 shoot u049e; shoot u049e charged
+@f1030 beam power
+@f1040 noise 6
+@f1060 tp -157.4 -63.1 39.5
+@f1080 press x 30
+@f1200 boost
+@f1260 boost
+@f1320 damage u049e 5 0 boostball
+@f1340 damage u049e 50 0 cannonball
+@f1380 press x 30
+@f1450 send u049e Decrement
+@f1500 send u049e Increment
+@f1520 send u049e InternalMessage0; send u049e InternalMessage0; send u049e InternalMessage0; send u049e InternalMessage0
+@f1600 send u049e Deactivate
+@f1640 send u049e Activate
+@f1700 obj u049e
+@f1720 send u049e InternalMessage0; send u049e InternalMessage0; send u049e InternalMessage0; send u049e InternalMessage0; send u049e InternalMessage0; send u049e InternalMessage0; send u049e InternalMessage0; send u049e InternalMessage0
+@f1740 tp -157.4 -63.1 39.5
+@f1760 press x 30
+@f1840 boost
+@f1880 tp -157.4 -63.1 39.5
+@f1900 boost
+@f1940 tp -157.4 -63.1 39.5
+@f1960 boost
+@f2000 tp -157.4 -63.1 39.5
+@f2020 boost
+@f2060 tp -157.4 -63.1 39.5
+@f2080 boost
+@f2120 press x 30
+@f2140 obj u049e
+@f2200 tp 142.6 -63.1 119.5
+@f2500 obj u049e
+@f2600 tp -157.4 -63.1 39.5
+@f2800 send u049e Delete
+@f2900 obj u049e
