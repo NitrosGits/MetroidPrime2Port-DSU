@@ -2424,7 +2424,11 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
   // A missing asset would reach CAnimRes/CStaticRes with nothing behind it.
   if (haveFsm && gpResourceFactory->GetResourceTypeById(fsm) != 'AFSM' &&
       gpResourceFactory->GetResourceTypeById(fsm) != 'FSM2') {
-    Fail("spawn: fsm " + Str(args[1]) + " is not an AFSM/FSM2 asset here");
+    {
+      char why[64];
+      std::snprintf(why, sizeof(why), "spawn: fsm %08x is not an AFSM/FSM2 asset here", fsm);
+      Fail(why);
+    }
     std::printf("[console] spawn %s refused: no state machine asset %08x\n", typeName, fsm);
     return;
   }
