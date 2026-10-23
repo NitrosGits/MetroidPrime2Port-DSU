@@ -58,4 +58,4 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
-- 2026-10-23: F1a merged into port (13f9548dc): MP1 debug_ui layout in `platform/debug_ui/`; omitted MP1 rows listed in /tmp/opencode/reports/f1a.md. aur1 (Aurora resync, ../wt-mp2-aur1, sync/aur1) running. Next: input sync (3), then F1b.
+- 2026-10-23: F1a merged into port (13f9548dc): MP1 debug_ui layout in `platform/debug_ui/`; omitted MP1 rows listed in /tmp/opencode/reports/f1a.md. aur1 (Aurora resync, ../wt-mp2-aur1, sync/aur1) running. inp1 (input sync + Controls rows, ../wt-mp2-inp1, sync/inp1) running. Next: F1b (Video rows) after aur1.
