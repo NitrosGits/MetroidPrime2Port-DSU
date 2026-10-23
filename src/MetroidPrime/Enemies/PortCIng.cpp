@@ -291,7 +291,7 @@ enum {
 
 const float kFacingAngle = 0.34906584f; // lbl_29_rodata_E8: 20 degrees (fn_29_B0E0 0x0000B198)
 // rodata_104: the wall projectile's launch direction is clamped to this angle from the surface normal.
-const float kWallLaunchAngle = 0.7853981f; // 45 degrees
+const float kWallLaunchAngle = 0.7853982f; // 45 degrees, rodata_104 (0x3F490FDB; fn_29_8FE8 0x934C)
 
 // fn_29_3190's seven joint spheres: Ing.rel's own rodata_0 table, seven (locator, radius) pairs.
 // Every radius is 1.5 (0x3FC00000); the pivot point is the zero vector and the mass is 1000.0
@@ -426,6 +426,13 @@ CSegId PortArmSegId(const CModelData& model, const char* name) {
 
 } // namespace
 
+// fn_29_D540 (0x1110, asm 0xD540-0xE650): the constructor. Its only branches are the seven effect
+// tokens' id tests (0xD688 `cmplwi r0,0xffff` / 0xD68C beq and the same before each token:
+// OptionalPart); both arms ran in the Agon Wastes run of 2026-10-23 (lane ing30, every second id
+// forced to no asset by tools/cov/specs/ing30_force.py). The locator lookups have no null test in
+// retail (0xE3E0 reads the anim data straight from the model data); PortHeadSegId/PortArmSegId's
+// null-anim arm is the host's.
+// @ fn_29_D540
 CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
            const CModelData& modelData, const CActorParameters& actParms,
            const CPatternedInfo& pInfo, const CIngData& data)
@@ -443,7 +450,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mIngSpotPathFindNavigation()  // fn_29_D540 @0x0000D618, the DOL's fn_801F8258
 , mForm(kForm_Corporeal)
 , mDesiredForm(-1)
-, mTouchBox()
+, mTouchBox(CAABox::MakeNullBox()) // 0xD61C-0xD678: 0xcc0..0xcd4 = mskNullBox, engaged (0xcd8 = 1)
 , mHostId(kInvalidUniqueId)
 , mPossessedEffectId(kInvalidUniqueId)                            // 0xcde
 , mSwarmEffect(OptionalPart(data.mSwarm.mPART))                   // 0xce0, CIngData+0x1e4
@@ -481,12 +488,14 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mTargetPos(CVector3f::Zero())
 , mSurfaceNormal(CVector3f::Zero())
 , mSurfaceMoveDir(CVector3f::Zero())
-, mPortalPlaneNormal(CVector3f::Zero())
-, mPortalPlaneConstant(0.f)
+// 0xE1D4-0xE240: (rodata_6C, rodata_6C, rodata_64) = (0, 0, 1) normalised into 0xdf0; 0xE27C-0xE2A4:
+// 0xdfc = dot(translation (0x54/0x58/0x5c), that normal).
+, mPortalPlaneNormal(CVector3f(0.f, 0.f, 1.f).AsNormalized())
+, mPortalPlaneConstant(CVector3f::Dot(xf.GetTranslation(), mPortalPlaneNormal))
 , mSwipeArm(-1)
 , mModelScale(modelData.GetScale())
 , mMiniPortalCount(0)
-, mMiniPortalPositions()
+, mMiniPortalPositions() // host: fn_29_D540 never writes 0xe04..0xe24
 , mMiniPortalIndex(-1)
 , mSafeZoneCount(0)
 , mHeardShotTime(1.5f)
@@ -497,15 +506,17 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mFrustrationTimer(0.f)
 , mBallCooldown(0.f)
 , mHitReactionTime(0.f)
-, mLightBlend(0.f)
+, mLightBlend(1.f) // 0xE2D4 stfs f1 (rodata_64 = 1.0f), 0xe50
 , mDeadFade(0.f)
 , mBodyProjectileTime(0.f)
 , mEvaporate(false)
 , mTaunt(false)
 , mBodyProjectileAllowed(false)
 , mAggressive(false)
-, mFoundMovementPos(false)
+, mFoundMovementPos(true) // 0xE314 rlwimi r3,r4,3,28,28 with r4 = 1: 0xe5c bit 3 set
 , mRecalcPath(false)
+, xE5C_1(false)   // 0xE32C: 0xe5c bit 1 = 0
+, mTakeOff(false) // 0xE338: 0xe5c bit 0 = 0
 , mRenderModel(true)
 , mPortalPlane(false)
 , mStartAsIngSpot((data.mFlags210 & kFlag_StartAsIngSpot) != 0)
@@ -529,12 +540,13 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
   // and stops the actor drawing a shadow (@0x0000E634).
   KnockBackController().EnableKnockBackPhysics(false);
   SetDrawShadow(false);
-  // [?] MinorIng's surface helper mode and search radii (fn_44_9D58); the same DOL helpers.
-  mSurfaceAlignment.SetMode(static_cast< CSurfaceAlignmentHelper::EMode >(1));
-  mPathFindSearch.SetCharacterHeight(mModelScale.GetY() * 3.f);
-  mPathFindSearch.SetCharacterRadius(mModelScale.GetZ() * 5.f);
-  mLineOfSight.SetRayFilter(CMaterialFilter::MakeIncludeExclude(
-      CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor)));
+  // The search's size from the model scale (0x60 -> scale at +0): 0xE618-0xE630
+  //   lfs f0, rodata_98 (5.0f); lfs f1, 0x4(r6) (y); lfs f3, 0x8(r6) (z); f1 = rodata_D0 (3.0f) * y;
+  //   f0 = 5 * z; stfs f1, 0xab0 (search+0xd4, mChRadius); stfs f0, 0xaac (search+0xd0, mChHeight).
+  // The ctor sets no surface-alignment mode (0xca4 is stored only at 0x9140/0x9830/0x9B6C/0x9D18) and
+  // leaves the line-of-sight tracker's own ray filter.
+  mPathFindSearch.SetCharacterHeight(mModelScale.GetZ() * 5.f);
+  mPathFindSearch.SetCharacterRadius(mModelScale.GetY() * 3.f);
 }
 
 // fn_29_CF64 (0x1C4): the retail's destructor frees the data block (fn_29_10F8, 0x94) and the
@@ -1918,9 +1930,12 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
 // fn_29_8FE8 (0x464, asm 0x00008FE8-0x0000944C): the BecomeWallProjectile state. The arms: the
 // message (asm 0x00009014, 0x00009024, 0x00009028, 0x00009034 and 0x00009038), the cross
 // product's magnitude (asm 0x000090CC) and the body command (asm 0x000091BC and 0x000091E4).
-// The run of 2026-10-21 (the Agon Wastes area, the state forced with `fsm <ing>
-// BecomeWallProjectile`) ran the three messages (the probe's keys 0, 5 and 9, four calls
-// each); the cross product and the body command arms did not run. Not marked.
+// Every arm ran in the Agon Wastes runs of 2026-10-23 (lane ing30, tools/drivers/ing30.py:
+// `fsm <ing> BecomeWallProjectile`, `bodystate <ing> 9|5`, `statecall` with messages 1, 2, 3
+// and -1): the cross product safe and not (forced, tools/cov/specs/ing30_force.py: a wall or a
+// floor triangle at Activate), the command issued, the loop attack running, neither, take-off
+// or form 4, no aim target, and the direction inside and outside the 45-degree cone.
+// @ fn_29_8FE8
 void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -3227,22 +3242,27 @@ void CIng::SetPointCoverDest(CStateManager& mgr, float) {
 // Search == 0 sets the bit). Retail reads the point array from the point search itself
 // 0x57D4 `lwz r5, 0xac8(r31)` and
 // 0x57DC `lwz r6, 0x190(r5)`, i.e. the same CPFArea the host builds
-// mPointPathFindSearch with; the host's mPathArea is that pointer, and the extra null test on it is
-// the host's (retail dereferences it - the Ing always has a path area once its area loaded).
+// mPointPathFindSearch with (kSM_Activate sets both from one pointer), so the search below indexes
+// mPathArea. Retail has no null test on it and neither does this: with no area,
+// FindClosestPhysicalPoint finds no point (CPathFindPointSearch.cpp: `if (area)`), `from` stays -1
+// and the body returns at 0x5788 before anything reads the area.
+// Every arm ran in the Agon Wastes runs of 2026-10-23 (lane ing30, `codecall <ing>
+// SetWallPointCoverDest` per AI hint): no hint (`var <ing> ing.coverhint 0xffff`), no point for
+// the Ing (forced, tools/cov/specs/ing30_force.py mode 1), none for the hint (forced, mode 2),
+// the search failing (forced, mode 3) and succeeding.
+// @ fn_29_5714
 void CIng::SetWallPointCoverDest(CStateManager& mgr, float) {
   LogState("SetWallPointCoverDest");
   mFoundMovementPos = false;
   mPointPathFindSearch.ClearWaypoints(); // 0xacc = 0, asm 0x0000573C
   const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId); // fn_29_45BC, id at 0xd72
-  // Retail tests the hint only (fn_29_45BC returns null when the id is not a CScriptAIHint); the
-  // host can run without a path area, so the point queries are skipped when mPathArea is null.
-  if (hint == nullptr || mPathArea == nullptr) {
+  if (hint == nullptr) { // asm 0x5744 mr. r30,r3 / 0x5748 beq
     return;
   }
   int from = -1;
   mPointPathFindSearch.FindClosestPhysicalPoint(GetTranslation(), from,
                                                 CPathFindPointSearchFilter(20.f, 0, -1));
-  if (from == -1) {
+  if (from == -1) { // asm 0x5784 cmpwi r5,-1 / 0x5788 beq
     return;
   }
   int to = -1;
@@ -3250,6 +3270,7 @@ void CIng::SetWallPointCoverDest(CStateManager& mgr, float) {
   // points the graph connects to the Ing's own point are candidates.
   mPointPathFindSearch.FindClosestPhysicalPoint(hint->GetTranslation(), to,
                                                 CPathFindPointSearchFilter(20.f, 0, from));
+  // asm 0x57C4 cmpwi r0,-1 / 0x57C8 beq; 0x57F0 cmpwi r3,0 / 0x57F4 bne (Search == 0 sets 0xe5c bit 3).
   if (to != -1 && PortIngPointSearch(mPointPathFindSearch, *mPathArea, from, to)) {
     mFoundMovementPos = true;
   }
@@ -3313,10 +3334,12 @@ void CIng::SetLuredDest(CStateManager& mgr, float) {
 // the lure point (asm 0x000052BC-0x0000531C), then the point search between the two (asm
 // 0x00005350-0x0000536C). The shared PortIngLuredPointDest is the same routine as the MinorIng's
 // copy (fn_44_22B0), whose asm matches this one field for field.
-// The Agon Wastes run of 2026-10-21 (the console's `noise 6` at the safe zone nearest the Ing)
-// reached this code function 44 times with the lure zone set; the arms of the retail's body (the
-// flag-1 point, the graph link and the mesh path) are inside the shared helper, so the body is
-// not marked yet.
+// The arms (in the shared helper) ran in the Agon Wastes runs of 2026-10-23 (lane ing30,
+// tools/drivers/ing30.py `codecall <ing> SetLuredPointDest` per safe zone): no lure mesh point;
+// no closest point (forced, tools/cov/specs/ing30_force.py mode 1); the flag-1 test, the graph
+// link and the mesh path both ways; no candidate (best == -1); the point search failing (forced,
+// mode 3) and succeeding.
+// @ fn_29_51D0
 void CIng::SetLuredPointDest(CStateManager& mgr, float) {
   LogState("SetLuredPointDest");
   mFoundMovementPos = PortIngLuredPointDest(mgr, mPathFindSearch, mPointPathFindSearch, mPathArea,
@@ -3863,16 +3886,20 @@ void CIng::Touch(CActor& actor, CStateManager& mgr) {
 //     area 57 run of 2026-10-21;
 //   - the contact list is empty (asm 0x0000B710): the body does nothing - 6 calls in that run;
 //   - a contact whose material is not one of the six splat surfaces (asm 0x0000B720): the next
-//     contact is tried - **open**, that run had no such contact;
+//     contact is tried - 262 contacts in the ing30 runs of 2026-10-23, forced on the first
+//     contact (tools/cov/specs/ing30_force.py zeroes its material);
 //   - a contact whose material meets the mask (asm 0x0000B738): the normal is stored, the splat
 //     flag is set and the first hit wins (asm 0x0000B760) - 1 call in that run.
+// @ fn_29_B534
 void CIng::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list, CStateManager& mgr) {
   CPatterned::CollidedWith(id, list, mgr); // asm 0x0000B550
   if (mForm != kForm_BodyProjectile) {
     return; // asm 0x0000B558: cmpwi mForm (0x9d4), 4
   }
-  if (mBodyProjectileTime < 0.5f) {
-    return; // asm 0x0000B56C: fcmpo mBodyProjectileTime (0xe58), 0.5f (rodata_B4)
+  // asm 0x0000B56C-0x0000B574: fcmpo mBodyProjectileTime (0xe58), 0.5f (rodata_B4); cror eq,gt,eq;
+  // bne: the body goes on only when the time is >= 0.5, so a NaN time returns too.
+  if (!(mBodyProjectileTime >= 0.5f)) {
+    return;
   }
   // The mask retail builds once into lbl_29_bss_8 (asm 0x0000B588-0x0000B6F0) from the six bit
   // indices in lbl_29_data_9DC..0x9F0 (0x1d, 0x1e, 0x1f, 0x3b, 0x2b, 0x2a): Ceiling, Wall, Floor,

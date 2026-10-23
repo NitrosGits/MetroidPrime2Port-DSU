@@ -1760,6 +1760,32 @@ spec counts the arms at the emitted branch (symbol-relative offsets; `$eflags & 
 `je`, `& 0x1` CF at the hearing test's `jb`, `& 0x41` at the `jbe`). game exit 0, 0
 `[port] caught`/reach-stub.
 
+### A.35 The last unmarked class-B rows (2026-10-23, lane ing30)
+
+`51D0`, `5714`, `8FE8`, `B534` and the ctor `D540` marked; `10E64` reclassified T. Driver
+`tools/drivers/ing30.py`, spec `tools/cov/specs/ing30_force.py` (`tools/cov/force.sh` on the gcov
+build), the Agon Wastes `01_sand_entrance_dark`, one run of 16000 frames `--fast` after the last
+edit (exit 0, 0 caught/reach-stub). Forced arms are labelled `forced`.
+
+| fn | fix | arms (asm, real addresses) | run |
+|---|---|---|---|
+| `51D0` | host `area == nullptr` guard removed from `PortIngLuredPointDest` (also MinorIng `22B0`): with no area the first query finds no point and the body returns at 0x52A0 | lure mesh point 0x5244; `from` 0x52A0 (forced: filter flag 0x80000000); point flag 0x52CC, graph link 0x52E0, distance 0x530C (bge, NaN skips), PathExists 0x5324; `best` 0x534C; Search 0x5374 (forced: null source) | all both ways |
+| `5714` | host `mPathArea == nullptr` guard removed (retail reads the area from the point search, 0x57D4/0x57DC) | hint 0x5748 (`ing.coverhint 0xffff`); `from` 0x5788 (forced); `to` 0x57C8 (forced); Search 0x57F4 (forced) | all both ways |
+| `8FE8` | `kWallLaunchAngle` 0x3F490FDA -> 0x3F490FDB (rodata_104, 0x934C) | message switch; cross product 0x90CC (forced wall/floor triangle at Activate); CanIssueCommand / loop attack / neither (`bodystate 9`/`5`); take-off or form 4; aim target; cone 0x9358 (ble, NaN no clamp) | all |
+| `B534` | `time < 0.5` -> `!(time >= 0.5)` (0xB56C fcmpo, cror eq,gt,eq; bne: NaN returns) | form 0xB558; time 0xB574; empty list; not a splat surface 0xB720 (forced: first contact's material zeroed); splat 0xB738 | all |
+| `D540` | touch box engaged null box (0xD61C-0xD678); 0xdf0 = (0,0,1), 0xdfc = translation.z (0xE1D4-0xE2A4); `mLightBlend` 1.0 (0xE2D4); `mFoundMovementPos` true (0xE314); `xE5C_1`/`mTakeOff` initialised 0 (were uninitialised); search 0xd0 height = 5 * scale.z, 0xd4 radius = 3 * scale.y (0xE618-0xE630, were swapped); dropped the `[?]` SetMode(1) (0xca4 stored only at 0x9140/0x9830/0x9B6C/0x9D18) and the ray-filter override (none in retail) | the seven effect-token id tests 0xD68C etc. (forced: every second id invalid) | both |
+
+`10E64` is T: vtable `data_C60` slot 0x2C. Retail `10DEC` AddToRenderer only calls gpRender
+vtable 0x44 (AddParticleGen) twice, never CActor::AddToRenderer, AddDrawableActor or RenderLast;
+the Ing asm has no RenderLast/AddDrawableActor reference. CStateManager reaches an actor's Render
+only through RenderActorQueue (mRenderLast), RecursiveDrawTree (AddedToken set only by
+AddDrawableActor/AddDrawableActorPlane, CStateManager.cpp:324/332) and RendererDrawCallback
+(drawables from AddDrawableActor), so the slot is never dispatched (tail8: 0 Render vs 22
+AddToRenderer).
+
+Follow-up: MinorIng's ctor (`PortCMinorIng.cpp:386-410`, fn_44_9D58) carries the same SetMode(1),
+height/radius order and ray-filter override the Ing ctor had; check it against its own asm.
+
 ## D. Implementation order
 
 1. **MinorIng first, as a passive actor** (smallest milestone, 14 areas): `CMinorIng.hpp`
