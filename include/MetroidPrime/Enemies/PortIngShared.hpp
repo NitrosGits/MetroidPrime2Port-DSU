@@ -113,33 +113,41 @@ inline bool PortIngLuredDest(CStateManager& mgr, CPathFindSearch& search, TUniqu
 inline bool PortIngLuredPointDest(CStateManager& mgr, CPathFindSearch& search,
                                   CPathFindPointSearch& pointSearch, CPFArea* area,
                                   TUniqueId safeZone, const CVector3f& pos) {
+  // fn_29_51D0: 0x5214-0x5220 clear 0xe5c bit 3 and the waypoint count (0xacc); `pos` is the
+  // translation read once at 0x5224-0x522C.
   pointSearch.ClearWaypoints();
   CVector3f lure = pos;
-  if (area == nullptr || !PortIngLuredMeshPoint(mgr, search, safeZone, lure)) {
+  // 0x523C bl fn_29_1C98 / 0x5244 beq: no lure mesh point returns before the flags are touched.
+  // `area` is the point search's own area (0xac8; both come from one pointer at kSM_Activate), so
+  // retail has no null test: with no area FindClosestPhysicalPoint finds nothing and `from` stays -1.
+  if (!PortIngLuredMeshPoint(mgr, search, safeZone, lure)) {
     return false;
   }
   bool found = false;
-  search.SetFlags(1);
+  search.SetFlags(1); // 0x525C-0x5264: the vtable 0xe0 search's flags (0xdc) = 1
   int from = -1;
   pointSearch.FindClosestPhysicalPoint(pos, from, CPathFindPointSearchFilter(20.f, 0, -1));
-  if (from != -1) {
+  if (from != -1) { // 0x529C cmpwi r0,-1 / 0x52A0 beq (to the flag restore)
     int best = -1;
-    float bestDistSq = FLT_MAX;
-    for (int i = 0; i < area->GetNumPoints(); ++i) {
+    float bestDistSq = FLT_MAX; // rodata_EC
+    for (int i = 0; i < area->GetNumPoints(); ++i) { // 0x533C 0x18c count / 0x5344 blt
       const CPFPoint& point = area->GetPoint(i);
+      // 0x52C8 clrlwi. (point flags 0xc & 1) / 0x52CC beq; 0x52D8 PointPathExists(from, i) / 0x52E0 beq
       if ((point.GetFlags() & 1) == 0 || !area->PointPathExists(from, i)) {
         continue;
       }
       const float distSq = (pos - point.GetPosition()).MagSquared();
+      // 0x5308 fcmpo / 0x530C bge (a NaN skips); 0x5320 cmpwi r3,0 / 0x5324 bne (PathExists == 0)
       if (distSq < bestDistSq &&
           search.PathExists(point.GetPosition(), lure) == CPathFindSearch::kR_Success) {
         best = i;
         bestDistSq = distSq;
       }
     }
+    // 0x5348 cmpwi r28,-1 / 0x534C beq; 0x536C Search / 0x5374 bne (Search == 0 sets 0xe5c bit 3)
     found = best != -1 && PortIngPointSearch(pointSearch, *area, from, best);
   }
-  search.SetFlags(kPortIngSearchFlags);
+  search.SetFlags(kPortIngSearchFlags); // 0x5388-0x53A0: flags back to 0x301
   return found;
 }
 

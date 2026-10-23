@@ -3230,22 +3230,27 @@ void CIng::SetPointCoverDest(CStateManager& mgr, float) {
 // Search == 0 sets the bit). Retail reads the point array from the point search itself
 // 0x57D4 `lwz r5, 0xac8(r31)` and
 // 0x57DC `lwz r6, 0x190(r5)`, i.e. the same CPFArea the host builds
-// mPointPathFindSearch with; the host's mPathArea is that pointer, and the extra null test on it is
-// the host's (retail dereferences it - the Ing always has a path area once its area loaded).
+// mPointPathFindSearch with (kSM_Activate sets both from one pointer), so the search below indexes
+// mPathArea. Retail has no null test on it and neither does this: with no area,
+// FindClosestPhysicalPoint finds no point (CPathFindPointSearch.cpp: `if (area)`), `from` stays -1
+// and the body returns at 0x5788 before anything reads the area.
+// Every arm ran in the Agon Wastes runs of 2026-10-23 (lane ing30, `codecall <ing>
+// SetWallPointCoverDest` per AI hint): no hint (`var <ing> ing.coverhint 0xffff`), no point for
+// the Ing (forced, tools/cov/specs/ing30_force.py mode 1), none for the hint (forced, mode 2),
+// the search failing (forced, mode 3) and succeeding.
+// @ fn_29_5714
 void CIng::SetWallPointCoverDest(CStateManager& mgr, float) {
   LogState("SetWallPointCoverDest");
   mFoundMovementPos = false;
   mPointPathFindSearch.ClearWaypoints(); // 0xacc = 0, asm 0x0000573C
   const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId); // fn_29_45BC, id at 0xd72
-  // Retail tests the hint only (fn_29_45BC returns null when the id is not a CScriptAIHint); the
-  // host can run without a path area, so the point queries are skipped when mPathArea is null.
-  if (hint == nullptr || mPathArea == nullptr) {
+  if (hint == nullptr) { // asm 0x5744 mr. r30,r3 / 0x5748 beq
     return;
   }
   int from = -1;
   mPointPathFindSearch.FindClosestPhysicalPoint(GetTranslation(), from,
                                                 CPathFindPointSearchFilter(20.f, 0, -1));
-  if (from == -1) {
+  if (from == -1) { // asm 0x5784 cmpwi r5,-1 / 0x5788 beq
     return;
   }
   int to = -1;
@@ -3253,6 +3258,7 @@ void CIng::SetWallPointCoverDest(CStateManager& mgr, float) {
   // points the graph connects to the Ing's own point are candidates.
   mPointPathFindSearch.FindClosestPhysicalPoint(hint->GetTranslation(), to,
                                                 CPathFindPointSearchFilter(20.f, 0, from));
+  // asm 0x57C4 cmpwi r0,-1 / 0x57C8 beq; 0x57F0 cmpwi r3,0 / 0x57F4 bne (Search == 0 sets 0xe5c bit 3).
   if (to != -1 && PortIngPointSearch(mPointPathFindSearch, *mPathArea, from, to)) {
     mFoundMovementPos = true;
   }
@@ -3316,10 +3322,12 @@ void CIng::SetLuredDest(CStateManager& mgr, float) {
 // the lure point (asm 0x000052BC-0x0000531C), then the point search between the two (asm
 // 0x00005350-0x0000536C). The shared PortIngLuredPointDest is the same routine as the MinorIng's
 // copy (fn_44_22B0), whose asm matches this one field for field.
-// The Agon Wastes run of 2026-10-21 (the console's `noise 6` at the safe zone nearest the Ing)
-// reached this code function 44 times with the lure zone set; the arms of the retail's body (the
-// flag-1 point, the graph link and the mesh path) are inside the shared helper, so the body is
-// not marked yet.
+// The arms (in the shared helper) ran in the Agon Wastes runs of 2026-10-23 (lane ing30,
+// tools/drivers/ing30.py `codecall <ing> SetLuredPointDest` per safe zone): no lure mesh point;
+// no closest point (forced, tools/cov/specs/ing30_force.py mode 1); the flag-1 test, the graph
+// link and the mesh path both ways; no candidate (best == -1); the point search failing (forced,
+// mode 3) and succeeding.
+// @ fn_29_51D0
 void CIng::SetLuredPointDest(CStateManager& mgr, float) {
   LogState("SetLuredPointDest");
   mFoundMovementPos = PortIngLuredPointDest(mgr, mPathFindSearch, mPointPathFindSearch, mPathArea,
