@@ -26,7 +26,11 @@ inline SLdrGuiSlider::SLdrGuiSlider() : editorProperties(), widgetProperties() {
   maxValue = 255.0f;
   increment = 1.0f;
   slideSpeed = 1.0f;
+#ifdef TARGET_PC
+  slideSound = -1;
+#else
   slideSound = 0;
+#endif
   slideSoundVolume = 127;
 }
 
