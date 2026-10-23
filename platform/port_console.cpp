@@ -1659,6 +1659,12 @@ void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
     } else {
       out += "  fsm (unnamed)\n";
     }
+    // The body controller's state (pas::EAnimationState, the `bodystate` index).
+    if (const CBodyController* body = patterned->GetBodyController()) {
+      char line[48];
+      std::snprintf(line, sizeof(line), "  body state %d\n", int(body->GetCurrentStateId()));
+      out += line;
+    }
   }
   for (const SConnection& conn : ent->GetConnectionList()) {
     const CEntity* target = mgr.GetObjectById(mgr.GetIdForScript(conn.objId));
