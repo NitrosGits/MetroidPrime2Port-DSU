@@ -58,3 +58,15 @@ Dead arms (not run, proof):
 Marked by prd1 (9): AlignShoulderPad, UpdateImpactSfx, PreRender, Update, CheckStatic, Prime, ctor,
 ~CAIWaypointPredicate, IsValid. Unmarked: REL runtime, SetFuncPtrs/CreatePirateRagDoll, __sinit, and
 the weak rstl/template copies.
+
+## Space-pirate runtime check (prag2, 2026-10-24)
+
+The ragdoll is no longer outside the object list's reach: since sp14 `CSpacePirate::Think` (0x1DD8)
+builds, primes and steps it, and the corpse's transform is the ragdoll's, so `objs spacepirate`
+shows the ragdoll's centre. `tools/drivers/pirateragdoll_sp_poll.py <port> 3 45` (07_sand_alamoportalobservation
+L3, normal pace, `MP2_GODMODE=1`) kills the five pirates with `damage <id> 1000` and polls their
+positions every second: all five corpses fall 1-3 units and stop within ~6 s, 0 NaN/inf/|c|>5000
+readings in 45 s, 0 caught/reach-stub. The earlier "~9e6" corpse did not reproduce. Fast mode
+(`MP2_FRAME_LIMIT=0`) outruns a wall-timed driver, so use normal pace for polls.
+No new marks: the 9 bodies prd1 marked already have their arms proven (table above), and
+SetFuncPtrs/CreatePirateRagDoll stay unmarked (host callers use `rs_new`).
