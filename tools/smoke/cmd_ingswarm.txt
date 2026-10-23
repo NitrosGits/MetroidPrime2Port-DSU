@@ -1,0 +1,40 @@
+# IngSnatchingSwarm (module 33: CIngSnatchingSwarm, the Ing swarm that pours out of a portal, flies
+# a Bezier arc and dives at a host or the player). Temple Grounds 10_temple_pathofeyes (world
+# 3bfa3eff, area 14) holds the generator GENR e000e018c (000e018c, layer 2, fired by TIMR 000e0189),
+# which generates the swarm ISSW e000e018b on SetToZero, next to three Space Pirates e000e0197 /
+# e000e0196 / e000e019b. The steps follow the iss1 lane's
+# tools/cov/specs/ingsnatchingswarm_pathofeyes.con and tools/cov/specs/ingsnatchingswarm.py: wake the
+# pirates as hosts and generate the swarm (SelectTarget/SetTargetDest/DiveToTarget/Snatch), kill the
+# pirates, generate again and place the swarm on a god-mode player (HitPlayer/DamagePlayer), then a
+# 500 hit for the Damage arm and the IsDead -> Dead teardown.
+# The state machine is a CActor's (CIngSnatchingSwarm is a CActor, not a CPatterned): no `fsm`
+# command reaches it and `obj` prints no state name, so the arm-by-arm state evidence stays the
+# coverage driver's (its spec counts the calls per state message). `kill` refuses it for the same
+# reason the console kill refuses a CSwarmBasics ("not a patterned actor with health"), so the 500
+# damage is what ends the swarm; a swarm also ends by exploding on the player after a dive.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2350.
+# The family stays capped (run.sh NC): a fast run of 2400 updates is over in 0.3 s, before con.py
+# gets a console connection, so nothing would be driven.
+@f150 god 1; give missile 50
+@f220 send e000e0197 Activate; send e000e0196 Activate; send e000e019b Activate
+@f230 send e000e018c SetToZero
+@f300 objs Snatch
+@f1200 kill e000e0197; kill e000e0196; kill e000e019b
+@f1210 send e000e018c SetToZero
+# Part 2: no hosts left, so the swarm takes the player (tp onto the area's open floor first).
+@f1560 tp -252 140 -34; objs Snatch
+@f1600 obj e000e018b
+@f1650 send e000e018c SetToZero
+@f1700 place e000e018b player 3
+@f1710 obj e000e018b
+# The Damage arm and IsDead -> Dead, on a swarm that was just put at contact range (a placed swarm
+# explodes on its dive after ~200 updates, so the hit goes in early).
+@f1750 damage e000e018b 500
+@f1800 objs Snatch
+@f1940 send e000e018c SetToZero
+@f1990 place e000e018b player 2
+@f2080 objs Snatch
+@f2160 send e000e018c SetToZero
+@f2210 place e000e018b player 1
+@f2300 objs Snatch
+@f2350 objs Snatch; status
