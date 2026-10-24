@@ -135,7 +135,7 @@ void CMysteryFlyer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
-// fn_45_237C
+// @ fn_45_237C
 void CMysteryFlyer::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                     EUserEventType type, float dt) {
   if (!(type == kUE_FadeIn ? true : false)) {
