@@ -1603,6 +1603,7 @@ bool CGrenchler::IsWadingInWater(CStateManager& mgr) {
 // @ fn_27_D10C
 void CGrenchler::FluidFXThink(EFluidState state, CScriptWater& water, CStateManager& mgr) {}
 
+// @ fn_27_C2EC
 void CGrenchler::UpdateEffects(float dt, CStateManager& mgr) {
   const float waterHeight = GetWaterSurfaceHeight(mgr);
   if (mEffectD.mWaterSplash.mGen.get() != nullptr) {
