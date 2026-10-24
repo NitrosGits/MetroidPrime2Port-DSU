@@ -119,6 +119,7 @@ void CGunTurretTop::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_28_9AA4 (static initialization: implicit; objdiff 100%)
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"ShouldAttack",
      static_cast< CPatterned::StateMachine::TriggerFunc >(&CGunTurretTop::ShouldAttack)},
@@ -409,6 +410,7 @@ static void x7FB8_SoundDefaults(SLdrGunTurretTop& sldr) {
   sldr.sound_0x5d9ed447 = -1; // 0x00007FFC (guest 0x5c, port 0x68)
 }
 #endif
+// @ fn_28_7B98
 CEntity* LoadGunTurretTop(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrGunTurretTop sldrThis;
 #ifdef TARGET_PC

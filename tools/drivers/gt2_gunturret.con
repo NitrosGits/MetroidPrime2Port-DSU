@@ -1,0 +1,7 @@
+@f300 god 1; objs GunTurret
+@f320 spawn GNTB prop 0xfeedbeef 42
+@f330 spawn GNTT prop 0xfeedbeef 42
+@f350 spawn SPNK inactive ancs u0423
+@f400 objs Spank; objs GunTurret
+@f500 fsm u0423 Attack
+@f650 obj u0423
