@@ -11,6 +11,8 @@
 #   CLASS = 'CCommandoPirate'            # what `$this` is: ((CLASS*)$rdi)
 #   FORCE_RET = [(label, 'CCommandoPirate::Body(', period, [(phase, [(lvalue, value), ...]), ...],
 #                 'what it forces'), ...]
+# A label ending in `|once` disables its breakpoint after the first call that wrote.
+# `$mgr` / `$P` in an lvalue or value: the CStateManager& argument (rsi) and its first player.
 # An lvalue that starts with '!' is written but not restored (a member the body itself writes,
 # e.g. an animation state the body moves on). A value may test the entry registers
 # (`$rdx == 1 ? ... : <the lvalue>`, a state's EStateMsg).
@@ -81,10 +83,15 @@ class ForceBp(gdb.Breakpoint):
         if not writes:
             return False
         this = '((%s*)%d)' % (CLASS, int(gdb.parse_and_eval('$rdi')))
+        # `$mgr` is the CStateManager& in rsi, `$P` the first player (the restore at the return runs
+        # with other registers, so both are bound to their addresses now)
+        mgr = '((CStateManager*)%d)' % int(gdb.parse_and_eval('$rsi'))
+        player = '((CPlayer*)%s->mPlayers[0])' % mgr
         saved = []
         for lv, val in writes:
             keep = lv.startswith('!')
-            lv, val = lv.lstrip('!').replace('$this', this), val.replace('$this', this)
+            lv = lv.lstrip('!')
+            lv, val = [x.replace('$this', this).replace('$P', player).replace('$mgr', mgr) for x in (lv, val)]
             try:
                 v = gdb.parse_and_eval(lv)
                 old = repr(float(v)) if v.type.strip_typedefs().code == gdb.TYPE_CODE_FLT else str(int(v))
@@ -100,6 +107,8 @@ class ForceBp(gdb.Breakpoint):
         counts[self.label] = counts.get(self.label, 0) + 1
         if counts[self.label] <= 3:
             log('%s hit %d: %s' % (self.label, self.n, self.what))
+        if self.label.endswith('|once'):  # a capture of an object: one sighting is enough
+            self.enabled = False
         return False
 
 
@@ -181,6 +190,97 @@ class OuterBp(gdb.Breakpoint):
         return False
 
 
+class StubRetBp(gdb.Breakpoint):
+    # a scenario's third item [('Class::Fn(', value)]: while the scenario's call runs, that
+    # function returns `value` at once (the entry pops the return address, as `ret` would)
+    def __init__(self, where, value):
+        m = [m for m, d in syms if d.startswith(where) and '.cold' not in d and 'clone' not in d]
+        super().__init__('*' + m[0], internal=True)
+        self.value = value
+
+    def stop(self):
+        gdb.execute('set $rax = %s' % self.value)
+        gdb.execute('set $rip = *(unsigned long*)$rsp')
+        gdb.execute('set $rsp = $rsp + 8')
+        return False
+
+
+class CallBp(gdb.Breakpoint):
+    # CALLS = [(label, 'Class::Body(', 'when', [([(lvalue, value), ...], 'call expr' [, stubs]), ...], 'what')]:
+    # at the first entry of the body where the gdb expression `when` is non-zero, run each
+    # scenario: write its members, evaluate the call expression (an inferior call; `$this`,
+    # `$mgr`, `$P` as in FORCE_RET), write the old values back.  For arms a fight reaches
+    # once in a run, not once per scenario.
+    def __init__(self, spec, label, when, scenarios, what):
+        super().__init__(spec, internal=True)
+        self.label, self.when, self.scenarios, self.what, self.done = label, when, scenarios, what, False
+
+    def stop(self):
+        if self.done:
+            return False
+        try:
+            if not int(gdb.parse_and_eval(self.when)):
+                return False
+        except gdb.error as e:
+            if not getattr(self, 'warned', False):
+                self.warned = True
+                log('%s: when failed: %s' % (self.label, str(e)[:100]))
+            return False
+        self.done = True
+        self.enabled = False
+        pending.append(self)
+        return True  # the calls run from the hook-backtrace below: gdb cannot make inferior calls inside stop()
+
+    def run(self):
+        this = '((%s*)%d)' % (CLASS, int(gdb.parse_and_eval('$rdi')))
+        mgr = '((CStateManager*)%d)' % int(gdb.parse_and_eval('$rsi'))
+        player = '((CPlayer*)%s->mPlayers[0])' % mgr
+        sub = lambda x: x.replace('$this', this).replace('$P', player).replace('$mgr', mgr)
+        for i, sc in enumerate(self.scenarios):
+            writes, call = sc[0], sc[1]
+            stubs = [StubRetBp(sym, val) for sym, val in (sc[2] if len(sc) > 2 else [])]
+            saved = []
+            for lv, val in writes:
+                lv, val = sub(lv), sub(val)
+                try:
+                    v = gdb.parse_and_eval(lv)
+                    old = repr(float(v)) if v.type.strip_typedefs().code == gdb.TYPE_CODE_FLT else str(int(v))
+                    gdb.execute('set var %s = %s' % (lv, val))
+                    saved.append((lv, old))
+                except gdb.error as e:
+                    log('%s #%d: set failed (%s): %s' % (self.label, i, lv, str(e)[:80]))
+            try:
+                r = gdb.parse_and_eval(sub(call))
+                log('%s #%d: call ok (%s)' % (self.label, i, str(r)[:30]))
+                counts[self.label] = counts.get(self.label, 0) + 1
+            except gdb.error as e:
+                log('%s #%d: call failed: %s' % (self.label, i, str(e)[:120]))
+                try:
+                    log(gdb.execute('bt 6', to_string=True)[:900])
+                except gdb.error:
+                    pass
+            for lv, old in reversed(saved):
+                try:
+                    gdb.execute('set var %s = %s' % (lv, old))
+                except gdb.error:
+                    pass
+            for b in stubs:
+                b.delete()
+
+
+pending = []
+
+
+def run_pending():
+    while pending:
+        pending.pop(0).run()
+
+
+# force.sh's batch is `-ex run -ex 'bt 20'`: the stop at a CallBp lands on the `bt` (hook-backtrace), whose hook runs
+# the calls and lets the game go on (a `continue` there returns when it exits)
+gdb.execute('define hook-backtrace\npython run_pending()\ncontinue\nend')
+
+
 def dump():
     with open(TABLE, 'w') as fh:
         for label, n in sorted(counts.items()):
@@ -196,6 +296,13 @@ for label, where, period, phases, what in FORCE:
         log('%s: no symbol for %s' % (label, where))
     for m in hits:
         ForceBp('*' + m, label, period, phases, what)
+
+for label, where, when, scenarios, what in ns.get('CALLS', []):
+    hits = [m for m, d in syms if d.startswith(where) and '.cold' not in d and 'clone' not in d]
+    if not hits:
+        log('%s: no symbol for %s' % (label, where))
+    for m in hits:
+        CallBp('*' + m, label, when, scenarios, what)
 
 for label, outer, inner, period, phases, what in ns.get('FORCE_INNER', []):
     inner_hits = ['*' + m for m, d in syms if d.startswith(inner) and '.cold' not in d and 'clone' not in d]

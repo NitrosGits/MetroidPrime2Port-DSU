@@ -1,0 +1,5 @@
+@f300 layer 6
+@f340 layer 7
+@f560 god 1
+@f580 send u0547 Activate; send u053d Activate; send u0539 Activate; send u04d8 Activate; send u04d1 Activate; send u0577 Activate
+@f700 status

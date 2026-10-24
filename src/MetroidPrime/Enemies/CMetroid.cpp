@@ -1270,6 +1270,7 @@ void CMetroid::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_40_2EC8
 bool CMetroid::ShouldReleaseFromTarget(CStateManager& mgr) {
   if (GetBodyController()->IsFrozen()) {
     return true;
@@ -1465,6 +1466,7 @@ void CMetroid::SetupExitFaceHugDirection(CActor* actor, CStateManager& mgr,
   SetRotation(GetRotation() * rot);
 }
 
+// @ fn_40_2864
 void CMetroid::SuckEnergyFromTarget(float dt, CStateManager& mgr) {
   mIsEnergyDrainVulnerable = false;
   if (mAttackTarget == kInvalidUniqueId) {
