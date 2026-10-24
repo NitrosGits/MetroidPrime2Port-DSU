@@ -325,6 +325,7 @@ void CSporbBase::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_76_B9E4
 void CSporbBase::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_AreaLoaded: {
@@ -369,7 +370,12 @@ void CSporbBase::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     AddMaterial(kMT_Unknown54, mgr);
     if (mIsPowerBombGuardian && !mStages.empty() && mStageIndex < mStages.size()) {
       const CPowerBombGuardianStageData& stage = *mStages[mStageIndex];
+#ifdef TARGET_PC
+      // 0xBDB0 subf; 0xBDB4 clrlwi. ...,24: wrap the difference to a byte before modulo.
+      const uchar range = stage.mMaxAttacksPerDoubleShot - stage.mMinAttacksPerDoubleShot;
+#else
       const int range = stage.mMaxAttacksPerDoubleShot - stage.mMinAttacksPerDoubleShot;
+#endif
       mAttacksPerDoubleShot =
           stage.mMinAttacksPerDoubleShot + (range != 0 ? mgr.Random()->Next() % (range + 1) : 0);
     }
@@ -390,7 +396,12 @@ void CSporbBase::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       SetStage(mStageIndex);
       BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
       mStateMachine->SetState(mgr, *this, rstl::string_l("Flinch"));
+#ifdef TARGET_PC
+      // 0xBF0C subf; 0xBF18 stw; 0xBF24 fsubs with rodata 128=2^52: unsigned conversion.
+      const float remaining = static_cast< float >(static_cast< uint >(mStages.size() - mStageIndex));
+#else
       const float remaining = static_cast< float >(mStages.size() - mStageIndex);
+#endif
       HealthInfo()->SetHP(remaining / static_cast< float >(mStages.size()) *
                           HealthInfo()->GetInitialHP());
     }
@@ -424,6 +435,7 @@ void CSporbBase::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_76_AF8C
 void CSporbBase::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -467,7 +479,12 @@ void CSporbBase::Think(float dt, CStateManager& mgr) {
     if (top->GetHitByPlayerProjectile() && !top->IsImmune()) {
       mTopHit = true;
       top->SetHitByPlayerProjectile(false);
+#ifdef TARGET_PC
+      // 0xB2B0 lwz r3,0x60(r28); 0xB2B8 lwz r3,0x10(r3): this base's animation data.
+      AnimationData()->AddAdditiveAnimation(mFlinchAnim, 1.f, false, true);
+#else
       top->AnimationData()->AddAdditiveAnimation(mFlinchAnim, 1.f, false, true);
+#endif
       if (mTopBlend >= 1.f) {
         mTopAttachPosition =
             GetTransform() *
@@ -482,7 +499,12 @@ void CSporbBase::Think(float dt, CStateManager& mgr) {
       if (top->IsImmune()) {
         top->SetHitByPlayerProjectile(false);
       }
+#ifdef TARGET_PC
+      // 0xB3A0 fcmpo 1,next; 0xB3A4 bge selects next, including unordered.
+      mTopBlend = rstl::min_val(mTopBlend + dt, 1.f);
+#else
       mTopBlend = rstl::min_val(1.f, mTopBlend + dt);
+#endif
     }
     top->SetOrbitPosition(mTopAttachPosition * (1.f - mTopBlend) + headPosition * mTopBlend);
 
@@ -538,7 +560,12 @@ void CSporbBase::Think(float dt, CStateManager& mgr) {
           mAttacksSinceDoubleShot >= mAttacksPerDoubleShot && mShotsInBurst > 1) {
         mAttacksSinceDoubleShot = 0;
         const CPowerBombGuardianStageData& stage = *mStages[mStageIndex];
+#ifdef TARGET_PC
+        // 0xB6C4 subf; 0xB6C8 clrlwi. ...,24: wrap before the unsigned modulo at 0xB6DC.
+        const uchar range = stage.mMaxAttacksPerDoubleShot - stage.mMinAttacksPerDoubleShot;
+#else
         const int range = stage.mMaxAttacksPerDoubleShot - stage.mMinAttacksPerDoubleShot;
+#endif
         mAttacksPerDoubleShot =
             stage.mMinAttacksPerDoubleShot + (range != 0 ? mgr.Random()->Next() % (range + 1) : 0);
       }
@@ -569,6 +596,10 @@ void CSporbBase::Think(float dt, CStateManager& mgr) {
     DecayAim();
   }
 
+#ifdef TARGET_PC
+  // 0xB880-0xB888: the emitter loop runs only for the Power Bomb Guardian.
+  if (mIsPowerBombGuardian) {
+#endif
   for (uint i = 0; i < mPowerBombEmitters.size(); ++i) {
     SPowerBombEmitter& emitter = mPowerBombEmitters[i];
     if (const CEnergyProjectile* projectile =
@@ -581,6 +612,9 @@ void CSporbBase::Think(float dt, CStateManager& mgr) {
       emitter.mProjectileId = kInvalidUniqueId;
     }
   }
+#ifdef TARGET_PC
+  }
+#endif
 
   AnimationData()->AddAdditiveAnimation(mForwardLeanAnim, mForwardLean, false, false);
   AnimationData()->AddAdditiveAnimation(mBackLeanAnim, mBackLean, false, false);
@@ -1778,6 +1812,7 @@ void CSporbBase::StopTendril() {
   ClearTendrilParticles();
 }
 
+// @ fn_76_59BC
 CVector3f CSporbBase::PickTargetPosition(CStateManager& mgr, bool trackPlayer) {
   if (mIsPowerBombGuardian) {
     CPlayer* player = mgr.GetPlayer(0);
@@ -1821,9 +1856,16 @@ CVector3f CSporbBase::PickTargetPosition(CStateManager& mgr, bool trackPlayer) {
                               : CPlayer::kMS_Unmorphed) == CPlayer::kMS_Morphed
                              ? CVector3f::Zero()
                              : mAttackAimOffset;
+#ifdef TARGET_PC
+  // 0x5A0C lbz r4,0x9ac(r4); 0x5A18 beq enters this half only with r4=0.
+  // No intervening call/write to r4 precedes 0x5C2C cmplwi r4,0; 0x5C3C beq.
+  // The ordinary Sporb never reaches the prediction call, regardless of the bool argument.
+  const CVector3f predicted = CVector3f::Zero();
+#else
   const CVector3f predicted = trackPlayer
                                   ? PredictAimOffset(mMaxPowerBombHeight, mgr, GetLocatorPosition())
                                   : CVector3f::Zero();
+#endif
   return player->GetAimPosition(mgr, 0.f) + predicted + base;
 }
 
@@ -1934,6 +1976,7 @@ CSporbPowerBomb* CSporbBase::CreatePowerBomb(CStateManager& mgr,
   return bomb;
 }
 
+// @ fn_76_481C
 CVector3f CSporbBase::PredictAimOffset(float height, CStateManager& mgr,
                                        const CVector3f& from) const {
   CPlayer* player = mgr.GetPlayer(0);
