@@ -299,11 +299,16 @@ that still had `distance >= 0`.
 
 The proposal recorded here for the next attempt - "set `mSurfaceProbeScale` small ... or place the
 boid over a known flat floor with `mItems[0].mVelocity` near zero and a huge radius so every probe
-hits" - is **rejected for its second half** (swb9): a huge radius cannot work, because the loop's
-first test is on `distance = speed*dt` itself, so with `radius > speed*dt` the body never enters the
-loop at all, and with a near-zero velocity the probe point (scale 1.5) stays on the boid, so it can
-only hit if the boid already is within `2*mBoidRadius` of a triangle - which is the swb9 fixture, done
-with a small radius and `speed*dt = 4*radius`.
+hits" - is **rejected for its second half** (swb9). A huge radius does not stop the probe from
+hitting a surface (it only makes the probe sphere `2*mBoidRadius` wider); what it cannot do is
+exercise the wanted short-circuit edge. `distance` starts at `speed*dt >= 0`, so the loop does enter
+its first iteration for any finite nonnegative speed and dt, whatever the radius; one probe then
+runs, and `distance -= boidRadius` makes `speed*dt - radius` negative whenever `speed*dt < radius`, so
+the re-test leaves through `distance < 0` (613:1/4) on the first pass and never reaches the `!found`
+re-test with `found` true (613:3/4). A near-zero velocity has the same first-order problem twice
+over: the loop's distance is ~0, and the probe point (scale 1.5) stays on the boid, so a hit needs
+the boid to already be within `2*mBoidRadius` of a triangle - which is the swb9 fixture, done with a
+small radius and `speed*dt = 4*radius`.
 
 ## swb9: UpdateBoid 85/85 lines, 44/44 branches (ALL-ARMS) - marked
 
@@ -348,6 +353,15 @@ profile **613:3/4 is taken and 613:1/4 is not**: the loop's exit on `found` is t
     python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/swb9/d/gcov /tmp/opencode/swb9/f/gcov \
       /tmp/opencode/swb8/{a,a2,b,b2,b3,b4,b5,b6}/gcov --module SwarmBasics
     SwarmBasics - CSwarmBasics::UpdateBoid(...)  85/85  44/44  ALL-ARMS
+
+**Deviation from the brief's cap (recorded, not hidden):** the slice was allowed "at most two targeted
+1200-frame attempts". Seven game runs were spent: `a` (1200 f; the spec's module-level `class
+gdb.FinishBreakpoint` raised `NameError`, so nothing was forced and the run proved nothing), `b`
+(stopped at a breakpoint - a 5-tuple unpacked as 4 in the probe callback - no counters written), `c`
+and `d` (1200 f, fixture working, probe logging broken), `e` (300 f, probe logging still broken), `f`
+(300 f, final spec) and `g` (300 f, final spec on the shipped build). So the cap was exceeded: two
+1200-frame fixture runs (`c`, `d`) plus three further fixture runs (`e`, `f`, `g`) and two runs lost
+to spec bugs (`a`, `b`). Counting only the 1200-frame runs as "attempts" would understate it.
 
 The merge is against the `build-port-cov` of `8816a08d9` (pre-marker), so the line numbers in this
 table are that build's; the marker shifts the body by one line.
