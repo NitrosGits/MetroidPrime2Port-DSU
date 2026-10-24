@@ -129,4 +129,47 @@ log("== D damage 5, hp before", hp(TARGET))
 log(cmd(f"damage {TARGET} 5").strip())
 time.sleep(1)
 log("== D damage, hp after", hp(TARGET))
+
+# --- appended checks: fsm change, kill ---
+def _state(uid):
+    o = cmd(f"obj {uid}")
+    m = re.search(r"fsm (.+)", o)
+    return (m.group(1).strip() if m else None), o
+
+prev_state, _ = _state(TARGET)
+log("== fsm change: state before %s" % prev_state)
+log(cmd(f"damage {TARGET} 5").strip())
+time.sleep(1)
+changed = False
+for _ in range(10):
+    time.sleep(0.5)
+    st, _ = _state(TARGET)
+    if st is not None and st not in ("-", prev_state):
+        log("== fsm change: natural %s -> %s" % (prev_state, st))
+        changed = True
+        break
+if not changed:
+    log("== fsm change: no natural change; forcing fsm %s Patrol" % TARGET)
+    log(cmd(f"fsm {TARGET} Patrol").strip())
+    time.sleep(1)
+    st, _ = _state(TARGET)
+    log("== fsm change: after force %s" % st)
+
+before = len(objs("CIng"))
+log("== kill: objs CIng before %d" % before)
+log(cmd(f"kill {TARGET}").strip())
+time.sleep(2)
+mid = len(objs("CIng"))
+log("== kill: objs CIng after kill %d" % mid)
+if mid >= before:
+    log("== kill: no count drop; forcing fsm %s Dead" % TARGET)
+    log(cmd(f"fsm {TARGET} Dead").strip())
+# wait for DeathDelete (Ing fades over ~2-3s)
+after = mid
+for _ in range(12):
+    time.sleep(0.5)
+    after = len(objs("CIng"))
+    if after < before:
+        break
+log("== kill: objs CIng after %d" % after)
 log("== done")
