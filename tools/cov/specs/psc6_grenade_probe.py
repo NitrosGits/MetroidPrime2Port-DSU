@@ -1,9 +1,12 @@
 # PlantScarabSwarm (module 49) psc6 read-only probe for CPlantScarabSwarm::SpawnGrenades fn_49_C6C.
 # This file is BOTH the force.sh spec argument and COV_GDB_SCRIPT (the fixture lives in the lane's own
 # spec; no shared tooling).  It writes nothing: at each SpawnGrenades entry it records the real slot the
-# caller passed, the slot's boid index, the animation's character index and the whole static int32 POI
-# list the body will walk (CAnimData::mInt32POINodes, the same list GetInt32POIList returns), so the
-# shipped node data behind every POI arm is in the log, not inferred.
+# caller passed, the slot's boid index, the animation's character index and the int32 POI entries the body
+# is about to walk (the static CAnimData::mInt32POINodes with count = animData.mPassedIntCount, exactly
+# what GetInt32POIList returns).  Note that this buffer is STATIC and shared by every CAnimData and every
+# animation advance appends into it at that object's own count, so a log line is the buffer state at that
+# read instant (normally the last advance's node, not necessarily the passed animData's own list): it is a
+# measurement of what the body walked, not an enumeration of the shipped POI data.
 #
 #   BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/specs/psc6_grenade_probe.py tools/cov/force.sh \
 #     tools/cov/specs/psc6_grenade_probe.py /tmp/opencode/psc6_r1 3dfd2249,0g_swamp_hall \

@@ -285,7 +285,6 @@ void CPlantScarabSwarm::KillBoid(CBoid& boid, CStateManager& mgr, const CWeaponM
   }
 }
 
-// @ fn_49_C6C
 void CPlantScarabSwarm::SpawnGrenades(CStateManager& mgr, CAnimData& animData, int slot) {
   const int boidIndex = mAttackSlotBoids[slot];
   if (boidIndex == -1) {

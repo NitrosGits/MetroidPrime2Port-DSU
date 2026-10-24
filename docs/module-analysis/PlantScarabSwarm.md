@@ -61,7 +61,7 @@ Open arms (cpp line), so these bodies stay unmarked:
 | ApplySteeringBehaviors 1228 | attacking-boid arm (cpp:254) |
 | BoidCollidedCallback 11C0 | never called |
 | BoidCollidedWithPlayerCallback 1144 | launched arm (cpp:264), forced but not reached |
-| SpawnGrenades C6C | POI arms (weight, character, value; ANCS data). psc6: all six measured dead - the only int32 POI the attack animation ever walks is weight 1.0 / character -1 / value 26, and two more are structural - so the body is marked (arm table in the seventh pass) |
+| SpawnGrenades C6C | POI arms (weight, character, value; ANCS data). psc6 measured 20/26: six arms stay open because `mInt32POINodes` is shared static storage (the walked node is the last writer's, not the passed `animData`'s), so the sampled tuple cannot prove deadness. `nodes == nullptr` is dead by construction; unmarked (arm table in the seventh pass) |
 
 Not driven arm by arm: the SLdr ctor (fixed above) and dtor, plus the weak copies (H).
 
@@ -340,44 +340,76 @@ purpose, because the marker's rebuild invalidates the original notes; run 2 matc
 
 Two launches (the slice's cap), `3dfd2249,0g_swamp_hall`, 1200 frames, fast, **read-only probe, no writes
 at all**, both `[port] caught/reach-stub: 0` and `[Inferior 1 (process N) exited normally]`. Spec and gdb
-side in one lane file, `tools/cov/specs/psc6_grenade_probe.py`, driver `psc6_grenade_0g.con`.
+side in one lane file, `tools/cov/specs/psc6_grenade_probe.py`, driver `psc6_grenade_0g.con`. The body is
+**not marked**: the six POI arms are still open (measured, not proved dead).
 
-    BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/specs/psc6_grenade_probe.py tools/cov/force.sh \
-      tools/cov/specs/psc6_grenade_probe.py /tmp/opencode/psc6_r1 3dfd2249,0g_swamp_hall \
-      --con tools/cov/specs/psc6_grenade_0g.con --fast --frames 1200
+Profile (merged over both launches): SpawnGrenades 29/29 lines, **20/26 edges**, untaken @ 298:1/2,
+299:0/2, 300:0/4, 300:2/4, 300:3/4, 301:1/2 - the same six the earlier passes left open.
 
-At every entry the probe records the real slot argument (`$rcx`), the slot's boid index, the animation's
-`mCharIdx` and the whole int32 POI list the body walks - the same static `CAnimData::mInt32POINodes` that
-`GetInt32POIList` returns - so the shipped input behind each POI arm is measured, not inferred.
+What the probe measures: at every SpawnGrenades entry the real slot argument (`$rcx`), the slot's boid
+index, the animation's `mCharIdx`, and the whole int32 POI list the body is about to walk (the static
+`CAnimData::mInt32POINodes` with `count = animData.mPassedIntCount`).
 
     run 1: calls=2904 no_slot=1816 with_nodes=17 zero_count=1071
     run 2: calls=2928 no_slot=2214 with_nodes=11 zero_count=703
-    the only node list ever walked (28 node-bearing calls, two boots):
-      C6C: boidIndex=0 slot=0 animChar=0 passedInt=1 stored=16
-           nodes=[(weight 1.0, charIdx -1, mVal 26, mType 6, nameHash 2203981133)]
-    -> the into-attack animation (#2) of ANCS 0x8bb689b4 has one int32 POI: weight 1.0, character -1,
-       value 26 = kUE_ObjectDrop (the same ANCS and animation numbers on all three placements).
+    the 28 node-bearing calls (two boots) all walked one node:
+      boidIndex=0 slot=0 animChar=0 passedInt=1 stored=16
+      nodes=[(weight 1.0, charIdx -1, mVal 26, mType 6, nameHash 2203981133)]
 
-Profile (merged over both launches): SpawnGrenades **29/29 lines, 20/26 edges**, untaken @ 298:1/2,
-299:0/2, 300:0/4, 300:2/4, 300:3/4, 301:1/2 - all six dead, proved below.
+Why that is not a dead proof - the list is shared static storage, not a per-animation table:
 
-| arm (retail asm) | condition | edges | status |
+- `CAnimData::GetInt32POIList` (CAnimData.hpp:196-199) returns `(mPassedIntCount, mInt32POINodes.data())`,
+  and `mInt32POINodes` is a **static** `reserved_vector< CInt32POINode, 16 >` (CAnimData.cpp:40) shared by
+  every CAnimData in the process. It is resized once with default nodes - weight 1.0, character -1,
+  **value 0**, type kPT_EmptyInt32 (CAnimData.cpp:119-121) - and `clear()`ed (not zeroed) when the last
+  CAnimData dies (145-147).
+- Every animation advance *appends into that shared buffer*:
+  `mPassedIntCount += mAnimRoot->GetInt32POIList(time, mInt32POINodes.data(), 16, mPassedIntCount, 0)`
+  (CAnimData.cpp:469-470, 484-485), plus the "pass everything" calls with `CCharAnimTime::Infinity()`
+  (718-719, 754-755, 837-838). The write index is the *advancing object's* count, so entry j holds the
+  j-th node of whichever animation last wrote index j.
+- Order in one tick of `CPlantScarabSwarm::Think` (cpp:85-133): `CSwarmBasics::Think` (CSwarmBasics.cpp:755)
+  -> `UpdateSwarmAnimations` (868) -> virtual dispatch into `CPlantScarabSwarm::UpdateSwarmAnimations`
+  (cpp:150-168), which advances the four base models first (CSwarmBasics.cpp:895-899), then
+  `mAttackModels[i]` for slotted i in slot order, then `mSharedAttackModel` (attack animation #1); then
+  `UpdateAllBoidMovement` (869); back in Think the attack block may `SetPhase(0.f)` one attack model
+  (CAnimData.cpp:1055; that resets only that object's counts, `ResetPOILists` at 442/554/569 does not clear
+  the shared buffer); then the SpawnGrenades loop (cpp:129-132) reads `mAttackModels[i].mPassedIntCount`
+  and walks buffer[0, count). So the node the body walks is normally the *last writer's* node - the shared
+  attack animation - not the into-attack animation whose `animData` is passed, and the buffer can hold any
+  of the animations advanced in that window (any interleaved index).
+- Consequence: the measured tuple describes the buffer state of these two boots at the read instants; it
+  does not enumerate the shipped POI data of every animation that can occupy buffer[0, count) - the four
+  base models' animation, attack animation #2 and the shared attack animation #1, per placement - nor the
+  default value-0 nodes, nor the Infinity() pass-all fills. Proving the six arms dead needs those tables
+  (no POI dumper exists in tools/, and this slice has no launches left).
+
+Corrected RNG bound (the first version of this note had it wrong): `CRandom16::Float()`
+(CRandom16.cpp:43-48) is `1.52590222e-5f * Next()` with `Next() = (mSeed >> 16) & 0xffff` in [0, 65535].
+The float32 constant is 1.5259021893143654e-05, and the correctly rounded float32 product with 65535 is
+**exactly 1.0**, so `Float()` is in **inclusive [0, 1]**. The gate is `<=` (0xCF0 `cror eq,lt,eq`,
+0xCF4 `bne`), so a node with weight exactly 1.0 always passes; only a node with weight < 1 can fail. The
+weight-false arm is therefore live in general and merely unobserved here.
+
+Arm status (retail asm; edge counts from the merged profile):
+
+| arm (asm) | condition | edges | status |
 |---|---|---|---|
-| 0xCAC / 0xCB0 | `boidIndex == -1` -> 0xF88 | 1088 continue / 1816 early | both ran |
-| 0xCC0 / 0xCC8 | `count <= 0` -> 0xF88 | 17 with nodes / 1071 empty | both ran |
-| 0xCCC / 0xCD0 | `nodes == nullptr` -> 0xF88 | 17 / 0 | false side dead: `GetInt32POIList` returns `mInt32POINodes.data()`, the address of the static `uchar mData[16*sizeof]` (CAnimData.cpp:40), never null |
-| 0xCE4, 0xCEC, 0xCF0, 0xCF4 | `Float() <= node.GetWeight()` -> 0xF78 | 17 / 0 | false side dead: the only walked node has weight 1.0, and `Float() = 1.52590222e-5f * Next()` with `Next() = (mSeed >> 16) & 0xffff <= 65535` (CRandom16.cpp:43-48), so `Float() <= 0.99998474 < 1.0` |
-| 0xD00 / 0xD04 | `character == -1` -> 0xD14 | 17 / 0 | false side dead: charIdx is -1 on the only node |
-| 0xD0C / 0xD10 | `character == animData.mCharIdx` -> 0xF78 | 0 / 0 | never evaluated and cannot be: the asm jumps from 0xD04 straight to 0xD14 while character == -1, so both edges die with the test above (gcov's 300:0/4, 300:2/4, 300:3/4) |
-| 0xD14 / 0xD18 | `node.GetValue() == kUE_ObjectDrop (26)` -> 0xF78 | 17 / 0 | false side dead: the only node's mVal is 26 |
-| 0xF80 / 0xF84 | loop `i < count` -> 0xCE0 | 17 back-edges / 17 exits | both ran |
-| 0xE14 | retail's `grenade == nullptr` -> 0xF18 | - | no host branch: operator new cannot return null here, so gcc removed the test and cpp:312 has no gcov arm |
-| 0xE20+ | EH landing pads for the string / CModelData / CActorParameters temporaries | 0 | throw edges; `tools/cov/gcov_report.py` excludes them (cpp:310, 311, 313, 314) |
+| 0xCAC / 0xCB0 | `boidIndex == -1` -> 0xF88 | 1088 / 1816 | both ran |
+| 0xCC0 / 0xCC8 | `count <= 0` -> 0xF88 | 17 / 1071 | both ran |
+| 0xCCC / 0xCD0 | `nodes == nullptr` -> 0xF88 | 17 / 0 | dead by construction: `data()` is the address of the static `uchar mData[16*sizeof(T)]`, never null |
+| 0xCE4..0xCF4 | `Float() <= node.GetWeight()` -> 0xF78 | 17 / 0 | **open** (unobserved): live for any node with weight < 1 |
+| 0xD00 / 0xD04 | `character == -1` -> 0xD14 | 17 / 0 | **open** (unobserved): live for any node with character >= 0 |
+| 0xD0C / 0xD10 | `character == animData.mCharIdx` -> 0xF78 | 0 / 0 | **open** with 0xD04: the asm skips this compare while character == -1 |
+| 0xD14 / 0xD18 | `node.GetValue() == kUE_ObjectDrop (26)` -> 0xF78 | 17 / 0 | **open** (unobserved): live for any node with value != 26, including the default value-0 nodes |
+| 0xF80 / 0xF84 | loop `i < count` -> 0xCE0 | 17 / 17 | both ran |
+| 0xE14 | retail `grenade == nullptr` -> 0xF18 | - | no host branch (operator new cannot return null here; cpp:312 has no gcov arm) |
+| EH | landing pads of the string / CModelData / CActorParameters temporaries (cpp:310, 311, 313, 314) | 0 | throw edges, excluded by tools/cov/gcov_report.py |
 
-Marker: **added** `// @ fn_49_C6C` (cpp:288). The profile was taken before that line.
-
-Evidence archived before any edit or rebuild, `/tmp/opencode/psc6_evidence`: both runs' `.gcda`
-(89b16ac0...bb5a, dde0cc47...136b) with the matching `.gcno` 3d906014...c67b (same build for both), run 1's
-source copy (ee9a078a...c3e3), binary 78dd2b18...fb38, raw gcov JSON, per-line edge extracts and the
-per-run/merged report files. The two runs are separate boots, so the node tuple is not one run's accident;
-the merged profile is what the row above quotes.
+Marker: **removed** (`// @ fn_49_C6C` is gone; the only source change of this pass is reverted). Evidence
+kept in `/tmp/opencode/psc6_evidence`: both runs' `.gcda` (89b16ac0...bb5a, dde0cc47...136b) with the
+matching `.gcno` 3d906014...c67b (one build served both), run-1 source copy (ee9a078a...c3e3), binary
+78dd2b18...fb38, raw gcov JSON, per-line edge extracts and the per-run and merged reports. What would
+close the six arms: log each model's own POI list right after *its* advance (so the buffer writer is known),
+and dump the shipped POI nodes of the base, into-attack (#2) and shared attack (#1) animations for all
+three placements.
