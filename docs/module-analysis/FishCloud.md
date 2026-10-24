@@ -94,3 +94,26 @@ x150 pre-render-clipped bit. retail_diff: only M_PIF and the same template calls
   AddSelf/RemoveSelf (connection arms; RemoveSelf on area unload unproven).
 - Smoke family proposal: `fishcloud`, area `3bfa3eff,06_temple_sacredpath`, driver
   `tools/cov/specs/fishcloud_sacredpath.con`.
+
+## Second pass (fish1b, 2026-10-24, base 30d7b344b)
+
+`python3 tools/bulk_mark_matched.py --module FishCloud` marks 0 (44 template/operator/unnamed, 7
+definition-not-found), so there is no objdiff-100% row left to take before the arms.
+
+Three fresh runs (spec `fishcloud.py`; sacredpath 2600 frames natural, LandingSite 2000 natural,
+sacredpath 2200 with `fishcloud_force.py`), all `[port] caught/reach-stub: 0` and all exited normally
+so the gcov was written. Merged profile, unmarked bodies only:
+
+| body | arms | open |
+|---|---|---|
+| 1264 ApplyAttraction | 9/9, 5/6 | 1006:1/2 - the `CanBeNormalized` false arm (the out-of-line copy is forced by fishcloud_force.py; the inline copies in the other Apply* bodies are not, so the same test has to be forced at each `loc:`) |
+| 1D24 BuildBoidNearList | 36/38, 40/48 | 842:1/2, 850:1/2, 853:0/2, 854:0/2, 856:0/2, 859:1/2, 867:0/2, 868:0/2 - the partition edges (a boid outside the queried partitions) |
+| 2148 UpdatePartitionList | 14/14, 6/8 | 797:1/2, 799:1/2 - the out-of-partition index arms |
+| 22EC Touch | 63/74, 62/81 | 686:1/4, 696/698/701/702:0-1/2, 703-706, 715/717:1/2, 719:2/4, 740:2/6, 750:2/6 - the no-touch-bounds, spawned-morph and morph-ball arms |
+| 3054 Think | 74/79, 62/71 | 476:1/2, 477:1/4, 503:0/2, 504:0/2, 535:1/2, 539:0/2, 547:0-1/2, 584:1/2 - the occluded arms (451/452 in the old numbering: an occluded area is needed) and the random-movement arms |
+| 43F8 PlaceBoid | 8/20, 3/8 | 357/358/359:0-1/2, 365:0/2 - the `!mWorldSpace` arms (dead: the ctor always sets it) and the re-place arm |
+| 4A04 FindClosestPlane | 14/23, 8/18 | 284:0/2, 287:0-1/2, 290:0-1/2, 291:0-3/4, 308:2/4 - the `!mWorldSpace` arms and the NaN arm |
+| 573C ctor | 62/68, 25/57 | 179/181/182, 192-224, 230-260 (the particle 2-4 and sfx arms: no driven cloud carries those) |
+| 1C40 OldBuildBoidNearList, 2054 GetListAt, 46A0 FindFarthestPlane | 0 lines | no caller in retail (no `bl`), so they cannot run and stay unmarked |
+
+No source change in this pass and no marker: no unmarked body reached all its live arms.
