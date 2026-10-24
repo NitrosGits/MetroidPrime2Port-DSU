@@ -76,3 +76,36 @@ arm by arm), and IsListening.
 Activate at f1000, then damage, IM messages, puzzle sections, kill, Delete; about 5500 frames). Expect the
 guardian in `objs IngSpiderball`, fsm Patrol, then Dead after the kill. The pass condition is 0
 `[port] caught` / `reach-stub`.
+
+## Coverage (isbg2: the 10 rows still unmarked)
+
+At 69b3951df the module has 43 B rows and **33** of them carry a `// @ fn_35_*` marker, so 10 rows
+were left, not 14 (the earlier count predates four markers). All ten are loader/getter/implicit
+bodies, not boss behaviour: the boss state machine (Think, Patrol, DamageReaction, StunnedReaction,
+SelectNextWaypoint, SetGuardianState, ...) is already marked, so the `fsm`/`damage`/`send` and
+force-recipes above have nothing left to reach on this lane's rows - their arms are property-stream
+cases and compiler-generated bodies.
+
+One natural run at this commit (`isbg.py` + `isbg.con`, 6000 f, `caught/reach-stub: 0`) exercises all
+ten (the loaders run when e0014007a loads).
+
+Marked (8):
+
+| fn | evidence |
+|---|---|
+| 0 IsListening | objdiff 100%; `li r3,0x1` / `blr`; gcov 1/1 |
+| 7F0 ~SLdrIngSpiderballGuardian | objdiff 100%; 0x818 the Data dtor, then ActorParameters, PatternedAITypedef, EditorProperties, 0x844 delete flag. gcov 1/1 |
+| E60 ~SLdrIngSpiderballGuardianStruct | objdiff 100%; empty dtor = only the 0xe74 null-this and 0xe7c delete-flag guards. gcov 1/1 |
+| 86C LoadTypedefIngSpiderballGuardianData | objdiff 100%; the compare tree is the Data ids (0x8c0 0xf598739, 0x8d8 0xc463268c, 0x8ec 0xaed23abc, 0x900 0x8c2fbb19, 0x914 0xba78d281, 0x928 0xd5f3e9c4, 0x93c 0xcee38f10, 0x950 0xfc58adff, 0x964 0x3a5e2f52 ...). gcov 52/55 lines; the only untaken arm is the `default: ReadBytes` for an unknown id, which shipped data cannot send |
+| CC4 LoadTypedefIngSpiderballGuardianStruct | objdiff 100%; the 8 field ids of the Struct. gcov 31/34; same unknown-id default untaken |
+| B04 ~SLdrIngSpiderballGuardianData | objdiff 68.97% - **codegen only**: 0xb2c-0xb68 the six SLdrAudioPlaybackParms, 0xb74 SLdrDamageInfo, 0xb80-0xbbc the six Struct dtors = our reverse declaration order. gcov 1/1 |
+| BEC Data ctor | objdiff None - **codegen only**: GCC inlines the Struct ctor MWCC kept out of line (our object has no `__ct__31SLdrIngSpiderballGuardianStructFv`). Retail: 6x struct ctor (0xc00-0xc28), SLdrDamageInfo 0xc30, 6x SLdrAudioPlaybackParms 0xc38-0xc60, then 0xc0 = 2.0f (0xc84), 0xc4 = 0xb (0xc94), 0xc8 = 40 (0xca0), 0xd0 = 10 (0xca8), 0xd4 = 20 (0xcac) = the header's order and defaults. gcov 20/20 |
+| E9C Struct ctor | objdiff None, same inlining; retail stores 5/10/7/720/40/2/25/15 at 0x0..0x1c (0xeb4-0xf14, rodata_48/40/4c/50/3c/34/54/58) = the header's eight defaults in declaration order. gcov: the eight store lines each ran once (inlined into the Data ctor) |
+
+Left unmarked (2, both 100% objdiff but with no source line to attach a marker to, exactly like the
+other modules' __sinit rows):
+
+| fn | why |
+|---|---|
+| 3D1C SLdrIngSpiderballGuardianData (copy) | implicit copy ctor, compiler-generated from the struct definition |
+| 406C __sinit_CIngSpiderballGuardian_cpp | compiler-generated from the trigger/state/code tables |
