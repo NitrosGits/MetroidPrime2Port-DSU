@@ -198,6 +198,7 @@ bool CRezbit::Listen(CStateManager& mgr, const CVector3f& position, EListenNoise
   return heard;
 }
 
+// @ fn_53_6CBC
 void CRezbit::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   if (mStateMachine->HasState()) {
     mStateMachine->SetState(mgr, *this, rstl::string_l("Dead"));
@@ -372,6 +373,7 @@ void CRezbit::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 // @ fn_53_6540
 void CRezbit::Idle(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// @ fn_53_62E8
 void CRezbit::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -435,6 +437,7 @@ void CRezbit::FollowAttackPath(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_60B8
 void CRezbit::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (mHasPathDestination) {
     mPathFindNavigation.PathFind(mgr, msg, dt, *this);
@@ -450,6 +453,7 @@ void CRezbit::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_5E4C
 void CRezbit::Strafe(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -622,6 +626,7 @@ void CRezbit::VirusAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_51EC
 void CRezbit::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -642,6 +647,7 @@ void CRezbit::SelectTarget(CStateManager& mgr, float dt) {
   mLineOfSight.SetTarget(mTargetId);
 }
 
+// @ fn_53_50F0
 void CRezbit::SelectStrafeDirection(CStateManager& mgr, float dt) {
   mStrafeIndex = -1;
   const float chance = mRezState == 0 ? mData.unknown_0x94980a67 : mData.strafeDerezChance;
@@ -652,6 +658,7 @@ void CRezbit::SelectStrafeDirection(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_53_4F68
 void CRezbit::SetTargetDest(CStateManager& mgr, float dt) {
   const CVector3f position = GetTranslation();
   CVector3f destination = position;
@@ -690,6 +697,7 @@ void CRezbit::ResetAttackTimes(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_53_4D28
 void CRezbit::RaiseShields(CStateManager& mgr, float dt) {
   if (mShieldBroken) {
     return;
@@ -762,6 +770,7 @@ bool CRezbit::ShouldBecomeRezzed(CStateManager& mgr, const CTriggerData& data) c
   return mAttackKind == -1 && mRezState != 0 && mDerezTimer <= 0.f;
 }
 
+// @ fn_53_6A00
 bool CRezbit::ShouldBecomeDeRezzed(CStateManager& mgr, const CTriggerData& data) const {
   if (mAttackKind == -1 && GetHealthInfo()->GetHP() <= mDerezHealth && mAlert && mRezState != 1) {
     return GetBodyController()->GetBodyStateInfo().GetCurrentAdditiveStateId() !=
@@ -775,6 +784,7 @@ bool CRezbit::HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const
   return mLineOfSight.HasLineOfSight();
 }
 
+// @ fn_53_6964
 bool CRezbit::ShouldStrafe(CStateManager& mgr, const CTriggerData& data) const {
   if (!mHasPathDestination && mStrafeTimer <= 0.f && mLineOfSight.GetClearTime() > 2.f) {
     const CEntity* shield = mgr.GetObjectById(mShieldActorId);
@@ -788,6 +798,7 @@ bool CRezbit::FoundStrafeDirection(CStateManager& mgr, const CTriggerData& data)
   return mStrafeIndex != -1;
 }
 
+// @ fn_53_67E0
 bool CRezbit::ShouldLaserAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (mAttackTimer <= 0.f && mAttackSelection == 1 && mLaserId == kInvalidUniqueId &&
       !mgr.GetCameraManager(0)->IsInCinematicCamera()) {
@@ -810,6 +821,7 @@ bool CRezbit::ShouldLaserAttack(CStateManager& mgr, const CTriggerData& data) co
   return false;
 }
 
+// @ fn_53_6688
 bool CRezbit::ShouldEnergyBoltAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (mAttackTimer <= 0.f && mAttackSelection == 2 &&
       !mgr.GetCameraManager(0)->IsInCinematicCamera()) {
