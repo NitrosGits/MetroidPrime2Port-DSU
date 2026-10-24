@@ -369,6 +369,7 @@ void CRezbit::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
 // @ fn_53_6544
 void CRezbit::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// @ fn_53_6540
 void CRezbit::Idle(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 void CRezbit::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -738,6 +739,7 @@ bool CRezbit::StateOver(CStateManager& mgr, const CTriggerData& data) const {
   return mAnimationState.IsOver();
 }
 
+// @ fn_53_6B50
 bool CRezbit::IsDeRezzed(CStateManager& mgr, const CTriggerData& data) const {
   return mRezState == 1;
 }
