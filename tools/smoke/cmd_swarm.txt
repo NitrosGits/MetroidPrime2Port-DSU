@@ -7,7 +7,6 @@
 @f300 layer 2
 @f340 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give screwAttack 1; fastmorph 1
 @f380 send u041d Activate; send u04ff Activate; obj u041d
-# appended: hp fall check
 @f400 damage u041d 1; obj u041d
 @f420 tp -338.4 -87.7 -6.7
 @f700 obj u041d
@@ -48,8 +47,7 @@
 @f1900 tp -338.4 -87.7 -6.7
 @f2020 obj u041d
 @f2250 shoot u041d charged; shoot u041d charged
-@f2320 send u041d Deactivate; obj u041d
-# appended: count drop before delete
 @f2310 objs swarm
+@f2320 send u041d Deactivate; obj u041d
 @f2330 send u041d Delete
 @f2350 objs swarm; status
