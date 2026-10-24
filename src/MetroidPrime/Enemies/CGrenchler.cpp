@@ -1320,6 +1320,7 @@ bool CGrenchler::PlayYellowHitReact(CStateManager& mgr, const CTriggerData& data
 // @ fn_27_E188
 bool CGrenchler::CanBeUnPossessed(CStateManager& mgr) const { return false; }
 
+// @ fn_27_DA78
 void CGrenchler::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
   CVector3f target = GetTargetPosition(mgr);
   if (mIsGrappleGuardian == true) {
