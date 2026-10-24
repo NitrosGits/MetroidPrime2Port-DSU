@@ -1,5 +1,6 @@
 # PlantScarabSwarm (module 49) psc5 second launch gdb side: the last edge of CPlantScarabSwarm::Think
-# (cpp:112), the inner slot loop's condition-false exit (0x1D74 cmplwi r0,0 / 0x1D78 ble -> 0x1E10).
+# (cpp:112), the inner slot loop's exhausted exit (0x1E0C bdnz falls through to 0x1E10).
+# The separate 0x1D74 cmplwi / 0x1D78 ble tests zero count at entry, not full slots.
 #
 # Why it is not simply dead: `attackers` (cpp:93-98) is a snapshot taken before the loop and is never
 # incremented in it, so a snapshot below mAttackerCount does not by itself mean a slot is free when a

@@ -287,7 +287,8 @@ What does hold is the timer half: shipped `attackTimer` is 0.5 on all three plac
 0x1CF8 `fcmpo`, 0x1CFC `cror eq,gt,eq`, 0x1D00 `bne`), so after the first allocation in a call the gate
 fails for the rest of that call - at most one allocation per call. NaN is safe in the same direction
 (unordered leaves EQ clear, the `bne` skips), and a non-positive `mAttackTimer` is not shipped. The arm
-therefore runs at most once per call, and it runs exactly when a candidate boid finds all three slots held.
+can run repeatedly in one call when candidates find all three slots held: unsuccessful searches do not
+reset the timer. Only successful allocation is limited to once per call.
 
 Launch 2 built that state directly, on the real object, one call at a time (at most 30 calls, all restored
 at the body's return through cached absolute pointers; no branch forced, no mask write, no game change):
@@ -319,7 +320,7 @@ condition-false exits**, line 114 (pre-marker 113, slot free) 13 allocations / 9
 | 108 / 109 timer >= mAttackTimer | 0x1CF8, 0x1CFC, 0x1D00 | 3656/3747, 2051/4681 | ran |
 | 108 / 109 IsSpaceAboveBoidClear | 0x1D14, 0x1D18 | 3572/**84** (run 1) | ran: 84 false answers from the under-floor phase |
 | 110 / 111 angle <= maxAttackAngle | 0x1D58, 0x1D5C, 0x1D60 | both | ran |
-| 112 / 113 `i < mAttackerCount` (loop entry) | 0x1D70 `mtctr`, 0x1D74 `cmplwi r0,0`, 0x1D78 `ble` -> 0x1E10 | 24/0 (run 1), 1008/**328** (run 2) | **live and run** in launch 2's slot-full setup; not reached naturally in 1200 frames because the two deactivation writers need a boid that ran off-surface 30 frames or a broken waypoint chain |
+| 112 / 113 `i < mAttackerCount` (loop exhaustion) | 0x1E0C `bdnz` falls through to 0x1E10 after all slots; 0x1D74/0x1D78 is the separate zero-count entry guard | 24/0 (run 1), 1008/**328** (run 2) | **live and run** in launch 2's slot-full setup; natural exhaustion was not observed in these runs |
 | 113 / 114 slot free | 0x1D84, 0x1D88 `bne` -> 0x1E04 | 12/12, 13/995 | ran |
 | 129-131 / 131-133 SpawnGrenades loop | 0x1E6C, 0x1E70 | both | ran |
 
