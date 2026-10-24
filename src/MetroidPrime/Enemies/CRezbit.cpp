@@ -301,6 +301,7 @@ void CRezbit::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_53_7240
 void CRezbit::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId sender = msg.GetSenderId();
   const EScriptObjectMessage message = msg.GetMessage();
