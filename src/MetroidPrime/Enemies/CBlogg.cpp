@@ -915,6 +915,7 @@ void CBlogg::AttachPlayerToMouth(CStateManager& mgr) {
   }
 }
 
+// @ fn_7_2A10
 uchar CBlogg::GetNextPositionIndex() const {
   const int count = mPositionHistory.size();
   if (count > 0) {
