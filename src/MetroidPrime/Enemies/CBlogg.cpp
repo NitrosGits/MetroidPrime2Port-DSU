@@ -241,6 +241,7 @@ bool CBloggMouthVulnerability::GetCollisionResponseType(const CVector3f& positio
   return true;
 }
 
+// @ fn_7_A02C
 CBlogg::CBlogg(TUniqueId uid, const rstl::string& name, CEntityInfo& info, const CTransform4f& xf,
                const CModelData& modelData, const CPatternedInfo& patternedInfo,
                const CActorParameters& actorParams, float minAttackAngle, float maxAttackAngle,
