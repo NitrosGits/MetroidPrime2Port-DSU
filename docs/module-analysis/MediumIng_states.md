@@ -1,5 +1,9 @@
 # MediumIng (module 41) — FSM states and helpers (lanes mi2, mi3)
 
+Current: all remaining states/helpers completed by ming6 (100/100 module behaviour).
+The table below preserves earlier open-arm history; see `MediumIng.md`'s ming6
+arm table, explicit forced inputs, NaN fixes and final coverage evidence.
+
 TARGET_PC bodies in `src/MetroidPrime/Enemies/CMediumIng.cpp`, ported from
 `build/G2ME01/MediumIng/asm/MetroidPrime/Enemies/CMediumIng.s` (mi2) and played in area 46 (mi3).
 Status: `marked` = every live arm ran (`// @` marker); `played` = ran, the arms listed are open;

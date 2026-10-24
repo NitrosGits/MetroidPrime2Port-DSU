@@ -1,0 +1,6 @@
+@f300 god 1; tp 208.5 -174 -46.5; face 180; send u0451 Deactivate; send u0452 Deactivate
+@f330 spawn MING prop 0xfeedbeef 42
+@f350 spawn AJMP; spawn WAYP
+@f400 objs MediumIng; objs AiJumpPoint; objs Waypoint
+@f450 fsm u0417 Idle
+@f1100 status
