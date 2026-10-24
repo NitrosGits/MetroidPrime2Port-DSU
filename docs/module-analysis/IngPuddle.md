@@ -113,3 +113,10 @@ Gates: host build 0 FAILED; `configure.py && ninja` + forced `build/G2ME01/ok` r
 OK**; `gen_files_cmake.py --check` rc 0. Evidence frozen before the marker:
 `/tmp/opencode/reports/ipd2-evidence/` (gcno, gcda, raw gcda JSON, the module's asm, binary/source
 hashes, the oracle log, the run and game logs).
+
+Independent review reproduced 5496 executions, 1/1 blocks and no branches from the
+archived gcno/gcda pair. The still-present coverage binary matched the recorded
+`ba5b08db...` hash and was frozen as `/tmp/opencode/ipd2-independent/executed-binary`;
+its getter is a coverage increment followed by `lea 0x4c8(%rdi),%rax; ret`.
+The pre-marker header hash matches the base git blob. The oracle logs six individual
+pointer pairs and aggregates all 5496 matches; it does not retain every pointer pair.
