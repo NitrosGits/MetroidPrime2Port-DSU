@@ -120,7 +120,7 @@ offset	fn	size	class	name	slice	what	marker
 06278	fn_53_6278	70	B	CRezbit::Patrol	rez1	upstream body (CRezbit)	yes
 062E8	fn_53_62E8	1FC	B	CRezbit::Alert	-	upstream body (CRezbit)	no
 064E4	fn_53_64E4	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
-06540	fn_53_6540	4	B	CRezbit::Idle	-	upstream body (CRezbit)	no
+06540	fn_53_6540	4	B	CRezbit::Idle	-	upstream body (CRezbit)	yes
 06544	fn_53_6544	4	B	CRezbit::Start	rez1	upstream body (CRezbit)	yes
 06548	fn_53_6548	140	B	CRezbit::ShouldVirusAttack	-	upstream body (CRezbit)	no
 06688	fn_53_6688	158	B	CRezbit::ShouldEnergyBoltAttack	-	upstream body (CRezbit)	no
@@ -133,7 +133,7 @@ offset	fn	size	class	name	slice	what	marker
 06AD0	fn_53_6AD0	1C	B	CRezbit::AttackPathOver	rez1	upstream body (CRezbit)	yes
 06AEC	fn_53_6AEC	58	B	CRezbit::HasAttackPath	rez1	upstream body (CRezbit)	yes
 06B44	fn_53_6B44	C	B	CRezbit::IsAlert	rez1	upstream body (CRezbit)	yes
-06B50	fn_53_6B50	14	B	CRezbit::IsDeRezzed	-	upstream body (CRezbit)	no
+06B50	fn_53_6B50	14	B	CRezbit::IsDeRezzed	-	upstream body (CRezbit)	yes
 06B64	fn_53_6B64	14	B	CRezbit::StateOver	rez1	upstream body (CRezbit)	yes
 06B78	fn_53_6B78	8C	B	CRezbit::SetupStateMachine	rez1	upstream body (CRezbit)	yes
 06C04	fn_53_6C04	B8	B	CRezbit::Listen	-	upstream body (CRezbit)	no

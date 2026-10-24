@@ -1,0 +1,29 @@
+# Rezbit arms no spawn reaches by itself, Sanctuary Fortress 02_cliff_reactorcore layers 3+4:
+# Idle (fsm), trigger calls, user anim events, code calls, then Death/Dead (kill) on the second Rezbit.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/rezbit.py <out> 1baa96c2,02_cliff_reactorcore \
+#        --con tools/drivers/rezbit_arms.con --fast --frames 6000
+@f600 god 1
+@f1000 layer 3
+@f1300 layer 4
+@f1500 place e0005011b player 15
+@f1600 fsm e0005011b Idle
+@f1700 trigcall e0005011b IsDeRezzed
+@f1710 trigcall e0005011b ShouldBecomeDeRezzed
+@f1720 trigcall e0005011b ShouldStrafe
+@f1730 trigcall e0005011b ShouldLaserAttack
+@f1740 trigcall e0005011b ShouldEnergyBoltAttack
+@f1750 trigcall e0005011b ShouldVirusAttack
+@f1800 uevent e0005011b 27
+@f1810 uevent e0005011b 28
+@f1820 uevent e0005011b 18
+@f1900 codecall e0005011b SelectStrafeDirection
+@f1910 codecall e0005011b SetTargetDest
+@f1920 codecall e0005011b ResetAttackTimes
+@f1930 codecall e0005011b RaiseShields
+@f1950 codecall e0005011b SetDeRezzedState
+@f1960 codecall e0005011b SetNormalRezState
+@f2200 damage e0005011b 1
+@f2400 obj e0005011b
+@f3000 place e00050065 player 15
+@f3200 kill e00050065
+@f4000 objs rezbit

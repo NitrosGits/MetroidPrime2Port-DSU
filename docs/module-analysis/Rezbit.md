@@ -63,12 +63,12 @@ Build `-B build-port-cov -DMP_PORT_COVERAGE=ON -DMP_SDK_HEADERS_ONLY=OFF`. Run
 
 Drivers (frames): `tools/drivers/tail21_rezbit.txt` (20500), `tail21_rezbit_hp.txt` (19500),
 `tail21_rezbit_shield.txt` (8000), `tail24_rezbit_missile.con` (2900, de-rez forced with
-`codecall`), `rezbit_forced.con` (4200: `fsm` FollowAttackPath, `send`
+`codecall`), `rezbit_arms.con` (6000, gcov /tmp/opencode/rez1/arms: `fsm` Idle, `trigcall`, `uevent`, `codecall`, `kill`), `rezbit_forced.con` (4200: `fsm` FollowAttackPath, `send`
 Deactivate/Activate/Alert/ResistedDamage). The natural runs reach StartVirusAttack through
 ApplyDamage (new filter), FireEnergyBolt (153 entries), SpawnLaser (15), JoinTeam, LowerShields
 and UpdateShield.
 
-Marked (25): ALL-ARMS or branchless and fully line-covered, with asmcheck clean apart from tool
+Marked (27; Idle and IsDeRezzed `forced (fsm Idle / trigcall)`, asmcheck 0 findings): ALL-ARMS or branchless and fully line-covered, with asmcheck clean apart from tool
 limits. FollowAttackPath and AttackPathOver are `forced (fsm)`; the rest come from natural play.
 asmcheck findings on the marked bodies are all tool limits: CALL to unmarked fn_53_141C/1614/3538
 (CheckVerticalClearance, CheckNeighbors, UpdatePatrolMovement) and fn_53_3298 (CDamageInfo copy);
@@ -78,4 +78,5 @@ inlined string dtors; NOPOS/BIT on the unpositioned bitfields mAlert/mHitByPlaye
 Not marked (partial arms): AcceptScriptMsg (39/40 lines; the sfx-removal arms of Delete), the
 other states and triggers, the fixed helpers (CheckVerticalClearance, DeflectMissiles,
 FireEnergyBolt, StartVirusAttack, LowerShields, UpdateShield, JoinTeam), the ctor/dtors and the
-loaders. Uncovered: Idle, IsDeRezzed, UpdateDeflectSfx.
+loaders. Uncovered: UpdateDeflectSfx (no retail caller). Merged report: /tmp/opencode/rez1/report1.txt (gcov dirs nat, shield, missile, forced, arms under /tmp/opencode/rez1).
+Missing arms of the unmarked bodies (base line:arm): Death 202:1,205:1 (no-state machine); Dead 627:1,630:0 (live shield/laser sfx at death); Alert 384/391/393; PathFind 443/445; Strafe 455/468; ShouldBecomeDeRezzed 764:4; ShouldStrafe 779:1; ShouldLaser/EnergyBolt/VirusAttack team and target arms; SelectStrafeDirection 647/650; SetTargetDest 658/668; RaiseShields 693-703; BreakShield, CheckShieldBroken, HandleShieldHit (shield hit ids); CheckVerticalClearance, CheckNeighbors, DeflectMissiles list loops; FireEnergyBolt, StartVirusAttack. Switch default arms (375:3 etc.) are dead: EStateMsg has three values.
