@@ -268,3 +268,23 @@ Still untaken, with what is known about each:
 
 The marker stays off (41/44) - the body is one arm from complete and the spec is ready for the last
 step.
+
+## swb8: UpdateBoid 85/85 lines, 43/44 branches (613 left)
+
+`tools/cov/specs/swarmbasics_force8.py` (force.sh) writes boid 0 relative to the floor it is already
+near: each call moves `mItems[0].mTransform.m23` (the transform's translation Z) by +0.3 / -0.5 / +5 and
+sets mLaunched, mVelocity (-60 / -4), mRemainingLaunchNotOnSurfaceFrames 0, mFramesNotOnSurface 0 and
+`$this->mBoidRadius` (0.5 / 1.0), so the boid oscillates around the floor instead of drifting. Merged
+with the swb7 spec's force_ret run (`swarmbasics_force7.py`, for the 599 safe-zone stub) over four run
+pairs (swamp_hall, cliff_hall, 1200 f, timeout 700; all `RC=0`, 0 caught/reach-stub): the body now
+reaches **85/85 lines, 43/44 branches**.
+
+The floor placement took 656/657 (the falling path's plane-height and radius tests). **613:3/4 is the
+only arm left**: `while (distance >= 0.f && !found)` needs the loop to re-test with `found` already
+true, i.e. a surface found on the first probe while `speed*dt - boidRadius >= 0` afterwards. Radii of
+0.1, 0.5, 1.0, 1000 and 0.001 were tried with velocities -4/-20/-40/-400/-60 and a boid 0.3 above and
+0.5 below the floor; the surface probe (`FindBestSurface` with radius `2*mBoidRadius` at the predicted
+point, `mSurfaceProbeScale` back along the velocity) did not report a hit on an iteration that still
+had `distance >= 0`. Next: set `mSurfaceProbeScale` small (so the predicted point stays above the
+floor) together with a radius that still reaches it, or place the boid over a known flat floor with
+`mItems[0].mVelocity` near zero and a huge radius so every probe hits.
