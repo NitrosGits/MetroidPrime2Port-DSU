@@ -584,6 +584,7 @@ void CSwarmBasics::UpdateLightComboBeam(CBoid& boid, CStateManager& mgr) {
   }
 }
 
+// @ fn_80_6104
 void CSwarmBasics::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mgr, float dt, CBoid& boid,
                               int partitionIndex) {
   boid.mPartitionIndex = partitionIndex;
