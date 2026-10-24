@@ -101,6 +101,7 @@ Not marked, with reason:
   IsGrabbingPlayer, DetachMorphBall (forced (statecall Rise + SPL_GRAB, attached-actor set)) and Rise (all 22
   arms, forced (statecall Rise)) are marked; asmcheck findings are unported callees, the xab0_40 bitfield, and
   ReachedTop inlined in the asm. gcov kept in /tmp/opencode/spl2_gcov/<run>/.
+- spl3: CreateSac 263C (arm `mSacAncs == -1` forced by tools/cov/specs/splinter_sac_force.py) and FindGrabbed 33C8 (invalid arm natural on the cable; live-id arm via splinter_grab_force.py SPL_GRAB=0x48a) marked, ALL-ARMS merged. The other 19 B rows of 24B8-3AC4 were already bulk-marked (objdiff 100%).
 - Still not marked: ExplodeSac (mParticle.mEffect invalid in hive_hall, body past line 827 unreachable),
   GrabSac (905 Update arm untaken: HasUnpoppedSac false on those calls), MBallMoved (745:1/4 and line 749
   need a really morphed player; 9/10 arms).

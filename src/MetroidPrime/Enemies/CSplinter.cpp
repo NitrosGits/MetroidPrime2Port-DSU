@@ -388,6 +388,7 @@ const CActor* CSplinter::GetGrabbed(const CStateManager& mgr) const {
   return TCastToConstPtr< CActor >(mgr.GetObjectById(mSac.mGrabbedId));
 }
 
+// @ fn_74_33C8
 CActor* CSplinter::FindGrabbed(CStateManager& mgr) const {
   if (mSac.mGrabbedId == kInvalidUniqueId) {
     return nullptr;
@@ -785,6 +786,7 @@ TUniqueId CSplinter::FindConnectedId(const CStateManager& mgr) const {
   return kInvalidUniqueId;
 }
 
+// @ fn_74_263C
 void CSplinter::CreateSac(CStateManager& mgr) {
   if (mSac.mSacAncs != kInvalidAssetId) {
     if (mSac.mSacId == kInvalidUniqueId) {
