@@ -237,3 +237,12 @@ Forced runs: `tools/cov/specs/grenchler_force4.py` + `grenchler_gren4_ent.con` (
 - FindJumpPoint E634: PathExists forced to 0 (FORCE_INNER, period 1); failure arm taken.
 - SEffectA 127FC / SEffectD 11FCC: invalid-asset arms forced; remaining uncovered arms are null-new/throw edges (dead).
 - CanBeShot 94 / GetSearchPath 0 / SConeVulnerability ctor 13A94: header lines, branch-free. gcov: GetSearchPath ~9000 hits, ctor 2-3 hits, CanBeShot never called (`return true;`, asm read).
+
+## gren5 evidence (branch decomp/gren5b)
+
+Marked (all arms shown, merged gcov of natural + forced runs, caught/reach-stub = 0 everywhere):
+PreRender BB80, PreRenderAllViewports 177C, PullPlayer 2A78, Maneuver 533C, Pursue DA78, DestroyTail F398, Jump 9018.
+Runs: `tools/cov/specs/grenchler_force5.py` (one CALLS group per run via `F5=<label>`; entrance room for
+non-guardian, `08_swamp_grappleguardian_dark` for guardian-only arms). Direct calls with stubbed
+callees; water uid is decimal (u0459). DestroyTail 1001:3/5 and 4/5 are `__nw` null / throw edges (dead arms).
+Not done: FollowAttackPattern (needs waypoint-navigation scenarios), LoadGrenchler, and the ctors/dtors/`__sinit`s.

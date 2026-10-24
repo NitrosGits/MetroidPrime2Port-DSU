@@ -972,6 +972,7 @@ float CGrenchler::GetVulnerableAngle() const {
   return mIsGrappleGuardian == true ? 0.7853982f : 1.3089969f;
 }
 
+// @ fn_27_F398
 void CGrenchler::DestroyTail(CStateManager& mgr) {
   mTailDestroyed = 1;
   mFadeActive = 0;
@@ -1320,6 +1321,7 @@ bool CGrenchler::PlayYellowHitReact(CStateManager& mgr, const CTriggerData& data
 // @ fn_27_E188
 bool CGrenchler::CanBeUnPossessed(CStateManager& mgr) const { return false; }
 
+// @ fn_27_DA78
 void CGrenchler::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
   CVector3f target = GetTargetPosition(mgr);
   if (mIsGrappleGuardian == true) {
@@ -1853,6 +1855,7 @@ void CGrenchler::ThinkBoneTracking(float dt, CStateManager& mgr) {
   mBoneTracking.Think(dt);
 }
 
+// @ fn_27_BB80
 void CGrenchler::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
   PreRenderBoneTracking(mgr);
@@ -2527,6 +2530,7 @@ void CGrenchler::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   }
 }
 
+// @ fn_27_9018
 void CGrenchler::Jump(CStateManager& mgr, EStateMsg msg, float) {
   SetAttackState(kGA_Jump, msg);
   switch (msg) {
@@ -3413,6 +3417,7 @@ CVector3f CGrenchler::GetManeuverTarget(CStateManager& mgr) const {
   return bestHint->GetTranslation();
 }
 
+// @ fn_27_533C
 void CGrenchler::Maneuver(CStateManager& mgr, EStateMsg msg, float dt) {
   if (mIsGrappleGuardian == true) {
     return;
@@ -4086,6 +4091,7 @@ void CGrenchler::GrappleStruggle(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_2A78
 void CGrenchler::PullPlayer(float dt, CStateManager& mgr, const CVector3f& targetPos) {
   CPlayer* player = mgr.GetPlayer(0);
   CVector3f facing = player->GetTransform().GetForward();
@@ -4394,6 +4400,7 @@ void CGrenchler::OnScanStateChange(EScanState state, CStateManager& mgr) {
   CActor::OnScanStateChange(state, mgr);
 }
 
+// @ fn_27_177C
 void CGrenchler::PreRenderAllViewports(CStateManager& mgr) {
   CPatterned::PreRenderAllViewports(mgr);
   if (mIsGrappleGuardian == 1 && mCollisionManager.get()) {
