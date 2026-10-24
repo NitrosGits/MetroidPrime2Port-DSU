@@ -97,6 +97,7 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 
 static CVector3f skShieldHalfExtents(3.5f, 0.5f, 5.f);
 
+// @ fn_53_785C
 CRezbit::CRezbit(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                  const CTransform4f& xf, const CModelData& modelData,
                  const CActorParameters& actorParams, const CPatternedInfo& patternedInfo,
