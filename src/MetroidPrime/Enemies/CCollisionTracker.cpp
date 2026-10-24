@@ -131,19 +131,24 @@ bool CSurfacePath::Trace(float distance, const CVector3f& start, const CVector3f
     const float normalDot = CVector3f::Dot(velocity, normal);
     const float cosine = normalDot * inverseMagnitude;
     if (CMath::AbsF(cosine) > 0.2f) {
-      if (!SlideOffPlane(previous, triangle, magnitude, inverseMagnitude, velocity)) {
 #ifdef TARGET_PC
+      // Retail keeps the pre-slide velocity (0x3FC) and projects that one when the slide fails.
+      const CVector3f entryVelocity = velocity;
+      if (!SlideOffPlane(previous, triangle, magnitude, inverseMagnitude, velocity)) {
         // 0x3F4: retail `fcmpo; bge` (break unless |cosine| < 0.8), not `cror; beq`.
         if (!(CMath::AbsF(cosine) < 0.8f)) {
           break;
         }
+        velocity = ProjectOntoPlane(entryVelocity, normalDot, magnitude, normal);
+      }
 #else
+      if (!SlideOffPlane(previous, triangle, magnitude, inverseMagnitude, velocity)) {
         if (CMath::AbsF(cosine) >= 0.8f) {
           break;
         }
-#endif
         velocity = ProjectOntoPlane(velocity, normalDot, magnitude, normal);
       }
+#endif
     } else {
       velocity = ProjectOntoPlane(velocity, normalDot, magnitude, normal);
     }
@@ -526,7 +531,12 @@ bool CSurfacePath::FindNearestTriangle(float radius, const CVector3f& position,
     }
     nearestDistSq = distSq;
     foundIterator = iterator;
+#ifdef TARGET_PC
+    // Retail stores (1-(u+v), v, u) with u the first TriPointSqrDist_Float out (0x0c(r1)).
+    *barycentric = CVector3f(1.f - (baryU + baryV), baryV, baryU);
+#else
     *barycentric = CVector3f(1.f - (baryV + baryU), baryU, baryV);
+#endif
     nearest =
         CMath::BaryToWorld(slot->mTriangle.mSurface.GetVert(0), slot->mTriangle.mSurface.GetVert(1),
                            slot->mTriangle.mSurface.GetVert(2), *barycentric);
