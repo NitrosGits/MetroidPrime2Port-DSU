@@ -589,3 +589,56 @@ Static pre-run check of the same fixture (emulated gdb over a model that stores 
 words): all phases leave every boid's words and `mActive` bit-identical, `taken=[]` and an
 out-of-range entry move nothing, phase 3 moves 5 (taken + 4 non-taken), and the gun restore is exact -
 `/tmp/opencode/swb13-static/check.py` → PASS.
+## swb14: UpdateSeekerTargets 46/46 lines, 45/47 branches - marked, two arms proven dead
+
+Base `b6390eb78`, branch `decomp/swb14`. One launch of the two allowed.
+
+The four arms the swb13 profile left open (its numbering; +1 after this slice's marker) were:
+
+| arm (swb13) | line | why it was open | swb14 |
+|---|---|---|---|
+| 2113:1 | `for (uint j = 0; j < numTargets; ++j) {` in the `numNew` loop | the loop's guard exit (no match) | **dead**, proof below |
+| 2122:1 | the same guard in the `numNew..numLost` loop | the same | **dead**, proof below |
+| 2124:5 | `if (CActor* act = TCastToPtr<CActor>(mgr.ObjectById(mSeekerTargets[j])))` | the null-actor side | **taken** |
+| 2133:5 | the same `if` in the final loop | the null-actor side | **taken** |
+
+**How the two null-actor sides were reached.** `tools/cov/specs/swarmbasics_seeker.py`'s
+`caller_fixture` now has three phases per `UpdateSeekerTargets` call: ph0 supplies one real seeker uid
+in the gun (the caller then builds a non-empty `keptBoids`), ph1 arms the **guarded callee-answer**
+below, ph2 does neither; every call gets a window that closes at its own return. For ph1 the spec
+picks one real `kMT_SeekerTarget` uid (live actor, valid `mSeekerBoidIndices` entry) and, only inside
+that window and only for that uid, substitutes the `uid` argument of
+`CObjectList::GetObjectById` with `kInvalidUniqueId` (`0x1CA4` `cmp %si, kInvalidUniqueId` /
+`0x1CAE je` → its own null return). `TCastToPtr<CActor>` then evaluates on a **real null pointer**, so
+the `if (act)` predicate is the game's own code. Nothing is deleted or dangled, no vector, count or
+descriptor is written, and only a register argument of that one call changes - no persistent state, so
+there is nothing to restore (the next call gets the natural answer). The fixture logs
+`FORCE-NULL uid=… -> 0x…`, and every *memory* write it makes (the gun element in ph0) is restored with
+readback as before.
+
+Run: `3dfd2249,0g_swamp_hall`, `tools/drivers/swb12.con`, `--fast`, 1200 frames,
+`/tmp/opencode/swb14/a`: `game rc=0`, `caught/reach-stub: 0`, normal inferior exit, 3 `NULL-PHASE`
+windows and 4 forced null answers. **46/46 lines, 45/47 branches**; the only two left are the guards
+above. Expectation met for AssignSeekerBoids as well (unchanged, still 26/26 28/28 - not re-counted).
+Readbacks: **629** `RESTORE-BOID OK` and **117** `RESTORE-GUN OK`, all word-for-word identical to
+their snapshots, **0** mismatches/failures.
+
+**The two dead arms (2114:1 and 2123:1 in this run's numbering; 2115/2124 after the marker).** The
+guard's "loop exhausted without a match" exit cannot be taken because `lostTargets` has exactly one
+writer - `lostTargets.push_back_unsafe(uid)` (asm `0x250 stw` count, `0x254 sthx r8,r7,r0` element) -
+and the value it pushes is `uid = mSeekerTargets[i]` (`0x1BC`/`0x1C8` only `reserve` the two vectors;
+`mSeekerTargets` is never written in the body). Every element of `lostTargets` is therefore a copy of an
+element of the very vector the inner loops compare against, so for each `i` there is a `j` with
+`uid == mSeekerTargets[j]`, the equality compare (`0x2DC`/`0x2E0`, `0x34C`/`0x350`) matches and the
+`break` (`0x2F8`, `0x398`) leaves the loop: the guard's false exit (`0x2CC ble`, `0x33C ble`) is
+unreachable. That is the "only writer" proof the lane brief accepts for a dead arm; the *first* loop
+(`j < numGunTargets`, `0x1F0 ble`) can exhaust - the gun is usually empty - and it is taken.
+
+`asmcheck.py check SwarmBasics … fn_80_168` (all tags): four CALL findings, all library instances -
+`0x1BC`/`0x1C8` `reserve` of the `TUniqueId`/`uint` vectors, `0x45C`/`0x474` their destructors.
+Marked `// @ fn_80_168` (`src/MetroidPrime/Enemies/CSwarmBasics.cpp:2084`).
+
+Gates: host build 0 FAILED; `gen_files_cmake.py --check` rc 0; `review_decomp_diff.sh b6390eb78` (one
+MARK); matching `configure.py && ninja` + forced `build/G2ME01/ok` re-check **87 files OK**. Evidence
+archived before the marker: `/tmp/opencode/reports/swb14-evidence/` (gcno, gcda, raw gcov JSON,
+`swb13_geom.log`, `binary.sha256`, `source.sha256`).
