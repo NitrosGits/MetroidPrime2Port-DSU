@@ -439,8 +439,8 @@ ownership are never touched, and the RNG is never forced.
 
     calls=2928 node_calls=11 writes=9 restored=9 mismatch=0 reentrant=0
     weight0:        targets 0x00000000/0xffffffff/0x1a   (x3)
-    equal:          targets 0x3f800000/animChar/0x1a     (x3)
-    unequal:        targets 0x3f800000/1/0x1a            (x3, nonnegative character != animChar)
+    equal:          targets 0x3f800000/animChar/0x1a     (x2)
+    unequal:        targets 0x3f800000/1/0x1a            (x2, nonnegative character != animChar)
     nonobjectdrop:  targets 0x3f800000/0xffffffff/0x0    (x2)
     natural:        no writes                            (x2)
     every restore: "restored ORIGINAL words [0x3f800000, 0xffffffff, 0x1a] ... (read back
