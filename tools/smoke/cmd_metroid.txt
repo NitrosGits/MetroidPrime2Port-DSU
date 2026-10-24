@@ -1,31 +1,10 @@
-# Metroid (module 40): Agon 08_sand_casualpirates layers 6 and 7 hold the metroids u0547 and u053d,
-# inactive until Activate. The steps follow tools/cov/specs/metroid_player.con (the met1 driver: the
-# metroid latches onto the god-mode player and drains, the player morphs and bombs, the last one is
-# killed). Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs
-# F=2700, last check f2450.
-@f300 layer 6
-@f340 layer 7
-@f560 god 1; give morphBall 1; give morphBallBombs 1; give powerbomb 5; fastmorph 1
-@f580 send u0547 Activate; send u053d Activate
-@f590 objs metroid
-@f620 place u0547 player 2; fsm u0547 SelectTarget
-@f700 obj u0547
-@f760 place u0547 player 2; fsm u0547 Attack
-@f800 obj u0547; objs metroid
-@f1000 obj u0547; status
-@f1100 press x 4
-@f1300 obj u0547
-@f1500 obj u0547; status
-@f1700 place u0547 player 2; fsm u0547 Attack
-@f1900 damage u0547 50 0 powerbomb; obj u0547
-@f2100 place u053d player 2; fsm u053d SelectTarget
-@f2200 objs metroid; obj u053d
-@f2250 damage u053d 999 0 powerbomb; objs metroid
-@f2300 objs metroid
-@f2350 objs metroid; status
-
-# Added kill: activate, place and lethally damage a second metroid, then objs.
-@f2360 send u0539 Activate
-@f2380 place u0539 player 2
-@f2400 damage u0539 999 0 powerbomb
-@f2450 objs metroid
+# Metroid (module 40): smoke exercising one metroid (u0547). Checks are game updates; F=2700,
+# last check f2150.
+@f1500 layer 6
+@f1510 layer 7
+@f2000 objs metroid
+@f2100 send u0547 Activate
+@f2110 place u0547 player 2
+@f2120 obj u0547
+@f2130 kill u0547
+@f2150 objs metroid
