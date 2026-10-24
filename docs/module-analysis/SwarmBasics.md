@@ -482,3 +482,46 @@ marker, so its line numbers are the committed tree's: `AssignSeekerBoids` at 165
 `this` to the printf, so it printed the swarm actor pointer. `swarmbasics_lockon.py` labels it
 `swarm=` now and `swarmbasics_seeker.py` logs `swarm=` and `boid=` (the address of `$this->mBoids[idx]`)
 separately; the archived `/tmp/opencode/swb10` logs are untouched and still say `boid=` for the swarm.
+## swb12: AssignSeekerBoids 26/26 lines, 27/28 branches - one output-loop edge left
+
+Base `e99a3837f`, branch `decomp/swb12`. No source change. `tools/cov/specs/swarmbasics_seeker.py`
+(force.py) now has two fixtures and `tools/drivers/swb12.con` (no input at all):
+
+- **`gun_fixture` at `UpdateSeekerTargets`' entry** supplies ONE real seeker uid: the swarm's own
+  five `kMT_SeekerTarget` actors (created in `kSM_Create`, uids in `mSeekerTargets`, boid indices in
+  `mSeekerBoidIndices` from the previous frame) give a slot whose uid resolves through
+  `CObjectList::GetObjectById`'s own two tests (`mObjects[uid.Value()].mEntity` and the uid equality,
+  read from `mObjectLists[0]` - no inline call from gdb) *and* whose boid index is in range. That
+  uid goes into the gun's `mSeekerTargets` (`reserved_vector<pair<TUniqueId,float>,5>`) as its only
+  element, written element-first then `mCount`, only when the gun's vector is empty; `mCount` and the
+  element's exact bits are restored at `UpdateSeekerTargets`' return. The caller then builds a
+  non-empty `keptBoids` by itself - `taken`/`out` are never touched.
+- **`assign_fixture` at `AssignSeekerBoids`' entry**, one phase per call: ph0 beyond the orbit
+  distance, ph1 exactly at the camera, ph2 natural, ph3 the taken boid plus more boids in front of
+  the camera. Every restore breakpoint is armed **before** the first write and a fixture aborts
+  without writing if arming fails (swb11 wrote first - corrected here). ph2 is deliberate: it is
+  what leaves the run a natural swarm, **not** an observation that the gun locks by itself.
+
+**Measured: 26/26 lines, 27/28 branches** (`/tmp/opencode/swb12/b`, normal exit,
+`caught/reach-stub: 0`, 725 applies / 962 boid restores / 946 gun writes / 946 gun restores, 0 failed
+writes). The four taken-scan arms (1685:0/2, 1686:0/2, 1686:1/2, 1691:1/2) all turned: the gun
+element gave `taken=[idx]`, and the ph3 cone put that boid and others among the candidates, so the
+scan's equality and inequality sides both ran.
+
+**The one arm left, 1682:1/4** - the `out.size() < numNeeded` **false** exit of
+`for (uint i = 0; out.size() < numNeeded && i < candidates.size(); ++i)`. It needs `out` to actually
+reach `numNeeded`: with one uid in the gun the caller passes `numNeeded = numLost = 4`, and ph3 moved
+only two boids, so `out` never filled. `newBoids` has `reserve(numLost)` capacity, so exactly
+`numNeeded` non-taken candidates is the safe maximum. ph3 now moves
+`min(count, numNeeded + 1)` boids into the cone (the taken one first, then distinct non-taken
+indices); that widening is **derived from this arm, not yet measured** - it is the one change the next
+run needs, and no other arm is open.
+
+Run 1 (`/tmp/opencode/swb12/a`) found no slot: the spec's object-list expression indexed
+`mData[0][0]` instead of `((cast)[0])`, so the actor lookup threw and every slot was rejected; that is
+a spec bug (fixed), not a game-side finding. Launches spent: **2 of 2**.
+
+Evidence (`/tmp/opencode/reports/swb12-evidence/`): `CSwarmBasics.cpp.gcno`, the run's
+`CSwarmBasics.cpp.gcda`, the raw `CSwarmBasics.cpp.gcov.json.gz`, `binary.sha256`, `source.sha256` -
+archived before any marker change, and since this slice changes no source the gcno stays the
+committed tree's.
