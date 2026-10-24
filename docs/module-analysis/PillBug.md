@@ -22,6 +22,36 @@ All 82 retail functions pair with upstream (77 in CPillBug.s, 5 in REL_Setup).
 | FindReturnWaypoint 2B2C | retail discards one chain step result (kept: retail quirk) |
 | GetCurrentConstraint 2AEC | no callers in retail (0%) |
 
+## Arms after pbug2 (2026-10-24, decomp/pbug1 + pbug2)
+
+pbug2 forced the data/state arms instead of arguing them away. Two specs, because forcing the path
+walk changes the path BuildPath builds and keeps the bug out of Wander/Fall/ReturnToPath:
+
+- `tools/cov/specs/pbug_force.py` (state machine): Pause substate, PatrolImpl planar/mDestObj,
+  ReturnToPath advance radius + mDestPos + planar + empty path, CloseToPath geometry/mPathLoops/path
+  ids, Fall body state + upside-down transform, and a `loc:` write of the RaySphere test's `mag`.
+- `tools/cov/specs/pbug_force2.py` (path + loader): the HasInnerPathLoop local writes and the
+  LoadPillBug modelData write.
+
+Every write is one call (the member is put back at the next entry). Runs, all fast, merged in
+`gcov_report.py build-port-cov /tmp/opencode/pbug2_*/gcov --module PillBug`: sandhall and cliff areas.
+
+| function | arms | how each arm was reached |
+|---|---|---|
+| 2210 PatrolImpl | 25/26 -> marked | natural: Activate/Update/Deactivate, the position-history block; `forced`: mPlanarConstraint = 0 on one call (0x2494 beq skips the arrival command), mDestObj = the bug's own id on another (0x26B4's cast fails at 0x26BC). 487:3/4 dead: EStateMsg's three-value switch |
+| BD8 Pause | 10/11 -> marked | natural: substate 0->1 and the step command; `forced`: mAnimSubState = 2 on one Update (0xE58's value, the switch's no-case edge 0xD34). 765:3/4 dead (msg switch) |
+| 1A58 ReturnToPath | 17/18 -> marked | natural: both updates and the planar-1/2 command blocks; `forced`: mAdvanceWpRadius 1e6 (UpdateWPDestination returns true, SetConstraint at 587), mDestPos behind the bug (up dot <= 0.5 at 605), mPlanarConstraint 0 then 2 (596/606), mPath.mCount 0 on an Activate (the `!mPath.empty()` false arm at 579). 571:3/4 dead (msg switch) |
+| 1768 Fall | 9/10 -> marked | natural: the drop, the LoopReaction command; `forced`: mBodyStateInfo.mState = kAS_LoopReaction on one Update (650's false arm) and the transform's up column set to -Z on an Activate (Dot < -0.998 at 637, which rotates the bug). 630:3/4 dead (msg switch) |
+| 274C CloseToPath | 13/14 | `forced`: mPathLoops false (457), an invalid mPath[0] (464's null cast), two equal entries (471). 478:0/2 open: RaySphereIntersection's true arm never ran in 53010 calls; the bug was put on its destination waypoint through mTransform (m03/m13/m23) with mColSphere.mSphere.mRadius 0.5, and the test's `mag` was written through `loc:CPillBug.cpp:478` - T stays >= mag or the writes do not reach the transform the test reads |
+| 2FE4 HasInnerPathLoop | 11/14 | `forced` (`waypoint = 0` at 315 and 328): the non-waypoint chain arms. 310:1/4, 310:3/4 (the walk leaving on an invalid id) and 322:1/2 (current == loopStart) need writes to `current`/`anchor`/`loopStart`, and at the coverage build's -O2 those locals are in registers: gdb says "value has been optimized out" / "not an lvalue" |
+| 130 LoadPillBug | 11/12 | 809:1/2 open: `set var modelData.m_valid = 0` at loc:809 is accepted by gdb but the arm stays untaken (the local is not the optional the branch reads at -O2) |
+| AA4 / A1C SLdrPillBug ctor and dtor | - | inline in `include/MetroidPrime/ScriptLoader/SLdrPillBug.hpp`: no standalone body to mark; the ctor's retail defaults are pb1's fix |
+| 402C __sinit | - | compiler-generated, no source body |
+
+No retail divergence in either pass: Pause 0xBD8-0xF34, PatrolImpl 0x2210-0x274C, HasInnerPathLoop
+0x2FE4-0x3134, CloseToPath 0x274C-0x2930, Fall 0x1768-0x1A58, ReturnToPath 0x1A58-0x2014 and
+LoadPillBug 0x130-0x6D4 match the asm line by line.
+
 ## Shipped data (disc scan)
 
 Spawns: Agon 05_portalpuzzle L2, 0b_sand_hall, 0d_sand_hall, Sanctuary 06_cliff_spiderballguardian L8.

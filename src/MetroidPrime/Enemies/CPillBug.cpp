@@ -482,6 +482,7 @@ bool CPillBug::CloseToPath(CStateManager& mgr, const CTriggerData& data) const {
   return false;
 }
 
+// @ fn_48_2210
 void CPillBug::PatrolImpl(CStateManager& mgr, EStateMsg msg, float dt, bool fast) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -566,6 +567,7 @@ void CPillBug::FastPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   mAttacked = false;
 }
 
+// @ fn_48_1A58
 void CPillBug::ReturnToPath(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -625,6 +627,7 @@ void CPillBug::ReturnToPath(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_48_1768
 void CPillBug::Fall(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -759,6 +762,7 @@ void CPillBug::Wander(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_48_BD8
 void CPillBug::Pause(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
