@@ -16,6 +16,7 @@ public:
                    const CDamageVulnerability& vulnerability);
 
   // CEntity
+  // @ fn_74_CCA8
   ~CSplinterAcidSac() override {}
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
