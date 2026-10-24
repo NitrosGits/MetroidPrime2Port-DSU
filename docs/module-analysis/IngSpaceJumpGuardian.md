@@ -171,3 +171,74 @@ files are marker-only, non-PC strip-diffs CLEAN. Reviewe32d198ab:eleven MARK,no 
 `500C GetAimPosition`, `5274 DoUserAnimEvent`, `5760 AcceptScriptMsg`.
 All full listings are saved; ED4/216C/2498/2874/2ED0 were read against the current source
 without finding another mismatch, but no live-arm certification/marker is claimed yet.
+
+## sjg3 runtime checkpoint (2026-10-24)
+
+Base `293c09dab`, nine new markers, **51 → 60/69**. No production behaviour changes.
+Full `asmcheck.py annotate ... --all-ins` listings for all eighteen assigned bodies:
+`/tmp/opencode/reports/sjg3-evidence/asm-*.txt`. The nine marked bodies were audited
+instruction-by-instruction against the existing source, including previous TARGET_PC fixes.
+
+### Retail block/arm audit and execution
+
+All setups below are **forced (`tools/cov/specs/sjg3_runtime_arms.py`, inferior calls at
+first active Think)**. Real bodies and callees run; no callee result is replaced or skipped.
+The input members are restored after each call. Collision manager/light already exist.
+
+| body | retail correspondence / executed arms | final gcov |
+|---|---|---|
+| ED4 UpdateBlob | EF0–F0C lookup/null; F10–F30 byte A34 bit04 selects 1/0 emission; F38–F3C positive intensity gates transform; F40–FF4 builds LookAt at actor position toward world up; FF8–1000 emission setter. Real Dead activation creates blob; active0/1 and invalid blob id execute all live arms. | 10/10 lines, 5/6 edges; dead constant arm below |
+| 216C UpdateLight | 2184–21B0 base byte420 bit40 = alive: saturate intensity at1; 21B4–21D0 light lookup/cast; 21D4–2264 black→data colour lerp, head locator, point light, attenuation(1/data,0,0), SetLight. Alive0/1, missing light, intensity0/2 with dt.25 cover both saturation outcomes. | 10/10, 4/4 ALL-ARMS |
+| 2498 SetCollisionVulnerability | 24A8/2500–2510 unsigned count loop; 24C8–24F4 description id lookup/cast/null; 24F8–24FC vulnerability copy. Real reflect vulnerability, ordinary seven actors, one invalid description id and count0. | 7/7, 4/4 ALL-ARMS |
+| 2874 UpdateCollisionVulnerabilities | 2898–28B0 health virtual slot3C and full health copy2998; 28B4–2974 count loop; 28BC–28E8 description lookup/null; 28EC–2960 qualified base vulnerability, virtual HealthInfo slot38 and full health assignment. Same ordinary/invalid-id/count0 inputs. | 9/9, 4/4 ALL-ARMS |
+| 2ED0 ComputeJumpVelocity | 2F10–2F4C jumping bit80/invalid-id/absent actor guards; 2F50–2FA0 deltas, start/target heights, gravity virtual slot114; 2FA8–2FBC higher-height selection; 2FC0–3028 vertical sqrt, flight time, XY/time, SetVelocityWR; 302C–303C jumping bit80 and duration stores. True/false jumping, FFFF/FFFE/player target; explicit actor height playerZ±5 covers both apex arms with apex offset10. | 20/20, 6/6 ALL-ARMS |
+| 36B8 SteerToDest | 36D4–36F8 message dispatch; 36FC–3740 Ready1, walk/run speed ratio, full-speed steering; 3748–3760 missing target; 3764–37E0 safe delta and positive forward dot; 37E4–3840 normalized facing cmd; 3848–3858 Over3; 3860–3864 NotReady0. Msg0/1/2/3, invalid/player target and delta0/±forward. | 22/22, 10/10 ALL-ARMS |
+| 3888 PathFind | 38B0–38CC dispatch; 38D0–38F0 full-speed range1; 38F4–3914 path bit40 guards navigation; 3918–3924 heard bit20 clear; 392C–3940 Update path bit40; 3944–3954 search index versus count−1 (tail runs for every msg); 3958–39A8 negative forward dot and safe magnitude; 39AC–3A14 clear and normalized facing cmd. Msg0/1/2/3 with path0/1, over/not-over, forward/backward and tiny backward input. | 19/19, 15/15 ALL-ARMS |
+| 4864 Dead | 489C qualified base call; 48A0–48B4 dispatch; 48B8–4948 default speed, real PART token/blob spawn, timer2; 4950–496C UpdateBlob and body Death-state guard; 4970–49A4 boss-id clear; 49A8–49F8 scaleZ=max(0,Z−dt/.75); 49FC–4A34 <=0 shrinks timer and clears render02/blob04; 4A38–4A58 timer<=0 DeathDelete. Msg0/1/2, real body Locomotion/Death states, matching/nonmatching boss, positive/zero scale and timer2/0. Deletion is last, not stubbed. | 24/24, 13/13 ALL-ARMS |
+| 500C GetAimPosition | 5044–5094 zero prediction unless dt>0; 5098–50A0 collarFF guard; 50A4–510C locator transform, actor transform, component scale and predicted translation; 5114–5130 qualified base fallback; 5134–513C result. dt0/.25 with real collar/FF. | 12/12, 4/4 ALL-ARMS |
+
+ED4's only untaken edge is source1182, the Up-versus-Right choice. Retail F54–FA8
+compares **the global world-up Z**, not actor up: `AbsF(float(Up().Z < .95)) != 0`.
+World-up is initialized `(0,0,1)` at `src/Kyoto/Math/CVector3f.cpp:16`; its public accessor
+returns const reference, and the source-tree symbol scan finds no other writer. Therefore
+the Up arm cannot occur in the shipped program; Right is the executed retail arm. No
+global vector mutation was used to manufacture coverage.
+
+### Reproduction and limitations
+
+```sh
+tools/games_running.sh --wait
+BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py SECS=300 \
+  tools/cov/force.sh tools/cov/specs/sjg3_runtime_arms.py <out> \
+  42b935e4,02_sand_sandfalls_dark --con tools/drivers/sjg3.con --fast --frames 1200
+python3 tools/cov/gcov_report.py build-port-cov <out>/gcov --module IngSpaceJumpGuardian
+```
+
+Final run:55 successful calls, no failed assignments/calls/Python errors, normal exit,
+caught/reach-stub0. Raw profiles/gcno and logs are retained in the evidence directory.
+The death fixtures are explicit state/body-member setup, not a claim the shooting driver
+naturally reaches death. Input writes restore members, but real body side effects remain;
+fixtures are ordered so queued deletion is last. No shared-engine/tool edits or probes.
+
+FollowIntroPattern is **not marked**:21/22 lines,8/9 edges; the <=0 dot arm/source560
+still did not run despite attempted position setups. Do not equate successful inferior
+calls with covering that arm. Remaining9:1198 FindJumpPoints,1660 FilterJumpPoints,
+1BFC CameraShake,2534 CollisionDamage,34CC SelectJumpTarget,3DA8 Jump,
+46D0 FollowIntroPattern,5274 DoUserAnimEvent,5760 AcceptScriptMsg.
+
+### Review findings and gates
+
+asmcheck MISSING for ED4/216C/2498 is its existing definition-parser failure (literal
+markers and real compiled/gcov bodies exist). NOPOS/BIT for A34 are decoded above:
+80 jumping,40 hasPath,20 heard,04 blob,02 render. CALL517C is the native copy of
+PredictMotion's CMotionState;2998 is CHealthInfo copy;2280 is CLight copy. These helpers'
+full instruction listings were inspected. CALL1024/ED4 in Dead are the literal
+SpawnBlobEffect/UpdateBlob calls, missed by the same parser. retail_diff mislabels
+216C/1024/ED4 as CollisionDamage; its five call leads are exactly these copy/parser cases.
+No unresolved correctness finding or new behavioural fix.
+
+Host/coverage links rc0,0 FAILED; gen_files_cmake --check rc0; upstream configure+ninja
+rc0, All77.98% fuzzy/54.39% matched,Game94.14%/63.29%,dtk shasum87 files OK.
+Only upstream-file diff is nine marker comments, so non-PC strip-diff CLEAN.
+`tools/review_decomp_diff.sh 293c09dab`:9 MARK, no other findings; all nine accounted for above.
+Unchanged families and whole-module smoke skipped per scope.
