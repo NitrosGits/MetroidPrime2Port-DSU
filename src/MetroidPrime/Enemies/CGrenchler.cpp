@@ -1003,6 +1003,7 @@ void CGrenchler::DestroyTail(CStateManager& mgr) {
   BodyController()->UnFreeze();
 }
 
+// @ fn_27_F1C8
 void CGrenchler::SpawnTail(CStateManager& mgr) {
   const bool ingPossessed = IsIngPossessed();
   const CAnimationParameters& tailParams = ingPossessed ? mTailDark : mTail;
@@ -2924,6 +2925,7 @@ void CGrenchler::ReleasePlayer(CStateManager& mgr) {
   player->SetMoveState(NPlayer::kMS_ApplyJump, mgr);
 }
 
+// @ fn_27_7BA4
 void CGrenchler::CreateGrappleHitVisorEffect(CStateManager& mgr) {
   if (IsPlayerLookingAtMe(mgr)) {
     const CVector3f offset(mgr.GetPlayer(0)->GetTranslation() - GetTranslation());
@@ -3375,6 +3377,7 @@ float CGrenchler::GetManeuverRangeWeight(float range, const CVector3f& a,
   return 1.f - (distance - range) / range;
 }
 
+// @ fn_27_5640
 CVector3f CGrenchler::GetManeuverTarget(CStateManager& mgr) const {
   const float heightOffset = mgr.Random()->Range(1.f, 2.f);
   float bestScore = 0.f;
@@ -4559,6 +4562,48 @@ bool CGrenchler::PortConsoleVar(CEntity& ent, const char* name, const int* value
     current = 0;
     return true;
   }
+  // gren3: gren.mhint <n> adds a maneuver hint (type 20): 1 midway between this Grenchler and the player,
+  // 2 ten up (z test fails), 3 inactive, 4 1000 away, 5 four below (behind the floor), 6 a type 12 hint
+  // midway (not a maneuver); gren.fncall 20 then reads GetManeuverTarget.
+  if (strcmp(name, "gren.mhint") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    if (value != nullptr && mgr != nullptr) {
+      const int kind = *value;
+      CVector3f pos = (gren->GetTranslation() + mgr->GetPlayer(0)->GetTranslation()) * 0.5f;
+      pos.SetZ(gren->GetTranslation().GetZ());
+      if (kind == 2) {
+        pos.SetZ(pos.GetZ() + 10.f);
+      } else if (kind == 4) {
+        pos = gren->GetTranslation() + CVector3f(1000.f, 0.f, 0.f);
+      } else if (kind == 5) {
+        pos.SetZ(pos.GetZ() - 4.f);
+      }
+      mgr->AddObject(rs_new CScriptAIHint(
+          mgr->AllocateUniqueId(), rstl::string_l("gren3 hint"),
+          CEntityInfo(gren->GetCurrentAreaId(), CEntity::NullConnectionList, kind != 3),
+          CTransform4f::Translate(pos),
+          kind == 6 ? CScriptAIHint::kHT_Unknown12 : CScriptAIHint::kHT_Maneuver, 10.f, 0.f, 0.f,
+          0.f));
+    }
+    current = 0;
+    return true;
+  }
+  // gren.jp <n> adds a jump point at this Grenchler: 1 inactive, 2 in the next area, 3 active with no
+  // waypoint; gren.fncall 23 runs FindJumpPoint toward an unreachable point, 24 once more excluding the
+  // jump point the plain call chose.
+  if (strcmp(name, "gren.jp") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    if (value != nullptr && mgr != nullptr) {
+      const TAreaId area =
+          *value == 2 ? TAreaId(gren->GetCurrentAreaId().Value() + 1) : gren->GetCurrentAreaId();
+      mgr->AddObject(rs_new CScriptAiJumpPoint(
+          mgr->AllocateUniqueId(), rstl::string_l("gren3 jump"),
+          CEntityInfo(area, CEntity::NullConnectionList, *value != 1),
+          CTransform4f::Translate(gren->GetTranslation()), 5.f, 0));
+    }
+    current = 0;
+    return true;
+  }
   if (strcmp(name, "gren.hintcall") == 0) {
     CStateManager* mgr = PortConsole::VarManager();
     current = -1;
@@ -4895,6 +4940,62 @@ bool CGrenchler::PortConsoleVar(CEntity& ent, const char* name, const int* value
         gren->mGrappleEffect.mEffect.clear();
         gren->CreateGrappleHitVisorEffect(*mgr);
         gren->mGrappleEffect.mEffect = saved;
+        break;
+      }
+      case 14: { // CreateGrappleHitVisorEffect with the player 40 units away (retail 7C20 skip arm)
+        const CTransform4f saved = gren->GetTransform();
+        CTransform4f away = saved;
+        CVector3f dir = saved.GetTranslation() - mgr->GetPlayer(0)->GetTranslation();
+        dir.Normalize();
+        away.SetTranslation(mgr->GetPlayer(0)->GetTranslation() + dir * 40.f);
+        gren->SetTransform(away);
+        gren->CreateGrappleHitVisorEffect(*mgr);
+        gren->SetTransform(saved);
+        break;
+      }
+      case 15: // SpawnTail, plain / 16 submerged / 17 ing-possessed / 18 both
+      case 16:
+      case 17:
+      case 18: {
+        const bool savedSub = gren->mSubmerged;
+        const float savedBlend = gren->mIngPossessionBlend;
+        gren->mSubmerged = *value == 16 || *value == 18;
+        gren->mIngPossessionBlend = (*value == 17 || *value == 18) ? 1.f : 0.f;
+        gren->SpawnTail(*mgr);
+        gren->mSubmerged = savedSub;
+        gren->mIngPossessionBlend = savedBlend;
+        break;
+      }
+      case 19:
+        gren->MarkPathRegion(*mgr);
+        break;
+      case 20: {
+        const CVector3f v = gren->GetManeuverTarget(*mgr);
+        current = static_cast< int >(v.GetX());
+        break;
+      }
+      case 22:
+        gren->UnmarkPathRegion(*mgr);
+        break;
+      case 23: {
+        CScriptAiJumpPoint* jp =
+            gren->FindJumpPoint(*mgr, CVector3f(1.0e6f, 1.0e6f, 1.0e6f), kInvalidUniqueId);
+        current = jp != nullptr ? 1 : 0;
+        break;
+      }
+      case 24: {
+        const CVector3f target = mgr->GetPlayer(0)->GetTranslation();
+        CScriptAiJumpPoint* jp = gren->FindJumpPoint(*mgr, target, kInvalidUniqueId);
+        if (jp != nullptr) {
+          jp = gren->FindJumpPoint(*mgr, target, jp->GetUniqueId());
+        }
+        current = jp != nullptr ? 1 : 0;
+        break;
+      }
+      case 21: {
+        CScriptAiJumpPoint* jp = gren->FindJumpPoint(*mgr, mgr->GetPlayer(0)->GetTranslation(),
+                                                     kInvalidUniqueId);
+        current = jp != nullptr ? 1 : 0;
         break;
       }
       }

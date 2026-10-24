@@ -215,3 +215,17 @@ Not marked: CreateGrappleHitVisorEffect 7BA4 (fncall 12/13; the `magnitude > 23`
 tp to 60+ units away did not take), and every other candidate: their remaining arms need forced states
 (SpawnTail/DestroyTail ing-possessed arms, PullPlayer player state, GetManeuverTarget, FindJumpPoint, etc.).
 New fncall cases 7-13.
+
+## gren3 (lane, base 933e8fe89)
+
+Probes: `gren.fncall 14-24`, `gren.mhint`, `gren.jp` (tools/cov/specs/grenchler_gren6.con guardian, grenchler_gren3_ent.con entrance u05c4). Merged gcov, final cov build.
+
+| Function | Offset | Result |
+|---|---|---|
+| SpawnTail | fn_27_F1C8 | marked, all arms |
+| CreateGrappleHitVisorEffect | fn_27_7BA4 | marked, only dead 2939:3 (`__nw`/EH) |
+| GetManeuverTarget | fn_27_5640 | marked, only dead 3387:1 (EH edge) |
+| MarkPathRegion | fn_27_E390 | open: 1251:0,2,3 (null region / same region / flags!=0) |
+| FindJumpPoint | fn_27_E634 | open: 1211:1 (PathExists fail, +10000) never taken even with far target |
+| SEffectA/SEffectD ctors | 127FC/11FCC | open: invalid-asset arms (445,450,455; 500-501) |
+| CanBeShot/GetSearchPath/SConeVulnerability ctor | 94/0/13A94 | asm-matched statically, no hpp gcov evidence |
