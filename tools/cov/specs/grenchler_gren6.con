@@ -24,3 +24,14 @@
 @f740 tp -168 90 -28
 @f745 var u052e gren.fncall 12
 @f750 tp -168 25 -28
+# gren3: 7BA4 skip arm (fncall 14 moves the Grenchler 40 along the line of sight), SpawnTail F1C8 (15-18),
+# MarkPathRegion E390 (19), GetManeuverTarget 5640 (20), FindJumpPoint E634 (21)
+@f760 var u052e gren.fncall 14; var u052e gren.fncall 15; var u052e gren.fncall 16; var u052e gren.fncall 17; var u052e gren.fncall 18
+@f770 var u052e gren.fncall 19; var u052e gren.fncall 20; var u052e gren.fncall 21
+# gren3 maneuver hints (none first = null result), then each reject arm, hidden, far, visible; MarkPathRegion after searches
+@f780 var u052e gren.fncall 20; var u052e gren.mhint 3; var u052e gren.mhint 2; var u052e gren.mhint 6; var u052e gren.fncall 20
+@f785 var u052e gren.mhint 5; var u052e gren.fncall 20; var u052e gren.mhint 4; var u052e gren.fncall 20
+@f790 var u052e gren.mhint 1; var u052e gren.fncall 20; var u052e gren.mhint 1; var u052e gren.fncall 20
+@f800 var u052e gren.path 1; var u052e gren.fncall 19; var u052e gren.fncall 19; var u052e gren.fncall 22; var u052e gren.fncall 19
+@f805 var u052e gren.path 3; var u052e gren.fncall 22; var u052e gren.fncall 19; var u052e gren.path 4; var u052e gren.fncall 22; var u052e gren.fncall 19
+@f810 var u052e gren.path 2; var u052e gren.fncall 22; var u052e gren.fncall 19
