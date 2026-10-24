@@ -295,9 +295,12 @@ uchar CChozoGhost::GetModelAlphau8(const CStateManager& mgr) const {
   return ret & 0xFF;
 }
 
+// @ fn_8_4468
 void CChozoGhost::PreRender(CStateManager& mgr) {
+  // 0x448C-0x44AC: echo enum=1; draw-particles byte 0x421 bit 0x01 = !echo.
   const bool echo = mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Echo;
   mDrawParticles = !echo;
+  // 0x44B4-0x44EC: second actual visor query; echo disables lighting and installs white ambient.
   if (mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Echo) {
     SetCalculateLighting(false);
     ActorLights()->BuildConstantAmbientLighting(CColor::White());
@@ -305,22 +308,29 @@ void CChozoGhost::PreRender(CStateManager& mgr) {
     SetCalculateLighting(true);
   }
   CColor color = mColor;
+  // 0x44F4-0x451C: copy actor color, virtual alpha slot 0xC8, unsigned alpha < 255.
   const uchar alpha = GetModelAlphau8(mgr);
   if (alpha < 255 || color.GetRedu8() != 0) {
+    // 0x4520-0x4534: red!=0 selects tint even when alpha==255; otherwise use white.
     if (color.GetRedu8() != 0) {
       const uchar value = rstl::max_val(255 - 2 * color.GetRedu8(), 0);
+      // 0x4538-0x4554: signed 255-2*red clamped at zero, red=255, green=blue=value.
       color.SetRed(static_cast< uchar >(255));
       color.SetGreen(value);
       color.SetBlue(value);
     } else {
+      // 0x455C-0x4564: whole local color becomes White.
       color = CColor::White();
     }
+    // 0x4568-0x45A8: blend=5, material=0, flags=3; RGB from tint, alpha from virtual getter.
     SetModelFlags(CModelFlags::AlphaBlended(
         CColor(color.GetRedu8(), color.GetGreenu8(), color.GetBlueu8(), alpha)));
   } else {
+    // 0x45B0-0x4608: Normal, blend=0/material=0/flags=3, white RGBA=1.
     SetModelFlags(CModelFlags::Normal());
   }
   CActor::PreRender(mgr);
+  // 0x4614 base PreRender; 0x4618-0x4650: actual anim, actor transform, model scale, body controller.
   mBoneTracking.PreRender(mgr, *ModelData()->AnimationData(), GetTransform(),
                           GetModelData()->GetScale(), *mBodyController);
 }
