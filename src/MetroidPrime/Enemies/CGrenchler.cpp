@@ -972,6 +972,7 @@ float CGrenchler::GetVulnerableAngle() const {
   return mIsGrappleGuardian == true ? 0.7853982f : 1.3089969f;
 }
 
+// @ fn_27_F398
 void CGrenchler::DestroyTail(CStateManager& mgr) {
   mTailDestroyed = 1;
   mFadeActive = 0;
