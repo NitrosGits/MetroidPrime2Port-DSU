@@ -147,6 +147,7 @@ public:
                        float dt) override;
   // @ fn_7_45D8
   CProjectileInfo* ProjectileInfo() override { return &mProjectileInfo; }
+  // @ fn_7_2A08
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   CDamageInfo GetContactDamage() const override { return mContactDamage; }
   void SetupStateMachine(CStateManager& mgr) override;
