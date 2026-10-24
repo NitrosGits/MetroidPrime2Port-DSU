@@ -1263,6 +1263,7 @@ void CRezbit::UpdatePatrolMovement() {
   }
 }
 
+// @ fn_53_3704
 void CRezbit::BreakShield(CStateManager& mgr) {
   if (!mShieldBroken) {
     mShieldBroken = true;
@@ -1280,14 +1281,28 @@ void CRezbit::BreakShield(CStateManager& mgr) {
             CColor::White(), -1);
         if (explosion) {
           mgr.AddObject(explosion);
+#ifdef TARGET_PC
+          // 0x3790 lbz r0,0xc00 / 0x3794 beq 0x3928 (effect invalid) and 0x38BC cmplwi r28,0 /
+          // 0x38C0 beq 0x3928 (no explosion): the explode sound (0x3900) and the shield emitter
+          // removal (0x3904-0x3920) sit inside the valid-effect block; without an effect only
+          // SetActive(false) (0x3928) runs.
+          PlayCustomSound(GetTranslation(), GetTransform().GetForward(), mData.sound_ShieldExplode,
+                          false);
+          if (mShieldSfx) {
+            CSfxManager::RemoveEmitter(mShieldSfx);
+            mShieldSfx = CSfxHandle();
+          }
+#endif
         }
       }
+#ifndef TARGET_PC
       PlayCustomSound(GetTranslation(), GetTransform().GetForward(), mData.sound_ShieldExplode,
                       false);
       if (mShieldSfx) {
         CSfxManager::RemoveEmitter(mShieldSfx);
         mShieldSfx = CSfxHandle();
       }
+#endif
       shield->SetActive(false);
     }
   }

@@ -1,0 +1,7 @@
+# Rezbit rez5: wake the Sanctuary Fortress Rezbits (02_cliff_reactorcore layers 3+4) and stand next to one;
+# tools/cov/specs/rezbit_force3.py then calls the leaf bodies from gdb at a Think entry (REZ5_AT-th live call).
+@f300 god 1
+@f310 layer 3
+@f450 layer 4
+@f520 place e0005011b player 15
+@f1700 objs rezbit
