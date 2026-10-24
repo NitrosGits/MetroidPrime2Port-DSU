@@ -43,7 +43,7 @@ import os
 import gdb  # this spec is exec'd by tools/cov/force.py inside gdb's python
 
 _OUT = os.environ.get('COV_OUT', '/tmp')
-_LOG = os.path.join(_OUT, 'swb12_geom.log')
+_LOG = os.path.join(_OUT, 'swb13_geom.log')
 
 _VEC_U = 'rstl::vector<unsigned int, rstl::rmemory_allocator>'
 # the cast value is the auto_ptr array; index it with _OBJ_LIST0 % mgr wrapped in ((...))[0]
@@ -53,6 +53,7 @@ _GUN_EL = '(rstl::pair<TUniqueId, float>*)&((CPlayerGun*)%d)->mSeekerTargets.mDa
 _st = {
     'gunCalls': 0, 'gunWrites': 0, 'gunSkipCount': 0, 'gunSkipPick': 0, 'gunSkipNoGun': 0,
     'assignCalls': 0, 'apply': 0, 'err': 0, 'takenIdx': -1, 'takenUid': -1, 'takenSlot': -1,
+    'restoreFail': 0,
 }
 
 
@@ -102,26 +103,59 @@ def _actor_of(g, mgr, uid):
         return 0
 
 
+_BOID = '((CSwarmBasics::CBoid*)%d)'
+
+
+def _off(g):
+    """Byte offsets of the three translation floats inside CBoid, from the debug info (once)."""
+    if 'off' not in _st:
+        _st['off'] = {
+            k: _i(g, '(long)&((CSwarmBasics::CBoid*)0)->mTransform.%s' % k)
+            for k in ('m03', 'm13', 'm23')
+        }
+        _log('BOID field offsets: %s' % _st['off'])
+    return _st['off']
+
+
+def _word(g, addr, off):
+    return _i(g, '*(int*)((char*)(%s) + %d)' % (_BOID % addr, off))
+
+
+def _put_word(g, addr, off, word):
+    g.execute('set {int}((char*)(%s) + %d) = %d' % (_BOID % addr, off, word))
+
+
 class _RestoreBoids(gdb.FinishBreakpoint):
     def __init__(self, frame, items):
         super().__init__(frame, internal=True)
         self.items = items
 
     def stop(self):
+        off = _off(gdb)
         for it in self.items:
+            addr = it['addr']
             try:
-                # ORIGINAL translation (read before the write), not the target that was written
-                gdb.execute('set var %s.mTransform.m03 = %r' % (it['b'], it['orig'][0]))
-                gdb.execute('set var %s.mTransform.m13 = %r' % (it['b'], it['orig'][1]))
-                gdb.execute('set var %s.mTransform.m23 = %r' % (it['b'], it['orig'][2]))
-                gdb.execute('set var %s.mActive = %d' % (it['b'], it['active']))
-                _log('RESTORE-BOID %s boid=0x%x idx=%d written_target=(%.5f,%.5f,%.5f)'
-                     ' restored_original=(%.5f,%.5f,%.5f) active=%d'
-                     % (it['tag'], it['addr'], it['idx'], it['target'][0], it['target'][1],
-                        it['target'][2], it['orig'][0], it['orig'][1], it['orig'][2],
-                        it['active']))
+                # write the ORIGINAL raw words back through the CACHED boid address - no re-resolving
+                # of $this->mBoids.mItems[idx], no float formatting
+                for k in ('m03', 'm13', 'm23'):
+                    _put_word(gdb, addr, off[k], it['w'][k])
+                gdb.execute('set var (%s)->mActive = %d' % (_BOID % addr, it['active']))
+                # READ BACK: a successful gdb execute is not proof that the value is the original
+                back = {k: _word(gdb, addr, off[k]) for k in ('m03', 'm13', 'm23')}
+                back_active = _i(gdb, '(%s)->mActive' % (_BOID % addr))
+                same = back == it['w'] and back_active == it['active']
+                if not same:
+                    _st['restoreFail'] += 1
+                _log('RESTORE-BOID %s %s boid=0x%x idx=%d target=(%.5f,%.5f,%.5f)'
+                     ' original_words=[%d,%d,%d] readback_words=[%d,%d,%d] active %d/%d'
+                     % (it['tag'], 'OK' if same else 'MISMATCH', addr, it['idx'],
+                        it['target'][0], it['target'][1], it['target'][2],
+                        it['w']['m03'], it['w']['m13'], it['w']['m23'],
+                        back['m03'], back['m13'], back['m23'], it['active'], back_active))
             except Exception as e:
-                _log('RESTORE-BOID %s FAILED: %s' % (it['tag'], e))
+                _st['restoreFail'] += 1
+                _log('RESTORE-BOID %s FAILED boid=0x%x idx=%d: %s'
+                     % (it['tag'], addr, it['idx'], e))
         return False
 
 
@@ -140,10 +174,18 @@ class _RestoreGun(gdb.FinishBreakpoint):
             # signed zero would not survive %r -> parse)
             gdb.execute('set {int}((char*)(%s) + 0) = %d' % (elem, info['w0']))
             gdb.execute('set {int}((char*)(%s) + 4) = %d' % (elem, info['w1']))
-            _log('RESTORE-GUN %s gun=0x%x mCount back to %d, element 0 words back to'
-                 ' 0x%08x 0x%08x'
-                 % (info['tag'], gun, info['count'], info['w0'] & 0xFFFFFFFF,
-                    info['w1'] & 0xFFFFFFFF))
+            # READ BACK the words and the count: the execute succeeding is not proof
+            r0 = _i(gdb, '*(int*)((char*)(%s) + 0)' % elem)
+            r1 = _i(gdb, '*(int*)((char*)(%s) + 4)' % elem)
+            rcount = _i(gdb, '((CPlayerGun*)%d)->mSeekerTargets.mCount' % gun)
+            same = (r0 == info['w0'] and r1 == info['w1'] and rcount == info['count'])
+            if not same:
+                _st['restoreFail'] += 1
+            _log('RESTORE-GUN %s %s gun=0x%x mCount back to %d (readback %d), element 0 words'
+                 ' 0x%08x 0x%08x (readback 0x%08x 0x%08x)'
+                 % (info['tag'], 'OK' if same else 'MISMATCH', gun, info['count'], rcount,
+                    info['w0'] & 0xFFFFFFFF, info['w1'] & 0xFFFFFFFF,
+                    r0 & 0xFFFFFFFF, r1 & 0xFFFFFFFF))
         except Exception as e:
             _log('RESTORE-GUN %s FAILED: %s' % (info['tag'], e))
         return False
@@ -300,6 +342,16 @@ def assign_fixture(g):
         # NOTE: this wider cone is DERIVED from that uncovered arm, not yet measured.
         eye, fwd, right = cam
         ahead = (eye[0] + 2.0 * fwd[0], eye[1] + 2.0 * fwd[1], eye[2] + 2.0 * fwd[2])
+        # never ask for more than the caller's out vector can hold
+        ocap = -1
+        try:
+            if out:
+                ocap = _i(g, '((%s*)%d)->mCapacity' % (_VEC_U, out))
+        except Exception:
+            ocap = -1
+        if ocap >= 0 and ocap < needed:
+            _log('phase3 skipped: out capacity %d < numNeeded %d' % (ocap, needed))
+            return
         want = min(count, (needed if needed > 0 else 1) + 1)
         moves.append((taken_first, ahead))
         for k in range(1, want):
@@ -315,16 +367,16 @@ def assign_fixture(g):
                  % (st['assignCalls'], tcount, needed, ocount, count))
         return
     plan = []
+    off = _off(g)
     for idx, target in moves:
         b = '((CSwarmBasics*)%d)->mBoids.mItems[%d]' % (this, idx)
         try:
-            # the ORIGINAL translation, read before anything is written to this boid
-            orig = (_f(g, b + '.mTransform.m03'), _f(g, b + '.mTransform.m13'),
-                    _f(g, b + '.mTransform.m23'))
-            plan.append({'b': b, 'idx': idx, 'target': target, 'orig': orig,
-                         'active': _i(g, b + '.mActive'),
-                         'addr': _i(g, '&' + b),
-                         'tag': 'swb12-%d-ph%d' % (st['apply'] + 1, phase)})
+            addr = _i(g, '&' + b)          # the absolute boid pointer, cached for the restore
+            # the ORIGINAL translation as raw words, read before anything is written to this boid
+            words = {k: _word(g, addr, off[k]) for k in ('m03', 'm13', 'm23')}
+            plan.append({'addr': addr, 'idx': idx, 'target': target, 'w': words,
+                         'active': _i(g, '(%s)->mActive' % (_BOID % addr)),
+                         'tag': 'swb13-%d-ph%d' % (st['apply'] + 1, phase)})
         except Exception as e:
             _log('boid %d read failed: %s' % (idx, e))
             return
@@ -336,10 +388,11 @@ def assign_fixture(g):
     wrote = []
     for it in plan:
         try:
-            g.execute('set var %s.mTransform.m03 = %r' % (it['b'], it['target'][0]))
-            g.execute('set var %s.mTransform.m13 = %r' % (it['b'], it['target'][1]))
-            g.execute('set var %s.mTransform.m23 = %r' % (it['b'], it['target'][2]))
-            g.execute('set var %s.mActive = 1' % it['b'])
+            b = _BOID % it['addr']
+            g.execute('set var %s->mTransform.m03 = %r' % (b, it['target'][0]))
+            g.execute('set var %s->mTransform.m13 = %r' % (b, it['target'][1]))
+            g.execute('set var %s->mTransform.m23 = %r' % (b, it['target'][2]))
+            g.execute('set var %s->mActive = 1' % b)
             wrote.append(it)
         except Exception as e:
             _log('APPLY %s write failed on idx %d: %s' % (it['tag'], it['idx'], e))
@@ -352,7 +405,8 @@ def assign_fixture(g):
                 ','.join(str(it['idx']) for it in wrote),
                 ','.join(str(it['active']) for it in wrote),
                 ';'.join('(%.4f,%.4f,%.4f)' % it['target'] for it in wrote),
-                ';'.join('(%.4f,%.4f,%.4f)' % it['orig'] for it in wrote),
+                ';'.join('words[%d,%d,%d]' % (it['w']['m03'], it['w']['m13'], it['w']['m23'])
+                         for it in wrote),
                 cam[0][0] if cam else 0.0, cam[0][1] if cam else 0.0, cam[0][2] if cam else 0.0,
                 taken_first))
 
