@@ -245,3 +245,26 @@ Render probe (no writes) that logs the lighting flags and the outlier list per h
   back before blaming the light flags.
 - 4538 HardwareLight: still 0/8, unreachable while Render does not run.
 - 5024 UpdateAllBoidMovement: inlined into Think (no gcov hits), as swb5 recorded.
+
+## swb7: UpdateBoid to 85/85 lines, 41/44 branches
+
+`tools/cov/specs/swarmbasics_force7.py` (force_ret.py): a twelve-phase cycle at UpdateBoid's entry,
+every lvalue `$this`-relative (`$this->mBoids.mItems[0]` for mLaunched, mVelocity, mLifeTime,
+mFramesNotOnSurface, mRemainingLaunchNotOnSurfaceFrames, mHasLoopedSound; `$this` for mLifeTime,
+mVulnerableToSafeZone, mBoidRadius), plus a FORCE_INNER stub of
+`CSafeZoneManager::PointIsInSafeZone` returning 1 (the 599 hit, KillBoid and return). No loc:
+breakpoints and no `mNext` writes - the two things that stopped Render in swb6. Eight runs over four
+passes (swamp_hall, cliff_hall, 1200 f, timeout 700), every one `RC=0`, 0 caught/reach-stub, 0 failed
+writes.
+
+Progression: 76/85 35/44 -> 81/85 38/44 -> 85/85 40/44 -> **85/85 41/44**.
+
+Still untaken, with what is known about each:
+
+| arm | note |
+|---|---|
+| 613:3/4 | the launched `while (distance >= 0.f && !found)` fourth edge. Big and tiny boid radii both tried (mBoidRadius 1000 / 0.001 with velocities -20/-40/-400); the missing side is probably `found` true at the loop test, which needs a surface found while `distance` stays >= 0 - a boid placed just above a floor at a small radius |
+| 656:1/2, 657:1/2 | the falling (`!launched && mFramesNotOnSurface < 30`) path: `plane.GetHeight` and `distance <= mBoidRadius * mSurfaceProbeScale`. mBoidRadius 1000 / 0.001 did not turn them; the next attempt should write the boid's translation onto the floor (`mItems[0].mTransform` + the player's position) instead of the radius |
+
+The marker stays off (41/44) - the body is one arm from complete and the spec is ready for the last
+step.
