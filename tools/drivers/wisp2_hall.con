@@ -1,0 +1,33 @@
+# WispTentacle (REL 86) in Temple Grounds 0t_temple_hall_dark (3bfa3eff), layer 0, the wisp1 driver
+# plus the messages the AcceptScriptMsg arms need: AIUpdateDisabled (its null-manager arm), a real
+# morph-ball bomb on the tentacle (the Damage arm's bomb/power-bomb test) and a HitObject.
+@f120 god 1; give morphBallBombs 2; give powerBomb 2
+@f130 tp 8.4 -80 -33
+@f200 objs Wisp
+@f220 obj e00240036
+@f400 tp 8.4 -62 -33
+@f800 tp 8.4 -55 -33
+@f1100 tp 8.4 -47 -33
+@f1500 shoot e00240036
+@f2000 send e00240036 AIUpdateDisabled
+@f2100 send e00240036 Activate
+@f2400 send e00240036 HitObject
+@f3000 press x 20; press a 4
+@f3010 place e00240036 8.4 -39.3 -33.4
+@f3040 place e00240036 8.4 -39.3 -33.4
+@f3070 place e00240036 8.4 -39.3 -33.4
+@f3300 obj e00240036
+@f3500 damage e00240036 1
+@f4000 send e00240036 Alert
+@f4200 statecall e00240036 Grab 0; statecall e00240036 Grab 1; statecall e00240036 Grab 2
+@f4400 statecall e00240036 Pull 0; statecall e00240036 Pull 1
+@f4600 send e00240036 Decrement
+@f4800 statecall e00240036 Flinch 0; statecall e00240036 Flinch 1; send e00240036 Decrement
+@f5000 statecall e00240036 Withdraw 0; statecall e00240036 Withdraw 1
+@f5200 statecall e00240036 Spawn 0; statecall e00240036 Spawn 1
+@f5400 statecall e00240036 Attack 0; statecall e00240036 Attack 1
+@f5600 statecall e00240036 Search 0; statecall e00240036 Search 1
+@f5800 statecall e00240036 Patrol 0; statecall e00240036 Patrol 1
+@f6000 fsm e00240036 Sleep
+@f6100 damage e00240036 0
+@f6200 obj e00240036
