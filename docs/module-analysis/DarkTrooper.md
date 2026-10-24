@@ -47,13 +47,17 @@ dead arm: msg outside Activate/Update/Deactivate (EStateMsg has three enumerator
 
 | function | missing arm |
 |---|---|
-| FireMissile | dtr3 forced run (`tools/cov/specs/darktrooper_missile_force.py`: mFiresMissiles=1, missile optional m_valid=1, ProjectileInfo redirected to the small shot; forced, not natural): 25/26 lines, launch arm ran 191x; untaken 388:1/2 (gate false), 390, 408, 412, 427 arms (LOS/range/facing) — not marked |
-| CanMissileAttack, ShouldPause | forced mFiresMissiles=1: CanMissileAttack 5/6 (untaken 1029:1/4), ShouldPause 1/4 (InRange / mShouldPause arms unseen) — not marked. InMissileRange 2/2, no branches, asm-verified: marked |
 | CanSmallShotAttack, InRange, ApplyMeleeDamage | one short-circuit / out-of-range arm |
 | Think, Sleep, Pursue, Dead, CreateRagDoll, ThinkRagDoll, Touch, KnockBack, PreRender, DoUserAnimEvent, AcceptScriptMsg, GetAimPosition, FireSmallShot | 1-10 arms each (gcov_report rows) |
 | UnmarkPathRegion, MarkPathRegion, GetContactDamage, GetRagDoll, Null, ctor, dtor | not or partly reached |
 
-Next: a Dark Missile Trooper area (01_temple_hive02 / 01_temple_hive_04) for the missile arms;
+Missile family (dtr4, FireMissile / CanMissileAttack / ShouldPause marked, ALL-ARMS on merged gcov): driver
+`tools/drivers/darktrooper_missile.con` (`--frames 4300`; places the player in/out of range, clear/blocked line, facing/not, morphed
+(`press X`)), specs `darktrooper_missile_force.py` (mFiresMissiles=1, forced), `_los.py` (LOS clear, forced), `_deg408.py` /
+`_deg412.py` (forced: zero `toTarget` / `forward` XY locals at :408 / :412; dead in practice, the jittered target and gun column
+never give exactly zero), plus a natural run with mFiresMissiles=0 (gate-false arm). Arms 408/412 are forced only.
+
+Next (superseded for missiles): a Dark Missile Trooper area (01_temple_hive02 / 01_temple_hive_04) for the missile arms;
 forced arms with `tools/cov/force.sh` for the rest.
 
 ## Smoke family (proposal)

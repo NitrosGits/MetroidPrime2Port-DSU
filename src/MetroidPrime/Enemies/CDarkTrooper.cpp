@@ -384,6 +384,7 @@ void CDarkTrooper::FireSmallShot(CStateManager& mgr) {
   }
 }
 
+// @ fn_12_3F8C
 void CDarkTrooper::FireMissile(CStateManager& mgr) {
   if (mMissileAttack.mProjectile) {
     CVector3f target = GetTargetPosition(mgr);
@@ -971,6 +972,7 @@ bool CDarkTrooper::ClearLineOfFire(CStateManager&, const CTriggerData&) const {
   return mLineOfSightTracker.HasLineOfSight();
 }
 
+// @ fn_12_1934
 bool CDarkTrooper::ShouldPause(CStateManager& mgr, const CTriggerData&) const {
   if (mFiresMissiles) {
     return false;
@@ -1024,6 +1026,7 @@ bool CDarkTrooper::CanSmallShotAttack(CStateManager&, const CTriggerData&) const
 #endif
 }
 
+// @ fn_12_17C0
 bool CDarkTrooper::CanMissileAttack(CStateManager&, const CTriggerData&) const {
 #ifdef TARGET_PC
   // fn_12_17C0 0x17D0-0x17DC: fcmpo cooldown,0 / ble proceeds when !(cooldown > 0), so NaN passes.
