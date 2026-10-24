@@ -1308,6 +1308,7 @@ void CRezbit::BreakShield(CStateManager& mgr) {
   }
 }
 
+// @ fn_53_3A48
 void CRezbit::LowerShields(CStateManager& mgr) {
   if (mShieldBroken) {
     return;
