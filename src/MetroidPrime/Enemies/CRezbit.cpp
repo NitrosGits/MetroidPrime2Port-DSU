@@ -1224,6 +1224,7 @@ void CRezbit::SpawnLaser(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_53_332C
 bool CRezbit::SetupLaserTargets(CStateManager& mgr) {
   if (const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mTargetId))) {
     const CVector3f startAim = target->GetAimPosition(mgr, 0.f);
