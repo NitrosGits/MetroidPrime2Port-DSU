@@ -47,13 +47,8 @@
 @f2440 obj e0025014e
 @f2700 damage e00250156 10
 @f2740 obj e00250156
-# appended: hp fall on a leg collision actor + forced fsm change
-@f2750 damage u05fc 1; obj u05fc
-# appended: try other weapons / child leg for hp fall
+# hp fall on a leg collision actor (missile), then a forced fsm change
 @f2752 damage u05fc 1 0 missile; obj u05fc
-@f2754 damage u05fc 1 0 powerbomb; obj u05fc
-@f2756 damage u05fd 1; obj u05fd
-@f2758 shoot u05fd missile; obj u05fd
 @f2760 fsm e002500f9 RightLegHitReaction; obj e002500f9
 @f2860 obj e0025009e
 @f2900 send e0025009e Activate
