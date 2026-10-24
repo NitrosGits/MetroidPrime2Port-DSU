@@ -2018,6 +2018,7 @@ bool CSplinter::FindJump(CStateManager& mgr) {
   return false;
 }
 
+// @ fn_74_A67C
 void CSplinter::ApplyJumpVelocity() {
   CVector3f velocity = CVector3f::Zero();
   float dz = mJump.mStart.GetZ() - GetTranslation().GetZ();
@@ -2042,6 +2043,7 @@ void CSplinter::ApplyJumpVelocity() {
   mJump.mIsHighJump = true;
 }
 
+// @ fn_74_9D88
 void CSplinter::UpdatePitchBend() {
   const CVector3f& scale = GetModelData()->GetScale();
   float t = (scale.GetZ() + (scale.GetX() + scale.GetY())) / 3.f - 0.5f;
@@ -2211,6 +2213,7 @@ void CSplinter::Pounce(CStateManager& mgr, EStateMsg msg, float dt) {
   DeliverCommand(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Eleven));
 }
 
+// @ fn_74_9014
 void CSplinter::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   UpdateAlignmentMode(msg);
   mUnknown8e0 = 0;
