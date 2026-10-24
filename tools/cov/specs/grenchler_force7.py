@@ -140,7 +140,12 @@ CALLS.append(('Dead direct calls entrance', 'CGrenchler::PreRender(', '((CGrench
     # Update, submerged, sinking for 20 s and faded: MassiveDeath
     ([('$this->mSubmerged', '1'), ('$this->mSurfaced', '0'), ('$this->mSinkTime', '20.0'), ('$this->mDeathFadeTimer', '1000.0')] + _SURFACE,
      _DEAD(1), [_NOMASS]),
-], 'Dead: Activate without generators, with an electric sound, Update fading out surfaced / sinking'))
+    # Activate not submerged (IsDeeplySubmerged 0: the submerged block is skipped), CPatterned::Dead stubbed (an unactivated body crashes it)
+    ([], _DEAD(0), [('CGrenchler::IsDeeplySubmerged(CStateManager&) const', 0), ('CPatterned::Dead(', 0)]),
+    # Update, sinking for 20 s but not yet past the fade time
+    ([('$this->mSubmerged', '1'), ('$this->mSurfaced', '0'), ('$this->mSinkTime', '20.0'), ('$this->mDeathFadeTimer', '0.0')] + _SURFACE,
+     _DEAD(1), [_NOMASS]),
+], 'Dead: Activate without generators, with an electric sound, not submerged, Update fading out surfaced / sinking'))
 CALLS.append(('Dead direct calls guardian', 'CGrenchler::PreThink(',
           '((CGrenchler*)$rdi)->mIsGrappleGuardian == 1 && ((CGrenchler*)$rdi)->mCollisionManager.mPtr != 0', [
     ([('$P->mMorphBallState', '1')], _DEAD(1), [('CPatterned::Dead(', 0)]),                                                   # guardian, player morphed: collision manager off
