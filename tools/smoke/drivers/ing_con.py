@@ -158,18 +158,36 @@ if not changed:
 before = len(objs("CIng"))
 log("== kill: objs CIng before %d" % before)
 log(cmd(f"kill {TARGET}").strip())
-time.sleep(2)
-mid = len(objs("CIng"))
-log("== kill: objs CIng after kill %d" % mid)
-if mid >= before:
-    log("== kill: no count drop; forcing fsm %s Dead" % TARGET)
-    log(cmd(f"fsm {TARGET} Dead").strip())
-# wait for DeathDelete (Ing fades over ~2-3s)
-after = mid
-for _ in range(12):
+# poll for natural drop up to 10s; always log obj at 1s and 5s
+after = before
+natural_t = None
+logged1 = False
+logged5 = False
+for i in range(20):
     time.sleep(0.5)
+    elapsed = (i + 1) * 0.5
+    if not logged1 and elapsed >= 1.0:
+        log("== kill: obj at 1s: %s" % cmd(f"obj {TARGET}").strip().replace("\n", " "))
+        logged1 = True
+    if not logged5 and elapsed >= 5.0:
+        log("== kill: obj at 5s: %s" % cmd(f"obj {TARGET}").strip().replace("\n", " "))
+        logged5 = True
     after = len(objs("CIng"))
-    if after < before:
-        break
+    if after < before and natural_t is None:
+        natural_t = elapsed
+        log("== kill: natural drop after %.1fs" % natural_t)
+if not logged1:
+    log("== kill: obj at 1s: %s" % cmd(f"obj {TARGET}").strip().replace("\n", " "))
+if not logged5:
+    log("== kill: obj at 5s: %s" % cmd(f"obj {TARGET}").strip().replace("\n", " "))
+if natural_t is None:
+    log("== kill: NO natural drop, forcing fsm %s Dead" % TARGET)
+    log(cmd(f"fsm {TARGET} Dead").strip())
+    after = len(objs("CIng"))
+    for _ in range(12):
+        time.sleep(0.5)
+        after = len(objs("CIng"))
+        if after < before:
+            break
 log("== kill: objs CIng after %d" % after)
 log("== done")
