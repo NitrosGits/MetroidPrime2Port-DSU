@@ -5,7 +5,7 @@
 # drive every state, then shots, damage and kills, with `objs ChozoGhost` before the steps and at
 # the end. The forced con's knockbackRules write is unnecessary here: `spawn` defaults to 0x393ca543.
 # Checks are game updates (@f<n>), not wall seconds. The family stays capped (NC): the `frame`
-# barriers keep the console queue under 256 commands. F=1020 (last step @f920 +100).
+# barriers keep the console queue under 256 commands. F=1200 (last step @f950 +250).
 @f300 god 1; give missile 50; give chargeBeam 1
 @f330 spawn CHOG inactive ancs u04d0 1 34 fsm 5652a12f prop 54151870 0x681f3907 prop 3a58089c 0x681f3907
 @f332 spawn CHOG ancs u04d0 1 34 fsm 5652a12f prop 54151870 0x681f3907 prop 3a58089c 0x681f3907 prop fb12f672 0.0 prop ec76940c 3 prop fe9eac26 3 prop 61e511b3 0.5 prop 2369607a 1.0
@@ -278,3 +278,9 @@ frame
 @f877 spawn CHOG ancs u04d0 1 34 fsm 5652a12f prop 54151870 0x681f3907 prop 3a58089c 0x681f3907
 @f887 statecall e0036ff00 Dead 0; statecall e0036ff00 Dead 1 0.1; statecall e0036ff00 Dead 2; uevent e0036ff00 6; send e0036ff00 Deactivate; send e0036ff00 Delete
 @f920 objs ChozoGhost
+# appended: spawn a fresh ChozoGhost and drive an fsm change
+@f940 spawn CHOG ancs u04d0 1 34 fsm 5652a12f prop 54151870 0x681f3907 prop 3a58089c 0x681f3907
+@f942 obj e0036ff00
+# appended: fsm change on the freshly spawned ghost
+@f945 fsm e0036ff00 Attack; obj e0036ff00
+@f950 objs ChozoGhost
