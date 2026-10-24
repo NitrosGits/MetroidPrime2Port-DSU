@@ -224,3 +224,24 @@ call in 590. Six runs (swamp_hall, cliff_hall, 1200 frames, timeout 700), every 
 | 6104 UpdateBoid | 48/85, 17/44 -> **72/85, 27/44** | the `mItems[0].mLaunched` force works (the launched path 604-641 ran). Left: 590/592/598/599 (the lifetime and safe-zone arms: `mLifeTime` is a swarm member, so those need `$this->mLifeTime` on a frame where a boid is also launched), 617/618 (the `mRemainingLaunchNotOnSurfaceFrames` arm), 634-642 (the no-surface/stuck arms) |
 | 5024 UpdateAllBoidMovement | 0/7, 0/6 | unchanged: **the body cannot be measured here - it has an out-of-line symbol (objdiff 99.5%) but gcov never attributes a hit to it, so GCC inlines it into Think and the standalone copy is dead.** Marking it needs the inlined-line evidence (the same route the SLdr struct ctor used) or a build where it is not inlined |
 | 3B34 Render / 4538 HardwareLight | 36/53, 31/56 / 0/8 | unchanged: the outlier-loop light arms (1216-1226) still never run. The forced list at Think's entry is wiped by `UpdatePartition()` (which clears `mOutlierBoidList` later in the same body), and the write at Render's entry did not take either: `Render` reads `mOutlierBoidList` at 1215 but the loop stays untaken, so the write is being overwritten or the breakpoint's `$this` differs - check with a `forced.log` counter per hit before the next attempt |
+
+## swb6: UpdateBoid to 35/44, and a Render anomaly
+
+`tools/cov/specs/swarmbasics_force6.py` (force.sh) writes a six-phase cycle at UpdateBoid's entry
+(through `$this->mBoids.mItems[0]`: mLaunched, mFramesNotOnSurface 30, the remaining-launch frames;
+and through `$this`: mLifeTime 1/0, mVulnerableToSafeZone), captures `$this` at Think's entry and
+forges the outlier list at `loc:CSwarmBasics.cpp:824` (the line after `UpdatePartition()`), plus a
+Render probe (no writes) that logs the lighting flags and the outlier list per hit. Two runs
+(swamp_hall, cliff_hall, 1200 f, timeout 700), both exit normally with 0 failed writes.
+
+- **6104 UpdateBoid: 72/85, 27/44 -> 76/85, 35/44.** Left: 599 (the safe-zone hit itself:
+  `PointIsInSafeZone` returns false in these areas - stub it with force_ret), 613:3/4, 617:1/2, 635,
+  636, 642 (the launched no-surface arm and `mHasLoopedSound`), 653/656/657 (the non-launched tail).
+- **3B34 Render: 0/53 in these runs** (it was 36/53 in swb5) and the Render probe never fired: the
+  body was not entered at all, although PreRender ran (13/18). The forged outlier list persists
+  between frames (force.py does not restore), so the first thing to check next time is whether the
+  forged list - or the `mItems[0].mNext = 0` write, which also truncates whatever partition list that
+  boid was in - changes the render path. Re-run the swb5 spec (no loc: write) to confirm Render comes
+  back before blaming the light flags.
+- 4538 HardwareLight: still 0/8, unreachable while Render does not run.
+- 5024 UpdateAllBoidMovement: inlined into Think (no gcov hits), as swb5 recorded.
