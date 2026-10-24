@@ -1,5 +1,5 @@
 # SwarmBasics swb15: OFFLINE-CORRECTED, NOT RUNTIME-VALIDATED (2/2 boots exhausted).
-# Historical 4325 opens / 4324 closes / 33 overlaps remain unresolved. This fixture
+# Historical 4325 opens / 4324 closes and the unverified 33-overlap claim remain unresolved. This fixture
 # does not retroactively validate that run or justify fn_80_5024's marker.
 #
 # Frame.level() is a changing stack depth, NOT an activation identity. Retain the

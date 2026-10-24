@@ -694,9 +694,11 @@ finish fired -
     MOVE-LOOP swb15-2862-ph0 OK calls=0 expected=0
     RESTORE swb15-2862-ph0 OK ...            (window already consumed: no close)
 
-33 such "open while open" events occur in the run, and the one bad window (`swb15-2819-ph1`, 8
-MoveBoid calls for 7 boids, `i = 6` repeated) is one of them: the second window's first MoveBoid call
-was folded into the first window's counter. The fixture had exactly the defects the review names - a
+The earlier claim of **33** "open while open" events is unverified: the independent raw-order
+recount found one in run b (the pair above), not 33. The bad window `swb15-2819-ph1`
+logs `i=7 MISMATCH`, 8 calls for 7 boids; indices 3–6 were not printed, so a repeated
+`i=6` and attribution to a second window cannot be established from this log.
+The fixture had the structural defects the review names - a
 singleton `_st['window']`, a `FinishBreakpoint` that closes whatever window is global, no caller/frame
 ownership, no `out_of_scope`, no pending-window check at exit.
 
@@ -764,12 +766,16 @@ non-original memory and FAIL counters, not a fabricated successful rollback.
 
 This is **offline tooling correction only, NOT runtime validation**. The two-game-
 launch cap remains exhausted; no game, build, smoke or new coverage run was made.
-The historical 33 overlaps and unmatched open remain **unresolved**, the historical
+The historical overlap-count claim, unmatched open and argument mismatch remain **unresolved**; the
 raw counters/readbacks are not rewritten, and fn_80_5024 stays **UNMARKED**. Offline
 gates: both Python files compile, the 33-case suite passes, manifest check and
 review_decomp_diff pass; final source/header diff versus `9794622f0` remains empty.
 Report/tests/diff: `/tmp/opencode/reports/swb15-sol-fix.md` and
 `/tmp/opencode/swb15-sol-*`. Prior evidence and configure log are preserved.
+Independent review: `/tmp/opencode/swb15-review-astra/` preserves the rerun of all 33
+tests, git-blob dynamic regression and recount scripts. The 15 archived hashes matched;
+the changing-stack regression rejects the baseline and accepts the correction with
+exact memory restoration. This models frame equality, not real GDB unwinder lifetime.
 
 The body's asm shape was checked independently of the fixture: `0x5044 lbz r0,0x4f0(r3)` +
 `0x504C extrwi. r0,r0,1,27` (mAnimated, mask 0x10), `0x5050 beq` to the return, `0x5054` the model
