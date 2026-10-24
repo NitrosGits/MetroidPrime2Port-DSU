@@ -82,9 +82,10 @@ forces through the member names, never retail's offsets.
 bac1 (14 unmarked rows, all asm-checked with `asmcheck.py check`; no CROP/XCMP/XSTORE/MASK/OFFS
 finding on any of them, so no body changed):
 
-- **Unreachable in retail** - no `bl` to them anywhere in the module asm: UpdateEffects 1448 (its only
-  caller in the family would be UpdateSwarmAnimations 34C8, which is `blr` only), FindClosestCell 163C
-  (called only from UpdateEffects, 0x1510), HardwareLight 2CB4. Not markable: no run can execute them.
+- **No natural retail caller** - UpdateEffects 1448 (the nominal caller UpdateSwarmAnimations 34C8
+  is `blr` only) and HardwareLight 2CB4 have no module call site. FindClosestCell 163C is called
+  only by UpdateEffects at 0x1510. This explains old runs' zero coverage, not an inability to
+  verify their bodies: bsw4 below closes them with explicitly labelled forced native calls.
 - **ApplySafeZoneAvoidance 1C78** - bac1 reached only the no-zone arm. bsw2 closes the remaining arms
   with explicitly labelled callee-answer fixtures; see below (the old "not forceable" claim was wrong).
 - **Render 262C** - untaken 742:1/2, 743:1/2 (`lights == 0`, the light mask is never 0 in a lit room),
@@ -344,3 +345,122 @@ verifies **87/87** artifacts; whole-file C++ token identity/strip-diff passes;
 correctness asmcheck RC0, full asmcheck RC1 explained above. Review's three MARK
 lines are precisely these bodies; DEL entries are two inline-comment additions,
 not removed tokens. No broad smoke or other-family rebuild/run was requested.
+
+## bsw4: previously uncalled helpers (2026-10-24)
+
+Base `22cd1c5b6b0c9fb7bba19116bd45a0179be7dcee`, new branch `decomp/bsw4`;
+`decomp/bsw3` is preserved. Owned bodies only: UpdateEffects 1448, FindClosestCell
+163C, HardwareLight 2CB4. Production changes are comments/markers only; full-file
+C++ tokens equal the base. No loader/ctor/shared-file edits or new gameplay callers.
+
+### Arm table (archived measured.cpp line numbers)
+
+All calls below are **forced native calls**, not naturally reached gameplay, from
+`tools/cov/specs/bsw4_verify.py`'s guarded one-shot queue at the real swarm Think
+entry after tick 520. No bsw3 fixture/coverage work is repeated.
+
+| body/arm | measured result / actual output evidence |
+|---|---|
+| **fn_6_163C FindClosestCell — marked** | **12/12 lines, 15/15 nonthrow branch rows**. Five direct result oracles: empty→zero; second cell closer→(186,143,-33); first stays→(178,143,-33); exact midpoint tie→first; unordered NaN query→zero. Four further calls execute naturally inside forced UpdateEffects. |
+| Fixed loops / null-head skip (1040,1042,1043,1044) | Both taken/exited for all 5³ loops; heads occupied 16 / null 1109. Two real active boids supply head pointers; lists/transforms/extent/query storage are transient and restored. No pointer is invented or truncated. |
+| Strict distance update (1046/1047) | 8 update / 8 no-update decisions (gcov repeats block 6→7/8 at both lines). Actual query/result tests distinguish win/loss/tie/unordered, not just entry. Cell centers come from an independent affine-box calculation with exact integral fixture centers, not the function under test. |
+| **fn_6_1448 UpdateEffects — marked** | **24/24 lines, 30/32 nonthrow branch rows**. Eight actual calls; the only two untaken edges are host-only static-initialization contention tests, not retail branches (proof below). Four actual AddEmitter calls return non-null handles, each released through native RemoveEmitter. |
+| Count guard / loop (1060–1062) | Zero count skips, positive count iterates; loop true and exit 7/7. The null-pointer conjunct is compiler-folded / retail structurally dead below. |
+| Node type / character (1064–1066) | Wrong type 6 skips; sound type 8 continues. Character -1 selects any (4); non--1 checks produce one match (actual CPlayer anim character 3) and one mismatch (4). |
+| High sound-id bit (1067/1069/1070) | One high-bit-set skip, four clear emits; duplicated source rows identify the same decision. Actual 0x1234011D becomes sfx **285 / 0x011D**, proving ushort truncation at the emitter boundary. |
+| Static initialization/reuse (1073/1074) | Each retail guard initializes once and skips three times. First emitter gets maxDistance=17/falloff=.25. Later node fields change to 31/.75, while all actual emitted parameters remain 17/.25, verifying first-value retention. Both guard words and floats are restored after the sequence. |
+| Volume clamp / emitter payload (1076–1080) | Volumes -1/64/200/127 produce **0/64/127/127**; minVol=20, flags=1, direction zero, area=61, acoustics=true, looped=false. Actual emitted position is the nearest cell (178,143,-33). Native AddEmitter returns handles 3047429,3063813,3080197,3096581, verified against real wrapper handles before native release. This verifies payload and resource creation; no audible-waveform claim. |
+| **fn_6_2CB4 HardwareLight — marked** | **8/8 lines, 5/5 nonthrow branch rows**, one direct native call. Actual ordered calls area-build→dynamic-build→ActivateLights; final real light mask **63 / 0x3F**, active count **6**, selected lists **4 area + 2 dynamic**, ambient black/alpha255 on both GX channels. |
+| Lighting setup/output | At native area-build, actual local CActorLights has period8, offsetzero, max4/4, needs-relight=true and cast-shadows=false. Both builds receive the caller's exact same actual bounds pointer. ActivateLights return checks mask/count derived from its real selected lists; this is not a stubbed return. All normal call-return edges ran; GCC throw/unwind edges are not retail gameplay arms. |
+
+### Dead / host-only edges, and asm audit
+
+- `GetSoundPOIList` returns `CAnimData::mSoundPOINodes.data()`, not a nullable
+  member pointer. Retail `0x147C/0x1490` computes static storage+4 before the null
+  test `0x1498/0x149C`; loaded static storage cannot be address -4. On host the
+  array's fixed data address is compiler-known and the null test disappears.
+  The live animated actor's ctor has actually constructed **48** sound POI slots
+  (`CAnimData.cpp:116–128`); the fixture verifies count48, uses its first real node,
+  and snapshots the whole polymorphic node before changing scalar fields. No
+  fabricated actor, unconstructed POI object, new allocation or fake vtable.
+- The two missing gcov edges at 1073/1074 are **GCC host-only contention checks**:
+  block11→13 and block15→17, native UpdateEffects+544/+640 after
+  `__cxa_guard_acquire`. They are distinct from the retail guard-byte skip paths
+  (both retail init/reuse paths executed). Retail uses only byte load/test/store
+  `0x1524..0x1544` and `0x1550..0x156C`; there is no lock/acquire-return branch.
+  The host acquire-false path would require another thread completing initialization
+  between the byte test and lock acquisition. There are no natural calls to this
+  helper, and the queue invokes it sequentially on the game thread while stopped.
+  Neither branch was forced or falsely counted as covered. The two target getters
+  just read floats; no throwing initializer is invented to reach GCC unwind arms.
+- **1448:** type8 (`0x14B8`), character -1/equal (`0x14C0/0x14CC`), high-bit mask
+  `0x80000000` (`0x14DC clrrwi ...,31`), low16 sfx (`0x14E0`); current area,
+  actual player position, closest cell; sticky statics in maxDistance/falloff order;
+  signed clamp 0/127 (`0x157C/0x1598`), flags1/min20 and zero direction; acoustics1,
+  loop0, normal medium priority (`0x15B0..0x15FC`), complete-node stride/loop tail.
+- **163C:** FLT_MAX and zero result (`0x1674..0x1694`), loop strides y5/z25,
+  head test and margin0.1 (`0x16B4..0x16DC`), center squared distance,
+  `fcmpo; bge skip` (`0x1760/0x1764`) is strict `<`, including NaN skip. Whole
+  center/best updated together, first tie retained, all loop bounds5, full xyz return.
+- **2CB4:** period8, zero offset, max dynamic/area4/4 and false defaults
+  (`0x2CC8..0x2D28`); needs-relight bit0x80 set/cast-shadow bit0x40 clear
+  (`0x2D2C..0x2D4C`), actor's actual area and same bounds, ordered calls and
+  local destructor (`0x2D78/0x2D88/0x2D90/0x2D9C`).
+- Full and correctness-only asmcheck each inspect exactly these three bodies:
+  **RC0, no findings**. No behaviour divergence or gameplay fix was found.
+
+### Safety, launches and preserved evidence
+
+`bsw4_verify.py` snapshots all ORIGINAL addressable bytes before entering an armed
+Transaction; mutation happens only inside it. Context exit restores on native return,
+failed output oracle, mutation error or inferior-call unwind, attempts all restores,
+and logs actual readback bytes. Nested sound statics remain initialized across the
+test sequence then restore originals. Hardware CPU state (light arrays/types/mask/
+count, CGX cache, light scheduler) restores exactly; eight immediate GX light uploads
+and both ambient uploads replay the original state before resuming the game. No claim
+is made to read GPU memory back. Sound handles use native cleanup, never raw owning-
+pointer restoration. Eight committed `bsw4_selftest.py` tests cover normal, mutation
+error, inferior unwind, oracle error, nested unwind, independent selection rules,
+graphics replay after an unwind/CPU restore, and release of returned handles only.
+After launch2's successful measured sequence, the quality pass moved sound cleanup
+and GX replay into finally/GraphicsTransaction exit paths as well; normal calls are
+unchanged, and the added error-path tests pass. This final failure-path strengthening
+was **not** given a third game launch. `fixture-launch2.py` is the exact executed
+version; `fixture-final.py` preserves the strengthened committed version separately.
+
+Exactly **2/2 launches**, ledger `.../bsw4-evidence/launches.txt`:
+
+1. `/tmp/opencode/bsw4-a`, 800 frames: normal game exit, but fixture installation
+   failed before installing hooks because GDB's working directory was build-port-cov
+   and a relative binary-hash path doubled that component. This is NOT verification
+   evidence. Corrected to `gdb.current_progspace().filename`; offline GDB install,
+   symbol and call-expression checks passed before the final launch.
+2. `/tmp/opencode/bsw4-b`, 800 frames: normal exit, **zero caught/reach-stub/Python/
+   fixture errors**, queue DONE, all actual oracles above, **11 restored transactions /
+   32 byte-exact original/readback field pairs**; no pending test work. No third run.
+
+Both use `3bfa3eff,04_temple_unknownenemies_dark`, real swarm editor003d0023 and
+real CPlayer CAnimData (character3). The driver is `tools/drivers/bsw4_verify.con`;
+default force.py, **not force_ret.py**. Reproduction (only outside this capped slice):
+
+```
+tools/games_running.sh --wait
+BUILD=$PWD/build-port-cov SECS=600 tools/cov/force.sh tools/cov/specs/bsw4_verify.py \
+  <new-dir> 3bfa3eff,04_temple_unknownenemies_dark \
+  --con tools/drivers/bsw4_verify.con --fast --frames 800
+```
+
+Frozen **before markers/rebuild** in `/tmp/opencode/reports/bsw4-evidence/`:
+measured source, source/binary SHA256, matching gcno, per-run gcda/raw JSON/logs,
+both fixture versions, driver, native disassembly/static preflight. Subdirectory
+`b/` is the authoritative final run. Preserve bsw2/bsw3 artifacts and existing
+untracked build-port-link.configure.log. No excluded actor spawns, loader/ctor
+work, shared-file edits, other-family coverage runs or smoke.
+
+Targeted gates `/tmp/opencode/bsw4-{link-build,cov-build,manifest,matching-configure,
+matching-build,matching-sha1,strip-diff,asmcheck-all,asmcheck-correctness,selftest,
+runtime-audit,review}.log`: host/coverage link, manifest, configure/matching build,
+**87/87** artifact SHA1s, whole-file token identity and eight selftests pass. Both
+asmcheck variants RC0/no findings for exactly these three bodies. Review's three
+MARK lines are these bodies; its one DEL line is an inline comment on the existing
+ushort conversion, not a removed C++ token. No post-marker run or broad smoke.
