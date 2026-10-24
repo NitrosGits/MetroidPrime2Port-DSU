@@ -31,6 +31,7 @@ public:
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
 
   // CActor
+  // @ fn_32_0
   CHealthInfo* HealthInfo() override { return &mHealthInfo; }
   const CDamageVulnerability* GetDamageVulnerability() const override;
   rstl::optional_object< CAABox > GetTouchBounds() const override;
