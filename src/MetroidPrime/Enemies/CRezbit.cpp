@@ -1242,6 +1242,7 @@ bool CRezbit::SetupLaserTargets(CStateManager& mgr) {
   return false;
 }
 
+// @ fn_53_3538
 void CRezbit::UpdatePatrolMovement() {
   CVector3f move = BodyController()->CommandMgr().GetMoveVector();
   BodyController()->CommandMgr().ClearLocomotionCmds();
