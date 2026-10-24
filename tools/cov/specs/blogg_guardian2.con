@@ -1,0 +1,48 @@
+# Torvus Bog 08_swamp_grappleguardian layers 2/4/7: eight Bloggs (u0654 u0651 u064d u0649 u0646 u0641
+# u05c5 u05be). God-mode player in the water fights them, missiles/charged shots, then kills.
+# Plus morph/unmorph cycles with Bloggs in reach (ShouldEndBallPursuit, PlayerInBallMode) and a
+# Water probe. For tools/cov/specs/blogg_force2.py (force_ret.py) in 08_swamp_grappleguardian.
+@f300 layer 2
+@f320 layer 4
+@f340 layer 7
+@f400 god 1; give darkBeam 1; give lightBeam 1; give missile 50; give morphBall 1
+@f440 send u0654 Activate; send u0651 Activate; send u064d Activate; send u0649 Activate; send u0646 Activate; send u0641 Activate; send u05c5 Activate; send u05be Activate
+@f460 tp -165 32 -36
+@f470 face 0
+@f1000 obj u05c5; objs Water; give morphBallBombs 1; fastmorph 1
+@f1100 shoot u05c5 charged
+@f1140 shoot u05be missile
+@f1180 shoot u0641
+@f1220 beam dark
+@f1240 shoot u0646 charged
+@f1260 beam light
+@f1280 shoot u0649 charged
+@f1300 beam power
+@f1400 tp -155 20 -35
+@f1410 tp -165 36 -35
+@f1415 place u0654 player 2; place u0651 player 2; place u064d player 2
+@f1420 press x 10
+@f1430 fsm u0654 MoveToPlayer; fsm u0651 MoveToPlayer; fsm u064d MoveToPlayer
+@f1450 place u0654 player 2; place u0651 player 2
+@f1470 fsm u0654 GrabBall; fsm u0651 Thrash
+@f1500 press x 10
+@f1560 place u0654 player 3
+@f1580 place u0651 player 3
+@f1590 press x 10
+@f1700 press x 10
+@f1900 press x 10
+@f2100 press x 10
+@f2200 press x 10
+@f1600 place u064d player 3
+@f1620 shoot u064d charged
+@f1800 obj u05be
+@f2000 tp -175 40 -34
+@f2400 damage u0654 400
+@f2420 damage u0651 400 0 missile
+@f2440 damage u064d 400
+@f2460 damage u0649 400 0 dark
+@f2480 damage u0646 400 0 light
+@f2500 damage u0641 400
+@f2520 damage u05c5 400
+@f2540 damage u05be 400 0 missile
+@f2700 obj u05c5

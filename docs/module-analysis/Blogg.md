@@ -64,3 +64,21 @@ CanMeleeAttack, CanRangedAttack, CanTaunt, the ball-pursuit triggers (short-circ
 body (Exit/Deactivate or timer arms missing); Think, DoUserAnimEvent, ApplyCollisionActorDamage, Death,
 ComputeAttackPositions, PathToAttackPosition, CollectHints, the mouth/body GetDamageVulnerability.
 Next: drive a Mega Blogg (phase data; spawn not located by blogg1), force the trigger short-circuits.
+
+## Coverage (blog2, 2026-10-24)
+
+Why blog1's forces missed arms: nothing made `CanMeleeAttack` false (`mMeleePursuitEnded` /
+`mChargeOver`), the shaft Bloggs rarely evaluate the pursuit triggers (the 8-Blogg
+grappleguardian area does), and the persistent force.py writes interleaved. Now
+`tools/cov/specs/blogg_force2.py` (force_ret.py, call-scoped) + `blogg_guardian2.con`.
+
+| fn | arms | how |
+|---|---|---|
+| ShouldEndPursuit (5BF4) | 4/4 | forced (phase 0 `mMeleePursuitEnded=1`, phase 1 `mPlayerPursuitTime=1e9`) |
+| DetectBall (5A98) | 6/6 | forced (`mIsMegaBlogg=1`, `mCanBite=0`), rest natural |
+| ReleaseHints (1B78) | all | forced (`mHintIds[0]=0xffff`) null-hint arm |
+| ShouldEndBallPursuit (5B48) | 9/12 | unmarked: player morphed arms (729:1, 731:1, 733:0) never seen; only 3 calls |
+| PlayerInBallMode (5AF4) | 4/6 | unmarked: player morphed never seen with a Blogg evaluating it (743:1, 744:1) |
+| FindFluid / IsInhabitingFluid | 2/4, 3/4 | unmarked: no Blogg gets a fluid id (the two ScriptWater u061a/u0591 never register one) |
+
+Marked by blog2 (asmcheck clean apart from the unported CanMeleeAttack call and the bitfield NOPOS): 5BF4, 5A98, 1B78.
