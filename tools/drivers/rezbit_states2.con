@@ -1,0 +1,22 @@
+# Rezbit state-body gaps (rez2), pass 2. Run merged with rezbit_states.con.
+# B (layer 4): noise sets a non-zero mAlertDelay, Alert before/after it; placed on the player so the
+# toTarget vector is zero (IsMagnitudeSafe false) in Alert/PathFind; then a laser and a kill with it live.
+# A (layer 3): laser, then kill while the laser sfx is live (Dead removes mLaserSfx).
+@f600 god 1
+@f1000 layer 3
+@f1300 layer 4
+@f1302 place e00050065 player 15
+@f1303 noise 0
+@f1304 fsm e00050065 Alert
+@f1400 place e00050065 player 0
+@f1401 fsm e00050065 Alert
+@f1420 fsm e00050065 PathFind
+@f1440 place e00050065 player 15
+@f1445 fsm e00050065 CuttingLaserAttack
+@f1500 place e0005011b player 15
+@f1600 fsm e0005011b CuttingLaserAttack
+@f1640 obj e0005011b
+@f1660 kill e0005011b
+@f1700 obj e00050065
+@f1720 kill e00050065
+@f1800 objs rezbit

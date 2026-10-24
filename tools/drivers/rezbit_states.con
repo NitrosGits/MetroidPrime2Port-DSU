@@ -1,0 +1,26 @@
+# Rezbit state-body arms (rez2), Sanctuary Fortress 02_cliff_reactorcore layers 3+4:
+# Alert, PathFind, Strafe, Death/Dead on e0005011b (A) and e00050065 (B).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/rezbit.py <out> 1baa96c2,02_cliff_reactorcore \
+#        --con tools/drivers/rezbit_states.con --fast --frames 7000
+@f600 god 1
+@f1000 layer 3
+@f1300 layer 4
+@f1500 place e0005011b player 15
+@f1600 fsm e0005011b Alert
+@f1900 place e0005011b player 0
+@f2100 fsm e0005011b PathFind
+@f2300 place e0005011b player 15
+@f2400 codecall e0005011b SetTargetDest
+@f2500 fsm e0005011b PathFind
+@f2800 fsm e0005011b Idle
+@f2900 fsm e0005011b Strafe
+@f3100 codecall e0005011b SelectStrafeDirection
+@f3200 fsm e0005011b Strafe
+@f3500 fsm e0005011b Idle
+@f3600 obj e0005011b
+@f4000 codecall e0005011b RaiseShields
+@f4100 uevent e0005011b 27
+@f4400 kill e0005011b
+@f5000 place e00050065 player 15
+@f5200 kill e00050065
+@f6500 objs rezbit
