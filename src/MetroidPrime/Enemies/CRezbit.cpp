@@ -1469,6 +1469,7 @@ void CRezbit::BuildDerezModel(CAssetId model, CAssetId skinRules) {
   }
 }
 
+// @ fn_53_168
 CEntity* LoadRezbit(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrRezbit sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrRezbit.inc"
