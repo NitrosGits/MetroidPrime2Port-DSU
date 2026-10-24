@@ -286,6 +286,7 @@ void CRezbit::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUs
   }
 }
 
+// @ fn_53_718C
 void CRezbit::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     CPatterned::Think(dt, mgr);

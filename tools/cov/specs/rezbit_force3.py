@@ -56,6 +56,7 @@ def flush():
 
 gdb.execute('set $busy = 0')
 gdb.execute('set $done = 0')
+gdb.execute('set $tvalid = 0')
 gdb.execute('set $fbsd = -99')   # CPatterned::FindBestStepDirection answer, -99 = real
 
 # members (lvalues; `$t` is the Rezbit under test, `$m` the CStateManager)
@@ -311,17 +312,357 @@ def misc_group():
     flush()
 
 
+
+class GateRet(gdb.FinishBreakpoint):
+    def __init__(self, frame, val):
+        super().__init__(frame, internal=True)
+        self.val = val
+
+    def stop(self):
+        gdb.execute('set var $rax = %d' % self.val)
+        return False
+
+    def out_of_scope(self):
+        pass
+
+
+class Gate(gdb.Breakpoint):
+    """A callee's return value is overridden: `seq` answers are used in order, then `sticky` (None: real).
+    The breakpoint stays disabled except inside a phase, so a hot callee costs nothing otherwise."""
+
+    def __init__(self, sym):
+        super().__init__(addr(sym), internal=True)
+        self.seq = []
+        self.sticky = None
+        self.enabled = False
+
+    def stop(self):
+        val = self.seq.pop(0) if self.seq else self.sticky
+        if val is not None:
+            GateRet(gdb.newest_frame(), val)
+        return False
+
+
+GATES = {
+    'ipf': Gate('CSfxManager::IsPlaying('),
+    'cam': Gate('CCameraManager::IsInCinematicCamera('),
+    'ray': Gate('CStateManager::RayCollideWorld(CVector3f const&, CVector3f const&, CMaterialFilter const&, CActor const*)'),
+    'rez': Gate('CPlayer::GetRezbitState('),
+    'catne': Gate('CCharAnimTime::operator!='),
+    'team': Gate('CScriptTeamAiMgr::CanStartAttack('),
+}
+
+
+class AfterRet(gdb.FinishBreakpoint):
+    def __init__(self, frame, writes):
+        super().__init__(frame, internal=True)
+        self.writes = writes
+
+    def stop(self):
+        for lv, v in self.writes:
+            gdb.execute('set var %s = %s' % (lv, v))
+        return False
+
+    def out_of_scope(self):
+        pass
+
+
+class After(gdb.Breakpoint):
+    """At the return of `sym` the pending `writes` are made on the object of the call (`$t` = rdi)."""
+
+    def __init__(self, sym):
+        super().__init__(addr(sym), internal=True)
+        self.writes = []
+        self.enabled = False
+
+    def stop(self):
+        if self.writes:
+            obj = '((CRezbit*)%d)' % int(ev('$rdi'))
+            AfterRet(gdb.newest_frame(), [(lv.replace('$t', obj), v) for lv, v in self.writes])
+        return False
+
+
+AFTER = {'base_asm': After('CPatterned::AcceptScriptMsg(')}
+
+
+def gates_on(spec):
+    """spec: {name: (sticky, [seq])}"""
+    for n, (sticky, seq) in spec.items():
+        g = GATES[n]
+        g.sticky = sticky
+        g.seq = list(seq)
+        g.enabled = True
+
+
+def gates_off(names=None):
+    for n, g in GATES.items():
+        if names is None or n in names:
+            g.enabled = False
+            g.sticky = None
+            g.seq = []
+
+
+class NearRet(gdb.FinishBreakpoint):
+    def __init__(self, frame, lst, uid):
+        super().__init__(frame, internal=True)
+        self.lst = lst
+        self.uid = uid
+
+    def stop(self):
+        n = int(ev('*(int*)%d' % self.lst))
+        gdb.execute('set var ((unsigned short*)(%d + 4))[%d] = %d' % (self.lst, n, self.uid))
+        gdb.execute('set var *(int*)%d = %d' % (self.lst, n + 1))
+        return False
+
+    def out_of_scope(self):
+        pass
+
+
+class NearAppend(gdb.Breakpoint):
+    """CStateManager::BuildNearList(list&, aabox, filter, actor) returns with `uid` appended (a stray id)."""
+
+    def __init__(self):
+        super().__init__(addr('CStateManager::BuildNearList(rstl::reserved_vector<TUniqueId, 1024>&, CAABox const&'),
+                         internal=True)
+        self.uid = None
+        self.enabled = False
+
+    def stop(self):
+        if self.uid is not None:
+            NearRet(gdb.newest_frame(), int(ev('$rsi')), self.uid)
+        return False
+
+
+NEAR = NearAppend()
+
+
+class QueueRet(gdb.FinishBreakpoint):
+    def __init__(self, frame, saved, gates, afters=()):
+        super().__init__(frame, internal=True)
+        self.saved = saved
+        self.gates = gates
+        self.afters = afters
+
+    def stop(self):
+        for lv, v in self.saved:
+            gdb.execute('set var %s = %s' % (lv, v))
+        gates_off(self.gates)
+        return False
+
+    def out_of_scope(self):
+        pass
+
+
+class Queue(gdb.Breakpoint):
+    """At each call of `sym` on the Rezbit `$t` the next phase's writes are applied (restored at the return);
+    phase = {'w': [(lvalue, value)], 'g': {gate: (sticky, [seq])}, 'when': gdb expression}.
+    cyclic: phases repeat, at most `cap` calls are used; otherwise the breakpoint disables after the last phase."""
+
+    def __init__(self, sym, phases, tag, cyclic=False, cap=0, anyobj=False):
+        super().__init__(addr(sym))
+        self.anyobj = anyobj
+        self.phases = phases
+        self.tag = tag
+        self.i = 0
+        self.cyclic = cyclic
+        self.cap = cap
+
+    def stop(self):
+        try:
+            if int(ev('$rdi')) != int(ev('(long)$t')) and not self.anyobj:   # a gdb condition is not honoured next to stop()
+                return False
+            obj = '((CRezbit*)%d)' % int(ev('$rdi')) if self.anyobj else '$t'
+            sub = lambda x: x.replace('$t', obj) if isinstance(x, str) else x
+            ph = self.phases[self.i % len(self.phases)]
+            if 'when' in ph and not int(ev(sub(ph['when']))):
+                return False
+            self.i += 1
+            log('# queue %s phase %d' % (self.tag, (self.i - 1) % len(self.phases)))
+            saved = []
+            for lv, val in ph.get('w', []):
+                lv, val = sub(lv), sub(val)
+                if lv.startswith('!'):
+                    gdb.execute('set var %s = %s' % (lv[1:], val))
+                else:
+                    old = ev(lv)   # lazy: convert before the write
+                    saved.append((lv, repr(float(old)) if old.type.code == gdb.TYPE_CODE_FLT else str(int(old))))
+                    gdb.execute('set var %s = %s' % (lv, val))
+            gates_on(ph.get('g', {}))
+            for name, wl in ph.get('after', {}).items():
+                AFTER[name].writes = [(sub(lv), sub(v)) for lv, v in wl]
+                AFTER[name].enabled = True
+            if self.tag == 'AcceptScriptMsg':
+                log('#   active=%s shield=%s' % (ev(sub('$t->mActive')), ev(sub('$t->mShieldActorId.value'))))
+            QueueRet(gdb.newest_frame(), saved, list(ph.get('g', {}).keys()), list(ph.get('after', {}).keys()))
+            if (not self.cyclic and self.i >= len(self.phases)) or (self.cyclic and self.i >= self.cap):
+                self.enabled = False
+        except Exception as e:
+            log('QUEUE EXC %s %r' % (self.tag, e))
+        return False
+
+
+def deflect_seq(tag):
+    """DeflectMissiles under every list/sound arm; returns the id of the first deflected missile (or None)."""
+    R = '$t->mData.missileDeflectRadius'
+    CNT = '$t->mDeflectedMissiles.mCount'
+    SFXT = '$t->mDeflectSfxTime'
+    r0 = float(ev(R))
+    log('# DeflectMissiles %s: real' % tag)
+    run('call $t->DeflectMissiles(*$m)')
+    cnt = int(ev(CNT))
+    pid = int(ev('((unsigned short*)$t->mDeflectedMissiles.mData)[0]')) if cnt > 0 else None
+    log('# deflected %d, first %s' % (cnt, pid))
+    run('call $t->DeflectMissiles(*$m)')              # the same missiles again: all in the previous list
+    for lab, ipf, tm in (('not playing', 0, 0.0), ('playing, fresh', 1, 0.0), ('playing, old', 1, 1.0)):
+        log('# DeflectMissiles %s: %s' % (tag, lab))
+        w(CNT, 0)
+        w(SFXT, tm)
+        gates_on({'ipf': (ipf, [])})
+        run('call $t->DeflectMissiles(*$m)')
+        gates_off(['ipf'])
+    log('# DeflectMissiles %s: whole area' % tag)
+    w(R, 1.0e9)
+    w(CNT, 0)
+    run('call $t->DeflectMissiles(*$m)')
+    for lab, uid in (('not a projectile', int(ev('$t->mUniqueId.value'))), ('no such object', 0xfffe), ('invalid id', 0xffff)):
+        log('# DeflectMissiles %s: stray id in the near list (%s)' % (tag, lab))
+        NEAR.uid = uid
+        NEAR.enabled = True
+        run('call $t->DeflectMissiles(*$m)')
+        NEAR.enabled = False
+        NEAR.uid = None
+    # shots in flight re-typed: power shot without / with kPA_ComboShot (0x80), and a foreign type
+    run('set $actl = *(CObjectList**)($m->mObjectLists.mData + 16 * (int)kOL_Actor + 8)')
+    shots = []
+    i = int(ev('$actl->mFirstId'))
+    while i != -1:
+        e = ev('$actl->mObjects[%d].mEntity' % i)
+        try:
+            tn = str(e.dereference().dynamic_type)
+        except gdb.error:
+            tn = ''
+        if 'CEnergyProjectile' in tn:
+            q = int(e)
+            shots.append((q, int(ev('((CWeapon*)%d)->mWeaponType' % q)), int(ev('((CWeapon*)%d)->mProjectileAttribs' % q))))
+        i = int(ev('$actl->mObjects[%d].mNext' % i))
+    log('# DeflectMissiles %s: %d energy projectiles in flight' % (tag, len(shots)))
+    for lab, ty, at in (('power shot', 0, 0x0), ('power combo shot', 0, 0x80), ('foreign type', 99, 0x0)):
+        for q, t0, a0 in shots:
+            w('((CWeapon*)%d)->mWeaponType' % q, ty)
+            w('((CWeapon*)%d)->mProjectileAttribs' % q, (a0 & ~0x80) | at)
+        log('# DeflectMissiles %s: %s' % (tag, lab))
+        w(CNT, 0)
+        run('call $t->DeflectMissiles(*$m)')
+        log('#   deflected %s' % ev(CNT))
+    for q, t0, a0 in shots:
+        w('((CWeapon*)%d)->mWeaponType' % q, t0)
+        w('((CWeapon*)%d)->mProjectileAttribs' % q, a0)
+    w(R, r0)
+    w(SFXT, 0.0)
+    flush()
+    return pid
+
+
+STATE = {'obj': 0, 'render': None}
+
+
+def hook_obj():
+    gdb.execute('set $busy = 1')
+    try:
+        STATE['obj'] += 1
+        log('# obj trigger %d' % STATE['obj'])
+        pid = deflect_seq('trigger %d' % STATE['obj'])
+        if pid is not None and STATE['render'] is None:
+            CNT = '$t->mDeflectedMissiles.mCount'
+            D0 = '((unsigned short*)$t->mDeflectedMissiles.mData)[0]'
+            R = '$t->mData.missileDeflectRadius'
+            ph = [{'w': [(CNT, 1), (D0, pid), (R, 0.01)]}, {'w': [(CNT, 1), (D0, pid), (R, 1.0e9)]},
+                  {'w': [(CNT, 1), (D0, 0xfffe)]}, {'w': [(CNT, 1), (D0, pid), (R, 0.0)]}, {'w': [(CNT, 0)]}]
+            STATE['render'] = Queue('CRezbit::Render(', ph, 'Render', anyobj=True)
+    except Exception as e:
+        log('EXC obj %r' % (e,))
+    finally:
+        flush()
+        gdb.execute('set $busy = 0')
+
+
+def think_group():
+    ACT = '$t->mActive'
+    FRZ = '$t->mBodyController.mPtr->mFrozen'
+    old = (int(ev(ACT)), int(ev(RZ)), int(ev(FRZ)))
+    for label, act, rz, fz in (('inactive', 0, 0, 0), ('rezzed', 1, 0, 0), ('derezzed', 1, 1, 0), ('derezzed, frozen', 1, 1, 1)):
+        log('# Think %s' % label)
+        w(ACT, act)
+        w(RZ, rz)
+        w(FRZ, fz)
+        run('call $t->Think(0.016f, *$m)')
+    w(ACT, old[0])
+    w(RZ, old[1])
+    w(FRZ, old[2])
+    flush()
+
+
+def arm_queues():
+    ACT = '$t->mActive'
+    SID_ = '$t->mShieldActorId.value'
+    msg = '((CScriptMsg*)$rdx)->m_msg'
+    def m(name, w=()):
+        return {'w': list(w), 'when': msg + ' == kSM_' + name}
+    SFXL = '*(unsigned*)&$t->mLaserSfx'
+    act_ph = [m('Activate', [(ACT, 0)]), m('Activate', [(ACT, 0), (SID_, 0xffff)]), {'w': [(ACT, 0)], 'after': {'base_asm': [(AD, 28)]}, 'when': msg + ' == kSM_Activate'},
+              m('Activate', [(ACT, 0), (AD, 0)]), m('Activate'),
+              m('Deactivate', [(ACT, 0)]), m('Deactivate', [(SID_, 0xffff)]), m('Deactivate'),
+              m('Alert'), m('Damage'), m('ResistedDamage'), m('AreaLoaded'),
+              m('Delete', [(SFX, 0x1234), (SFXL, 0x1234)]), m('Delete', [(SFX, 0), (SFXL, 0)])]
+    STATE['asm'] = Queue('CRezbit::AcceptScriptMsg(', act_ph, 'AcceptScriptMsg', anyobj=True)
+    ev_ph = [{'w': [('!$ecx', 33)], 'g': {'catne': (None, [0, 0])}},
+             {'w': [('!$ecx', 33)], 'g': {'catne': (None, [1, 1])}},
+             {'w': [('!$ecx', 33)], 'g': {'catne': (None, [1, 0])}},
+             {'w': [('!$ecx', 33), ('$t->mTargetId.value', 0xffff)], 'g': {'catne': (None, [1, 1])}},
+             {'w': [('!$ecx', 34)]},
+             {'w': [('!$ecx', 99)]}]
+    STATE['uae'] = Queue('CRezbit::DoUserAnimEvent(', ev_ph, 'DoUserAnimEvent')
+    MB = PLID.replace('mUniqueId.value', 'mSpawnedMorphBallState')
+    sv = [{'w': [(TID, PLID), (MB, 0)], 'g': {'cam': (0, []), 'ray': (1, [])}},
+          {'w': [(TID, PLID), (MB, 0)], 'g': {'cam': (0, []), 'ray': (0, [])}},
+          {'w': [(TID, PLID), (MB, 0)], 'g': {'cam': (1, [])}},
+          {'w': [(TID, PLID), (MB, 1)], 'g': {'cam': (0, [])}},
+          {'w': [(TID, 0xffff)]},
+          {'w': [(TID, '$t->mUniqueId.value')]}]
+    STATE['sva'] = Queue('CRezbit::StartVirusAttack(', sv, 'StartVirusAttack')
+    VIRUS = [('$t->mVirusTimer', 0.0), (SID, 0xffff), (TID, PLID), ('$t->mTeamAiMgrId.value', 0xffff),
+             ('$t->mData.virusMinAttackDist', 0.0), ('$t->mData.virusMaxAttackDist', 1.0e9)]
+    sh = lambda extra, g=None: {'w': VIRUS + extra, 'g': g or {}}
+    vph = [sh([(MB, 0)], {'rez': (0, []), 'cam': (0, [])}),
+           sh([(MB, 1)], {'rez': (0, []), 'cam': (0, [])}),
+           sh([(MB, 0)], {'rez': (1, []), 'cam': (0, [])}),
+           sh([('$t->mData.virusMinAttackDist', 1.0e9), (MB, 0)], {'rez': (0, []), 'cam': (0, [])}),
+           sh([('$t->mData.virusMaxAttackDist', 0.0), (MB, 0)], {'rez': (0, []), 'cam': (0, [])}),
+           sh([(TID, 0xffff)], {'cam': (0, [])}),
+           sh([('$t->mVirusTimer', 1.0e9)], {'cam': (0, [])}),
+           sh([], {'cam': (1, [])}),
+           sh([('$t->mTeamAiMgrId.value', '$t->mUniqueId.value')], {'cam': (0, []), 'team': (0, [])}),
+           sh([('$t->mTeamAiMgrId.value', '$t->mUniqueId.value')], {'cam': (0, []), 'team': (1, [])})]
+    STATE['vir'] = Queue('CRezbit::ShouldVirusAttack(', vph, 'ShouldVirusAttack', cyclic=True, cap=60)
+    log('# queues armed')
+
+
 def hook():
     gdb.execute('set $busy = 1')
     try:
         run('set $t = (CRezbit*)$rdi')
         run('set $m = (CStateManager*)$rsi')
         log('# rezbit %s' % ev('$t'))
-        which = os.environ.get('REZ5_GROUPS', 'shield,misc').split(',')
+        which = os.environ.get('REZ5_GROUPS', 'shield,misc,think,queues').split(',')
         if 'shield' in which:
             shield_group()
         if 'misc' in which:
             misc_group()
+        if 'think' in which:
+            think_group()
+        if 'queues' in which:
+            arm_queues()
+        gdb.execute('set $tvalid = 1')
         gdb.execute('set $done = 1')
         log('# done')
     except Exception as e:
@@ -335,3 +676,7 @@ bp = gdb.Breakpoint(addr('CRezbit::Think('))
 bp.condition = '$busy == 0 && $done == 0 && ((CRezbit*)$rdi)->mAlive && ((CRezbit*)$rdi)->mActive'
 bp.ignore_count = int(os.environ.get('REZ5_AT', '300'))
 bp.commands = 'python hook()\ncontinue'
+
+ob = gdb.Breakpoint(addr('PortConsole::(anonymous namespace)::CmdObj('))
+ob.condition = '$tvalid == 1 && $busy == 0'
+ob.commands = 'python hook_obj()\ncontinue'
