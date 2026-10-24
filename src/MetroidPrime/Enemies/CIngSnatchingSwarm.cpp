@@ -637,6 +637,7 @@ void CIngSnatchingSwarm::InitializeStateMachine(CStateManager& mgr) {
   }
 }
 
+// @ fn_33_1908
 float CIngSnatchingSwarm::CalculateArcLength() const {
   if (mArcPoints.size() == 4) {
     const CVector3f quarter =
@@ -700,6 +701,7 @@ CVector3f CIngSnatchingSwarm::RandomArcOffset(CStateManager& mgr) const {
   return sideAmount * right + upAmount * up;
 }
 
+// @ fn_33_F7C
 void CIngSnatchingSwarm::UpdateParticles(CStateManager& mgr, float dt) {
   if (!gpMain->IsMaxSpeed()) {
     const CVector3f position = GetTranslation();
