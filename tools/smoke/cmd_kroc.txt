@@ -13,6 +13,7 @@
 @f440 obj u045b
 @f480 damage u045b 10 power; obj u045b
 @f520 damage u045b 10 power; obj u045b
+@f530 damage u045b 10 powerbomb; obj u045b
 @f560 kill u045b
 @f600 objs Krocuss
 @f1800 objs Krocuss
