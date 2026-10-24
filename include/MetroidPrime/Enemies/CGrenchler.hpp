@@ -155,6 +155,7 @@ public:
   };
 
   // Guessed name; surface ring, electric and beam effects.
+  // @ fn_27_1138C (SEffectA dtor: implicit; members destroyed in the retail order, objdiff 88-93%: check placement only)
   struct SEffectA {
     SEffectA(CAssetId surfaceRings, CAssetId electric, CAssetId beam, CAssetId hitFx,
              CAssetId eyeGlow);
@@ -194,6 +195,7 @@ public:
   };
 
   // Guessed name; grapple beam descriptor.
+  // @ fn_27_11494 (SEffectC dtor: implicit; members destroyed in the retail order, objdiff 88-93%: check placement only)
   struct SEffectC {
     SEffectC(CAssetId swoosh, CAssetId beamPart, const CDamageInfo& damage,
              const SLdrAudioPlaybackParms& sound);

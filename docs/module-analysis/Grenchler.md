@@ -336,3 +336,10 @@ is destroyed with flag 0 where the port passes -1: not read through yet; SLdrGre
 the three entrance Grenchlers (isGrappleGuardian 0) have grappleSwoosh = grappleBeamPart = 0xFFFFFFFF (kInvalidAssetId), the two guardian-room ones (isGrappleGuardian 1) 0x1C19C598 / 0x281FE23E.
 The null token's description dereference (`mLoadedGenDesc->mDFLG`, fault address 0x298) is the crash; retail's callers (the guardian's grapple states, CanGrapple false everywhere else) never build the beam for a
 Grenchler without the asset. `gren.swoosh` / `gren.startbeam` belong to the guardian room.
+
+## gren9 lane (base ed440706f, 2026-10-24): last dtor rows
+
+~SEffectA 1138C: retail destroys the members at 0x3c (mEyeGlow), 0x28 (mExplosion, flag 0x34), 0x1c, 0x10 (CToken x1c_/x10_) and 0x4 (mSurfaceRing): reverse declaration order, the
+same set and order as the port's; the objdiff 87.8% is where MWCC placed the `addic.` member-address checks and the token dtor flag (0 retail / -1 port: only the delete / virtual-base
+bits, CToken has neither). ~SEffectC 11494 the same (0x30 mBeamParticles, 0x24 mSwoosh, 0x14 x14_). Both marked in the header (structural check, no run). ~CGrenchlerTail 14F00: 99.6%,
+vtable symbol name only; marked in CGrenchlerTail.hpp. SLdrGrenchler ctor 13C8 (58%: ~100 property defaults, rodata labels and scheduling) and the `__sinit` rows stay unmarked.
