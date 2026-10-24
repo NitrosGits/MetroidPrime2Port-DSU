@@ -136,6 +136,7 @@ inline SLdrFlyingPirate::SLdrFlyingPirate()
   unknown_0x7ac85cb6 = -0.23f;
 }
 
+// @ fn_22_1228
 inline SLdrFlyingPirate::~SLdrFlyingPirate() {}
 
 #endif
