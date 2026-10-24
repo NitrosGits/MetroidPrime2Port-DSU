@@ -401,14 +401,14 @@ All five headers strip-diff CLEAN (marker-only); full evidence retained under
 `/tmp/opencode/reports/gb5-evidence/`.
 `tools/review_decomp_diff.sh 49261294b`:8 MARK, no other findings; each audited above.
 
-### Eleven implicit bodies deferred: annotation/ownership decision required
+### Eleven implicit bodies (completed in gb6)
 
 These are already implemented by native compiler-generated special members, and all
-eleven match100% in the upstream report. They have **no explicit function definition**
-above which to place a truthful marker. Do not attach markers to class declarations or
-add no-op implementations merely to change the progress count. No B/H reclassification
-was made in this lane. The orchestrator should choose the project's representation for
-implicit bodies; making shared engine definitions explicit exceeds a marker-only lane edit.
+eleven match100% in the upstream report. The established policy, confirmed by the user
+for gb6, annotates the owning struct/class declaration with
+`// @ fn_<mod>_<off> (<what>: implicit; objdiff 100%)` (CGrenchler/ gren8 precedent).
+gb5 missed that precedent; no new policy or explicit native definitions are required.
+gb6 applies it to all eleven below, with no B/H reclassification or production-code change.
 
 | ids | existing implicit definition site |
 |---|---|
@@ -421,5 +421,15 @@ implicit bodies; making shared engine definitions explicit exceeds a marker-only
 | 5EDC CTri copy ctor | `include/Kyoto/Math/CTri.hpp`,class |
 
 Full instruction listings for all19 candidates are retained. No missing gameplay body,
-engine defect or new accessor requirement was found; the residual work is source-marker
-representation/ownership, not an undiscovered gameplay algorithm.
+engine defect or new accessor requirement was found.
+
+## gb6 implicit-body completion (2026-10-24)
+
+Base `31c12b0ba`: all eleven entries above independently rechecked against exact module25
+virtual offsets in the current objdiff report: **11/11 at100.0%, none below100%**.
+The class/struct markers implement the existing annotation convention; **70 → 81/81**
+behaviour bodies. No runtime arm forcing is required by the matched-body exception.
+Evidence `/tmp/opencode/reports/gb6-evidence/geomblob-matches.json` retains symbol/unit/id
+bindings. No constructors/destructors were added and no data layout or behaviour changed.
+Host link0 FAILED;manifest check rc0;upstream configure+ninja and dtk shasum87 files OK.
+Progress tool confirms GeomBlobV2 **81/81**. All edits are marker comments/documentation.

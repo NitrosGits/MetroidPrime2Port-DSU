@@ -239,6 +239,7 @@ RSTL_DECLARE_BITWISE_CONSTRUCTION(CMetroidAreaCollider::SBoxEdge)
 NESTED_CHECK_SIZEOF(CMetroidAreaCollider, CMovingAABoxComponents, 0x580)
 NESTED_CHECK_SIZEOF(CMetroidAreaCollider, COctreeLeafCache, 0x910)
 
+// @ fn_25_5B08 (CAreaCollisionCache dtor: implicit; objdiff 100%)
 class CAreaCollisionCache {
 public:
   CAreaCollisionCache(const CAABox& aabb);

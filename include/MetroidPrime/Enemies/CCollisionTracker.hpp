@@ -69,6 +69,9 @@ RSTL_DECLARE_BITWISE_CONSTRUCTION(STriangleSlot)
 } // namespace rstl
 
 // Guessed name: a polyline that slides along the triangles of a collision cache.
+// @ fn_25_32A0 (CSurfacePath copy ctor: implicit; objdiff 100%)
+// @ fn_25_33F8 (CSurfacePath dtor: implicit; objdiff 100%)
+// @ fn_25_350C (CSurfacePath assignment: implicit; objdiff 100%)
 class CSurfacePath {
 public:
   typedef TFunctor2< const CVector3f&, const CVector3f& > TStepCallback;
@@ -102,6 +105,9 @@ CHECK_SIZEOF(CSurfacePath, 0x18)
 typedef rstl::pair< int, float > SPathPosition; // segment index, distance into the segment
 
 // Guessed name: one moving piece of the effect, a window sliding along its own path.
+// @ fn_25_3224 (SBlobStrand copy ctor: implicit; objdiff 100%)
+// @ fn_25_33A0 (SBlobStrand dtor: implicit; objdiff 100%)
+// @ fn_25_3490 (SBlobStrand assignment: implicit; objdiff 100%)
 struct SBlobStrand {
   SBlobStrand()
   : mPathDistance(0.f)

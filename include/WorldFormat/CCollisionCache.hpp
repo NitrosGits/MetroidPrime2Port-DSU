@@ -70,6 +70,7 @@ private:
 CHECK_SIZEOF(CCollisionCacheIterator, 0x40)
 
 // Guessed name
+// @ fn_25_4094 (CCollisionCache dtor: implicit; objdiff 100%)
 class CCollisionCache {
   friend class CCollisionCacheWriter;
   friend class CCollisionCacheIterator;
