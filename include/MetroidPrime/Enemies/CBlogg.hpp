@@ -145,6 +145,7 @@ public:
   // CPatterned
   void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                        float dt) override;
+  // @ fn_7_45D8
   CProjectileInfo* ProjectileInfo() override { return &mProjectileInfo; }
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   CDamageInfo GetContactDamage() const override { return mContactDamage; }
