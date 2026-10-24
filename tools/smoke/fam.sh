@@ -84,7 +84,10 @@ case "$KIND" in
   generic)
     # tools/drivers/con.py sends the command file's lines and answers when the game is up (it retries
     # the connect itself, and queues `@f` lines with `at`, so it must be connected before gameplay).
+    # MP2_CONSOLE_WAIT holds the boot until it is in: a fast run would otherwise be thousands of
+    # updates on before the first retry and fire every overdue `at` line on one update.
     if [ "$CMDF" != "-" ]; then
+      export MP2_CONSOLE_WAIT=120
       ( python3 "$ROOT/tools/drivers/con.py" "$PORT" "$CMDF" "$CON" >/dev/null 2>&1 ) &
       CONPID=$!
     fi

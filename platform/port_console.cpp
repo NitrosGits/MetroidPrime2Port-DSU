@@ -97,6 +97,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <condition_variable>
 #include <cstring>
 #include <deque>
 #include <mutex>
@@ -139,6 +140,7 @@ bool sEnabled = false;
 
 #ifndef _WIN32
 std::mutex sClientMutex;
+std::condition_variable sClientArrived;  // MP2_CONSOLE_WAIT: Start() waits on it
 int sClient = -1;
 unsigned sGeneration = 0;
 
@@ -242,6 +244,7 @@ void ListenThread(int listener) {
       sClient = client;
       generation = ++sGeneration;
     }
+    sClientArrived.notify_all();
     std::fprintf(stderr, "[console] client connected\n");
     buffer.clear();
     bool firstLine = true;
@@ -4192,6 +4195,19 @@ void Start() {
   sEnabled = true;
   std::fprintf(stderr, "[console] listening on 127.0.0.1:%d (try `help`)\n", port);
   std::thread(ListenThread, listener).detach();
+  // MP2_CONSOLE_WAIT=<secs> (1 = 600): hold the boot until a client connects, so a script driver
+  // that retries its connect (tools/drivers/con.py, every 0.5 s) is in before the first update. An
+  // unpaced fast run does thousands of updates a second; without the wait, a late connect queues
+  // every overdue `at` line for the same update and the script's spacing is lost.
+  if (const char* wait = std::getenv("MP2_CONSOLE_WAIT");
+      wait != nullptr && wait[0] != '\0' && std::strcmp(wait, "0") != 0) {
+    const int secs = std::strcmp(wait, "1") == 0 ? 600 : std::max(1, std::atoi(wait));
+    std::unique_lock< std::mutex > lock(sClientMutex);
+    if (!sClientArrived.wait_for(lock, std::chrono::seconds(secs), [] { return sClient >= 0; })) {
+      std::fprintf(stderr, "[console] no client after %d s (MP2_CONSOLE_WAIT), booting anyway\n",
+                   secs);
+    }
+  }
 #endif
 }
 

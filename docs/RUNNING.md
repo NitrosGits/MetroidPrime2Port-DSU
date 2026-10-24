@@ -70,6 +70,9 @@ Console scripts for `MP2_CONSOLE=<port>` runs: `tools/drivers/con.py <port> <cmd
 `@f<n> <cmd>` or `@<secs> <cmd>`. Each run of `@f` lines is queued up front through the console's
 `at <n> <cmd>` (one `at` per `;` part), so a command runs exactly at update n even unpaced;
 `CON_POLL=1` restores the old polling of `frame` (late by many updates in a fast run).
+`MP2_CONSOLE_WAIT=<secs>` (`1` = 600) holds the boot until a console client connects; the smoke
+harness sets it for every con.py family, since an unpaced run is otherwise thousands of updates in
+before con.py's 0.5 s retry and every overdue `at` line fires on one update.
 `gallery [mask]` prints the slideshow gallery unlock mask (0..63) or sets it (via PercentScans and the
 normal/hard-mode flags). `tools/drivers/slideshow_gallery.con` (`SMOKE_WORLD=69802220,cee3af0d`,
 `SKIP_FRONTEND=0`, `SMOKE_DRIVER` generic) sets 63, opens the slideshow, steps slides and leaves it; the
