@@ -83,6 +83,7 @@ public:
                 const CFlyingPirateData& data);
 
   // CEntity
+  // @ fn_22_0
   ~CFlyingPirate() override {}
   void PreThink(float dt, CStateManager& mgr) override;
   void Think(float dt, CStateManager& mgr) override;
@@ -111,8 +112,11 @@ public:
   CProjectileInfo* ProjectileInfo() override;
   void SetupStateMachine(CStateManager& mgr) override;
 
+  // @ fn_22_470
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
+  // @ fn_22_478
   bool IsListening() const override { return true; }
+  // @ fn_22_480
   float GetGravityConstant() const override {
     return mIsAquaPirate ? skAquaGravityConstant : skGravityConstant;
   }
@@ -197,7 +201,7 @@ private:
   rstl::reserved_vector< TLockedToken< CGenDescription >, 3 > mParticleGenDescs;
   rstl::reserved_vector< rstl::auto_ptr< CElementGen >, 3 > mParticleGens;
   TUniqueId mCurrentCoverPoint;
-  CPathFindSearch mPathFindSearch;
+  CPathFindSearch mPathFindSearch;   // 0x970 (0x470 addi r3,r3,0x970)
   float x78c_;
   int x790_;
   float mInitialHealth;
