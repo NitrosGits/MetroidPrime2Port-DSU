@@ -1977,6 +1977,7 @@ void CBlogg::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_7_43D8
 void CBlogg::LaunchBloggProjectile(const CTransform4f& xf, CStateManager& mgr, int maxProjectiles,
                                    uint attributes, bool homing,
                                    const CImpactVisorEffect& visorEffect, const CVector3f& scale) {
