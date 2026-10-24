@@ -1040,6 +1040,7 @@ void CRezbit::UpdateDeflectSfx(float dt) {
   }
 }
 
+// @ fn_53_1E48
 void CRezbit::DeflectMissiles(CStateManager& mgr) {
   const CVector3f center = GetAimPosition(mgr, 0.f);
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile));
