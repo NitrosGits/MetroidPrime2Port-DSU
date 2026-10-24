@@ -36,6 +36,7 @@ static const char* const skDeRezzedEffect = "DeRezzed";
 static const pas::EStepDirection skStrafeDirections[] = {pas::kSD_Left, pas::kSD_Right, pas::kSD_Up,
                                                          pas::kSD_Down};
 
+// @ fn_53_88E0
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"StateOver", static_cast< CPatterned::StateMachine::TriggerFunc >(&CRezbit::StateOver)},
     {"IsDeRezzed", static_cast< CPatterned::StateMachine::TriggerFunc >(&CRezbit::IsDeRezzed)},
