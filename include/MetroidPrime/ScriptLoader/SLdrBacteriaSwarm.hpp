@@ -48,6 +48,7 @@ struct SLdrBacteriaSwarm {
   bool spawnInstantly;                           // 0xc5bc5ed0
 };
 
+// @ fn_6_8C0
 inline SLdrBacteriaSwarm::SLdrBacteriaSwarm()
 : editorProperties()
 , actorInformation()
@@ -96,6 +97,7 @@ inline SLdrBacteriaSwarm::SLdrBacteriaSwarm()
 #endif
 }
 
+// @ fn_6_844
 inline SLdrBacteriaSwarm::~SLdrBacteriaSwarm() {}
 
 #endif
