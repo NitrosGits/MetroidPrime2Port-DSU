@@ -75,3 +75,20 @@ Not driven arm by arm: the SLdr ctor and dtor, `__sinit`, the weak copies (H) an
 `kral`: area `3bfa3eff,0b_temple_hall`, driver `tools/cov/specs/kralee.con`, 1300 frames, not fast. Expect
 `objs Kralee` to list e0010008f and e00100090, then only e00100090 after the kill. The pass condition is 0
 `[port] caught` / `reach-stub`.
+
+## Second pass (kral1, 2026-10-24)
+
+`tools/cov/specs/kral1_force.py` run with `COV_GDB_SCRIPT=tools/cov/force_ret.py` (writes live for one
+call, restored at its return; `FORCE_INNER` forces a callee's answer while the body runs), merged with
+the kr1 base run (`gcov_report.py build-port-cov /tmp/opencode/kral_{a,f,g}/gcov --module Kralee`).
+
+| body | arms | forced | still open |
+|---|---|---|---|
+| 20DC Patrol | 11/12 -> **marked** | `FORCE_INNER` on `CPatterned::GetConnectedObject`: it answers kInvalidUniqueId while Patrol runs, so `*waypoint == kInvalidUniqueId` (line 329's no-waypoint arm) | 316:3/4 dead: the msg switch covers 0x2190/0x21AC/0x222C and EStateMsg has three values |
+| 1DB8 WarpOut | 8/9 -> **marked** | `FORCE_INNER` on `CAnimationState::CanIssueCommand`: it answers true while WarpOut runs (the generate command arm at line 364) | 355:3/4 dead: the same three-value msg switch |
+| 244C ctor | 13/16 | - | 81:1/3 (an inlined guard on the init list's last line), 87:1/2 and 90:1/2: the shipped Kralees carry invalid warp particle ids, so the `!= kInvalidAssetId` arms need a valid id; the `mWarpInParticleEffect`/`mWarpOutParticleEffect` writes at the ctor entry (FORCE_RET phases 1/0/3, valid and invalid) did not move either arm |
+| 13C LoadKralee | 9/10 | - | 411:1/2 (the null modelData return): `modelData.m_valid = 0` in a FORCE_RET write is accepted at the entry but the restore cannot see the local ("No symbol modelData in current context"), and the arm stays untaken - the optional is not addressable at -O2 |
+| BF8 SLdrKralee ctor | - | - | `inline` in SLdrKralee.hpp:46, no standalone body to mark (its retail defaults are kr1's fix) |
+
+Marked this pass: Patrol and WarpOut. The PreRender/AddToRenderer/WarpIn rows the earlier table listed
+were marked before this pass.

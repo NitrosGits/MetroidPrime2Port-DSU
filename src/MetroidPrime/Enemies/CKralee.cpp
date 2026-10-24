@@ -312,6 +312,7 @@ void CKralee::WarpIn(CStateManager& mgr) {
                     true);
 }
 
+// @ fn_37_20DC
 void CKralee::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -351,6 +352,7 @@ void CKralee::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_37_1DB8
 void CKralee::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
