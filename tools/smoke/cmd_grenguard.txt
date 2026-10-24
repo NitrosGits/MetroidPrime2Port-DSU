@@ -2,7 +2,7 @@
 # holds the guardian u052e and u04fa, both inactive until Activate. The steps follow
 # tools/cov/specs/grenchler_guardian.con (the gren2 driver: lock-on, tail shots, missile, kills).
 # Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2500,
-# last check f2250.
+# last check f2280.
 @f300 layer 3
 @f400 god 1; give grappleBeam 1; give darkBeam 1; give missile 5
 @f420 send u052e Activate; send u04fa Activate
@@ -31,3 +31,5 @@
 @f2210 damage u04fa 5 0 missile; obj u04fa
 @f2220 fsm u04fa Lurk; obj u04fa
 @f2250 kill u052e; damage u04fa 1000 0 missile; objs grenchler
+# later check: the killed guardian is gone by the next update (3 -> 2 objects)
+@f2280 objs grenchler
