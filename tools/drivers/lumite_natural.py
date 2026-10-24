@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Lumite natural-play driver: no `fsm` forcing.  The player is placed at several distances from
+"""(lum2: LUM2=1 adds AreaLoaded to every Lumite, a `kill` of the 2nd, a Delete of the 3rd and a longer run.)
+Lumite natural-play driver: no `fsm` forcing.  The player is placed at several distances from
 each Lumite and the state machine runs by itself (triggers, shots, taunts, hops between hints),
 then a few small damages.  Run with MP2_GODMODE=1.
 
 usage: lumite_natural.py <port> [outfile] [layer]
 """
+import os
 import socket
 import sys
 import time
@@ -74,13 +76,36 @@ if LAYER is not None:
     wait_frame(frame() + 20)
 ids = lumites()
 log("lumites %s" % ids)
+# LUM2_FILES=<prefix>: write the uids (decimal) of the team manager and the safe zones for the gdb force
+# script (tools/cov/specs/lumite_lum2_calls.py reads <prefix>.team / <prefix>.zones)
+if os.environ.get("LUM2_FILES"):
+    def uids(kind):
+        return [str(int(l.split()[0][1:], 16)) for l in cmd("objs %s" % kind).split("\n") if l.startswith("u")]
+    open(os.environ["LUM2_FILES"] + ".team", "w").write("\n".join(uids("Team")))
+    open(os.environ["LUM2_FILES"] + ".zones", "w").write("\n".join(uids("SafeZone")))
 # wake every safe zone and AI hint so sunlight hops / zone damage can happen
 for kind in ("SafeZone", "AIHint"):
     for l in cmd("objs %s" % kind).split("\n"):
         if l.startswith("u") and "inactive" in l:
             cmd("send %s Activate" % l.split()[0])
-for target in ids:
+LUM2 = os.environ.get("LUM2") == "1"
+if LUM2:
+    for target in ids:
+        log(cmd("send %s Activate" % target))
+        log(cmd("send %s AreaLoaded" % target))
+for n, target in enumerate(ids):
     log(cmd("send %s Activate" % target))
+    if LUM2 and n == 1:
+        wait_frame(frame() + 30)
+        log("kill: %s" % cmd("kill %s" % target))
+        log("fsm Dead: %s" % cmd("fsm %s Dead" % target))
+        wait_frame(frame() + 400)
+        log(cmd("obj %s" % target).replace("\n", " | ")[:200])
+        continue
+    if LUM2 and n == 2:
+        log("delete: %s" % cmd("send %s Delete" % target))
+        wait_frame(frame() + 100)
+        continue
     for d in DISTS:
         log("place %d: %s" % (d, cmd("place %s player %d" % (target, d))))
         wait_frame(frame() + 150)
