@@ -724,6 +724,7 @@ CVector3f CMetroid::GetAttackTargetPos(const CStateManager& mgr) const {
   return GetTranslation();
 }
 
+// @ fn_40_40F4
 void CMetroid::ApplySeparationBehavior(CStateManager& mgr) {
   const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
@@ -1115,6 +1116,7 @@ float CMetroid::ComputeMorphingPlayerSuckUpPos(const CPlayer& player) const {
   return height;
 }
 
+// @ fn_40_1B4C
 void CMetroid::ComputeSuckPiratePosRot(CStateManager& mgr, CVector3f& pos, CQuaternion& rot) const {
   if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(GetAttackTargetId()))) {
     const CTransform4f headXf = actor->GetLocatorTransform(rstl::string_l(skPirateSuckJoint));
@@ -1306,6 +1308,7 @@ bool CMetroid::ShouldReleaseFromTarget(CStateManager& mgr) {
   return false;
 }
 
+// @ fn_40_50BC
 void CMetroid::TelegraphAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:

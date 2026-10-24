@@ -135,6 +135,7 @@ bool CBabyMetroid::InEnergySourcePosition(CStateManager&, const CTriggerData&) c
   return delta.MagSquared() < 4.f;
 }
 
+// @ fn_40_8C38
 void CBabyMetroid::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -167,6 +168,7 @@ void CBabyMetroid::TryJoinHive(CStateManager& mgr) {
   }
 }
 
+// @ fn_40_90E0
 void CBabyMetroid::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -235,6 +237,7 @@ void CBabyMetroid::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_40_9C78
 void CBabyMetroid::Think(float dt, CStateManager& mgr) {
   if (mHitByPlayerProjectile) {
     if (mShouldSeekEnergySource) {
