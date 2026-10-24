@@ -33,11 +33,11 @@ offset	fn	size	class	name	slice	what	marker
 00FB4	fn_40_FB4	40	B	OnDockTouch	-	upstream body (CMetroid)	no
 00FF4	fn_40_FF4	8C	B	SetupStateMachine	met1	upstream body (CMetroid)	yes
 01080	fn_40_1080	F0	B	UpdateAttackTarget	-	upstream body (CMetroid)	yes
-01170	fn_40_1170	15C	B	FindNearestTarget	-	upstream body (CMetroid)	no
+01170	fn_40_1170	15C	B	FindNearestTarget	-	upstream body (CMetroid)	yes
 012CC	fn_40_12CC	108	B	SelectNewTarget	met1	upstream body (CMetroid)	yes
 013D4	fn_40_13D4	130	B	CanStartAttack	-	upstream body (CMetroid)	no
 01504	fn_40_1504	A4	B	UpdateAILogicTimers	met1	upstream body (CMetroid)	yes
-015A8	fn_40_15A8	F0	B	IsPlayerInFluid	-	upstream body (CMetroid)	no
+015A8	fn_40_15A8	F0	B	IsPlayerInFluid	-	upstream body (CMetroid)	yes
 01698	fn_40_1698	2A0	B	GetOrigin	met2	upstream body (CMetroid)	yes
 01938	fn_40_1938	C0	B	IsTargetGettingSucked	-	upstream body (CMetroid)	no
 019F8	fn_40_19F8	104	B	ComputeMorphingPlayerSuckUpPos	-	upstream body (CMetroid)	no
@@ -66,7 +66,7 @@ offset	fn	size	class	name	slice	what	marker
 044B4	fn_40_44B4	38	B	GetDamageMultiplier	met1	upstream body (CMetroid)	yes
 044EC	fn_40_44EC	58	B	GetGrowthStage	met2	upstream body (CMetroid)	yes
 04544	fn_40_4544	1C8	B	GetAttackTargetPos	-	upstream body (CMetroid)	no
-0470C	fn_40_470C	74	B	IsPirateValidTarget	-	upstream body (CMetroid)	no
+0470C	fn_40_470C	74	B	IsPirateValidTarget	-	upstream body (CMetroid)	yes
 04780	fn_40_4780	2C	B	IsSuckingEnergy	-	upstream body (CMetroid)	no
 047AC	fn_40_47AC	E4	B	SetPatrolDest	met2	upstream body (CMetroid)	yes
 04890	fn_40_4890	314	B	SetTargetDest	-	upstream body (CMetroid)	no
