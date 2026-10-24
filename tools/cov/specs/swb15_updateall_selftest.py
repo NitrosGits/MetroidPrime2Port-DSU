@@ -1,326 +1,530 @@
-"""Offline regression tests for tools/cov/specs/swb15_updateall.py (hardened swb15 fixture).
+"""Offline GDB model: real changing levels, fresh wrappers, byte-exact memory.
 
-Runs the fixture against a stub `gdb` with a modelled stack (frames with level + name) and modelled
-swarm memory, and asserts BOTH the final counters/status AND the restored memory.  No gdb, no game.
-
-    python3 tools/cov/specs/swb15_updateall_selftest.py [--keep]
-
-Exit code 0 means every check passed.  The log is written to $COV_OUT (default: a temp dir).
+No GDB inferior and no game launch. Logs are appended, never remove old evidence.
+Run: python3 tools/cov/specs/swb15_updateall_selftest.py
 """
 import os
+from pathlib import Path
+import re
+import struct
 import sys
+import tempfile
 import types
-
-OUT = os.environ.get('COV_OUT', '/tmp/opencode/swb15-selftest')
-os.makedirs(OUT, exist_ok=True)
-LOG = os.path.join(OUT, 'swb15_geom.log')
-if os.path.exists(LOG):
-    os.remove(LOG)
+import unittest
 
 BODY = 'CSwarmBasics::UpdateAllBoidMovement(CStateManager&, float)'
-THINK = 'CSwarmBasics::Think(float, CStateManager&)'
 MOVE = 'CSwarmBasics::MoveBoid(CStateManager&, CSwarmBasics::CBoid&, CVector3f const&, float)'
+THINK = 'CSwarmBasics::Think(float, CStateManager&)'
+A, B = 0x100001000, 0x100009000  # deliberately above 32 bits
+OUT = os.environ.get('COV_OUT') or tempfile.mkdtemp(prefix='swb15-sol-offline-', dir='/tmp/opencode')
+Path(OUT).mkdir(parents=True, exist_ok=True)
 
-B, MD, AD, BI, DI = 0x9000, 0x9100, 0x9200, 0x9500, 0x9600
-MEM = {}            # (swarm, field) -> value ; field in {'animated', 'count'}
-MODEL = {'cap': 50, 'models': 4, 'adv': 4}
-REGS = {}
-STACK = {'top': None}
-WRITES = []
-FAIL_WRITE_AT = {'n': None}
-ARM_FAIL = {'value': False}
+
+class Activation:
+    def __init__(self, name):
+        self.name = name
+        self.invalid = False
+        self.error = None
 
 
 class Frame:
-    def __init__(self, level, name, older=None):
-        self._level, self._name, self._older = level, name, older
+    def __init__(self, harness, activation):
+        self.h, self.activation = harness, activation
+
+    def _error(self, method):
+        if self.activation.error == method:
+            raise RuntimeError('unreadable ' + method)
+
+    def is_valid(self):
+        self._error('valid')
+        return not self.activation.invalid and self.activation in self.h.stack
 
     def level(self):
-        return self._level
+        self._error('level')
+        return self.h.stack.index(self.activation)  # NOT an entry-time constant
 
     def name(self):
-        return self._name
+        self._error('name')
+        return self.activation.name
 
     def older(self):
-        if self._older is None:
-            raise RuntimeError('no older frame')
-        return self._older
+        self._error('older')
+        index = self.level() + 1
+        return Frame(self.h, self.h.stack[index]) if index < len(self.h.stack) else None
+
+    def __eq__(self, other):
+        self._error('equal')
+        if isinstance(other, Frame):
+            other._error('equal')
+            return self.h is other.h and self.activation is other.activation
+        return False
 
 
-def body_frame(level=1):
-    return Frame(level, BODY, Frame(level + 1, THINK))
-
-
-def move_frame(level=1):
-    """A MoveBoid frame whose immediate caller is the body frame at `level`."""
-    return Frame(level - 1, MOVE, body_frame(level))
-
-
-class BP:
-    def __init__(self, *a, **k):
-        self.enabled = True
-
-
-class FB(BP):
-    made = []
-
-    def __init__(self, fr=None, internal=True, win=None, **k):
-        if ARM_FAIL['value']:
-            raise RuntimeError('cannot arm the finish breakpoint')
-        super().__init__()
-        self.frame, self.win = fr, win
-        FB.made.append(self)
-
-
-class Ev:
+class Harness:
     def __init__(self):
-        self.handlers = []
+        self.stack = [Activation(THINK)]
+        self.memory, self.models, self.addresses = {}, {}, {}
+        self.regs, self.writes, self.breakpoints = {}, [], []
+        self.inferior, self.thread = 1, 10
+        self.arm_fail = False
+        self.write_hook = None
+        self.read_hook = None
+        self.ignore_write = None
+        h = self
 
-    def connect(self, f):
-        self.handlers.append(f)
+        class Finish:
+            def __init__(self, frame, internal=True):
+                if h.arm_fail:
+                    raise RuntimeError('cannot arm finish breakpoint')
+                self.frame, self.enabled = frame, True
+                h.breakpoints.append(self)
 
+        self.gdb = types.ModuleType('gdb')
+        self.gdb.FinishBreakpoint = Finish
+        self.gdb.newest_frame = lambda: Frame(self, self.stack[0]) if self.stack else None
+        self.gdb.selected_inferior = lambda: types.SimpleNamespace(num=self.inferior)
+        self.gdb.selected_thread = lambda: types.SimpleNamespace(global_num=self.thread)
+        self.gdb.parse_and_eval = self.evaluate
+        self.gdb.execute = self.execute
+        self.gdb.events = types.SimpleNamespace(exited=types.SimpleNamespace(connect=lambda fn: None))
+        sys.modules['gdb'] = self.gdb
+        self.ns = {'__name__': 'swb15_offline'}
+        old = os.environ.get('COV_OUT')
+        os.environ['COV_OUT'] = OUT
+        try:
+            path = Path(__file__).with_name('swb15_updateall.py')
+            exec(compile(path.read_text(), str(path), 'exec'), self.ns)
+        finally:
+            if old is None:
+                os.environ.pop('COV_OUT')
+            else:
+                os.environ['COV_OUT'] = old
+        self.st = self.ns['_st']
 
-def _mem(swarm, field, default):
-    return MEM.get((swarm, field), default)
+    def add(self, swarm=A, count=3, animated=1):
+        raw = bytearray(range(16))
+        raw[0] = 0xA1 | (animated << 2)  # retain unrelated flag bits exactly
+        struct.pack_into('<i', raw, 4, count)
+        self.memory[swarm] = raw
+        self.models[swarm] = dict(cap=50, models=4, adv=4)
+        for offset, field in ((0x100, 'boids'), (0x200, 'models'), (0x300, 'adv')):
+            self.addresses[swarm + offset] = (swarm, field)
 
+    def original(self):
+        return {address: bytes(raw) for address, raw in self.memory.items()}
 
-def ev(e):
-    e = e.strip()
-    if e in ('$rdi', '$rsi', '$rdx', '$rcx'):
-        return REGS[e]
-    if e == '$xmm0.v4_float[0]':
-        return 1.0 / 60.0
-    if e == '(long)sizeof(CSwarmBasics::CBoid)':
-        return 192
-    if e == '(long)sizeof(CAdvancementDeltas)':
-        return 28
-    if e.startswith('&((CSwarmBasics*)') and 'mBoids' in e:
-        return B
-    if e.startswith('&((CSwarmBasics*)') and 'mModelDatas' in e:
-        return MD
-    if e.startswith('&((CSwarmBasics*)') and 'mAdvancementDeltas' in e:
-        return AD
-    if '->mAnimated' in e:
-        return _mem(REGS['$rdi'], 'animated', 0)
-    if ('*)%d)->mCount' % B) in e:
-        return _mem(REGS['$rdi'], 'count', 0)
-    if ('*)%d)->mCapacity' % B) in e:
-        return MODEL['cap']
-    if ('*)%d)->mItems' % B) in e:
-        return BI
-    if ('*)%d)->mCount' % MD) in e:
-        return MODEL['models']
-    if ('*)%d)->mCount' % AD) in e:
-        return MODEL['adv']
-    if ('*)%d)->mItems' % AD) in e:
-        return DI
-    raise KeyError(e)
+    def value(self, swarm, field):
+        raw = self.memory[swarm]
+        return (raw[0] >> 2) & 1 if field == 'anim' else struct.unpack_from('<i', raw, 4)[0]
 
+    def _location(self, expression):
+        if 'mAnimated' in expression:
+            swarm = int(re.search(r'CSwarmBasics\*\)(\d+)', expression).group(1))
+            return swarm, 'anim'
+        address = int(re.search(r'\*\)(\d+)\)->', expression).group(1))
+        return self.addresses[address][0], 'count'
 
-def ex(eq):
-    WRITES.append(eq)
-    if FAIL_WRITE_AT['n'] is not None and len(WRITES) == FAIL_WRITE_AT['n']:
-        raise RuntimeError('simulated write failure')
-    swarm = REGS['$rdi']
-    if '->mAnimated =' in eq:
-        MEM[(swarm, 'animated')] = int(eq.rsplit('=', 1)[1])
-    if ('*)%d)->mCount =' % B) in eq:
-        MEM[(swarm, 'count')] = int(eq.rsplit('=', 1)[1])
+    def evaluate(self, expression):
+        if self.read_hook:
+            self.read_hook(expression)
+        if expression in self.regs:
+            return self.regs[expression]
+        if expression == '$xmm0.v4_float[0]':
+            return 1. / 60.
+        if 'sizeof(CSwarmBasics::CBoid)' in expression:
+            return 192
+        if 'sizeof(CAdvancementDeltas)' in expression:
+            return 28
+        if expression.startswith('&((CSwarmBasics*)'):
+            swarm = int(re.search(r'CSwarmBasics\*\)(\d+)', expression).group(1))
+            return swarm + (0x100 if 'mBoids' in expression else
+                            0x200 if 'mModelDatas' in expression else 0x300)
+        if 'mAnimated' in expression:
+            return self.value(*self._location(expression))
+        address = int(re.search(r'\*\)(\d+)\)->', expression).group(1))
+        swarm, kind = self.addresses[address]
+        if expression.endswith('mItems'):
+            return swarm + (0x1000 if kind == 'boids' else 0x3000)
+        if expression.endswith('mCapacity'):
+            return self.models[swarm]['cap']
+        if expression.endswith('mCount'):
+            return self.value(swarm, 'count') if kind == 'boids' else self.models[swarm][kind]
+        raise RuntimeError('unmodelled expression: ' + expression)
 
+    def execute(self, command):
+        expression, text = command.removeprefix('set var ').rsplit(' = ', 1)
+        swarm, field = self._location(expression)
+        value = int(text)
+        self.writes.append((swarm, field, value))
+        if self.write_hook:
+            self.write_hook('before', swarm, field, value)
+        if self.ignore_write and self.ignore_write(swarm, field, value):
+            pass
+        elif field == 'anim':
+            self.memory[swarm][0] = (self.memory[swarm][0] & ~4) | ((value & 1) << 2)
+        else:
+            struct.pack_into('<i', self.memory[swarm], 4, value)
+        if self.write_hook:
+            self.write_hook('after', swarm, field, value)
 
-g = types.ModuleType('gdb')
-g.Breakpoint = BP
-g.FinishBreakpoint = FB
-g.error = Exception
-g.parse_and_eval = ev
-g.execute = ex
-g.newest_frame = lambda: STACK['top']
-g.events = types.SimpleNamespace(exited=Ev())
-sys.modules['gdb'] = g
+    def enter(self, swarm=A, phase=None):
+        if phase is not None:
+            self.st['calls'] = (phase - 1) % 3
+        activation = Activation(BODY)
+        self.stack.insert(0, activation)
+        self.regs.update({'$rdi': swarm, '$rsi': 0x2000})
+        before = len(self.breakpoints)
+        self.ns['body_fixture'](self.gdb)
+        return self.breakpoints[-1] if len(self.breakpoints) > before else None
 
-ns = {'__name__': 'spec'}
-exec(compile(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                               'swb15_updateall.py')).read(), 'swb15_updateall.py', 'exec'), ns)
+    def hit(self, swarm=A, index=0, error=None, bad_mgr=False):
+        self.regs.update({'$rdi': swarm, '$rsi': 99 if bad_mgr else 0x2000,
+                          '$rdx': swarm + 0x1000 + index * 192,
+                          '$rcx': swarm + 0x3000 + (index & 3) * 28})
+        move = Activation(MOVE)
+        move.error = error
+        self.stack.insert(0, move)
+        try:
+            self.ns['moveboid_oracle'](self.gdb)
+        finally:
+            self.stack.remove(move)
 
-FAILED = []
-
-
-def check(name, cond, detail=''):
-    print('%-52s %s %s' % (name, 'PASS' if cond else 'FAIL', detail))
-    if not cond:
-        FAILED.append(name)
-
-
-def reset():
-    MEM.clear()
-    REGS.clear()
-    WRITES.clear()
-    FAIL_WRITE_AT['n'] = None
-    ARM_FAIL['value'] = False
-    FB.made = []
-    STACK['top'] = None
-    ns['_st'].update({'calls': 0, 'apply': 0, 'open': {}, 'order': [], 'opens': 0, 'closed': 0,
-                      'unwound': 0, 'pending': 0, 'dupEntry': 0, 'unattributed': 0, 'mvHits': 0,
-                      'restoreFail': 0, 'noRestore': 0, 'refused': 0, 'err': 0, 'status': [],
-                      'rollbackFail': 0})
-
-
-def enter(swarm, count, animated, level=1):
-    MEM[(swarm, 'count')] = count
-    MEM[(swarm, 'animated')] = animated
-    REGS.update({'$rdi': swarm, '$rsi': 0x2000})
-    STACK['top'] = body_frame(level)
-    ns['body_fixture'](g)
-    return ns['_st']['order'][-1] if ns['_st']['order'] else None
-
-
-def hit(swarm, i, level=1, caller=None):
-    REGS.update({'$rdi': swarm, '$rsi': 0x2000, '$rdx': BI + i * 192,
-                 '$rcx': DI + (i & (MODEL['models'] - 1)) * 28})
-    STACK['top'] = caller if caller is not None else move_frame(level)
-    ns['moveboid_oracle'](g)
-
-
-def finish_all():
-    for bp in list(FB.made):
-        bp.stop()
-
-
-# ---------------------------------------------------------------- phase 0: forced mAnimated = 0
-reset()
-ns['_st']['calls'] = 2                                    # next call is phase 0
-enter(0x1000, count=5, animated=1)
-check('ph0 wrote mAnimated = 0', MEM[(0x1000, 'animated')] == 0)
-finish_all()
-check('ph0 restored the original memory',
-      MEM[(0x1000, 'animated')] == 1 and MEM[(0x1000, 'count')] == 5,
-      'anim=%d count=%d' % (MEM[(0x1000, 'animated')], MEM[(0x1000, 'count')]))
-check('ph0 counters: 1 open, 1 closed, no failures',
-      ns['_st']['opens'] == 1 and ns['_st']['closed'] == 1 and ns['_st']['restoreFail'] == 0
-      and ns['_st']['unattributed'] == 0 and ns['_st']['err'] == 0)
-check('ph0 raw readback logged', 'RESTORE swb15-3-ph0 OK' in open(LOG).read())
-
-# ---------------------------------------------------------------- phase 1: the loop, 5 boids
-reset()
-ns['_st']['calls'] = 0                                    # next call is phase 1
-enter(0x1000, count=5, animated=1)
-for i in range(5):
-    hit(0x1000, i)
-finish_all()
-check('ph1 attributed 5 MoveBoid calls', ns['_st']['mvHits'] == 5
-      and ns['_st']['unattributed'] == 0)
-check('ph1 memory untouched', MEM[(0x1000, 'animated')] == 1 and MEM[(0x1000, 'count')] == 5)
-check('ph1 counters', ns['_st']['opens'] == 1 and ns['_st']['closed'] == 1
-      and ns['_st']['restoreFail'] == 0)
-
-# ---------------------------------------------------------------- phase 2: forced count 0
-reset()
-ns['_st']['calls'] = 1                                    # next call is phase 2
-enter(0x1000, count=7, animated=1)
-check('ph2 wrote mBoids.mCount = 0', MEM[(0x1000, 'count')] == 0)
-finish_all()
-check('ph2 restored the original count', MEM[(0x1000, 'count')] == 7
-      and MEM[(0x1000, 'animated')] == 1)
-check('ph2 zero-boid window is OK', ns['_st']['opens'] == 1 and ns['_st']['closed'] == 1
-      and not any(s.startswith('loop:') for s in ns['_st']['status']))
-
-# ---------------------------------------------------------------- same this, wrong caller frame
-reset()
-enter(0x1000, count=5, animated=1)
-hit(0x1000, 0, caller=Frame(0, MOVE, Frame(9, THINK)))     # caller frame is Think, not the body
-check('same-this wrong caller rejected', ns['_st']['unattributed'] == 1
-      and ns['_st']['mvHits'] == 0 and 'move-no-owner' in ns['_st']['status'])
-check('wrong caller logged with frame identity',
-      'caller=(level 9, CSwarmBasics::Think' in open(LOG).read())
-finish_all()
-
-# ---------------------------------------------------------------- unreadable / missing caller frame
-reset()
-enter(0x1000, count=5, animated=1)
-hit(0x1000, 0, caller=Frame(0, MOVE, None))                # older() raises
-check('missing caller frame rejected', ns['_st']['unattributed'] == 1
-      and 'caller-frame-unreadable' in ns['_st']['status'])
-finish_all()
-
-# ---------------------------------------------------------------- nested distinct owners
-reset()
-outer = enter(0x1000, count=5, animated=1, level=1)
-inner = enter(0x2000, count=3, animated=1, level=3)
-hit(0x1000, 0, level=1)
-hit(0x2000, 0, level=3)
-hit(0x2000, 1, level=3)
-hit(0x1000, 1, level=1)
-check('nested owners attributed separately', ns['_st']['mvHits'] == 4
-      and ns['_st']['unattributed'] == 0 and outer['mv'] == 2 and inner['mv'] == 2)
-# the outer window closes first: out-of-order, and it must be reported
-FB.made[0].stop()
-check('out-of-order close reported', 'order:swb15-1-ph1' in ns['_st']['status'])
-FB.made[1].stop()
-
-# ---------------------------------------------------------------- rollback that fails honestly
-reset()
-ns['_st']['calls'] = 2                                     # phase 0 forces a write
-MEM[(0x1000, 'animated')] = 1
-MEM[(0x1000, 'count')] = 5
-REGS.update({'$rdi': 0x1000, '$rsi': 0x2000})
-STACK['top'] = body_frame(1)
-# write 1 (mAnimated = 0) lands, write 2 (the count) raises, and the rollback writes raise too:
-# that leaves the memory NOT restored, which is exactly what has to be reported honestly
-orig_ex = ex
-CALLS = {'n': 0}
+    def finish(self, bp, unwind=False):
+        # At a return breakpoint the owning frame has already left the stack.
+        if bp.frame.activation in self.stack:
+            self.stack.remove(bp.frame.activation)
+        return bp.out_of_scope() if unwind else bp.stop()
 
 
-def ex_partial(eq):
-    CALLS['n'] += 1
-    if CALLS['n'] == 2:
-        raise RuntimeError('count write failed')
-    if CALLS['n'] > 2:
-        raise RuntimeError('rollback write failed')
-    WRITES.append(eq)
-    orig_ex(eq)
+class Tests(unittest.TestCase):
+    def setUp(self):
+        self.h = Harness()
+        self.h.add()
+        self.h.add(B, count=7)
+        self.original = self.h.original()
+
+    def restored(self):
+        self.assertEqual(self.h.original(), self.original)
+
+    def counters(self, **expected):
+        for key, value in expected.items():
+            self.assertEqual(self.h.st[key], value, key)
+
+    def test_real_zero_to_one_levels_and_new_wrappers(self):
+        h = self.h
+        bp = h.enter()
+        self.assertEqual(bp.win['entry_level'], 0)
+        alias = Frame(h, bp.frame.activation)
+        self.assertIsNot(alias, bp.frame)
+        self.assertEqual(alias, bp.frame)
+        move = Activation(MOVE)
+        h.stack.insert(0, move)
+        self.assertEqual(bp.frame.level(), 1)
+        h.stack.remove(move)
+        for i in range(3):
+            h.hit(index=i)
+        self.assertFalse(h.finish(bp))
+        self.counters(opens=1, closed=1, mvHits=3, unattributed=0, ownershipFail=0)
+        self.assertTrue(h.ns['_summary']())
+        self.restored()
+
+    def test_all_phases_exact_memory(self):
+        for phase in (0, 1, 2):
+            with self.subTest(phase=phase):
+                h = Harness(); h.add(count=5)
+                original = h.original()
+                bp = h.enter(phase=phase)
+                self.assertEqual(h.value(A, 'anim'), phase != 0)
+                self.assertEqual(h.value(A, 'count'), 0 if phase == 2 else 5)
+                if phase == 1:
+                    for i in range(5): h.hit(index=i)
+                self.assertFalse(h.finish(bp))
+                self.assertEqual(h.original(), original)
+                self.assertEqual((h.st['opens'], h.st['closed'], h.st['restoreFail']), (1, 1, 0))
+                self.assertTrue(h.ns['_summary']())
+
+    def test_recursive_same_this_inner_attribution_and_lifo_restore(self):
+        h = self.h
+        outer = h.enter(phase=0)  # animated1 -> 0, next call is ph1, not duplicate
+        inner = h.enter()        # same-this recursive activation animated0 -> 1
+        self.assertEqual((outer.frame.level(), inner.frame.level()), (1, 0))
+        for i in range(3): h.hit(index=i)
+        self.assertEqual((outer.win['mv'], inner.win['mv']), (0, 3))
+        self.assertFalse(h.finish(inner))
+        self.assertEqual(h.value(A, 'anim'), 0)
+        self.assertFalse(h.finish(outer))
+        self.counters(opens=2, closed=2, mvHits=3, unattributed=0, dupEntry=0)
+        self.assertTrue(h.ns['_summary']())
+        self.restored()
+
+    def test_nested_count_snapshot_resume_outer(self):
+        h = self.h
+        outer = h.enter()  # ph1
+        inner = h.enter()  # ph2: count lowered to zero
+        self.assertEqual(h.value(A, 'count'), 0)
+        self.assertFalse(h.finish(inner))
+        self.assertEqual(h.value(A, 'count'), 3)
+        for i in range(3): h.hit(index=i)
+        self.assertFalse(h.finish(outer))
+        self.assertTrue(h.ns['_summary']())
+        self.restored()
+
+    def test_duplicate_entry_same_real_frame_no_new_writes(self):
+        h = self.h; bp = h.enter(phase=0)
+        before = list(h.writes)
+        h.ns['body_fixture'](h.gdb)  # fresh wrapper, same actual activation
+        self.assertEqual(h.writes, before)
+        self.counters(opens=1, dupEntry=1)
+        h.finish(bp); self.restored()
+        self.assertFalse(h.ns['_summary']())
+
+    def test_same_this_same_name_wrong_activation_rejected(self):
+        h = self.h; bp = h.enter()
+        h.stack.insert(0, Activation(BODY))  # same function, immediate caller isn't owner
+        h.hit()
+        self.counters(mvHits=0, unattributed=1, ownershipFail=0)
+        self.assertIn('move-no-owner', h.st['status'])
+        h.stack.pop(0); h.finish(bp); self.restored()
+
+    def test_thunk_not_immediate_owner_rejected(self):
+        h = self.h; bp = h.enter()
+        h.stack.insert(0, Activation('thunk'))
+        h.hit(); self.counters(mvHits=0, unattributed=1)
+        h.stack.pop(0); h.finish(bp); self.restored()
+
+    def test_missing_and_unreadable_frames(self):
+        for error in ('missing', 'name', 'level', 'valid', 'equal'):
+            with self.subTest(error=error):
+                h = Harness(); h.add(); bp = h.enter()
+                original = h.original()
+                saved = list(h.stack)
+                if error == 'missing': h.stack.clear()
+                else: bp.frame.activation.error = error
+                h.hit()
+                self.assertEqual((h.st['mvHits'], h.st['unattributed'], h.st['ownershipFail']), (0, 1, 1))
+                h.stack[:] = saved; bp.frame.activation.error = None
+                h.finish(bp)
+                self.assertEqual(h.original(), original)
+                self.assertFalse(h.ns['_summary']())
+
+    def test_invalid_saved_frame_rejected(self):
+        h = self.h; bp = h.enter(); bp.frame.activation.invalid = True
+        h.hit(); self.counters(mvHits=0, unattributed=1, ownershipFail=1)
+        h.finish(bp); self.restored()
+
+    def test_unknown_thread_rejected(self):
+        h = self.h; bp = h.enter(); h.thread = None
+        h.hit(); self.counters(mvHits=0, unattributed=1, ownershipFail=1)
+        h.thread = 10; h.finish(bp); self.restored()
+
+    def test_wrong_thread_or_inferior_rejected(self):
+        for field in ('thread', 'inferior'):
+            with self.subTest(field=field):
+                h = Harness(); h.add(); bp = h.enter()
+                original = h.original()
+                old = getattr(h, field); setattr(h, field, old + 1)
+                h.hit()
+                self.assertEqual((h.st['mvHits'], h.st['unattributed']), (0, 1))
+                setattr(h, field, old); h.finish(bp)
+                self.assertEqual(h.original(), original)
+
+    def test_ambiguous_owners_rejected_no_counters_folded(self):
+        h = self.h; bp = h.enter()
+        shadow = dict(bp.win); h.st['order'].append(shadow); h.st['open'][id(shadow)] = shadow
+        h.hit()
+        self.counters(mvHits=0, unattributed=1)
+        self.assertEqual((bp.win['mv'], shadow['mv']), (0, 0))
+        self.assertIn('move-ambiguous', h.st['status'])
+        h.st['order'].pop(); h.st['open'].pop(id(shadow))
+        h.finish(bp); self.restored()
+
+    def test_out_of_order_same_this_cancel_then_restore(self):
+        h = self.h; outer = h.enter(phase=0); inner = h.enter()
+        self.assertTrue(h.finish(outer))
+        self.restored()
+        self.counters(opens=2, closed=1, unwound=1, orderFail=1, restoreFail=0)
+        before = list(h.writes)
+        self.assertTrue(h.finish(inner))
+        self.assertEqual(h.writes, before)
+        self.counters(lateFinish=1, closed=1, unwound=1)
+        self.assertFalse(h.ns['_summary']())
+
+    def test_distinct_swarm_restore_uses_record_not_register(self):
+        h = self.h; outer = h.enter(phase=2); inner = h.enter(B)
+        self.assertEqual(h.regs['$rdi'], B)
+        self.assertTrue(h.finish(outer))  # deliberately out of order; restore B then A
+        self.restored(); self.counters(orderFail=1, restoreFail=0)
+        h.finish(inner); self.restored()
+
+    def test_duplicate_finish_does_not_rewrite_later_memory(self):
+        h = self.h; bp = h.enter(phase=0); h.finish(bp); self.restored()
+        h.memory[A][0] ^= 0x20
+        before, writes = h.original(), list(h.writes)
+        self.assertTrue(bp.stop())
+        self.assertEqual(h.original(), before); self.assertEqual(h.writes, writes)
+        self.counters(closed=1, lateFinish=1)
+
+    def test_unwind_restores_forced_memory_once(self):
+        h = self.h; bp = h.enter(phase=2)
+        h.finish(bp, unwind=True); self.restored()
+        self.counters(closed=0, unwound=1, restoreFail=0)
+        self.assertFalse(h.ns['_summary']())
+        before = list(h.writes); bp.out_of_scope()
+        self.assertEqual(h.writes, before); self.counters(lateFinish=1)
+
+    def test_write_raises_after_mutating_rollback_exact(self):
+        h = self.h
+        def error(when, swarm, field, value):
+            if when == 'after' and len(h.writes) == 2: raise RuntimeError('post-write failure')
+        h.write_hook = error
+        bp = h.enter(phase=2)
+        self.restored()
+        self.assertEqual(bp.win['attempted'], ['anim', 'count'])
+        self.counters(err=1, rollbackFail=0, apply=0)
+        before = list(h.writes); h.finish(bp)
+        self.assertEqual(h.writes, before); self.restored()
+        self.assertFalse(h.ns['_summary']())
+
+    def test_forced_read_failure_rolls_back_both_fields(self):
+        h = self.h; failed = []
+        def error(expr):
+            if h.writes and not failed and 'mAnimated' in expr:
+                failed.append(True); raise RuntimeError('forced read failed')
+        h.read_hook = error
+        bp = h.enter(phase=2)
+        self.restored(); self.counters(err=1, rollbackFail=0)
+        h.finish(bp); self.assertFalse(h.ns['_summary']())
+
+    def test_rollback_failure_attempts_remaining_field_and_poison(self):
+        h = self.h
+        h.memory[A][0] &= ~4  # force a real animation change as well as count change
+        self.original = h.original()
+        def error(when, swarm, field, value):
+            if when == 'after' and len(h.writes) == 2: raise RuntimeError('write landed then failed')
+            if when == 'before' and field == 'anim' and len(h.writes) >= 3:
+                raise RuntimeError('anim rollback fails')
+        h.write_hook = error
+        bp = h.enter(phase=2)
+        self.counters(err=1, rollbackFail=1, apply=0)
+        self.assertTrue(h.st['poisoned'])
+        self.assertEqual((h.value(A, 'anim'), h.value(A, 'count')), (1, 3))
+        expected = dict(self.original)
+        changed = bytearray(expected[A]); changed[0] |= 4; expected[A] = bytes(changed)
+        self.assertEqual(h.original(), expected)
+        before = list(h.writes)
+        self.assertIsNone(h.enter(B)); self.assertEqual(h.writes, before)
+        self.assertTrue(h.finish(bp)); self.counters(restoreFail=1, refused=1)
+        self.assertEqual(h.original(), expected)
+        self.assertEqual(h.writes, [(A, 'anim', 1), (A, 'count', 0), (A, 'anim', 0),
+                                    (A, 'count', 3), (A, 'anim', 0), (A, 'count', 3)])
+        self.assertFalse(h.ns['_summary']())
+
+    def test_restore_exception_after_land_is_still_failure(self):
+        h = self.h; bp = h.enter(phase=2)
+        def error(when, swarm, field, value):
+            if when == 'after' and field == 'anim': raise RuntimeError('raised after restore landed')
+        h.write_hook = error
+        self.assertTrue(h.finish(bp)); self.restored()
+        self.counters(restoreFail=1)
+        self.assertFalse(h.ns['_summary']())
+
+    def test_restore_readback_failure_not_false_ok(self):
+        h = self.h; bp = h.enter(phase=0)
+        h.read_hook = lambda expr: (_ for _ in ()).throw(RuntimeError('readback unavailable'))
+        self.assertTrue(h.finish(bp)); self.restored()
+        self.counters(restoreFail=1)
+        self.assertFalse(h.ns['_summary']())
+
+    def test_wrong_restore_context_no_unsafe_writes(self):
+        h = self.h; bp = h.enter(phase=0); before = list(h.writes)
+        h.inferior = 2
+        self.assertTrue(h.finish(bp)); self.assertEqual(h.writes, before)
+        self.counters(restoreFail=1)
+        expected = dict(self.original)
+        changed = bytearray(expected[A]); changed[0] &= ~4; expected[A] = bytes(changed)
+        self.assertEqual(h.original(), expected)
+        self.assertFalse(h.ns['_summary']())
+
+    def test_missing_return_breakpoint_no_mutation(self):
+        h = self.h; h.arm_fail = True
+        self.assertIsNone(h.enter(phase=0)); self.assertFalse(h.writes); self.restored()
+        self.counters(opens=0, noRestore=1)
+        self.assertFalse(h.ns['_summary']())
+
+    def test_missing_entry_frame_no_writes(self):
+        h = self.h; h.stack.clear()
+        h.ns['body_fixture'](h.gdb)
+        self.assertFalse(h.writes); self.restored(); self.counters(opens=0, err=1)
+        self.assertFalse(h.ns['_summary']())
+
+    def test_pending_summary_idempotent_and_no_false_restore(self):
+        h = self.h; bp = h.enter(phase=2)
+        before = h.original()
+        self.assertFalse(h.ns['_summary']()); self.assertFalse(h.ns['_summary']())
+        self.counters(pending=1, opens=1, closed=0)
+        self.assertEqual(h.original(), before)
+        self.assertEqual(sum(s.startswith('pending:') for s in h.st['status']), 1)
+        h.finish(bp); self.restored()
+
+    def test_no_windows_summary_is_failure(self):
+        self.assertFalse(self.h.ns['_summary']())
+        self.counters(opens=0, closed=0)
+        self.restored()
+
+    def test_bad_arguments_attributed_but_not_accepted_as_correct(self):
+        h = self.h; bp = h.enter(); h.hit(bad_mgr=True)
+        self.assertEqual((bp.win['mv'], bp.win['bad']), (1, 1))
+        self.counters(mvHits=1, unattributed=0)
+        self.assertTrue(h.finish(bp)); self.restored()
+        self.assertFalse(h.ns['_summary']())
+
+    def test_unreadable_immediate_older_frame(self):
+        h = self.h; bp = h.enter()
+        h.hit(error='older')
+        self.counters(mvHits=0, unattributed=1, ownershipFail=1)
+        h.finish(bp); self.restored()
+
+    def test_bad_outer_frame_does_not_fall_back_to_matching_inner(self):
+        h = self.h; outer = h.enter(phase=0); inner = h.enter()
+        outer.frame.activation.error = 'equal'
+        h.hit()
+        self.counters(mvHits=0, unattributed=1, ownershipFail=1)
+        self.assertEqual((outer.win['mv'], inner.win['mv']), (0, 0))
+        outer.frame.activation.error = None
+        h.finish(inner); h.finish(outer); self.restored()
+
+    def test_silent_forced_write_mismatch_rolls_back(self):
+        h = self.h; h.ignore_write = lambda swarm, field, value: field == 'count' and value == 0
+        bp = h.enter(phase=2)
+        self.restored(); self.counters(err=1, rollbackFail=0, apply=0)
+        h.finish(bp); self.assertFalse(h.ns['_summary']())
+
+    def test_silent_restore_mismatch_not_claimed_restored(self):
+        h = self.h; bp = h.enter(phase=2)
+        h.ignore_write = lambda swarm, field, value: field == 'count' and value == 3
+        self.assertTrue(h.finish(bp)); self.counters(restoreFail=1)
+        expected = dict(self.original)
+        altered = bytearray(expected[A]); struct.pack_into('<i', altered, 4, 0)
+        expected[A] = bytes(altered)
+        self.assertEqual(h.original(), expected)
+        self.assertFalse(h.ns['_summary']())
+
+    def test_ambiguous_finish_order_does_not_guess_snapshot(self):
+        h = self.h; bp = h.enter(phase=0)
+        h.st['order'].append(bp.win)
+        before, writes = h.original(), list(h.writes)
+        self.assertTrue(h.finish(bp))
+        self.assertEqual(h.original(), before); self.assertEqual(h.writes, writes)
+        self.counters(orderFail=1, restoreFail=1, unwound=1)
+        self.assertFalse(h.ns['_summary']())
+
+    def test_summary_checks_balance_not_just_empty_pending(self):
+        h = self.h; bp = h.enter(phase=0); h.finish(bp); self.restored()
+        h.st['closed'] += 1
+        self.assertFalse(h.ns['_summary']())
+        self.assertIn('window-accounting', h.st['status'])
 
 
-g.execute = ex_partial
-ns['body_fixture'](g)
-g.execute = orig_ex
-log = open(LOG).read()
-check('failed write reported, not claimed rolled back',
-      'rollback FAILED' in log and 'THE ORIGINAL STATE IS NOT RESTORED' in log
-      and 'rollback-failed:' in ' '.join(ns['_st']['status'])
-      and ns['_st']['rollbackFail'] == 1,
-      'memory anim=%s (original 0 was written, rollback failed)'
-      % MEM.get((0x1000, 'animated')))
-check('failed write counted as an error', ns['_st']['err'] == 1)
-for bp in list(FB.made):
-    bp.stop()
-
-# ---------------------------------------------------------------- missing return breakpoint
-reset()
-ns['_st']['calls'] = 2
-MEM[(0x1000, 'animated')] = 1
-MEM[(0x1000, 'count')] = 5
-REGS.update({'$rdi': 0x1000, '$rsi': 0x2000})
-STACK['top'] = body_frame(1)
-ARM_FAIL['value'] = True
-ns['body_fixture'](g)
-check('missing return breakpoint -> no write', not WRITES
-      and MEM[(0x1000, 'animated')] == 1 and MEM[(0x1000, 'count')] == 5
-      and ns['_st']['noRestore'] == 1)
-ARM_FAIL['value'] = False
-
-# ---------------------------------------------------------------- summary status
-reset()
-ns['_summary']()
-line = open(LOG).read().splitlines()[-1]
-check('clean exit reports status=OK', 'status=OK' in line, line[-60:])
-reset()
-ns['_st']['calls'] = 1
-enter(0x1000, count=5, animated=1)
-ns['_summary']()
-line = open(LOG).read().splitlines()[-1]
-check('pending window fails the exit status',
-      'status=FAIL' in line and "'pending': 1" in line)
-
-print()
-print('SELFTEST:', 'PASS' if not FAILED else 'FAIL: ' + ', '.join(FAILED))
-sys.exit(0 if not FAILED else 1)
+if __name__ == '__main__':
+    print('Offline log directory:', OUT, flush=True)
+    unittest.main(verbosity=2)
