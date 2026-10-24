@@ -61,3 +61,24 @@ positions; objdiff matched the bit stores) and `CALL` to unmarked callees.
 
 `spa`: Agon Wastes 42b935e4, 03_sand_temple_dark, `tools/drivers/spa_sandtempledark.con`,
 ~2000 frames fast: Activate/Increment/Deactivate/Reset/Delete on two suit-swap actors.
+
+## 6. Forced arms (spa2, 2026-10-24)
+
+`tools/cov/specs/spa2_force.py` + `tools/drivers/spa2_templedark.con` (the spa1 temple driver with the
+two-actor Activate/Deactivate chain SetIntoStateManager needs), merged with the spa1 drivers
+(`gcov_report.py build-port-cov /tmp/opencode/spa_{a,b,c,d,e}/gcov --module ScriptPlayerActor`).
+Every write is one call, restored at the next entry.
+
+| body | arms | forced | still open |
+|---|---|---|---|
+| LoadPlayerActor C0 | 27/28 | the unknown-ACS arm (`loc:599`: sldrThis.animationInformation.ancs = 0xffffffff), isSolid (`loc:613`) | 621:0/2: the renderGunOverride switch's default arm; writes of sldrThis.renderGunOverride at 620/621 do not reach the switch's read |
+| SetupEnvFx AB8 | 7/17 | mFlags 0x20 (0x553's no-shadow arm) | 548:0/2 (`set` false on a reachable call), the rain block 549/550: writing the world's mNeededEnvFx = kEFX_Rain and mEnvFxManager->mFxDensity = 1 at the body entry leaves 0x549's first test false, so the code reads another copy |
+| PreRender C30 | 14/21 | shadow null (0x530 edge 1), beam model data null (the HasGunModelData arm) | 0x530's inlined HasGunModelData sub-arms (b4/b5, b9), 0x535's `HasGrappleModelData() ? 3 : 2` (no run loads a grapple model; UpdateGrappleModel/PumpGrappleModel never run), 534:0/2 |
+| Think 2630 | 51/67 | use-player-beam with no beam data (194/195), invalid beam, grapple-loading, the loading blocks | 185:3/4, 198:0/2, 200:3/6 (the cinematic-camera arm), 214:0/2, 221/226/227's || edges, mAreaTrackingLoad |
+| SetIntoStateManager 970 | 16/18 | 0x573's `!set && previous` (the two-actor chain in spa2_templedark.con) | 580:1/4 and 580:2/4: `actor`/`actor->mIsPlayerActor` are in registers at 0x580, so `loc:` writes of them (and of `id.value`) do not reach the test |
+| GetSuitCharIdx FDC | 3/4 | mCharacterCount 0 (both count arms) | 514:1/2 (the inner count arm): needs renderSuit(suit) >= mCharacterCount with suit < mCharacterCount; `$rdx` writes at entry did not produce it |
+| GetNextSuitCharIdx 103C | 4/6 | - | 489:0/2 and 495:1/2: mFlags/mSuit writes at entry do not change the branch (the two suit assignments compile to one select; the branch gcov reports on that line is not the one the C++ reads) |
+| dtor 2E3C | - | - | inline in the header (no standalone body to mark) |
+
+No retail divergence and no source change in this pass: the bodies still match the asm as the survey
+records.
