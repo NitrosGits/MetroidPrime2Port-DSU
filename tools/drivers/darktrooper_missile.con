@@ -1,0 +1,51 @@
+# DarkTrooper missile-arm episodes (dtr4): Temple Grounds 04_temple_unknownenemies, player at 160 180 -39.
+# u049d is placed at distance d (+y of the player) with yaw y, then driven into MissileAttack (range / facing arms
+# of FireMissile); the Pursue pairs near/far feed ShouldPause (InRange 9) and CanMissileAttack's cooldown arms.
+# Natural run (mFiresMissiles=0) and forced runs (specs darktrooper_missile_force.py, darktrooper_missile_los.py):
+#   BUILD=build-port-cov tools/cov/force.sh tools/cov/specs/darktrooper_missile_force.py <out> 3bfa3eff,04_temple_unknownenemies \
+#     --con tools/drivers/darktrooper_missile.con --fast --frames 4300
+@f300 god 1; give missile 50
+@f302 layer 2; layer 3
+@f310 tp 160 180 -39
+@f330 send u049d Activate; send u0488 Activate; send u0487 Activate
+@f340 send u049d Alert; send u0488 Alert; send u0487 Alert
+@f500 obj u049d
+@f700 fsm u049d Pursue
+@f900 place u049d 160 183 -39 0; fsm u049d MissileAttack
+@f970 obj u049d
+@f1040 place u049d 160 183 -39 180; fsm u049d MissileAttack
+@f1110 obj u049d
+@f1180 place u049d 160 183 -39 90; fsm u049d MissileAttack
+@f1250 obj u049d
+@f1320 place u049d 160 188 -39 0; fsm u049d MissileAttack
+@f1390 obj u049d
+@f1460 place u049d 160 188 -39 180; fsm u049d MissileAttack
+@f1530 obj u049d
+@f1600 place u049d 160 188 -39 90; fsm u049d MissileAttack
+@f1670 obj u049d
+@f1740 place u049d 160 195 -39 0; fsm u049d MissileAttack
+@f1810 obj u049d
+@f1880 place u049d 160 195 -39 180; fsm u049d MissileAttack
+@f1950 obj u049d
+@f2020 place u049d 160 195 -39 90; fsm u049d MissileAttack
+@f2090 obj u049d
+@f2160 place u049d 160 210 -39 0; fsm u049d MissileAttack
+@f2230 obj u049d
+@f2300 place u049d 160 210 -39 180; fsm u049d MissileAttack
+@f2370 obj u049d
+@f2440 place u049d 160 210 -39 90; fsm u049d MissileAttack
+@f2510 obj u049d
+@f2580 place u049d 160 240 -39 0; fsm u049d MissileAttack
+@f2650 obj u049d
+@f2720 place u049d 160 240 -39 180; fsm u049d MissileAttack
+@f2790 obj u049d
+@f2860 place u049d 160 240 -39 90; fsm u049d MissileAttack
+@f2930 obj u049d
+@f3000 place u049d player 4; fsm u049d Pursue
+@f3150 place u049d player 20; fsm u049d Pursue
+@f3300 place u049d player 4; fsm u049d Pursue
+@f3450 place u049d player 20; fsm u049d Pursue
+@f3600 press X 8
+@f3680 place u049d 160 188 -39 0; fsm u049d MissileAttack
+@f3800 place u049d 160 196 -39 0; fsm u049d MissileAttack
+@f3930 obj u049d; objs DarkTrooper
