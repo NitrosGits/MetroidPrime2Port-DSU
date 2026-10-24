@@ -31,8 +31,10 @@ inline SLdrMysteryFlyerData::SLdrMysteryFlyerData()
   needsToGenerate = true;
 }
 
+// @ fn_45_9B0
 inline SLdrMysteryFlyerData::~SLdrMysteryFlyerData() {}
 
+// @ fn_45_840
 inline void LoadTypedefMysteryFlyerData(SLdrMysteryFlyerData& sldrThis, CInputStream& input) {
   const int propertyCount = input.ReadUint16();
   for (int i = 0; i < propertyCount; ++i) {
