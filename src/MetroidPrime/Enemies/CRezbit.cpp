@@ -859,6 +859,7 @@ bool CRezbit::ShouldEnergyBoltAttack(CStateManager& mgr, const CTriggerData& dat
   return false;
 }
 
+// @ fn_53_6548
 bool CRezbit::ShouldVirusAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (mVirusTimer <= 0.f && !mgr.GetCameraManager(0)->IsInCinematicCamera()) {
     if (mTeamAiMgrId == kInvalidUniqueId ||
