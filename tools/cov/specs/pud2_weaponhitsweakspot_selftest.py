@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """Mocked-gdb regression test for tools/cov/specs/pud2_weaponhitsweakspot.py - no game boot, no gdb.
 
-Drives the real fixture logic with a fake gdb:
-  both paths        open call forced to CWeaponMode() (restored, returns true) + a natural call -> OK
-  forced false      the forced call returns false (weak spot still hit)                       -> FAIL
-  wrong caller      a call from another caller on the same this is refused                   -> FAIL
-  wrong this        a call from an allowed caller on another spore is refused                -> FAIL
-  restore mismatch  the write-back does not take                                              -> FAIL
-  unreturned        the forced call never returns                                             -> FAIL
-  no natural        only the forced call happens                                              -> FAIL
-  no install        breakpoint creation fails                                                 -> FAIL
+Drives the real fixture with a fake gdb.  The safety contract under test: an attempted mode write is
+recorded BEFORE the write and always restored at the return, whatever the write or its readback did.
+
+  both paths            forced write confirmed + restored, one natural call returns        -> OK
+  write then read fail  the store lands, the post-write read raises; rollback and return
+                        restore the original; the failure stays reported                   -> FAIL, restored=1
+  partial write + raise the store lands and gdb.error follows; same restore guarantees     -> FAIL, restored=1
+  rollback failure      readback mismatch and the rollback write does not take; memory
+                        keeps the forced value, the return restore also fails              -> FAIL, restored=0
+  unreturned natural    an accepted natural call never returns                              -> FAIL
+  wrong caller          same this, other caller: refused, never completion evidence         -> FAIL
+  wrong this            allowed caller, other spore: refused                                -> FAIL
+  restore mismatch      the write-back at the return does not take                          -> FAIL
+  no natural            only the forced call                                               -> FAIL
+  no install            breakpoint creation fails                                           -> FAIL
 
     python3 tools/cov/specs/pud2_weaponhitsweakspot_selftest.py
 """
@@ -25,18 +31,29 @@ SPEC = pathlib.Path(__file__).with_name('pud2_weaponhitsweakspot.py')
 SPORE = 0x555557a00000
 OTHER = 0x555557b00000
 MODE = 0x555558100000
+ORIG = 0x00000000
 failures = []
 
 
 class FakeGdb(types.ModuleType):
-    def __init__(self, binary, mstate=1, install_fails=False, restore_works=True):
+    def __init__(self, binary, mstate=1, install_fails=False, drop_writes=(),
+                 read_fail_after_write=(MODE,), execute_raise_after=False, read_raise=(),
+                 drop_restore_writes=False):
         super().__init__('gdb')
         self.binary = binary
         self.mstate = mstate
         self.install_fails = install_fails
-        self.restore_works = restore_works
-        self.mem = {}
+        self.drop_writes = set(drop_writes)
+        self.read_fail_after_write = set(read_fail_after_write)
+        self.execute_raise_after = execute_raise_after
+        self.read_raise = set(read_raise)
+        self.drop_restore_writes = drop_restore_writes
+        self.mem = {MODE: ORIG}
+        self.written = set()
+        self.failed_once = set()
         self.caller = 'CPuddleSpore::Touch'
+        self.this = SPORE
+        self.rax = 1
         self.exited = []
         outer = self
 
@@ -104,6 +121,11 @@ class FakeGdb(types.ModuleType):
         m = re.match(r'\*\(unsigned int\*\)0x([0-9a-f]+)$', e)
         if m:
             a = int(m.group(1), 16)
+            if a in self.read_raise:
+                raise self.error('Cannot access memory at address 0x%x' % a)
+            if a in self.read_fail_after_write and a in self.written and a not in self.failed_once:
+                self.failed_once.add(a)
+                raise self.error('transient read failure at 0x%x' % a)
             if a not in self.mem:
                 raise self.error('Cannot access memory at address 0x%x' % a)
             return self.mem[a]
@@ -116,9 +138,13 @@ class FakeGdb(types.ModuleType):
         if not m:
             return None
         addr, val = int(m.group(1), 16), int(m.group(2), 16)
-        if val != 0xffff and not self.restore_works:
-            return None            # the write-back silently does not take
-        self.mem[addr] = val
+        restore_write = val != 0xffff
+        if addr not in self.drop_writes and not (self.drop_restore_writes and restore_write):
+            self.mem[addr] = val
+            self.written.add(addr)
+        if self.execute_raise_after:
+            self.execute_raise_after = False
+            raise self.error('write fault after the store at 0x%x' % addr)
         return None
 
 
@@ -140,11 +166,17 @@ def line(outdir):
     return [l for l in f.read_text().splitlines() if l.strip()][-1] if f.exists() else ''
 
 
+def diag(outdir):
+    return pathlib.Path(outdir, 'diag.log').read_text()
+
+
 def bp(g):
     return g.Breakpoint.instances[0]
 
 
-def call(g, this=SPORE, caller='CPuddleSpore::Touch', ret=1, do_return=True):
+def call(g, this=SPORE, caller='CPuddleSpore::Touch', ret=1, do_return=True, mstate=None):
+    if mstate is not None:
+        g.mstate = mstate
     g.this, g.caller, g.rax = this, caller, ret
     bp(g).stop()
     if do_return and g.FinishBreakpoint.instances:
@@ -152,100 +184,116 @@ def call(g, this=SPORE, caller='CPuddleSpore::Touch', ret=1, do_return=True):
 
 
 def scenario(name, cond, detail=''):
-    print(('PASS ' if cond else 'FAIL ') + '%-16s %s' % (name, detail))
+    print(('PASS ' if cond else 'FAIL ') + '%-20s %s' % (name, detail))
     if not cond:
         failures.append(name)
 
 
 def main():
-    tmp = pathlib.Path(tempfile.mkdtemp(prefix='pud2-selftest-'))
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix='pud2fix-selftest-'))
     binary = tmp / 'metroid_prime2_port'
     binary.write_bytes(b'stand-in binary for the pud2 mocked-gdb test\n')
     sha = digest(binary)
 
-    # 1 both paths: call 1 forced (returns true), call 2 natural (returns false: weak spot hit)
+    # 1 both paths
     out = tmp / 'both'
-    g = FakeGdb(str(binary), mstate=1)
-    g.mem[MODE] = 0x00000000
+    g = FakeGdb(str(binary), read_fail_after_write=())
     ns = load(g, str(out))
     call(g, ret=1)
     call(g, ret=0)
     ns['summarize']()
     l = line(out)
-    scenario('both paths', 'status=OK' in l and 'forced=1' in l and 'forced_ret=0x1' in l
-             and 'natural=1' in l and g.mem[MODE] == 0x00000000, l)
+    scenario('both paths', 'status=OK' in l and 'attempted=1' in l and 'restored=1' in l
+             and 'accepted=2' in l and g.mem[MODE] == ORIG, l)
 
-    # 2 forced call returns false
-    out = tmp / 'forcedfalse'
-    g = FakeGdb(str(binary), mstate=1)
-    g.mem[MODE] = 0x00000001
+    # 2 write lands, post-write readback raises
+    out = tmp / 'readfail'
+    g = FakeGdb(str(binary), read_fail_after_write=(MODE,))
     ns = load(g, str(out))
-    call(g, ret=0)
+    call(g, ret=1)
     call(g, ret=0)
     ns['summarize']()
-    l = line(out)
-    scenario('forced false', 'status=FAIL' in l and 'must return true' in l, l)
+    l, d = line(out), diag(out)
+    scenario('write then read fail', 'status=FAIL' in l and 'post-write readback unreadable' in d
+             and 'restored=1' in l and 'immediate rollback restored the original' in d
+             and g.mem[MODE] == ORIG, l)
 
-    # 3 same this, wrong caller
+    # 3 partial write then exception
+    out = tmp / 'partialraise'
+    g = FakeGdb(str(binary), execute_raise_after=True, read_fail_after_write=())
+    ns = load(g, str(out))
+    call(g, ret=1)
+    call(g, ret=0)
+    ns['summarize']()
+    l, d = line(out), diag(out)
+    scenario('partial write + raise', 'status=FAIL' in l and 'write raised' in d
+             and 'restored=1' in l and 'rollback read back the ORIGINAL' in d
+             and g.mem[MODE] == ORIG, l)
+
+    # 4 rollback failure: the store lands, the readback raises, and the rollback write is dropped, so
+    # the forced value survives and the return restore cannot confirm it either
+    out = tmp / 'rollbackfail'
+    g = FakeGdb(str(binary), read_fail_after_write=(MODE,), drop_restore_writes=True)
+    ns = load(g, str(out))
+    call(g, ret=1)
+    call(g, ret=0)
+    ns['summarize']()
+    l, d = line(out), diag(out)
+    scenario('rollback failure', 'status=FAIL' in l and 'attempted mutation(s) not restored' in l
+             and 'rollback readback' in d and 'restored=0' in l and g.mem[MODE] == 0xffff, l)
+
+    # 5 unreturned natural call
+    out = tmp / 'unreturnednatural'
+    g = FakeGdb(str(binary), read_fail_after_write=())
+    ns = load(g, str(out))
+    call(g, ret=1)                      # forced call returns
+    call(g, ret=0, do_return=False)     # natural call never returns
+    ns['summarize']()
+    l = line(out)
+    scenario('unreturned natural', 'status=FAIL' in l and 'accepted call(s) without a return: [2]' in l
+             and 'returned=1' in l, l)
+
+    # 6 same this, wrong caller
     out = tmp / 'wrongcaller'
-    g = FakeGdb(str(binary), mstate=1)
-    g.mem[MODE] = 0x00000000
+    g = FakeGdb(str(binary), read_fail_after_write=())
     ns = load(g, str(out))
     call(g, caller='CSomeActor::Hit', ret=1)
     ns['summarize']()
     l = line(out)
-    scenario('wrong caller', 'status=FAIL' in l and 'never happened' in l and 'refused=1' in l, l)
+    scenario('wrong caller', 'status=FAIL' in l and 'refused=1' in l and 'accepted=0' in l
+             and 'attempted=0' in l, l)
 
-    # 4 allowed caller, different this
+    # 7 allowed caller, different this
     out = tmp / 'wrongthis'
-    g = FakeGdb(str(binary), mstate=1)
-    g.mem[MODE] = 0x00000000
+    g = FakeGdb(str(binary), read_fail_after_write=())
     ns = load(g, str(out))
-    call(g, this=SPORE, ret=1)      # first call tracks SPORE as natural? force is armed at open
-    # reset: reload so the tracked instance is SPORE and the forced call already happened
-    out2 = tmp / 'wrongthis2'
-    g2 = FakeGdb(str(binary), mstate=1)
-    g2.mem[MODE] = 0x00000000
-    ns2 = load(g2, str(out2))
-    call(g2, this=SPORE, do_return=False)   # tracked=SPORE, armed+forced on SPORE
-    g2.FinishBreakpoint.instances[-1].stop()
-    call(g2, this=OTHER, ret=1)             # allowed caller, other spore -> refused
-    ns2['summarize']()
-    l = line(out2)
-    scenario('wrong this', 'refused=1' in l and 'not the tracked spore' in pathlib.Path(out2, 'diag.log').read_text(), l)
+    call(g, this=SPORE, ret=1)
+    call(g, this=OTHER, ret=1)
+    ns['summarize']()
+    l, d = line(out), diag(out)
+    scenario('wrong this', 'refused=1' in l and 'is not the tracked spore' in d, l)
 
-    # 5 restore readback mismatch
-    out = tmp / 'restore'
-    g = FakeGdb(str(binary), mstate=1, restore_works=False)
-    g.mem[MODE] = 0x00000000
+    # 8 restore mismatch: the forced write lands, only the write-back at the return fails
+    out = tmp / 'restoremismatch'
+    g = FakeGdb(str(binary), read_fail_after_write=(), drop_restore_writes=True)
     ns = load(g, str(out))
     call(g, ret=1)
     call(g, ret=0)
     ns['summarize']()
-    l = line(out)
-    scenario('restore mismatch', 'status=FAIL' in l and 'not restored' in l, l)
+    l, d = line(out), diag(out)
+    scenario('restore mismatch', 'status=FAIL' in l and 'attempted mutation(s) not restored' in l
+             and 'restore readback' in d and g.mem[MODE] == 0xffff, l)
 
-    # 6 forced call unreturned
-    out = tmp / 'unreturned'
-    g = FakeGdb(str(binary), mstate=1)
-    g.mem[MODE] = 0x00000000
-    ns = load(g, str(out))
-    call(g, ret=1, do_return=False)
-    ns['summarize']()
-    l = line(out)
-    scenario('unreturned', 'status=FAIL' in l and 'without a return' in l, l)
-
-    # 7 no natural call
+    # 9 no natural call
     out = tmp / 'nonatural'
-    g = FakeGdb(str(binary), mstate=1)
-    g.mem[MODE] = 0x00000000
+    g = FakeGdb(str(binary), read_fail_after_write=())
     ns = load(g, str(out))
     call(g, ret=1)
     ns['summarize']()
     l = line(out)
-    scenario('no natural', 'status=FAIL' in l and 'no natural call' in l, l)
+    scenario('no natural', 'status=FAIL' in l and 'no accepted natural call returned' in l, l)
 
-    # 8 install failure
+    # 10 install failure
     out = tmp / 'noinstall'
     g = FakeGdb(str(binary), install_fails=True)
     ns = load(g, str(out))

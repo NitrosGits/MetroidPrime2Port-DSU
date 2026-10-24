@@ -27,6 +27,14 @@
 # is refused and logged.  The summary fails closed on: no forced call, forced call returning false,
 # write/readback failure, unrestored obligation, unreturned call, no natural call, install failure.
 #
+# Safety correction (offline, not run): the attempted mutation is recorded BEFORE the write and is
+# restored at the return even when the write raised or its readback was unreadable/mismatched; a failed
+# write/readback also gets an immediate rollback with an honest readback (the failure stays recorded even
+# if the rollback succeeds), and the summary counts every accepted/armed call, natural ones included.
+# The recorded pud2 boots ran the earlier version of this file; there is no breakpoint on the nested
+# CDamageVulnerability::WeaponHits call, so its evidence is outer entry/return + coverage, not a direct
+# nested-call oracle.
+#
 #   BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/specs/pud2_weaponhitsweakspot.py \
 #     tools/cov/force.sh tools/cov/specs/pud2_weaponhitsweakspot.py /tmp/opencode/pud2_r1 \
 #     3dfd2249,cbc72d79 --con tools/cov/specs/pud2_puddlespore.con --fast --frames 2000
@@ -86,7 +94,7 @@ class CallReturn(gdb.FinishBreakpoint):
         call['ret'] = rax & 0xff if isinstance(rax, int) else None
         if state['current'] is call:
             state['current'] = None
-        if call['forced']:
+        if call['mutation_attempted']:
             addr, orig = call['mode_addr'], call['mode_original']
             now = rd32(addr)
             try:
@@ -102,13 +110,18 @@ class CallReturn(gdb.FinishBreakpoint):
             else:
                 problem('forced call: CWeaponMode restore readback %s, wanted %s'
                         % (fmt(back), fmt(orig)))
-        log('call %d: returned %s (forced=%d caller=%s state=%s type_in=%s)'
-            % (call['id'], 'true' if call['ret'] == 1 else fmt(call['ret']), int(call['forced']),
-               call['caller'], fmt(call['mstate']), fmt(call['type_in'])))
+        log('call %d: returned %s (attempted_mutation=%d caller=%s state=%s type_in=%s)'
+            % (call['id'], 'true' if call['ret'] == 1 else fmt(call['ret']),
+               int(call['mutation_attempted']), call['caller'], fmt(call['mstate']),
+               fmt(call['type_in'])))
         return False
 
     def out_of_scope(self):
+        self.call['returned'] = False
         problem('call %d: WeaponHitsWeakSpot left without a return' % self.call['id'])
+        if self.call['mutation_attempted'] and not self.call['restored']:
+            problem('call %d: attempted mutation not restored (the frame is gone; expired stack/heap '
+                    'storage is never written)' % self.call['id'])
 
 
 class EntryBp(gdb.Breakpoint):
@@ -132,10 +145,11 @@ class EntryBp(gdb.Breakpoint):
             caller = (older.name() or '') if older is not None else ''
         except Exception:
             caller = ''
-        call = {'id': len(state['calls']) + 1, 'forced': False, 'returned': False, 'ret': None,
-                'caller': caller, 'mstate': mstate, 'mode_addr': mode, 'mode_original': None,
-                'type_in': ev('*(unsigned int*)0x%x' % mode) if isinstance(mode, int) and mode else '?',
-                'restored': False}
+        call = {'id': len(state['calls']) + 1, 'accepted': False, 'armed': False,
+                'mutation_attempted': False, 'write_confirmed': False, 'rollback_attempted': False,
+                'rollback_confirmed': False, 'returned': False, 'ret': None, 'caller': caller,
+                'mstate': mstate, 'mode_addr': mode, 'mode_original': None, 'restored': False,
+                'type_in': ev('*(unsigned int*)0x%x' % mode) if isinstance(mode, int) and mode else '?'}
         state['calls'].append(call)
         state['current'] = call
         if state['tracked_this'] is None and any(c in caller for c in ALLOWED_CALLERS):
@@ -152,10 +166,11 @@ class EntryBp(gdb.Breakpoint):
             log('call %d: refused - this=0x%x is not the tracked spore 0x%x'
                 % (call['id'], this, state['tracked_this']))
             return
+        call['accepted'] = True
         try:
             CallReturn(gdb.newest_frame(), call)
+            call['armed'] = True
         except Exception as e:
-            call['armed'] = False
             problem('call %d: FinishBreakpoint not created (%r); no write attempted' % (call['id'], e))
             return
         if state['forced_id'] is not None:
@@ -171,23 +186,59 @@ class EntryBp(gdb.Breakpoint):
             return
         original = rd32(mode)
         if original is None:
-            problem('call %d: CWeaponMode word at 0x%x unreadable' % (call['id'], mode))
+            problem('call %d: CWeaponMode word at 0x%x unreadable, nothing written'
+                    % (call['id'], mode))
             return
         call['mode_original'] = original
+        call['mutation_attempted'] = True          # BEFORE the write: the return must restore it
+        state['forced_id'] = call['id']
+        write_error = None
         try:
             gdb.execute('set {unsigned int}0x%x = 0x%x' % (mode, NONE_WEAPON_WORD))
         except gdb.error as e:
-            problem('call %d: CWeaponMode write failed: %s (snapshot kept)' % (call['id'], str(e)[:60]))
+            write_error = str(e)[:60]
+            problem('call %d: CWeaponMode write raised: %s (attempted mutation recorded, rolling back)'
+                    % (call['id'], write_error))
+        now = rd32(mode) if write_error is None else None
+        if write_error is None and now is None:
+            problem('call %d: post-write readback unreadable at 0x%x (attempted mutation recorded, '
+                    'rolling back)' % (call['id'], mode))
+        elif write_error is None and now != NONE_WEAPON_WORD:
+            problem('call %d: CWeaponMode write did not take (read %s; attempted mutation recorded, '
+                    'rolling back)' % (call['id'], fmt(now)))
+        if write_error is not None or now != NONE_WEAPON_WORD:
+            call['write_confirmed'] = False
+            rollback_ok = self.rollback(call)
+            log('call %d: mutation failed%s; immediate rollback %s (the failure stays recorded and the '
+                'return will still restore)'
+                % (call['id'], '' if write_error is None else ' (exception)',
+                   'restored the original' if rollback_ok else 'FAILED'))
             return
-        now = rd32(mode)
-        if now != NONE_WEAPON_WORD:
-            problem('call %d: CWeaponMode write did not take (read %s)' % (call['id'], fmt(now)))
-            return
-        call['forced'] = True
-        state['forced_id'] = call['id']
+        call['write_confirmed'] = True
         log('call %d: FORCED CWeaponMode %s -> %s (kWT_None default CWeaponMode()) via caller %s '
             'state=%s; snapshot kept for the return'
             % (call['id'], fmt(original), fmt(NONE_WEAPON_WORD), caller, fmt(mstate)))
+
+    @staticmethod
+    def rollback(call):
+        """Put the original word back right away; report honestly, never claim success it did not see."""
+        addr, orig = call['mode_addr'], call['mode_original']
+        call['rollback_attempted'] = True
+        try:
+            gdb.execute('set {unsigned int}0x%x = 0x%x' % (addr, orig))
+            back = rd32(addr)
+        except gdb.error as e:
+            call['rollback_confirmed'] = False
+            problem('call %d: rollback write failed: %s' % (call['id'], str(e)[:60]))
+            return False
+        if back == orig:
+            call['rollback_confirmed'] = True
+            log('call %d: rollback read back the ORIGINAL 0x%x at 0x%x (failure still recorded)'
+                % (call['id'], orig, addr))
+            return True
+        call['rollback_confirmed'] = False
+        problem('call %d: rollback readback %s, wanted 0x%x' % (call['id'], fmt(back), orig))
+        return False
 
 
 def summarize():
@@ -197,27 +248,33 @@ def summarize():
         problems.append('fixture not installed')
     if not calls:
         problems.append('no WeaponHitsWeakSpot call at all')
-    forced = [c for c in calls if c['forced']]
+    accepted = [c for c in calls if c['accepted']]
+    armed = [c for c in accepted if c.get('armed')]
+    forced = [c for c in calls if c['mutation_attempted']]
     if not forced:
-        problems.append('the forced open+WeaponHits-false call never happened (calls=%d, refused=%d)'
-                        % (len(calls), len(state['refused'])))
-    unreturned = [c['id'] for c in calls if c['forced'] and not c['returned']]
+        problems.append('the forced open+WeaponHits-false call never happened (calls=%d, accepted=%d, '
+                        'refused=%d)' % (len(calls), len(accepted), len(state['refused'])))
+    # every armed call must return, natural ones included; a refused call is never completion evidence
+    unreturned = [c['id'] for c in armed if not c['returned']]
     if unreturned:
-        problems.append('forced call(s) without a return: %s' % unreturned)
+        problems.append('accepted call(s) without a return: %s' % unreturned)
+    unrestored = [c['id'] for c in forced if not c['restored']]
+    if unrestored:
+        problems.append('attempted mutation(s) not restored: %s' % unrestored)
     for c in forced:
-        if c['returned'] and c['ret'] != 1:
+        if c['returned'] and c['ret'] is not None and c['ret'] != 1:
             problems.append('call %d: forced call returned %s, the skip arm must return true'
                             % (c['id'], fmt(c['ret'])))
-        if c['returned'] and not c['restored']:
-            problems.append('call %d: CWeaponMode not restored' % c['id'])
-    natural = [c for c in calls if not c['forced'] and c['returned']]
+    natural = [c for c in accepted if c['returned'] and not c['mutation_attempted']]
     if not natural:
-        problems.append('no natural call returned (the base/geometric paths need one)')
+        problems.append('no accepted natural call returned (the base/geometric paths need one)')
     status = 'OK' if not problems else 'FAIL'
-    line = ('status=%s binary=%s installed=%d calls=%d refused=%d forced=%d forced_ret=%s '
-            'natural=%d callers=%s states=%s types=%s reason=%s\n'
-            % (status, state['binary'], state['installed'], len(calls), len(state['refused']),
-               len(forced), ','.join(fmt(c['ret']) for c in forced), len(natural),
+    line = ('status=%s binary=%s installed=%d calls=%d accepted=%d refused=%d armed=%d returned=%d '
+            'attempted=%d restored=%d forced_ret=%s natural=%d callers=%s states=%s types=%s reason=%s\n'
+            % (status, state['binary'], state['installed'], len(calls), len(accepted),
+               len(state['refused']), len(armed), sum(1 for c in armed if c['returned']),
+               len(forced), sum(1 for c in forced if c['restored']),
+               ','.join(fmt(c['ret']) for c in forced), len(natural),
                sorted(set(c['caller'] for c in calls)), sorted(set(str(c['mstate']) for c in calls)),
                sorted(set(fmt(c['type_in']) for c in calls)),
                '; '.join(problems) if problems else '-'))

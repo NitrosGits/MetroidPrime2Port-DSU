@@ -120,7 +120,12 @@ Forcing the open+WeaponHits-false arm: one real invocation (first open call, cal
 word a default-constructed `CWeaponMode()` has (`kWT_None = -1` → `0x0000ffff`,
 include/MetroidPrime/Weapons/WeaponTypes.hpp:32-47), which `CDamageVulnerability::WeaponHits` rejects at
 `IsInvalidWeaponType` (CDamageVulnerability.cpp:7,109-111). A FinishBreakpoint was armed before the write;
-the function **returned true** and the original word was written back and read back:
+the original word was written back and read back, and the OUTER function returned true:
+
+    (what the two boots captured: the fixture's own entry/return breakpoints plus gcov. There is no
+     breakpoint on the nested `CDamageVulnerability::WeaponHits` call and no per-call capture of its
+     argument or its return value, so this is an outer entry/return + coverage result, NOT a direct
+     nested-call oracle for that predicate.)
 
     call 1: FORCED CWeaponMode 0x0 -> 0xffff via caller CPuddleSpore::Touch state=0x1
     forced call: restored ORIGINAL CWeaponMode word 0x0 at 0x55555819484c (read back 0x0; before 0xffff)
@@ -146,3 +151,27 @@ Evidence `/tmp/opencode/pud2_evidence`: `pud2_r1.gcda` 72282220..., `pud2_r2.gcd
 `pud2.matching.gcno` d0a1c50c..., `CPuddleSpore.source.cpp` f7dfc69d..., binary ae5d9b39...,
 `weaponHitsWeakSpot.disasm.txt`, both diag/fixture transcripts, `pud2_merged_raw.gcov.json` and the merged
 report.
+
+### Correction (offline, NOT run - 2026-10-24)
+
+After the two boots the fixture was hardened offline, with zero further launches; the recorded raw-run
+evidence above comes from the earlier fixture version and is unchanged. The correction:
+
+- the attempted mode write is now recorded **before** the write, and the return restore runs for **every
+  attempted mutation**, including one whose write raised (partial store) or whose post-write readback was
+  unreadable/mismatched - previously `forced` was only set after a successful readback, so such a call
+  skipped the restore at the return;
+- a failed write/readback now gets an immediate rollback plus an honest readback log; the failure stays
+  recorded even if the rollback succeeds, and "restored" is only claimed when the readback shows the
+  original word;
+- `summarize` counts **every accepted/armed call** (natural ones included) in the pending/unreturned check
+  and every attempted mutation in the unrestored check; a refused (wrong caller or other spore) call is
+  counted as refused only and never as completion evidence;
+- the mock suite (`pud2_weaponhitsweakspot_selftest.py`, offline) now also covers: successful write with a
+  failed post-write readback (restored, memory exact, failure reported), a partial write followed by an
+  exception (restored), a rollback that fails (memory keeps the forced value, `restored=0`), an unreturned
+  natural call, plus the earlier both-paths, wrong-caller, wrong-this, restore-mismatch, no-natural and
+  install-failure cases. 0 scenario failures.
+
+No frame-level identity substitution is used anywhere: the window is the caller frame's name plus the
+tracked `this`, exactly as in the boots.
