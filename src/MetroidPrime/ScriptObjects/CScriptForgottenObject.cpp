@@ -11,12 +11,14 @@
 #include "dolphin/gx.h"
 
 static const float skDefaultAlpha = 1.f;
+// @ fn_24_510
 CScriptForgottenObject::CScriptForgottenObject(const TUniqueId uid, const CEntityInfo& info,
                                                const rstl::string& name)
 : CEntity(uid, info, name, 0)
 , mDepthOnlyActorId(kInvalidUniqueId)
 , mAlphaMaskActorId(kInvalidUniqueId) {}
 
+// @ fn_24_478
 TUniqueId CScriptForgottenObject::DisableTargetRendering(CStateManager& mgr,
                                                          const EScriptObjectState state) const {
   const TUniqueId id = FindConnectedObject(mgr, state, kSM_None);
@@ -29,6 +31,7 @@ TUniqueId CScriptForgottenObject::DisableTargetRendering(CStateManager& mgr,
   return kInvalidUniqueId;
 }
 
+// @ fn_24_3E4
 void CScriptForgottenObject::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CEntity::AcceptScriptMsg(mgr, msg);
   if (msg.GetMessage() == kSM_AreaLoaded) {
@@ -37,10 +40,12 @@ void CScriptForgottenObject::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
   }
 }
 
+// @ fn_24_3B4
 void CScriptForgottenObject::RenderDepthOnly(CStateManager& mgr) {
   RenderInternal(mgr, mDepthOnlyActorId, false);
 }
 
+// @ fn_24_384
 void CScriptForgottenObject::RenderAlphaMask(CStateManager& mgr) {
   RenderInternal(mgr, mAlphaMaskActorId, true);
 }
@@ -77,6 +82,7 @@ CEntity* LoadForgottenObject(CStateManager& mgr, CInputStream& input, CEntityInf
 }
 
 #ifndef MONOLITHIC
+// @ fn_24_A4
 static void SetFuncPtrs() {
   static SScriptForgottenObject_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadForgottenObject;
@@ -87,4 +93,5 @@ void RELMain() { SetFuncPtrs(); }
 
 void RELExit() { SetSScriptForgottenObject_FuncPtrs(nullptr); }
 #endif
+// @ fn_24_0
 CScriptForgottenObject::~CScriptForgottenObject() {}

@@ -4,6 +4,7 @@
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 
+// @ fn_11_BE8
 CDarkSamusBattleStage::CDarkSamusBattleStage(TUniqueId uid, const rstl::string& name,
                                              const CEntityInfo& info,
                                              const SLdrDSStageInfo& stageInfo)
@@ -11,6 +12,7 @@ CDarkSamusBattleStage::CDarkSamusBattleStage(TUniqueId uid, const rstl::string& 
 
 CDarkSamusBattleStage::~CDarkSamusBattleStage() {}
 
+// @ fn_11_B70
 const SLdrDSStageInfo& CDarkSamusBattleStage::GetStageInfo() const { return mStageInfo; }
 
 CEntity* LoadDarkSamusBattleStage(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
@@ -23,6 +25,7 @@ CEntity* LoadDarkSamusBattleStage(CStateManager& mgr, CInputStream& input, CEnti
 }
 
 #ifndef MONOLITHIC
+// @ fn_11_44
 static void SetFuncPtrs() {
   static SScriptDarkSamusBattleStage_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadDarkSamusBattleStage;

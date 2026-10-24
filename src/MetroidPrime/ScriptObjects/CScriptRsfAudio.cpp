@@ -10,6 +10,7 @@
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "rstl/math.hpp"
 
+// @ fn_65_B70
 CScriptRsfAudio::CScriptRsfAudio(TUniqueId uid, const CEntityInfo& info, const rstl::string& name,
                                  const rstl::string& fileName, int loopStart, int loopEnd,
                                  float fadeInTime, float fadeOutTime, int volume)
@@ -95,6 +96,7 @@ void CScriptRsfAudio::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_65_6E8
 void CScriptRsfAudio::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CEntity::AcceptScriptMsg(mgr, msg);
@@ -131,6 +133,7 @@ void CScriptRsfAudio::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
   }
 }
 
+// @ fn_65_6A8
 void CScriptRsfAudio::SetCurrentVolume(float volume) {
   if (volume != mCurrentVolume) {
     mCurrentVolume = volume;
@@ -150,6 +153,7 @@ void CScriptRsfAudio::StartFade(bool fadeIn) {
   }
 }
 
+// @ fn_65_554
 void CScriptRsfAudio::Load(CStateManager& mgr) {
   if (mPlayer.get() == nullptr && static_cast< int >(mFileName.size()) != 0) {
     mPlayer = rs_new CRSFAudio(mFileName, mLoopStart, mLoopEnd);
@@ -157,6 +161,7 @@ void CScriptRsfAudio::Load(CStateManager& mgr) {
   }
 }
 
+// @ fn_65_4FC
 void CScriptRsfAudio::Unload(CStateManager& mgr) {
   Stop(mgr);
   mPlayer = nullptr;
@@ -164,6 +169,7 @@ void CScriptRsfAudio::Unload(CStateManager& mgr) {
   mLoaded = false;
 }
 
+// @ fn_65_48C
 void CScriptRsfAudio::Play(CStateManager& mgr) {
   if (mLoaded && !mPlaying && mPlayer.get() != nullptr) {
     mPlayer->SetVolume(CCast::ToUint8(mCurrentVolume));
@@ -172,6 +178,7 @@ void CScriptRsfAudio::Play(CStateManager& mgr) {
   }
 }
 
+// @ fn_65_430
 void CScriptRsfAudio::Stop(CStateManager& mgr) {
   if (mLoaded && mPlaying && mPlayer.get() != nullptr) {
     mPlayer->StopMixOut();
@@ -190,6 +197,7 @@ CEntity* LoadRsfAudio(CStateManager& mgr, CInputStream& input, CEntityInfo& info
 }
 
 #ifndef MONOLITHIC
+// @ fn_65_CC
 static void SetFuncPtrs() {
   static SScriptRsfAudio_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadRsfAudio;

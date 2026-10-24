@@ -32,6 +32,7 @@ static CDamageVulnerability::TWeaponVulnerability skLightCrystalOverrides[1] = {
 };
 
 // Guessed helpers; the REL carries out-of-line copies of each.
+// @ fn_66_66C8
 static inline rstl::auto_ptr< TCachedToken< CScannableObjectInfo > >
 LoadScannableInfo(CAssetId id) {
   if (id == kInvalidAssetId) {
@@ -41,6 +42,7 @@ LoadScannableInfo(CAssetId id) {
                                                      true);
 }
 
+// @ fn_66_891C
 static inline CElementGen* CreateEffect(CAssetId id) {
   if (id != 0 && id != kInvalidAssetId) {
     return rs_new CElementGen(
@@ -50,6 +52,7 @@ static inline CElementGen* CreateEffect(CAssetId id) {
   return nullptr;
 }
 
+// @ fn_66_87C0
 static inline rstl::optional_object< TLockedToken< CGenDescription > >
 LoadOptionalEffect(CAssetId id) {
   if (id != 0 && id != kInvalidAssetId) {
@@ -68,6 +71,7 @@ static inline CDamageVulnerability GetCrystalVulnerability(bool isLight) {
                               7);
 }
 
+// @ fn_66_7DC8
 CScriptSafeZoneCrystal::CScriptSafeZoneCrystal(
     TUniqueId uid, const CEntityInfo& info, const rstl::string& name, const CTransform4f& xf,
     const CActorParameters& actorParms, CAssetId scanCollapsed, CAssetId scanEntangled,
@@ -133,6 +137,7 @@ CScriptSafeZoneCrystal::CScriptSafeZoneCrystal(
 // @ fn_66_7B2C
 CScriptSafeZoneCrystal::~CScriptSafeZoneCrystal() {}
 
+// @ fn_66_798C
 void CScriptSafeZoneCrystal::Touch(CActor& actor, CStateManager& mgr) {
   if (mIsLight && GetActive() && !mDisabled) {
     if (CGameProjectile* proj = TCastToPtr< CGameProjectile >(actor)) {
@@ -162,6 +167,7 @@ void CScriptSafeZoneCrystal::Touch(CActor& actor, CStateManager& mgr) {
   }
 }
 
+// @ fn_66_785C
 void CScriptSafeZoneCrystal::SpawnRefreshEffect() {
   if (mRefreshEffectDesc && mRefreshCooldown <= 0.f) {
     mRefreshEffect =
@@ -171,6 +177,7 @@ void CScriptSafeZoneCrystal::SpawnRefreshEffect() {
   }
 }
 
+// @ fn_66_77DC
 void CScriptSafeZoneCrystal::AddEffectToRenderer(CElementGen* gen) {
   if (gen != nullptr && (gen->GetParticleEmission() || !gen->IsSystemDeletable())) {
     gpRender->AddParticleGen(*gen);
@@ -199,6 +206,7 @@ void CScriptSafeZoneCrystal::ResetHealth() {
   mDamaged = false;
 }
 
+// @ fn_66_749C
 void CScriptSafeZoneCrystal::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CActor::AcceptScriptMsg(mgr, msg);
   if (msg.GetMessage() == kSM_Create) {
@@ -277,6 +285,7 @@ void CScriptSafeZoneCrystal::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
   }
 }
 
+// @ fn_66_72A8
 void CScriptSafeZoneCrystal::SetState(CStateManager& mgr, EState state) {
   if (state == mState) {
     return;
@@ -324,6 +333,7 @@ void CScriptSafeZoneCrystal::UpdateVulnerability() {
   }
 }
 
+// @ fn_66_712C
 void CScriptSafeZoneCrystal::UpdateModel(CStateManager& mgr) {
   if (SSafeZoneCrystalModels* models = mModels.get()) {
     const CModelData* model = nullptr;
@@ -391,6 +401,7 @@ void CScriptSafeZoneCrystal::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_66_6CD0
 void CScriptSafeZoneCrystal::UpdateStateTimer(float dt, CStateManager& mgr) {
   mStateTimer = rstl::max_val(0.f, mStateTimer - dt);
   switch (mState) {
@@ -432,6 +443,7 @@ void CScriptSafeZoneCrystal::UpdateRegeneration(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_66_6AD0
 void CScriptSafeZoneCrystal::UpdateRefreshEffect(float dt, CStateManager& mgr) {
   if (mRefreshEffectDesc) {
     mRefreshCooldown = rstl::max_val(0.f, mRefreshCooldown - dt);
@@ -445,6 +457,7 @@ void CScriptSafeZoneCrystal::UpdateRefreshEffect(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_66_693C
 void CScriptSafeZoneCrystal::UpdateEffectsVisibility(float dt, CStateManager& mgr) {
   bool hidden = false;
   if (mgr.World()->Area(GetCurrentAreaId())->GetOcclusionState() == CGameArea::kOS_Occluded) {
@@ -479,6 +492,7 @@ bool CScriptSafeZoneCrystal::KillEffectIfInactive(CElementGen* gen, EState state
   return true;
 }
 
+// @ fn_66_67CC
 bool CScriptSafeZoneCrystal::UpdateEffect(float dt, CElementGen* gen, bool alive,
                                           const CVector3f& pos, EState state, float alpha) const {
   if (gen != nullptr) {
@@ -504,6 +518,7 @@ const CDamageVulnerability* CScriptSafeZoneCrystal::GetDamageVulnerability() con
   return &mVulnerability;
 }
 
+// @ fn_66_6648
 CScannableObjectInfo* CScriptSafeZoneCrystal::GetScannableObjectInfo() const {
   TCachedToken< CScannableObjectInfo >* token = nullptr;
   switch (mState) {

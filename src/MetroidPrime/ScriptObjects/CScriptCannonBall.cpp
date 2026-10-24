@@ -23,6 +23,7 @@ static bool PortBallDebug() {
 }
 #endif
 
+// @ fn_57_110C
 CScriptCannonBall::CScriptCannonBall(TUniqueId uid, const rstl::string& name,
                                      const CEntityInfo& info, const CTransform4f& xf,
                                      CAssetId effect)
@@ -31,6 +32,7 @@ CScriptCannonBall::CScriptCannonBall(TUniqueId uid, const rstl::string& name,
          kInvalidUniqueId)
 , m_effect(effect) {}
 
+// @ fn_57_1054
 CScriptCannonBall::~CScriptCannonBall() {}
 
 void CScriptCannonBall::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
@@ -90,6 +92,7 @@ void CScriptCannonBall::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
   }
 }
 
+// @ fn_57_694
 void CScriptCannonBall::Think(float dt, CStateManager& mgr) {
   for (int i = 0; i < m_fields.size(); ++i) {
     m_fields[i].Think(dt, mgr, i);
@@ -184,6 +187,7 @@ void CScriptCannonBall::TrackedShot::Think(float dt, CStateManager& mgr, int ind
   effect->SetModelFlags(CModelFlags(CModelFlags::kT_One, color));
 }
 
+// @ fn_57_27C
 void CScriptCannonBall::TrackedShot::OnIncrementMsg(CStateManager& mgr, bool param) {
   const bool value = param;
   m_b = value;
@@ -194,6 +198,7 @@ void CScriptCannonBall::TrackedShot::OnIncrementMsg(CStateManager& mgr, bool par
   }
 }
 
+// @ fn_57_24C
 void CScriptCannonBall::TrackedShot::FreeScriptObject(CStateManager& mgr) {
   mgr.DeleteObjectRequest(m_scriptObject);
 }
@@ -212,6 +217,7 @@ CEntity* LoadCannonBall(CStateManager& mgr, CInputStream& input, CEntityInfo& in
 #ifndef MONOLITHIC
 SCannonBall_FuncPtrs REL_loader_CannonBall;
 
+// @ fn_57_70
 void SetRelLoaderFunctionToLoader() {
   REL_loader_CannonBall.mLoadCannonBall = LoadCannonBall;
   SetSCannonBall_FuncPtrs(&REL_loader_CannonBall);

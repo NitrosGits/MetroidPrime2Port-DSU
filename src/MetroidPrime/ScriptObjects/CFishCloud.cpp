@@ -48,6 +48,7 @@ static inline CVector3f VecDiv(const CVector3f& vec, const float f) {
 CFishCloudModifier::~CFishCloudModifier() {}
 
 // Local copy of CModelData::CModelDataNull.
+// @ fn_20_6BCC
 static CModelData CModelDataNull() { return CModelData(); }
 
 // @ fn_20_6AAC
@@ -102,6 +103,7 @@ void CFishCloudModifier::AddSelf(CStateManager& mgr) {
   }
 }
 
+// @ fn_20_67D0
 void CFishCloudModifier::RemoveSelf(CStateManager& mgr) {
   const rstl::vector< SConnection >& connections = GetConnectionList();
   for (rstl::vector< SConnection >::const_iterator it = connections.begin();
@@ -140,6 +142,7 @@ bool CFishCloud::CModifierSource::operator<(const CModifierSource& other) const 
 CFishCloud::CBoid::CBoid(const CVector3f& pos, const CVector3f& vel, float scale)
 : mPos(pos), mVel(vel), mScale(scale), mNext(nullptr), mActive(true) {}
 
+// @ fn_20_57D0
 CFishCloud::CFishCloud(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                        const CVector3f& scale, const CTransform4f& xf, const CModelData& mData,
                        const CAnimRes& aRes, int numBoids, float speed, float separationRadius,
@@ -276,6 +279,7 @@ bool CFishCloud::PointInBox(const CAABox& aabb, const CVector3f& point) const {
   return GetUntransformedBoundingBox().PointInside(localPoint);
 }
 
+// @ fn_20_4A04
 CPlane CFishCloud::FindClosestPlane(const CAABox& aabb, const CVector3f& point) const {
   if (!mWorldSpace) {
     float minDistance = FLT_MAX;
@@ -310,6 +314,7 @@ CPlane CFishCloud::FindClosestPlane(const CAABox& aabb, const CVector3f& point) 
   return CPlane(xf * tri.GetPointA(), xf * tri.GetPointC(), xf * tri.GetPointB());
 }
 
+// @ fn_20_46A0
 CPlane CFishCloud::FindFarthestPlane(const CAABox& aabb, const CVector3f& point) const {
   if (!mWorldSpace) {
     float maxDistance = 0.f;
@@ -344,6 +349,7 @@ CPlane CFishCloud::FindFarthestPlane(const CAABox& aabb, const CVector3f& point)
   return CPlane(xf * tri.GetPointA(), xf * tri.GetPointC(), xf * tri.GetPointB());
 }
 
+// @ fn_20_43F8
 void CFishCloud::PlaceBoid(CStateManager& mgr, CBoid& boid, const CAABox& aabb) {
   CRandom16& random = *mgr.Random();
   const CPlane plane = FindClosestPlane(aabb, boid.mPos);
@@ -462,6 +468,7 @@ void CFishCloud::RemoveRepulsor(TUniqueId source) {
 // @ fn_20_3730
 rstl::optional_object< CAABox > CFishCloud::GetTouchBounds() const { return GetBoundingBox(); }
 
+// @ fn_20_3054
 void CFishCloud::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -777,6 +784,7 @@ void CFishCloud::CreatePartitionList() {
   mBoidPartitionLists.reserve(343);
 }
 
+// @ fn_20_2148
 void CFishCloud::UpdatePartitionList() {
   mBoidPartitionLists.clear();
   for (int i = 0; i < mBoidPartitionLists.capacity(); ++i) {
@@ -795,6 +803,7 @@ void CFishCloud::UpdatePartitionList() {
   }
 }
 
+// @ fn_20_2054
 CFishCloud::CBoid* CFishCloud::GetListAt(const CVector3f& pos) {
   const CAABox bounds = GetBoundingBox();
   const CVector3f indices =
@@ -806,6 +815,7 @@ CFishCloud::CBoid* CFishCloud::GetListAt(const CVector3f& pos) {
   return mBoidPartitionLists[index];
 }
 
+// @ fn_20_1D24
 void CFishCloud::BuildBoidNearList(const CVector3f& pos, float radius,
                                    rstl::reserved_vector< CBoid*, 25 >& nearList) {
   const float radiusSquared = radius * radius;
@@ -866,6 +876,7 @@ void CFishCloud::BuildBoidNearList(const CVector3f& pos, float radius,
   }
 }
 
+// @ fn_20_1C40
 void CFishCloud::OldBuildBoidNearList(const CVector3f& pos, float radius,
                                       rstl::reserved_vector< CBoid*, 25 >& nearList) {
   const float radiusSquared = radius * radius;
@@ -988,6 +999,7 @@ void CFishCloud::ApplySeparation(CBoid& boid, const CVector3f& point, float radi
   }
 }
 
+// @ fn_20_1264
 void CFishCloud::ApplyAttraction(CBoid& boid, const CVector3f& point, float radius,
                                  float magnitude) {
   const CVector3f delta = point - boid.GetTranslation();

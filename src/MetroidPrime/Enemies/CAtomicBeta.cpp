@@ -69,12 +69,14 @@ CAtomicBeta::CAtomicBeta(TUniqueId uid, const rstl::string& name, const CEntityI
   KnockBackController().SetHurlVelocityEnabled(false);
 }
 
+// @ fn_5_1BE0
 CAtomicBeta::~CAtomicBeta() {
   StopLoopedSound(mChargedFlySoundHandle);
   StopLoopedSound(mElectricitySoundHandle);
   StopLoopedSound(mFlySoundHandle);
 }
 
+// @ fn_5_1B00
 void CAtomicBeta::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Create:
@@ -95,12 +97,14 @@ void CAtomicBeta::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_5_1AB4
 void CAtomicBeta::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_5_1890
 void CAtomicBeta::CreateBeams(CStateManager& mgr) {
   const CElectricBeamInfo beamInfo(mElectricDescription, 50.f, mBeamRadius, 10.f, mBeamParticle,
                                    mBeamFadeSpeed, mBeamDamageInterval);
@@ -115,6 +119,7 @@ void CAtomicBeta::CreateBeams(CStateManager& mgr) {
   }
 }
 
+// @ fn_5_16D4
 void CAtomicBeta::UpdateBeams(CStateManager& mgr, bool fire) {
   if (mBeamFired == fire) {
     return;
@@ -151,6 +156,7 @@ void CAtomicBeta::PreRender(CStateManager& mgr) {
   }
 }
 
+// @ fn_5_155C
 void CAtomicBeta::DestroyBeams(CStateManager& mgr) {
   for (int i = 0; i < mBeamIds.size(); ++i) {
     mgr.DeleteObjectRequest(mBeamIds[i]);
@@ -159,6 +165,7 @@ void CAtomicBeta::DestroyBeams(CStateManager& mgr) {
   mBeamIds.clear();
 }
 
+// @ fn_5_10AC
 void CAtomicBeta::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
 
@@ -219,6 +226,7 @@ void CAtomicBeta::PlayLoopedSound(CSfxHandle& handle, ushort sfxId, const CVecto
   }
 }
 
+// @ fn_5_FD0
 void CAtomicBeta::StopLoopedSound(CSfxHandle& handle) const {
   if (handle) {
     CSfxManager::RemoveEmitter(handle);
@@ -226,6 +234,7 @@ void CAtomicBeta::StopLoopedSound(CSfxHandle& handle) const {
   }
 }
 
+// @ fn_5_F8C
 bool CAtomicBeta::IsCharging(const CStateManager& mgr) {
   for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
     if (mgr.GetPlayer(i)->GetPlayerState()->GetChargeBeamFactor() > 0.1f) {
@@ -235,6 +244,7 @@ bool CAtomicBeta::IsCharging(const CStateManager& mgr) {
   return false;
 }
 
+// @ fn_5_F28
 const CDamageVulnerability* CAtomicBeta::GetDamageVulnerability() const {
   if (close_enough(GetBodyController()->GetPercentageFrozen(), 0.f)) {
     return CPatterned::GetDamageVulnerability();
@@ -242,6 +252,7 @@ const CDamageVulnerability* CAtomicBeta::GetDamageVulnerability() const {
   return &mFrozenVulnerability;
 }
 
+// @ fn_5_E58
 rstl::optional_object< CAABox > CAtomicBeta::GetTouchBounds() const {
   const CVector3f extent = mTouchRadius * CVector3f::One();
   return rstl::optional_object< CAABox >(
@@ -262,6 +273,7 @@ void CAtomicBeta::Touch(CActor& other, CStateManager& mgr) {
   CPatterned::Touch(other, mgr);
 }
 
+// @ fn_5_CF0
 EWeaponCollisionResponseTypes CAtomicBeta::GetCollisionResponseType(const CVector3f& position,
                                                                     const CVector3f& direction,
                                                                     const CWeaponMode& mode,
@@ -271,6 +283,7 @@ EWeaponCollisionResponseTypes CAtomicBeta::GetCollisionResponseType(const CVecto
              : static_cast< EWeaponCollisionResponseTypes >(0x66);
 }
 
+// @ fn_5_C64
 void CAtomicBeta::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   UpdateBeams(mgr, false);
   StopLoopedSound(mChargedFlySoundHandle);
@@ -303,6 +316,7 @@ CEntity* LoadAtomicBeta(CStateManager& mgr, CInputStream& input, CEntityInfo& in
 }
 
 #ifndef MONOLITHIC
+// @ fn_5_10C
 static void SetFuncPtrs() {
   static SAtomicBeta_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadAtomicBeta;

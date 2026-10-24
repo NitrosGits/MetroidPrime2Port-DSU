@@ -160,6 +160,7 @@ void CPuddleSpore::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
 }
 
 // fn_51_32B0
+// @ fn_51_32B0
 void CPuddleSpore::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   if (IsOpen()) {
     CPatterned::KnockBack(mgr, info);
@@ -221,6 +222,7 @@ void CPuddleSpore::CollidedWith(const TUniqueId& id, const CCollisionInfoList& l
 }
 
 // fn_51_2EE4
+// @ fn_51_2EE4
 void CPuddleSpore::Touch(CActor& actor, CStateManager& mgr) {
   if (mAlive) {
     if (CGameProjectile* projectile = TCastToPtr< CGameProjectile >(actor)) {
@@ -392,6 +394,7 @@ void CPuddleSpore::UpdatePlayerContact(float dt, CStateManager& mgr) {
 }
 
 // fn_51_23C4
+// @ fn_51_23C4
 void CPuddleSpore::SetCollisionActive(CStateManager& mgr, bool active) {
   if (mCollisionActorManager.get()) {
     mCollisionActorManager->SetActive(mgr, active);

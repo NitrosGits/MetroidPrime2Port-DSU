@@ -102,6 +102,7 @@ CScriptSafeZone::CScriptSafeZone(
 }
 
 // The REL carries its own weak copy of the base destructor and inlines it here.
+// @ fn_66_5148
 inline CScriptTriggerEllipsoid::~CScriptTriggerEllipsoid() {}
 
 // @ fn_66_4BB0
@@ -110,6 +111,7 @@ CScriptSafeZone::~CScriptSafeZone() {}
 // @ fn_66_4B90
 void CScriptSafeZone::SetActive(const bool active) { CActor::SetActive(active); }
 
+// @ fn_66_49C8
 CLight CScriptSafeZone::BuildLight() const {
   const float radius = mActivation * GetScale().GetX();
   if (mGenerateMobileLight) {
@@ -122,6 +124,7 @@ CLight CScriptSafeZone::BuildLight() const {
   return light;
 }
 
+// @ fn_66_496C
 void CScriptSafeZone::SetZoneType(EZoneType type) {
   if (mZoneType == type) {
     return;
@@ -160,6 +163,7 @@ void CScriptSafeZone::PlayActivateSound(CStateManager& mgr) {
   PlaySound(mgr, mCurrentInfo->x0_, 0);
 }
 
+// @ fn_66_4794
 void CScriptSafeZone::SetLowPassFilter(bool enabled) {
   if (mFilterSoundEffects) {
     if (enabled) {
@@ -301,6 +305,7 @@ void CScriptSafeZone::UpdateEchoEmitter(float dt, CStateManager& mgr) {
   emitter->Think(dt, mgr);
 }
 
+// @ fn_66_374C
 void CScriptSafeZone::UpdateSafeZoneManager(CStateManager& mgr) {
   CSafeZoneManager* manager = mgr.mSafeZoneManager;
   CGameLight* light = TCastToPtr< CGameLight >(mgr.ObjectById(mLightId));
@@ -327,6 +332,7 @@ void CScriptSafeZone::UpdateSafeZoneManager(CStateManager& mgr) {
   }
 }
 
+// @ fn_66_40E4
 void CScriptSafeZone::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Create: {
@@ -451,6 +457,7 @@ void CScriptSafeZone::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
   CScriptTrigger::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_66_4054
 void CScriptSafeZone::UpdateLoopSound(float dt, CStateManager& mgr) {
   if (mLoopSoundDelay >= mCurrentInfo->xc_) {
     if (!FindLoopedSound(mCurrentInfo->x2_)) {
@@ -499,6 +506,7 @@ void CScriptSafeZone::ApplyInsideFilter(CStateManager& mgr) {
   }
 }
 
+// @ fn_66_3658
 void CScriptSafeZone::ApplyFog(CStateManager& mgr, const CSafeZoneFog& fog) {
   if (fog.mEnabled) {
     const TAreaId aid = GetCurrentAreaId();
@@ -532,6 +540,7 @@ void CScriptSafeZone::PreRenderAllViewports(CStateManager& mgr) {
   UpdatePortalSystemState(mgr);
 }
 
+// @ fn_66_3298
 void CScriptSafeZone::InhabitantAdded(CActor& actor, CStateManager& mgr) {
   CScriptTrigger::InhabitantAdded(actor, mgr);
   CGameProjectile* proj = TCastToPtr< CGameProjectile >(actor);
@@ -547,6 +556,7 @@ void CScriptSafeZone::InhabitantAdded(CActor& actor, CStateManager& mgr) {
   UpdatePlayerInside(actor, true, mgr);
 }
 
+// @ fn_66_2990
 void CScriptSafeZone::SpawnImpactEffect(const CVector3f& position, float scale) {
   CElementGen* gen =
       rs_new CElementGen(mImpactEffect, CElementGen::kMOT_Normal, CElementGen::kOSF_One);
@@ -664,6 +674,7 @@ void CScriptSafeZone::UpdatePlayerInside(CActor& actor, bool inside, CStateManag
   }
 }
 
+// @ fn_66_2810
 void CScriptSafeZone::AddToRenderer(const CStateManager& mgr) const {
   if (GetActive()) {
     CScriptTriggerEllipsoid::AddToRenderer(mgr);
@@ -755,6 +766,7 @@ void CScriptSafeZone::ApplyRenderEffect(CStateManager& mgr) {
       GetShape() == kST_Cylinder);
 }
 
+// @ fn_66_2418
 void CScriptSafeZone::Render(const CStateManager& mgr) const {
   if (mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Dark) {
     RenderDarkVisorSpot(mgr);

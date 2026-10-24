@@ -69,6 +69,7 @@ static const char* const skEffectNames[] = {
 // Guessed name; hits needed in each puzzle phase before the guardian charges.
 static const int skHitsToCharge[] = {1, 1, 1, 1, 2, 3};
 
+// @ fn_35_3854
 CIngSpiderballGuardian::CIngSpiderballGuardian(TUniqueId uid, const rstl::string& name,
                                                const CEntityInfo& info, const CTransform4f& xf,
                                                const CModelData& modelData,
@@ -116,9 +117,11 @@ CIngSpiderballGuardian::CIngSpiderballGuardian(TUniqueId uid, const rstl::string
   mKnockBackController.EnableKnockBackPhysics(false);
 }
 
+// @ fn_35_356C
 CIngSpiderballGuardian::~CIngSpiderballGuardian() {}
 
 // fn_35_3214
+// @ fn_35_3214
 void CIngSpiderballGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId senderId = msg.GetSenderId();
   const EScriptObjectMessage message = msg.GetMessage();
@@ -239,6 +242,7 @@ CVector3f CIngSpiderballGuardian::GetAimPosition(const CStateManager& mgr, float
 }
 
 // fn_35_2DFC
+// @ fn_35_2DFC
 void CIngSpiderballGuardian::Death(CStateManager& mgr, const CVector3f& direction,
                                    EScriptObjectState state) {
   BodyController()->CommandMgr().DeliverCmd(CBCKnockDownCmd(direction, pas::kS_One));
@@ -275,6 +279,7 @@ bool CIngSpiderballGuardian::Stunned(CStateManager& mgr, const CTriggerData& dat
 void CIngSpiderballGuardian::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 // fn_35_2C08
+// @ fn_35_2C08
 void CIngSpiderballGuardian::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -298,6 +303,7 @@ void CIngSpiderballGuardian::Patrol(CStateManager& mgr, EStateMsg msg, float dt)
 }
 
 // fn_35_296C
+// @ fn_35_296C
 void CIngSpiderballGuardian::DamageReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -334,6 +340,7 @@ void CIngSpiderballGuardian::DamageReaction(CStateManager& mgr, EStateMsg msg, f
 }
 
 // fn_35_25E4
+// @ fn_35_25E4
 void CIngSpiderballGuardian::StunnedReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -404,6 +411,7 @@ void CIngSpiderballGuardian::BeginNextPuzzleSection(CStateManager& mgr, float dt
 }
 
 // fn_35_1D90
+// @ fn_35_1D90
 void CIngSpiderballGuardian::SelectNextWaypoint(CStateManager& mgr) {
   const TUniqueId previousId = mPrevWaypointId;
   CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(mTargetWaypointId));
@@ -546,6 +554,7 @@ void CIngSpiderballGuardian::ApplyProximityDamage(CStateManager& mgr) {
 }
 
 // fn_35_1560
+// @ fn_35_1560
 void CIngSpiderballGuardian::UpdateEffects(CStateManager& mgr, bool active) {
   mEffectsActive = active;
   CAnimData* animData = AnimationData();
@@ -575,6 +584,7 @@ void CIngSpiderballGuardian::UpdateEffects(CStateManager& mgr, bool active) {
 }
 
 // fn_35_147C
+// @ fn_35_147C
 void CIngSpiderballGuardian::UpdateStateTimers(CStateManager& mgr, float dt) {
   switch (mState) {
   case kGS_Stunned:
@@ -595,6 +605,7 @@ void CIngSpiderballGuardian::UpdateStateTimers(CStateManager& mgr, float dt) {
 }
 
 // fn_35_12D4
+// @ fn_35_12D4
 void CIngSpiderballGuardian::UpdateRollSound() {
   if (mRolling) {
     if (mSoundState != mState) {
@@ -629,6 +640,7 @@ void CIngSpiderballGuardian::UpdateRollSound() {
 }
 
 // fn_35_1084
+// @ fn_35_1084
 void CIngSpiderballGuardian::SetGuardianState(CStateManager& mgr, EGuardianState state) {
   const SLdrIngSpiderballGuardianStruct& props = GetPhaseProperties();
   if (mState == kGS_Stunned && state != kGS_Charging && state != mState) {

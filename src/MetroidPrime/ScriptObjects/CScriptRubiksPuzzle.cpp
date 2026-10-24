@@ -60,6 +60,7 @@ static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
      reinterpret_cast< CPatterned::StateMachine::TriggerFunc >(&CScriptRubiksPuzzle::RotationOver)},
 };
 
+// @ fn_4_3CC
 CScriptRubiksPuzzle::CPressRing::~CPressRing() {
   clear();
   rstl::rmemory_allocator::deallocate(mItems);
@@ -99,8 +100,10 @@ void CScriptRubiksPuzzle::CPressRing::push_back(const SButtonPress& press) {
   ++mEnd;
 }
 
+// @ fn_4_378
 CScriptRubiksPuzzle::CPressQueue::~CPressQueue() {}
 
+// @ fn_4_1D3C
 void CScriptRubiksPuzzle::CPressQueue::push_back(const SButtonPress& press) {
   mRing.push_back(press);
 }
@@ -123,6 +126,7 @@ CScriptRubiksPuzzle::CScriptRubiksPuzzle(TUniqueId uid, const CEntityInfo& info,
   mStateMachine->Lock();
 }
 
+// @ fn_4_1B54
 void CScriptRubiksPuzzle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CEntity::AcceptScriptMsg(mgr, msg);
   switch (msg.GetMessage()) {
@@ -156,6 +160,7 @@ void CScriptRubiksPuzzle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
   }
 }
 
+// @ fn_4_18A0
 void CScriptRubiksPuzzle::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -280,10 +285,12 @@ void CScriptRubiksPuzzle::Rotating(CStateManager& mgr, int msg, float dt) {
   }
 }
 
+// @ fn_4_131C
 bool CScriptRubiksPuzzle::ButtonPressed(CStateManager& mgr, const float& arg) {
   return mPressQueue.size() > 0;
 }
 
+// @ fn_4_12E8
 bool CScriptRubiksPuzzle::RotationOver(CStateManager& mgr, const float& arg) {
   return !mRotating || mRotationAngle >= 90.f;
 }
@@ -304,6 +311,7 @@ void CScriptRubiksPuzzle::RecordPiecePositions(CStateManager& mgr) {
   }
 }
 
+// @ fn_4_D6C
 void CScriptRubiksPuzzle::RestorePiecePositions(CStateManager& mgr) {
   for (int i = 0; i < mPieces.size(); ++i) {
     CActor* piece = TCastToPtr< CActor >(mgr.ObjectById(mPieces[i].first));
@@ -311,6 +319,7 @@ void CScriptRubiksPuzzle::RestorePiecePositions(CStateManager& mgr) {
   }
 }
 
+// @ fn_4_106C
 void CScriptRubiksPuzzle::SendToConnected(CStateManager& mgr, EScriptObjectState state,
                                           const EScriptObjectMessage& msg) {
   const rstl::vector< TUniqueId > ids = FindConnectedObjects(mgr, state, kSM_None);
@@ -326,6 +335,7 @@ void CScriptRubiksPuzzle::SendToConnected(CStateManager& mgr, EScriptObjectState
   }
 }
 
+// @ fn_4_C28
 bool CScriptRubiksPuzzle::UpdateRow(CStateManager& mgr, bool force, int row,
                                     EScriptObjectState stateA, EScriptObjectState stateB,
                                     EScriptObjectState stateC) {
@@ -409,6 +419,7 @@ CEntity* LoadRubiksPuzzle(CStateManager& mgr, CInputStream& input, CEntityInfo& 
 }
 
 #ifndef MONOLITHIC
+// @ fn_4_57C
 static void SetFuncPtrs() {
   static SScriptRubiksPuzzle_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadRubiksPuzzle;

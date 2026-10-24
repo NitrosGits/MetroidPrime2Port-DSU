@@ -20,6 +20,7 @@ CScriptGuiWidget::CScriptGuiWidget(TUniqueId uid, const rstl::string& name, cons
   mControllers.reserve(4);
 }
 
+// @ fn_60_7810
 void CScriptGuiWidget::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Lock:
@@ -66,6 +67,7 @@ void CScriptGuiWidget::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   }
 }
 
+// @ fn_60_7664
 void CScriptGuiWidget::Think(float dt, CStateManager& mgr) {
   CEntity::Think(dt, mgr);
   if (!GetActive()) {
@@ -96,6 +98,7 @@ void CScriptGuiWidget::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_60_7294
 bool CScriptGuiWidget::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
   if (input.PA()) {
     SendScriptMsgs(kSS_APRC, mgr);
@@ -142,6 +145,7 @@ void CScriptGuiWidget::SetLocked(bool locked, CStateManager& mgr) {
   }
 }
 
+// @ fn_60_71D4
 void CScriptGuiWidget::AddController(int controller) {
   for (int i = 0; i < mControllers.size(); ++i) {
     if (controller == mControllers[i]) {

@@ -20,6 +20,7 @@ Usage: tools/port_progress.py [--record]   (--record appends a dated row to docs
 import argparse
 import csv
 import datetime
+import json
 import pathlib
 import re
 import sys
@@ -101,6 +102,9 @@ def module_analysis(mods, ids, marks):
         total = marked = 0
         for r in rows:
             if behaviour_class(r.get(col)) != "B":
+                off = row_offset(r)
+                if off is not None:
+                    COPIES.setdefault(mid, set()).add(off)
                 continue
             total += 1
             off = row_offset(r)
@@ -108,6 +112,46 @@ def module_analysis(mods, ids, marks):
                 marked += 1
         out[mod] = (marked, total)
     return out
+
+
+def unit_text_bases():
+    """(module name, unit path without extension) -> the unit's .text start in its module, from
+    config/G2ME01/rels/<M>/splits.txt. objdiff gives function addresses relative to the unit."""
+    out = {}
+    for sp in (ROOT / "config/G2ME01/rels").glob("*/splits.txt"):
+        cur = None
+        for ln in sp.read_text().splitlines():
+            if ln and not ln[0].isspace() and ln.rstrip().endswith(":"):
+                cur = ln.rstrip()[:-1].rsplit(".", 1)[0]
+            elif cur and ln.strip().startswith(".text") and "start:" in ln:
+                out[(sp.parent.name, cur)] = int(ln.split("start:")[1].split()[0], 16)
+    return out
+
+
+def unit_base(bases, unit):
+    """objdiff unit name 'Module/path/to/unit' -> its .text start (0 when the module has one unit)."""
+    mod, _, path = unit["name"].partition("/")
+    return bases.get(((unit.get("metadata") or {}).get("module_name", mod), path), 0)
+
+
+# module id -> offsets of its H/T rows, filled by module_analysis
+COPIES = {}
+
+
+def matched_copies(report):
+    """(H/T rows objdiff reports 100%, all H/T rows). A host copy or runtime body that compiles to
+    retail's bytes is the retail code, so it needs no coverage run of its own."""
+    total = sum(len(v) for v in COPIES.values())
+    if not report.exists():
+        return None, total
+    hit = 0
+    bases = unit_text_bases()
+    for u in json.load(report.open())["units"]:
+        mid = (u.get("metadata") or {}).get("module_id")
+        for f in u.get("functions", []) if mid in COPIES else ():
+            if f.get("fuzzy_match_percent", 0) >= 100 and unit_base(bases, u) + int(f["address"]) in COPIES[mid]:
+                hit += 1
+    return hit, total
 
 
 def markers():
@@ -159,6 +203,10 @@ def main():
     print(f"{'TOTAL':26s} {'':10s} {cf:5d}/{tf:<5d} {cb:7d}/{tb:<7d} {bm:5d}/{bt:<5d}  "
           f"({100 * cf / tf:.2f}% fns, {100 * cb / tb:.2f}% bytes, "
           f"{100 * bm / bt if bt else 0:.2f}% behaviour, {len(marks)} markers)")
+    hm, ht = matched_copies(ROOT / "build/G2ME01/report.json")
+    if hm is not None:
+        print(f"  copies (H/T rows at objdiff 100%) {hm}/{ht}; behaviour + copies "
+              f"{bm + hm}/{bt + ht} ({100 * (bm + hm) / (bt + ht):.2f}%)")
     for st in ("upstream", "port-body", "entry-stub"):
         sel = [r for r in rows if r[1] == st]
         print(f"  {st:10s} {len(sel):3d} modules  covered {sum(r[2] for r in sel)}/{sum(r[3] for r in sel)} fns")

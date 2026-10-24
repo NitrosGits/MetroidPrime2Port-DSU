@@ -193,6 +193,7 @@ CIngSpaceJumpGuardian::CIngSpaceJumpGuardian(TUniqueId uid, const rstl::string& 
   SetDrawShadow(false);
 }
 
+// @ fn_34_5B30
 CIngSpaceJumpGuardian::~CIngSpaceJumpGuardian() {}
 
 void CIngSpaceJumpGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
@@ -340,6 +341,7 @@ void CIngSpaceJumpGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POIN
   }
 }
 
+// @ fn_34_5248
 void CIngSpaceJumpGuardian::Render(const CStateManager& mgr) const {
   if (mRender) {
     CPatterned::Render(mgr);
@@ -439,6 +441,7 @@ bool CIngSpaceJumpGuardian::HasJumpTarget(CStateManager& mgr, const CTriggerData
   return mJumpTarget != kInvalidUniqueId;
 }
 
+// @ fn_34_4D48
 bool CIngSpaceJumpGuardian::IsFacingTarget(CStateManager& mgr, const CTriggerData& data) const {
   if (const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mFaceTarget))) {
     const CVector3f delta = target->GetTranslation() - GetTranslation();
@@ -448,6 +451,7 @@ bool CIngSpaceJumpGuardian::IsFacingTarget(CStateManager& mgr, const CTriggerDat
   return true;
 }
 
+// @ fn_34_4C84
 bool CIngSpaceJumpGuardian::IsFacingWaypoint(CStateManager& mgr, const CTriggerData& data) const {
   if (!mWaypointNavigation.IsInPosition()) {
     if (const CScriptWaypoint* waypoint = TCastToConstPtr< CScriptWaypoint >(
@@ -492,6 +496,7 @@ bool CIngSpaceJumpGuardian::PathOver(CStateManager& mgr, const CTriggerData& dat
   return result;
 }
 
+// @ fn_34_4BA8
 bool CIngSpaceJumpGuardian::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
   return mHeardNoise || CPatterned::PathShagged(mgr, data);
 }
@@ -565,6 +570,7 @@ void CIngSpaceJumpGuardian::FollowIntroPattern(CStateManager& mgr, EStateMsg msg
   }
 }
 
+// @ fn_34_4574
 void CIngSpaceJumpGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -660,6 +666,7 @@ void CIngSpaceJumpGuardian::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_34_3C6C
 void CIngSpaceJumpGuardian::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -676,6 +683,7 @@ void CIngSpaceJumpGuardian::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_34_3A3C
 void CIngSpaceJumpGuardian::MiniPortalAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -790,6 +798,7 @@ void CIngSpaceJumpGuardian::SelectJumpTarget(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_34_342C
 void CIngSpaceJumpGuardian::SelectAttackAction(CStateManager& mgr, float dt) {
   const SLdrIngSpaceJumpGuardianStruct* current = GetCurrentStruct();
   const float roll = mgr.Random()->Range(0.f, 100.f);
@@ -909,6 +918,7 @@ void CIngSpaceJumpGuardian::UpdateCollisionVulnerabilities(CStateManager& mgr) {
   }
 }
 
+// @ fn_34_2744
 void CIngSpaceJumpGuardian::TouchDamage(CStateManager& mgr, TUniqueId senderId) {
   if (const CCollisionActor* colAct =
           TCastToConstPtr< CCollisionActor >(mgr.GetObjectById(senderId))) {
@@ -1185,6 +1195,7 @@ CEntity* LoadIngSpaceJumpGuardian(CStateManager& mgr, CInputStream& input, CEnti
 }
 
 #ifndef MONOLITHIC
+// @ fn_34_140
 static void SetFuncPtrs() {
   static SIngSpaceJumpGuardian_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadIngSpaceJumpGuardian;

@@ -81,8 +81,10 @@ CPillBug::CPillBug(TUniqueId uid, const rstl::string& name, EFlavorType flavor, 
   SetDrawShadow(false);
 }
 
+// @ fn_48_3AA4
 CPillBug::~CPillBug() {}
 
+// @ fn_48_3840
 void CPillBug::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId uid = msg.GetSenderId();
   bool handled = false;
@@ -132,6 +134,7 @@ void CPillBug::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_48_3700
 void CPillBug::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -159,6 +162,7 @@ void CPillBug::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_48_3648
 const CDamageVulnerability* CPillBug::GetDamageVulnerability() const {
   switch (mMode) {
   case kM_Wander:
@@ -180,6 +184,7 @@ rstl::optional_object< CAABox > CPillBug::GetTouchBounds() const {
 // @ fn_48_358C
 bool CPillBug::IsOnGround() const { return mLanded; }
 
+// @ fn_48_3580
 bool CPillBug::IsOnStaticGround() const { return mTouchingStaticGround; }
 
 // @ fn_48_3564
@@ -187,6 +192,7 @@ CVector3f CPillBug::GetAimPosition(const CStateManager& mgr, float dt) const {
   return GetTranslation();
 }
 
+// @ fn_48_3524
 void CPillBug::ThinkAboutMove(float dt) {
   if (mAlignToFloor || mOnGround || mOnStaticGround) {
     CPatterned::ThinkAboutMove(dt);
@@ -205,6 +211,7 @@ void CPillBug::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
   }
 }
 
+// @ fn_48_32C4
 TUniqueId CPillBug::GetNextWaypoint(CStateManager& mgr, const CScriptWaypoint* waypoint,
                                     bool reverse) {
   if (mReturningToPath) {
@@ -256,6 +263,7 @@ TUniqueId CPillBug::GetNextWaypoint(CStateManager& mgr, const CScriptWaypoint* w
   return mPath[index];
 }
 
+// @ fn_48_3134
 void CPillBug::BuildPath(CStateManager& mgr) {
   if (HasInnerPathLoop(mgr)) {
     return;
@@ -325,6 +333,7 @@ bool CPillBug::HasInnerPathLoop(CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_48_2EC8
 int CPillBug::GetClosestPathIndex(CStateManager& mgr) const {
   int closest = 0;
   float closestDistSq = FLT_MAX;
@@ -344,6 +353,7 @@ int CPillBug::GetClosestPathIndex(CStateManager& mgr) const {
   return closest;
 }
 
+// @ fn_48_2B2C
 TUniqueId CPillBug::FindReturnWaypoint(CStateManager& mgr) const {
   TUniqueId best = kInvalidUniqueId;
   float bestDistSq = FLT_MAX;
@@ -380,6 +390,7 @@ TUniqueId CPillBug::FindReturnWaypoint(CStateManager& mgr) const {
   return best;
 }
 
+// @ fn_48_2AEC
 int CPillBug::GetCurrentConstraint() const {
   if (mPathLoops && !mPathForward) {
     if (mPlanarConstraint == 1) {
@@ -646,6 +657,7 @@ void CPillBug::Fall(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_48_1598
 void CPillBug::Injured(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -668,6 +680,7 @@ void CPillBug::Injured(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_48_1458
 void CPillBug::Turn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -697,6 +710,7 @@ void CPillBug::Turn(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_48_1020
 void CPillBug::Wander(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -808,6 +822,7 @@ CEntity* LoadPillBug(CStateManager& mgr, CInputStream& input, CEntityInfo& info)
 }
 
 #ifndef MONOLITHIC
+// @ fn_48_100
 static void SetFuncPtrs() {
   static SPillBug_FuncPtrs funcPtrs;
   funcPtrs.mLoadPillBug = &LoadPillBug;

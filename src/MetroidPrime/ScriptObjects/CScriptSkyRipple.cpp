@@ -18,18 +18,21 @@
 static EScriptObjectState sFirstSkyState = kSS_InternalState0;
 static EScriptObjectState sSecondSkyState = kSS_InternalState1;
 
+// @ fn_70_7C8
 CScriptSkyRipple::CScriptSkyRipple(TUniqueId uid, const CEntityInfo& info, const rstl::string& name)
 : CActor(uid, name, info, 0, CTransform4f::Identity(), CModelData::None(), CMaterialList(),
          CActorParameters::None(), kInvalidUniqueId)
 , mFirstSkyActor(kInvalidUniqueId)
 , mSecondSkyActor(kInvalidUniqueId) {}
 
+// @ fn_70_78C
 void CScriptSkyRipple::PreRender(CStateManager& mgr) {
   if (GetActive()) {
     mgr.RenderFirstSorted(GetUniqueId());
   }
 }
 
+// @ fn_70_6F0
 TUniqueId CScriptSkyRipple::FindSkyActor(CStateManager& mgr, EScriptObjectState state) {
   const TUniqueId id = FindConnectedObject(mgr, state, kSM_Attach);
   CScriptActor* actor = TCastToPtr< CScriptActor >(mgr.ObjectById(id));
@@ -40,6 +43,7 @@ TUniqueId CScriptSkyRipple::FindSkyActor(CStateManager& mgr, EScriptObjectState 
   return kInvalidUniqueId;
 }
 
+// @ fn_70_658
 void CScriptSkyRipple::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CActor::AcceptScriptMsg(mgr, msg);
   if (msg.GetMessage() == kSM_AreaLoaded) {
@@ -48,6 +52,7 @@ void CScriptSkyRipple::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   }
 }
 
+// @ fn_70_4D0
 void CScriptSkyRipple::Render(const CStateManager& mgr) const {
   CGraphics::DisableAllLights();
   gpRender->SetAmbientColor(CColor::White());
@@ -109,6 +114,7 @@ void CScriptSkyRipple::RenderSkyActor(const CStateManager& mgr, TUniqueId id, co
   modelData->Render(mgr, xf, nullptr, flags);
 }
 
+// @ fn_70_264
 void CScriptSkyRipple::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     CActor* first = TCastToPtr< CActor >(mgr.ObjectById(mFirstSkyActor));
@@ -135,6 +141,7 @@ CEntity* LoadSkyRipple(CStateManager& mgr, CInputStream& input, CEntityInfo& inf
 }
 
 #ifndef MONOLITHIC
+// @ fn_70_D0
 static void SetFuncPtrs() {
   static SScriptSkyRipple_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadSkyRipple;

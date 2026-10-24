@@ -41,6 +41,7 @@ CSurfaceParticleEffect::CSurfaceParticleEffect(const TLockedToken< CGenDescripti
   SetHighlightedInDarkVisor(true);
 }
 
+// @ fn_25_66B0
 CSurfaceParticleEffect::~CSurfaceParticleEffect() {}
 
 // Guessed name: per-particle record stored in the particle's additional (ADV) data.
@@ -68,6 +69,7 @@ static CVector3f ProjectOntoPlane(const CVector3f& vector, float normalDot, floa
 }
 
 // Guessed name: unreferenced in the retail REL, but kept as a global symbol.
+// @ fn_25_6004
 uint FindNearestSurfaceAlongDirection(
     const rstl::reserved_vector< CCollisionSurface, 256 >& surfaces, const CVector3f& point,
     const CVector3f& direction) {
@@ -92,6 +94,7 @@ uint FindNearestSurfaceAlongDirection(
   return bestIndex;
 }
 
+// @ fn_25_6110
 static uint FindNearestSurface(const rstl::reserved_vector< CCollisionSurface, 256 >& surfaces,
                                const CVector3f& point) {
   float best = FLT_MAX;
@@ -421,17 +424,20 @@ void CSurfaceParticleEffect::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
   }
 }
 
+// @ fn_25_64C0
 void CSurfaceParticleEffect::PreRender(CStateManager& mgr) {
   CActor::PreRender(mgr);
   SetPreRenderClipped(!mHasRenderBounds || GetPreRenderClipped());
 }
 
+// @ fn_25_6488
 void CSurfaceParticleEffect::AddToRenderer(const CStateManager& mgr) const {
   if (mHasRenderBounds) {
     Render(mgr);
   }
 }
 
+// @ fn_25_63C8
 void CSurfaceParticleEffect::Render(const CStateManager& mgr) const {
   int alpha = GetRenderAlphaBufferAlpha(mgr);
   if (alpha != -1 && mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Dark) {
@@ -460,22 +466,28 @@ void CSurfaceParticleEffect::PreRenderAllViewports(CStateManager& mgr) {
   UpdatePortalSystemState(mgr);
 }
 
+// @ fn_25_49D8
 rstl::optional_object< CAABox > CSurfaceParticleEffect::GetTouchBounds() const {
   return rstl::optional_object_null();
 }
 
+// @ fn_25_49D4
 void CSurfaceParticleEffect::Touch(CActor&, CStateManager&) {}
 
 CElementGen* CSurfaceParticleEffect::GetParticleGen() { return mParticleGen.get(); }
 
 const CElementGen* CSurfaceParticleEffect::GetParticleGen() const { return mParticleGen.get(); }
 
+// @ fn_25_49B4
 float CSurfaceParticleEffect::GetGeneratorRate() const { return mGeneratorRate; }
 
+// @ fn_25_49BC
 void CSurfaceParticleEffect::SetFlag(bool value) { mFlag = value; }
 
+// @ fn_25_49CC
 void CSurfaceParticleEffect::SetGeneratorRate(float rate) { mGeneratorRate = rate; }
 
+// @ fn_25_48FC
 static CEffect* CreateSurfaceParticleEffect(const TLockedToken< CGenDescription >& desc,
                                             TUniqueId uid, TAreaId area, bool active,
                                             const rstl::string& name, const CTransform4f& xf,

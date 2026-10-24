@@ -367,6 +367,7 @@ bool CGlowbug::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const 
   return mAttackTargetId != kInvalidUniqueId && mCurDamageRemTime == 0.f;
 }
 
+// @ fn_26_16DC
 bool CGlowbug::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }

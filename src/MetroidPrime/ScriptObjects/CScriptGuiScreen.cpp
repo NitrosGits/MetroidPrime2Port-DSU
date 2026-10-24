@@ -398,6 +398,7 @@ void CScriptGuiFrontEndScreen::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_60_427C
 void CScriptGuiFrontEndScreen::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CActor::AcceptScriptMsg(mgr, msg);
   CEntity* sender = mgr.ObjectById(msg.GetSenderId());
@@ -480,6 +481,7 @@ void CScriptGuiFrontEndScreen::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_60_4144
 void CScriptGuiFrontEndScreen::UpdateControllerCount(CStateManager& mgr) {
   int count = 0;
   for (int i = 0; i < 4; ++i) {
@@ -495,6 +497,7 @@ void CScriptGuiFrontEndScreen::UpdateControllerCount(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_334C
 void CScriptGuiFrontEndScreen::StartMultiplayerGame(CStateManager& mgr) {
   CGameMode& gameMode = static_cast< const CGameState* >(gpGameState)->GetGameMode();
   if (gameMode.GetGameModeType() != CFrontEndGameMode::kSGM_FrontEnd) {
@@ -563,6 +566,7 @@ void CScriptGuiFrontEndScreen::StartMultiplayerGame(CStateManager& mgr) {
   mgr.QuitGame();
 }
 
+// @ fn_60_3244
 void CScriptGuiFrontEndScreen::SelectSaveSlot(CStateManager& mgr, TUniqueId slotId) {
   for (int i = 0; i < mSaveSlots.size(); ++i) {
     if (slotId == mSaveSlots[i].mSlotEntity->GetUniqueId()) {
@@ -576,6 +580,7 @@ void CScriptGuiFrontEndScreen::SelectSaveSlot(CStateManager& mgr, TUniqueId slot
   }
 }
 
+// @ fn_60_3170
 void CScriptGuiFrontEndScreen::StartSelectedGame(CStateManager& mgr) {
   CSaveGameScreen* saveScreen = mgr.mSaveGameScreen.get();
   if (saveScreen->GetGameData(mSelectedSlot) == nullptr) {
@@ -655,6 +660,7 @@ void CScriptGuiFrontEndScreen::UpdateSaveSlots(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_2954
 void CScriptGuiFrontEndScreen::UpdateUnlocks(CStateManager& mgr) {
   for (int menu = 0; menu < 2; ++menu) {
     CScriptGuiMenu* musicMenu;
@@ -701,6 +707,7 @@ void CScriptGuiFrontEndScreen::OpenSaveGameScreen(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_28A4
 void CScriptGuiFrontEndScreen::CloseSaveGameScreen(CStateManager& mgr) {
   if (mgr.mSaveGameScreen.get() != nullptr) {
     mgr.DeleteSaveGameScreen();
@@ -709,6 +716,7 @@ void CScriptGuiFrontEndScreen::CloseSaveGameScreen(CStateManager& mgr) {
   UpdateUnlocks(mgr);
 }
 
+// @ fn_60_26AC
 void CScriptGuiFrontEndScreen::StoreOptionWidget(CStateManager& mgr, CEntity* widget) {
   CScriptGuiSlider* slider = TCastToPtr< CScriptGuiSlider >(widget);
   CScriptGuiMenu* menu = TCastToPtr< CScriptGuiMenu >(widget);
@@ -743,6 +751,7 @@ void CScriptGuiFrontEndScreen::StoreOptionWidget(CStateManager& mgr, CEntity* wi
   RestoreOptionWidget(mgr, widget);
 }
 
+// @ fn_60_2150
 void CScriptGuiFrontEndScreen::CompareOptionWidget(CStateManager& mgr, CEntity* widget) {
   CScriptGuiSlider* slider = TCastToPtr< CScriptGuiSlider >(widget);
   CScriptGuiMenu* menu = TCastToPtr< CScriptGuiMenu >(widget);
@@ -793,6 +802,7 @@ void CScriptGuiFrontEndScreen::CompareOptionWidget(CStateManager& mgr, CEntity* 
   }
 }
 
+// @ fn_60_1D5C
 void CScriptGuiFrontEndScreen::RestoreOptionWidget(CStateManager& mgr, CEntity* widget) {
   CScriptGuiSlider* slider = TCastToPtr< CScriptGuiSlider >(widget);
   CScriptGuiMenu* menu = TCastToPtr< CScriptGuiMenu >(widget);
@@ -826,6 +836,7 @@ void CScriptGuiFrontEndScreen::RestoreOptionWidget(CStateManager& mgr, CEntity* 
   widget->SendScriptMsgs(kSS_Modify, mgr);
 }
 
+// @ fn_60_1A04
 void CScriptGuiFrontEndScreen::ResetOptionWidget(CStateManager& mgr, CEntity* widget) {
   CScriptGuiSlider* slider = TCastToPtr< CScriptGuiSlider >(widget);
   CScriptGuiMenu* menu = TCastToPtr< CScriptGuiMenu >(widget);
@@ -862,6 +873,7 @@ void CScriptGuiFrontEndScreen::ResetOptionWidget(CStateManager& mgr, CEntity* wi
   widget->SendScriptMsgs(kSS_Modify, mgr);
 }
 
+// @ fn_60_14A4
 void CScriptGuiFrontEndScreen::ApplyOptionWidget(CStateManager& mgr, CEntity* widget) {
   CScriptGuiSlider* slider = TCastToPtr< CScriptGuiSlider >(widget);
   CScriptGuiMenu* menu = TCastToPtr< CScriptGuiMenu >(widget);
@@ -957,6 +969,7 @@ void CScriptGuiFrontEndScreen::ApplyOptionWidget(CStateManager& mgr, CEntity* wi
   }
 }
 
+// @ fn_60_12D0
 void CScriptGuiFrontEndScreen::ResetOptionPage(CStateManager& mgr, CEntity* widget) {
   if (CEntity* page = TCastToPtr< CScriptFrontEndDataNetwork >(widget)) {
     for (int i = 0; i < mResetPages.size(); ++i) {
@@ -1003,6 +1016,7 @@ void CScriptGuiFrontEndScreen::ResetOptionPage(CStateManager& mgr, CEntity* widg
   }
 }
 
+// @ fn_60_1260
 void CScriptGuiFrontEndScreen::CopySelectedGame(CStateManager& mgr) {
   CSaveGameScreen* saveScreen = mgr.mSaveGameScreen.get();
   int target;
@@ -1019,6 +1033,7 @@ void CScriptGuiFrontEndScreen::EraseSelectedGame(CStateManager& mgr) {
   mgr.mSaveGameScreen->EraseGame(mSelectedSlot);
 }
 
+// @ fn_60_1154
 void CScriptGuiFrontEndScreen::LoadOptions(CStateManager& mgr, CEntity* page) {
   for (int i = 0; i < mOptionsPages.size(); ++i) {
     if (page == mOptionsPages[i]) {
@@ -1044,6 +1059,7 @@ void CScriptGuiFrontEndScreen::LoadOptions(CStateManager& mgr, CEntity* page) {
   }
 }
 
+// @ fn_60_10D4
 void CScriptGuiFrontEndScreen::RecordOptions(CStateManager& mgr) {
   switch (mOptionsPage) {
   case 0:
@@ -1062,6 +1078,7 @@ void CScriptGuiFrontEndScreen::RecordOptions(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_1090
 void CScriptGuiFrontEndScreen::SaveOptions(CStateManager& mgr) {
   if (mOptionsDirty) {
     mOptionsDirty = false;
@@ -1071,6 +1088,7 @@ void CScriptGuiFrontEndScreen::SaveOptions(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_1010
 void CScriptGuiFrontEndScreen::HighlightSelectedSlot(CStateManager& mgr) {
   if (CSaveGameScreen* saveScreen = mgr.mSaveGameScreen.get()) {
     CEntity* slotEntity = mSaveSlots[saveScreen->GetSaveIdx()].mSlotEntity;
@@ -1078,6 +1096,7 @@ void CScriptGuiFrontEndScreen::HighlightSelectedSlot(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_F84
 void CScriptGuiFrontEndScreen::UpdateSoundVolumes() {
   for (int i = 0; i < mSounds.size(); ++i) {
     mSounds[i]->SetMaxVolume(mSoundVolumes[i] *
@@ -1110,6 +1129,7 @@ CScriptGuiScreen::CScriptGuiScreen(TUniqueId uid, const rstl::string& name, cons
 : CActor(uid, name, info, 0, CTransform4f::Identity(), CModelData::CModelDataNull(),
          CMaterialList(), CActorParameters::None(), kInvalidUniqueId) {}
 
+// @ fn_60_A30
 CEntity* LoadGuiScreen(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrGuiScreen sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrGuiScreen.inc"

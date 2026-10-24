@@ -792,6 +792,7 @@ CEntity* LoadPlayerController(CStateManager& mgr, CInputStream& input, CEntityIn
 }
 
 #ifndef MONOLITHIC
+// @ fn_62_158
 static void SetFuncPtrs() {
   static SPlayerController_FuncPtrs funcPtrs;
   funcPtrs.mLoadPlayerController = &LoadPlayerController;

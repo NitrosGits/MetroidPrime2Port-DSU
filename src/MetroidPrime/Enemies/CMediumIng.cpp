@@ -112,6 +112,7 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
      static_cast< CPatterned::StateMachine::CodeFunc >(&CMediumIng::IncrementFrustatedCounter)},
 };
 
+// @ fn_41_A340
 CMediumIngData::CMediumIngData(
     const CDamageVulnerability& mistingVulnerability, CAssetId tentacleModel,
     int tentacleCharacterIndex, const CActorParameters& tentacleActorParameters, int spawnMode,
@@ -157,6 +158,7 @@ CMediumIngData::CMediumIngData(
 , mMinMeleeAttackInterval(minMeleeAttackInterval)
 , mSafeZoneRangeSq(unknown0e3d3708 * unknown0e3d3708) {}
 
+// @ fn_41_8954
 CMediumIngData::CMediumIngData(const CMediumIngData& other)
 : mMistingVulnerability(other.mMistingVulnerability)
 , mTentacleModel(other.mTentacleModel)
@@ -286,6 +288,7 @@ CMediumIng::CMediumIng(TUniqueId uid, const rstl::string& name, const CEntityInf
   SetDrawShadow(false);
 }
 
+// @ fn_41_80B8
 void CMediumIng::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -329,6 +332,7 @@ CEntity* LoadMediumIng(CStateManager& mgr, CInputStream& input, CEntityInfo& inf
 }
 
 #ifndef MONOLITHIC
+// @ fn_41_120
 static void SetFuncPtrs() {
   static SMediumIng_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadMediumIng;
@@ -1527,6 +1531,7 @@ TUniqueId CMediumIng::FindClosestDangerActor(const CStateManager& mgr, const CVe
   return FindClosestConnectedActor(*this, mgr, pos, kSS_DeGenerate); // 0x1D30 'DGNR'
 }
 #endif
+// @ fn_41_8144
 CMediumIng::~CMediumIng() {}
 #ifndef TARGET_PC // the real bodies are in PortCMediumIng.cpp
 void CMediumIng::Think(float dt, CStateManager& mgr) {}
@@ -1536,12 +1541,14 @@ void CMediumIng::Render(const CStateManager& mgr) const {}
 void CMediumIng::Touch(CActor& actor, CStateManager& mgr) {}
 void CMediumIng::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {}
 #endif
+// @ fn_41_74F0
 bool CMediumIng::IsListening() const { return true; }
 #ifndef TARGET_PC
 bool CMediumIng::Listen(CStateManager& mgr, const CVector3f& pos, EListenNoiseType type) {
   return false;
 }
 #endif
+// @ fn_41_A674
 CMediumIngTentacle::~CMediumIngTentacle() {}
 #ifndef TARGET_PC
 void CMediumIngTentacle::Think(float dt, CStateManager& mgr) {}

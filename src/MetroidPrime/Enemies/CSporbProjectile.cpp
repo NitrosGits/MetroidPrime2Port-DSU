@@ -117,6 +117,7 @@ void CSporbProjectile::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_76_F2A0
 void CSporbProjectile::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_AreaLoaded: {
@@ -294,6 +295,7 @@ void CSporbProjectile::Open(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_EBA8
 void CSporbProjectile::Fire(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -324,6 +326,7 @@ void CSporbProjectile::Spit(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_E934
 void CSporbProjectile::Reload(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -353,6 +356,7 @@ bool CSporbProjectile::ShouldAttack(CStateManager& mgr, const CTriggerData& data
   return mState >= kS_Attacking;
 }
 
+// @ fn_76_E8DC
 bool CSporbProjectile::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
@@ -387,6 +391,7 @@ bool CSporbProjectile::ShouldSpit(CStateManager& mgr, const CTriggerData& data) 
   return mState == kS_Spit;
 }
 
+// @ fn_76_E650
 void CSporbProjectile::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                     CStateManager& mgr) {
   static CMaterialList skSolidTypes(skSolid, skCeiling, skWall, skFloor);
@@ -432,6 +437,7 @@ rstl::optional_object< CAABox > CSporbProjectile::GetTouchBounds() const {
   return GetCollisionPrimitive()->CalculateAABox(GetTransform());
 }
 
+// @ fn_76_E218
 CAABox CSporbProjectile::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   if (mTopId != kInvalidUniqueId) {
     if (const CSporbTop* top = TCastToConstPtr< CSporbTop >(mgr.GetObjectById(mTopId))) {
@@ -441,6 +447,7 @@ CAABox CSporbProjectile::GetScanVisorRenderBounds(const CStateManager& mgr) cons
   return CPatterned::GetScanVisorRenderBounds(mgr);
 }
 
+// @ fn_76_E18C
 void CSporbProjectile::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                        const CModelFlags& flags) const {
   if (mTopId != kInvalidUniqueId) {

@@ -332,6 +332,7 @@ void CSpankWeed::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   }
 }
 
+// @ fn_73_1BFC
 void CSpankWeed::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -354,6 +355,7 @@ void CSpankWeed::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_73_1A64
 void CSpankWeed::FadeIn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -384,6 +386,7 @@ void CSpankWeed::FadeIn(CStateManager& mgr, EStateMsg msg, float dt) {
   SetWorldLightingDirty(true);
 }
 
+// @ fn_73_1890
 void CSpankWeed::FadeOut(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -413,6 +416,7 @@ void CSpankWeed::FadeOut(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_73_17F8
 void CSpankWeed::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -427,6 +431,7 @@ void CSpankWeed::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_73_1770
 void CSpankWeed::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -440,6 +445,7 @@ void CSpankWeed::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_73_1554
 void CSpankWeed::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -457,6 +463,7 @@ void CSpankWeed::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_73_1498
 bool CSpankWeed::IsPlayerNear(CStateManager& mgr, float range) const {
   for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
     const CVector3f playerPos = mgr.Player(i)->GetTranslation();
@@ -471,18 +478,22 @@ bool CSpankWeed::IsPlayerNear(CStateManager& mgr, float range) const {
   return false;
 }
 
+// @ fn_73_1474
 bool CSpankWeed::InDetectionRange(CStateManager& mgr, const CTriggerData& data) const {
   return IsPlayerNear(mgr, mMaxDetectionRange);
 }
 
+// @ fn_73_1450
 bool CSpankWeed::HearPlayer(CStateManager& mgr, const CTriggerData& data) const {
   return IsPlayerNear(mgr, mMaxHearingRange);
 }
 
+// @ fn_73_142C
 bool CSpankWeed::InRange(CStateManager& mgr, const CTriggerData& data) const {
   return IsPlayerNear(mgr, mMaxSightRange);
 }
 
+// @ fn_73_13B4
 bool CSpankWeed::Delay(CStateManager& mgr, const CTriggerData& data) const {
   if (mHitByPlayerProjectile) {
     if (mStateMachine->GetTime() > mHideTime) {
@@ -494,6 +505,7 @@ bool CSpankWeed::Delay(CStateManager& mgr, const CTriggerData& data) const {
   return true;
 }
 
+// @ fn_73_1188
 void CSpankWeed::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -557,10 +569,12 @@ CVector3f CSpankWeed::GetOrbitPosition(const CStateManager& mgr) const {
   return orbit;
 }
 
+// @ fn_73_D98
 bool CSpankWeed::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return mAnimPhase == 3;
 }
 
+// @ fn_73_D78
 bool CSpankWeed::Attacked(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::Attacked(mgr, data);
 }
@@ -608,6 +622,7 @@ CEntity* LoadSpankWeed(CStateManager& mgr, CInputStream& input, CEntityInfo& inf
 }
 
 #ifndef MONOLITHIC
+// @ fn_73_464
 static void SetFuncPtrs() {
   static SSpankWeed_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadSpankWeed;

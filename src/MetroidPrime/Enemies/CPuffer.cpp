@@ -30,6 +30,7 @@ static const char* skGasLocators[] = {
 static EMaterialTypes skIncludeMaterial = kMT_Player;
 static EMaterialTypes skExcludeMaterial = kMT_NoStaticCollision;
 
+// @ fn_52_188C
 CPuffer::CPuffer(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                  const CTransform4f& xf, const CModelData& modelData,
                  const CActorParameters& actorParameters, const CPatternedInfo& patternedInfo,
@@ -58,8 +59,10 @@ CPuffer::CPuffer(TUniqueId uid, const rstl::string& name, const CEntityInfo& inf
   BodyController()->SetRestrictedFlyerMoveSpeed(hoverSpeed);
 }
 
+// @ fn_52_159C
 CPuffer::~CPuffer() {}
 
+// @ fn_52_14A8
 void CPuffer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -80,6 +83,7 @@ void CPuffer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_52_1434
 void CPuffer::Touch(CActor& actor, CStateManager& mgr) {
   CPatterned::Touch(actor, mgr);
 
@@ -92,6 +96,7 @@ void CPuffer::Touch(CActor& actor, CStateManager& mgr) {
   }
 }
 
+// @ fn_52_120C
 rstl::optional_object< CAABox > CPuffer::GetTouchBounds() const {
   rstl::optional_object< CAABox > touchBounds = CPatterned::GetTouchBounds();
   if (touchBounds) {
@@ -120,6 +125,7 @@ void CPuffer::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjec
                                      1.f, 1.f, mCloudInCombatOrScan, mCloudInDark, mCloudInEcho));
 }
 
+// @ fn_52_E74
 void CPuffer::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
 
@@ -139,6 +145,7 @@ void CPuffer::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_52_B60
 void CPuffer::UpdateJets(CStateManager& mgr) {
   const CVector3f moveVector = BodyController()->GetCommandMgr().GetMoveVector();
 
@@ -198,6 +205,7 @@ CEntity* LoadPuffer(CStateManager& mgr, CInputStream& input, CEntityInfo& info) 
 }
 
 #ifndef MONOLITHIC
+// @ fn_52_10C
 static void SetFuncPtrs() {
   static SPuffer_FuncPtrs funcPtrs;
   funcPtrs.mLoadPuffer = &LoadPuffer;

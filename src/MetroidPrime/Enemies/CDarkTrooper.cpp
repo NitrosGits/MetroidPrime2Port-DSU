@@ -186,6 +186,7 @@ CScannableObjectInfo* CDarkTrooper::GetScannableObjectInfo() const {
   return CPatterned::GetScannableObjectInfo();
 }
 
+// @ fn_12_5468
 CProjectileInfo* CDarkTrooper::ProjectileInfo() {
   switch (mAttackState) {
   case 5:
@@ -679,6 +680,7 @@ void CDarkTrooper::Rise(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(3, msg);
 }
 
+// @ fn_12_30D4
 void CDarkTrooper::Null(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 void CDarkTrooper::Touch(CActor& actor, CStateManager& mgr) {
@@ -1121,6 +1123,7 @@ rstl::optional_object< CAABox > CDarkTrooper::GetTouchBounds() const {
   return CPatterned::GetTouchBounds();
 }
 
+// @ fn_12_112C
 CRagDoll* CDarkTrooper::GetRagDoll() const {
   if (mRagDollHolder.mRagDoll.get() && mRagDollHolder.mRagDoll->IsPrimed() &&
       mRagDollHolder.mRagDoll->IsRenderBoundsValid()) {
@@ -1156,6 +1159,7 @@ CEntity* LoadDarkTrooper(CStateManager& mgr, CInputStream& input, CEntityInfo& i
 }
 
 #ifndef MONOLITHIC
+// @ fn_12_FC
 static void SetFuncPtrs() {
   static SDarkTrooper_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadDarkTrooper;

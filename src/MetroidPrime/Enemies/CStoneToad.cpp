@@ -56,6 +56,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
      static_cast< CPatterned::StateMachine::StateFunc >(&CStoneToad::ReactToWeapon)},
 };
 // fn_77_2F74 (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_2F74
 CStoneToad::CStoneToad(TUniqueId uid, const rstl::string& name, CEntityInfo& info,
                        const CTransform4f& xf, const CModelData& modelData,
                        const CPatternedInfo& patternedInfo, const CActorParameters& actorParams)
@@ -250,6 +251,7 @@ void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
 void CStoneToad::PreThink(float dt, CStateManager& mgr) { CPatterned::PreThink(dt, mgr); }
 
 // fn_77_21E4 (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_21E4
 void CStoneToad::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -288,6 +290,7 @@ void CStoneToad::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_77_1EC0 (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_1EC0
 void CStoneToad::WakeUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -319,6 +322,7 @@ void CStoneToad::WakeUp(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_77_1C84 (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_1C84
 void CStoneToad::ReactToSafeZone(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -339,6 +343,7 @@ void CStoneToad::ReactToSafeZone(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_77_1A48 (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_1A48
 void CStoneToad::ReactToWeapon(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -409,6 +414,7 @@ void CStoneToad::MoveBack(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_77_158C (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_158C
 void CStoneToad::GoToSleep(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -449,6 +455,7 @@ bool CStoneToad::ShouldMoveAway(CStateManager& mgr, const CTriggerData& data) co
 }
 
 // fn_77_14C8 (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_14C8
 bool CStoneToad::ShouldMoveBack(CStateManager& mgr, const CTriggerData& data) const {
   return !mProvoked && mReturnRequested;
 }
@@ -464,6 +471,7 @@ bool CStoneToad::HitBySafeZone(CStateManager& mgr, const CTriggerData& data) con
 }
 
 // fn_77_1478 (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_1478
 bool CStoneToad::HitByWeapon(CStateManager& mgr, const CTriggerData& data) const {
   return mProvoker == kP_Weapon;
 }
@@ -480,6 +488,7 @@ void CStoneToad::Touch(CActor& actor, CStateManager& mgr) {
 }
 
 // fn_77_12D4 (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_12D4
 bool CStoneToad::IsMovingAwayFromStart() const {
   const CVector3f direction = GetMoveDirection(kMV_Away);
   CVector3f toAway = mAwayPosition - GetTranslation();
@@ -491,6 +500,7 @@ bool CStoneToad::IsMovingAwayFromStart() const {
 }
 
 // fn_77_11DC (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_11DC
 bool CStoneToad::IsMovingBackToStart() const {
   const CVector3f direction = GetMoveDirection(kMV_Back);
   CVector3f toStart = mInitialTransform.GetTranslation() - GetTranslation();
@@ -502,6 +512,7 @@ bool CStoneToad::IsMovingBackToStart() const {
 }
 
 // fn_77_10B0 (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_10B0
 CVector3f CStoneToad::GetMoveDirection(EMoveType type) const {
   CVector3f direction = CVector3f::Zero();
   switch (type) {

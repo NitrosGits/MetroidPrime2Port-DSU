@@ -185,6 +185,7 @@ CIngSnatchingSwarm::CIngSnatchingSwarm(TUniqueId uid, const rstl::string& name,
 , mVisible(false) {}
 #endif
 
+// @ fn_33_3D64
 CIngSnatchingSwarm::~CIngSnatchingSwarm() {}
 
 // @ fn_33_3D40
@@ -193,6 +194,7 @@ void CIngSnatchingSwarm::PreThink(float dt, CStateManager& mgr) {
   CEntity::PreThink(dt, mgr);
 }
 
+// @ fn_33_3C5C
 void CIngSnatchingSwarm::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     if (mStateMachine.HasState()) {
@@ -209,6 +211,7 @@ void CIngSnatchingSwarm::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_33_3AC0
 void CIngSnatchingSwarm::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CActor::AcceptScriptMsg(mgr, msg);
@@ -237,6 +240,7 @@ void CIngSnatchingSwarm::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& m
   }
 }
 
+// @ fn_33_3A60
 void CIngSnatchingSwarm::Render(const CStateManager& mgr) const {
   if (mVisible) {
     CActor::Render(mgr);
@@ -270,6 +274,7 @@ CVector3f CIngSnatchingSwarm::GetAimPosition(const CStateManager& mgr, float dt)
   return GetTranslation() + (mSpeed * dt) * GetTransform().GetForward();
 }
 
+// @ fn_33_383C
 void CIngSnatchingSwarm::Touch(CActor& actor, CStateManager& mgr) {
   if (CPhysicsActor* physicsActor = TCastToPtr< CPhysicsActor >(actor)) {
     if (mData.mIgnorePlayer == true && TCastToPtr< CPlayer >(physicsActor) != nullptr) {
@@ -289,6 +294,7 @@ void CIngSnatchingSwarm::Touch(CActor& actor, CStateManager& mgr) {
   }
 }
 
+// @ fn_33_37F4
 rstl::optional_object< CAABox > CIngSnatchingSwarm::GetTouchBounds() const { return mTouchBounds; }
 
 // @ fn_33_37E0
@@ -323,6 +329,7 @@ bool CIngSnatchingSwarm::HasTarget(CStateManager& mgr, const float& arg) {
   return false;
 }
 
+// @ fn_33_3678
 bool CIngSnatchingSwarm::InSnatchingRange(CStateManager& mgr, const float& arg) {
   const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mTargetId));
   if (target != nullptr) {
@@ -352,6 +359,7 @@ void CIngSnatchingSwarm::Start(CStateManager& mgr, int msg, float dt) {
   }
 }
 
+// @ fn_33_348C
 void CIngSnatchingSwarm::Dead(CStateManager& mgr, int msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -417,6 +425,7 @@ void CIngSnatchingSwarm::FollowArcPath(CStateManager& mgr, int msg, float dt) {
   }
 }
 
+// @ fn_33_3068
 void CIngSnatchingSwarm::DiveToTarget(CStateManager& mgr, int msg, float dt) {
   switch (msg) {
   case kStateMsg_Update: {
@@ -430,6 +439,7 @@ void CIngSnatchingSwarm::DiveToTarget(CStateManager& mgr, int msg, float dt) {
   }
 }
 
+// @ fn_33_2D24
 void CIngSnatchingSwarm::SnatchTarget(CStateManager& mgr, int msg, float dt) {
   switch (msg) {
   case kStateMsg_Update:
@@ -516,6 +526,7 @@ void CIngSnatchingSwarm::SetPortalSwarmPath(CStateManager& mgr, float dt) {
   mArcSpeedScale = 1.f;
 }
 
+// @ fn_33_246C
 void CIngSnatchingSwarm::SetPlayerDest(CStateManager& mgr, float dt) {
   mTargetId = mgr.GetPlayer(0)->GetUniqueId();
   mCheckCollision = true;
@@ -544,6 +555,7 @@ void CIngSnatchingSwarm::SetPlayerDest(CStateManager& mgr, float dt) {
   mArcSpeedScale = 1.f - mgr.Random()->Range(0.f, 0.5f);
 }
 
+// @ fn_33_206C
 void CIngSnatchingSwarm::SetTargetDest(CStateManager& mgr, float dt) {
   mCheckCollision = true;
   mArcPoints.clear();
@@ -583,6 +595,7 @@ void CIngSnatchingSwarm::DamagePlayer(CStateManager& mgr, float dt) {
       CVector3f::Zero());
 }
 
+// @ fn_33_1CEC
 void CIngSnatchingSwarm::Explode(CStateManager& mgr, float dt) {
   if (mExplosionEffect.valid()) {
     const CVector3f position = GetTranslation();
@@ -603,6 +616,7 @@ void CIngSnatchingSwarm::Explode(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_33_1C30
 const CGenericFSM2* CIngSnatchingSwarm::GetStateMachine() const {
   if (mStateMachineToken->IsLoaded()) {
     TToken< CGenericFSM2 > machine(*mStateMachineToken);
@@ -611,6 +625,7 @@ const CGenericFSM2* CIngSnatchingSwarm::GetStateMachine() const {
   return nullptr;
 }
 
+// @ fn_33_1AF8
 void CIngSnatchingSwarm::InitializeStateMachine(CStateManager& mgr) {
   const CGenericFSM2* machine = GetStateMachine();
   if (machine != nullptr) {
@@ -754,6 +769,7 @@ void CIngSnatchingSwarm::UpdateMovement(float dt) {
   mVelocity = CVector3f::Zero();
 }
 
+// @ fn_33_C2C
 void CIngSnatchingSwarm::UpdateTouchBounds() {
   const CVector3f position = GetTranslation();
   const CVector3f extent(1.f, 1.f, 1.f);
@@ -834,6 +850,7 @@ CEntity* LoadIngSnatchingSwarm(CStateManager& mgr, CInputStream& input, CEntityI
 }
 
 #ifndef MONOLITHIC
+// @ fn_33_78
 static void SetFuncPtrs() {
   static SIngSnatchingSwarm_FuncPtrs funcPtrs;
   funcPtrs.mLoadIngSnatchingSwarm = &LoadIngSnatchingSwarm;

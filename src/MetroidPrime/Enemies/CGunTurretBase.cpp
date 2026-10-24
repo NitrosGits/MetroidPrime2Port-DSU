@@ -182,6 +182,7 @@ CGunTurretBase::CGunTurretBase(
   }
 }
 
+// @ fn_28_6254
 void CGunTurretBase::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Delete:
@@ -301,6 +302,7 @@ bool CGunTurretBase::ShouldAttack(CStateManager& mgr, const CTriggerData&) const
   return ret;
 }
 
+// @ fn_28_60C0
 bool CGunTurretBase::AttackExitDone(CStateManager&, const CTriggerData&) const {
   if (mGunDestroyed) {
     return true;
@@ -315,10 +317,12 @@ bool CGunTurretBase::GunDestroyed(CStateManager&, const CTriggerData&) const {
   return mGunDestroyed;
 }
 
+// @ fn_28_6098
 bool CGunTurretBase::Attacked(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::Attacked(mgr, data);
 }
 
+// @ fn_28_601C
 bool CGunTurretBase::Delay(CStateManager&, const CTriggerData&) const {
   if (mGunDestroyed) {
     if (mStateMachine->GetTime() > mHurtSleepDelay && mGunRespawns) {
@@ -341,6 +345,7 @@ bool CGunTurretBase::WithdrawDelay(CStateManager&, const CTriggerData&) const {
   return mDelayTimer > mWithdrawDelay;
 }
 
+// @ fn_28_5F74
 bool CGunTurretBase::ShouldPan(CStateManager&, const CTriggerData&) const {
   return mStateMachine->GetTime() > 0.25f;
 }
@@ -401,6 +406,7 @@ bool CGunTurretBase::WithdrawOver(CStateManager&, const CTriggerData&) const {
   return mRaise == 0.f;
 }
 
+// @ fn_28_59AC
 void CGunTurretBase::OpenDoor(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -420,6 +426,7 @@ void CGunTurretBase::OpenDoor(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_5770
 void CGunTurretBase::CloseDoor(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -439,6 +446,7 @@ void CGunTurretBase::CloseDoor(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_548C
 void CGunTurretBase::IntoPan(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -461,6 +469,7 @@ void CGunTurretBase::IntoPan(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_5250
 void CGunTurretBase::PanLeft(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -480,6 +489,7 @@ void CGunTurretBase::PanLeft(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_4FB8
 void CGunTurretBase::PanRight(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -499,6 +509,7 @@ void CGunTurretBase::PanRight(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_4C88
 void CGunTurretBase::Withdraw(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -654,6 +665,7 @@ void CGunTurretBase::Render(const CStateManager& mgr) const {
                  1.f, 1.f);
 }
 
+// @ fn_28_3EA4
 void CGunTurretBase::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     if (mgr.GetWorld()->GetArea(GetCurrentAreaId())->GetOcclusionState() ==
@@ -765,6 +777,7 @@ void CGunTurretBase::DestroyGun(CStateManager& mgr) {
   CSfxManager::RemoveEmitter(mChargeSfx);
 }
 
+// @ fn_28_39E4
 void CGunTurretBase::UpdateGunPose(CStateManager& mgr, float dt) {
   const CSegId seg = GetAnimationData()->GetLocatorSegId(rstl::string_l(skConnectLocator));
   if (seg == CSegId(0xFF)) {
@@ -928,6 +941,7 @@ CActor* CGunTurretBase::FindTarget(CStateManager& mgr) {
   return target;
 }
 
+// @ fn_28_2A54
 void CGunTurretBase::UpdateAttack(CStateManager& mgr, float dt) {
   if (mAttackTimer >= mTimeBetweenAttacks && (mFiring || mInBurst) && !mGunDestroyed &&
       !mCharging) {
@@ -1021,6 +1035,7 @@ void CGunTurretBase::ResetAttack(CStateManager& mgr) {
   mAttackLeashTimer = mAttackLeashTime;
 }
 
+// @ fn_28_27D0
 CVector3f CGunTurretBase::GetGunFirePosition(CStateManager& mgr) const {
   if (const CGunTurretTop* top = TCastToConstPtr< CGunTurretTop >(mgr.GetObjectById(mTopId))) {
     const CVector3f topPos = top->GetTransform().GetTranslation();
@@ -1077,6 +1092,7 @@ void CGunTurretBase::LaunchProjectile(CStateManager& mgr) {
   }
 }
 
+// @ fn_28_1D80
 void CGunTurretBase::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                      EUserEventType type, float dt) {
   switch (type) {
@@ -1108,6 +1124,7 @@ float CGunTurretBase::GetClosestCameraDistanceSq(CStateManager& mgr) const {
   return distanceSquared;
 }
 
+// @ fn_28_1C40
 bool CGunTurretBase::InDetectionHeight(const CActor& actor, float up, float down) const {
   const float actorZ = actor.GetTranslation().GetZ();
   const float z = GetTranslation().GetZ();
@@ -1156,6 +1173,7 @@ CAABox CGunTurretBase::GetScanVisorRenderBounds(const CStateManager& mgr) const 
   return bounds;
 }
 
+// @ fn_28_170C
 void CGunTurretBase::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                      const CModelFlags& flags) const {
   const CModelData* modelData = GetModelData();
@@ -1183,6 +1201,7 @@ CAABox CGunTurretBase::GetModelBounds() const {
 }
 
 // Guessed name; unreferenced in the REL.
+// @ fn_28_155C
 int CGunTurretBase::GetRenderAlpha(const CStateManager& mgr) const {
   return GetRenderAlphaBufferAlpha(mgr);
 }
@@ -1260,6 +1279,7 @@ CEntity* LoadGunTurretTop(CStateManager& mgr, CInputStream& input, CEntityInfo& 
 
 SGunTurretBase_FuncPtrs REL_loader_GunTurret;
 
+// @ fn_28_474
 void SetRelLoaderFunctionToLoader() {
   REL_loader_GunTurret.mLoadBase = LoadGunTurretBase;
   REL_loader_GunTurret.mLoadTop = LoadGunTurretTop;
@@ -1271,4 +1291,5 @@ void RELMain() { SetRelLoaderFunctionToLoader(); }
 void RELExit() { SetSGunTurretBase_FuncPtrs(nullptr); }
 #endif
 
+// @ fn_28_0
 CGunTurretBase::~CGunTurretBase() {}

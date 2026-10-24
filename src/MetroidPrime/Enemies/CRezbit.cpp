@@ -372,6 +372,7 @@ void CRezbit::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 // @ fn_53_6540
 void CRezbit::Idle(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// @ fn_53_62E8
 void CRezbit::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -450,6 +451,7 @@ void CRezbit::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_5E4C
 void CRezbit::Strafe(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -526,6 +528,7 @@ void CRezbit::BecomeDeRezzed(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_5824
 void CRezbit::CuttingLaserAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -555,6 +558,7 @@ void CRezbit::CuttingLaserAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_54CC
 void CRezbit::EnergyBoltAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -597,6 +601,7 @@ void CRezbit::EnergyBoltAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_5270
 void CRezbit::VirusAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -622,6 +627,7 @@ void CRezbit::VirusAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_51EC
 void CRezbit::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -642,6 +648,7 @@ void CRezbit::SelectTarget(CStateManager& mgr, float dt) {
   mLineOfSight.SetTarget(mTargetId);
 }
 
+// @ fn_53_50F0
 void CRezbit::SelectStrafeDirection(CStateManager& mgr, float dt) {
   mStrafeIndex = -1;
   const float chance = mRezState == 0 ? mData.unknown_0x94980a67 : mData.strafeDerezChance;
@@ -677,6 +684,7 @@ void CRezbit::SetTargetDest(CStateManager& mgr, float dt) {
   JoinTeam(mgr);
 }
 
+// @ fn_53_4ED0
 void CRezbit::ResetAttackTimes(CStateManager& mgr, float dt) {
   mAttackTimer = mData.normalRezAttackTime;
   mVirusTimer = mData.virusAttackTime;
@@ -720,6 +728,7 @@ void CRezbit::SetNormalRezState(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_53_4B98
 void CRezbit::SetDeRezzedState(CStateManager& mgr, float dt) {
   if (mRezState != 1) {
     mRezState = 1;
@@ -762,6 +771,7 @@ bool CRezbit::ShouldBecomeRezzed(CStateManager& mgr, const CTriggerData& data) c
   return mAttackKind == -1 && mRezState != 0 && mDerezTimer <= 0.f;
 }
 
+// @ fn_53_6A00
 bool CRezbit::ShouldBecomeDeRezzed(CStateManager& mgr, const CTriggerData& data) const {
   if (mAttackKind == -1 && GetHealthInfo()->GetHP() <= mDerezHealth && mAlert && mRezState != 1) {
     return GetBodyController()->GetBodyStateInfo().GetCurrentAdditiveStateId() !=
@@ -775,6 +785,7 @@ bool CRezbit::HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const
   return mLineOfSight.HasLineOfSight();
 }
 
+// @ fn_53_6964
 bool CRezbit::ShouldStrafe(CStateManager& mgr, const CTriggerData& data) const {
   if (!mHasPathDestination && mStrafeTimer <= 0.f && mLineOfSight.GetClearTime() > 2.f) {
     const CEntity* shield = mgr.GetObjectById(mShieldActorId);
@@ -853,6 +864,7 @@ bool CRezbit::ShouldVirusAttack(CStateManager& mgr, const CTriggerData& data) co
   return false;
 }
 
+// @ fn_53_12C8
 void CRezbit::QuitTeam(CStateManager& mgr) {
   if (mTeamAiMgrId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId))) {
@@ -918,6 +930,7 @@ void CRezbit::CheckVerticalClearance(CStateManager& mgr,
   }
 }
 
+// @ fn_53_1614
 void CRezbit::CheckNeighbors(CStateManager& mgr, rstl::reserved_vector< bool, 4 >& available) {
   const float radiusSq = mStrafeDistance * mStrafeDistance;
   const CVector3f position = GetTranslation();
@@ -998,6 +1011,7 @@ void CRezbit::UpdateSeparation(CStateManager& mgr) {
   }
 }
 
+// @ fn_53_1DB0
 void CRezbit::UpdateDeflectSfx(float dt) {
   if (CSfxManager::IsPlaying(mDeflectSfx)) {
     mDeflectSfxTime += dt;
@@ -1357,6 +1371,7 @@ void CRezbit::UpdateTimers(float dt) {
   mDerezTimer -= dt;
 }
 
+// @ fn_53_3F04
 void CRezbit::CheckShieldBroken(CStateManager& mgr, TUniqueId id) {
   if (id == mShieldActorId) {
     if (CActor* shield = static_cast< CActor* >(mgr.ObjectById(mShieldActorId))) {
@@ -1367,6 +1382,7 @@ void CRezbit::CheckShieldBroken(CStateManager& mgr, TUniqueId id) {
   }
 }
 
+// @ fn_53_3F98
 void CRezbit::HandleShieldHit(CStateManager& mgr, const TUniqueId& id) {
   if (id == mShieldActorId) {
     CheckShieldBroken(mgr, id);
@@ -1398,6 +1414,7 @@ void CRezbit::CreateShieldCollisionActor(CStateManager& mgr) {
   }
 }
 
+// @ fn_53_4274
 void CRezbit::BuildDerezModel(CAssetId model, CAssetId skinRules) {
   if (model != kInvalidAssetId && skinRules != kInvalidAssetId) {
     mDerezModel = rstl::optional_object< TLockedToken< CSkinnedModel > >(
