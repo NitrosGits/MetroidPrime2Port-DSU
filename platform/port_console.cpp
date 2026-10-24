@@ -2202,6 +2202,25 @@ void CmdTouch(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// touchact <actor id> <other id>: call actor->Touch(other, mgr) directly, the call the collision
+// code makes when two actors with SetCallTouch overlap (a patterned actor touching a trigger).
+void CmdTouchAct(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() != 3) {
+    Fail("usage: touchact <actor id> <other id>");
+    return;
+  }
+  CEntity* actorEnt = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CEntity* otherEnt = const_cast< CEntity* >(ResolveObject(mgr, args[2]));
+  CActor* actor = actorEnt != nullptr ? TCastToPtr< CActor >(actorEnt) : nullptr;
+  CActor* other = otherEnt != nullptr ? TCastToPtr< CActor >(otherEnt) : nullptr;
+  if (actor == nullptr || other == nullptr) {
+    Fail("both objects must be actors");
+    return;
+  }
+  actor->Touch(*other, mgr);
+  out += "touchact " + Str(args[1]) + " -> " + Str(args[2]) + "\n";
+}
+
 // A Metroid latching onto a space pirate (and letting go) calls the pirate module's attach and
 // detach entries through its table (SSpacePirate_FuncPtrs); the port's CMetroid only detaches.
 void CmdPirateAttach(CStateManager& mgr, const Args& args, std::string& out) {
@@ -4083,6 +4102,7 @@ constexpr SCommand kCommands[] = {
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
     {"touch", CmdTouch, true},
+    {"touchact", CmdTouchAct, true},
     {"pirateattach", CmdPirateAttach, true},
     {"bodystate", CmdBodyState, true},
     {"statecall", CmdStateCall, true},

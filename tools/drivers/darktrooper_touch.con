@@ -1,0 +1,12 @@
+# DarkTrooper (REL 12) Touch, hive_hall: a dead flotsam trooper (ragdoll primed) touches triggers. The
+# triggers' fields are forced by tools/cov/specs/darktrooper_touch_force.py (ids are this area's):
+#   COV_ROOT=$PWD BUILD=build-port-cov tools/cov/force.sh tools/cov/specs/darktrooper_touch_force.py <out> \
+#     3bfa3eff,0e_temple_hive_hall --con tools/drivers/darktrooper_touch.con --fast --frames 1500
+@f300 god 1; give missile 50
+@f302 layer 1; layer 2; layer 3; layer 4; layer 5; layer 6; layer 7; layer 8; layer 9
+@f330 tp 85 -345 -95
+@f500 touchact e000c0045 e000c0016
+@f700 damage e000c0045 999 5
+@f900 touchact e000c0045 e000c0016; touchact e000c0045 e000c0066; touchact e000c0045 e000c00d3; touchact e000c0045 e000c0038; touchact e000c0045 e000c0036
+@f1000 touchact e000c0055 e000c0066; touchact u0470 u0482; touchact u0470 u0465; touchact u0470 u044c
+@f1100 obj e000c0045

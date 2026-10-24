@@ -129,6 +129,8 @@ FSM2 (CIngSnatchingSwarm) have no generic accessor, so `obj` prints no state for
 (`CGameCollision::MakeCollisionCallbacks`): with a one-entry collision list whose 0x30 slot holds
 the *other* actor's material list. It needs no real collision, so a module whose own work is in
 that callback can be driven (the SwampBossStage1 "player touched" flag, the retail's fn_78_9A44).
+`touchact <actor id> <other id>` calls `actor->Touch(other)` itself (the call the collision code makes
+for two overlapping actors that `SetCallTouch`): a trooper `Touch`ing a trigger, say.
 `var <id> gren.<field> [n]` (CGrenchler, `PortConsole::RegisterVar`): `gren.scanned` (the scan flag a
 guardian's crystals need), `gren.crystal` (crystal state; 4 = ForceGrapple), `gren.crystaldmg`,
 `gren.grappledmg`, `gren.tailhp`, `gren.action` (read-only attack state), `gren.tail` (1 runs DestroyTail).
