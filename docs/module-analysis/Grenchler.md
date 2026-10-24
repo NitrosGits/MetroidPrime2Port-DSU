@@ -246,3 +246,20 @@ Runs: `tools/cov/specs/grenchler_force5.py` (one CALLS group per run via `F5=<la
 non-guardian, `08_swamp_grappleguardian_dark` for guardian-only arms). Direct calls with stubbed
 callees; water uid is decimal (u0459). DestroyTail 1001:3/5 and 4/5 are `__nw` null / throw edges (dead arms).
 Not done: FollowAttackPattern (needs waypoint-navigation scenarios), LoadGrenchler, and the ctors/dtors/`__sinit`s.
+
+## gren6 lane (base 494a2ba23, 2026-10-24)
+
+Fixture vars (TARGET_PC, `PortConsoleVar`): `gren.fap <n>` builds scripted waypoints / AI waypoints with editor ids, adds an
+attack/follow connection to the Grenchler, runs FollowAttackPattern Activate+Update (+Deactivate, msg 3 for n 1) and deletes
+the fixtures; `gren.jt <n>` builds jump points + waypoints around the player (the player must be 20+ away: the driver lifts it
+44 up in the same tick) and runs FindJumpTarget. Driver `tools/cov/specs/grenchler_gren6b.con` (01_swamp_entrance, 750 frames);
+gdb arm `tools/cov/specs/grenchler_force6.py` (force_ret CALLS: GetInUse stubbed to 1 for a direct call).
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| FollowAttackPattern 425C | 20/20 | forced (gren.fap 1-7): no connection, waypoint ahead/behind (0x4388 `cror eq,lt,eq; bne` = `<= 0` sets mInPosition 0x4394), AI waypoint with / without arrived-next link, body in Jump (0x43CC cmpwi 0xd = kAS_Jump 13) or not, mSubmerged flipped, msg 2 / 3 |
+| FindJumpTarget 4AA4 | 30/30 | forced (gren.jt 1-15; 6 = waypoint 3D+20 behind: a Grenchler standing in water triples maxCost at 0x4BCC); jump point in use (0x4C58 `beq`): forced (GetInUse stub, grenchler_force6.py) |
+
+Asm checked line by line: Frustrated is vtable +0x1A8 (0xA54 vtable word 106 = fn_27_2084); xa24 bit 0x40 = mStartedSubmerged (0x4B04 rlwimi
+6,25,25), 0x20 = mTargetValid (0x4D9C rlwimi 5,26,26); x6f0 0x80 = CWaypointNavigation::mInPosition (0x4394); object list 0x838 = index 5
+kOL_AiWaypoint; cost compares `blt / bgt / bge` skip = `cost < 0 || cost > maxCost`, `cost < best` (NaN lands the same). No behaviour differences.
