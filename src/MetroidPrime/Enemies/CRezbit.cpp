@@ -668,8 +668,14 @@ void CRezbit::SetTargetDest(CStateManager& mgr, float dt) {
     const CVector3f offset = targetPos - position;
     float maxRangeSq;
     if (mRezState == 0) {
+#ifdef TARGET_PC
+      // Retail keeps the laser range unless the energy-bolt one is strictly smaller (NaN: laser).
+      maxRangeSq = rstl::min_val(mData.cuttingLaserMaxAttackDist * mData.cuttingLaserMaxAttackDist,
+                                 mData.energyBoltMaxAttackDist * mData.energyBoltMaxAttackDist);
+#else
       maxRangeSq = rstl::min_val(mData.energyBoltMaxAttackDist * mData.energyBoltMaxAttackDist,
                                  mData.cuttingLaserMaxAttackDist * mData.cuttingLaserMaxAttackDist);
+#endif
     } else {
       maxRangeSq = mData.virusMaxAttackDist * mData.virusMaxAttackDist;
     }
