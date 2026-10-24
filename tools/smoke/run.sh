@@ -154,8 +154,8 @@ declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark" [swamp2]="3dfd2249,04_sw
                [skyr]="3bfa3eff,03_temple_combattraining" [dsbs]="42b935e4,10_sand_alamostorage"
                [isg]="1baa96c2,06_cliff_spiderballguardian"
                [ingp]="42b935e4,06_sand_alamofront_dark" )
-declare -A F=( [swamp1]=2400 [swamp2]=2400 [sandboss]=2400 [sandworm]=2400 [boostg]=2050
-               [boostg_fsm]=2000 [digig]=2050 [cmdpirate]=2050 [emp1]=2000 [spacepirate]=2450
+declare -A F=( [swamp1]=2400 [swamp2]=2400 [sandboss]=2400 [sandworm]=2400 [boostg]=2200
+               [boostg_fsm]=2000 [digig]=2200 [cmdpirate]=2200 [emp1]=2000 [spacepirate]=2450
                [ing]=16000 [ep]=6000 [plain]=2000 [emp3]=2600 [turret]=2400 [agon54]=2500
                [darksamus]=4000 [splitter]=2400 [grenchler]=2500 [grenguard]=2500
                [flyingpirate]=2400 [mediuming]=2400 [metroid]=2600 [sporb]=2600 [blogg]=2400
@@ -164,7 +164,7 @@ declare -A F=( [swamp1]=2400 [swamp2]=2400 [sandboss]=2400 [sandworm]=2400 [boos
                [tryclops]=2600 [wisptentacle]=6200 [octapede]=3000 [amt]=9400 [dbar]=1200
                [sjguard]=6000 [fishcloud]=2500 [spa]=2000 [wallwalker]=3700 [isbg]=5700 [spp]=1700
                [mysf]=3200 [spor]=2000 [scriptgui]=700 [kral]=1300 [gbug]=2700 [pssm]=3000
-               [stod]=1500 [pbug]=3600 [szone]=2500 [splinter]=3400 [rptl]=2180 [chog]=1020
+               [stod]=1500 [pbug]=3600 [szone]=2500 [splinter]=3400 [rptl]=2200 [chog]=1020
                [drkc]=4100 [plac]=2000 [plct]=2200 [ming]=1200 [snak]=1000 [eyeb]=2000 [kroc]=2000
                [atma]=2400 [atmb]=2400 [shrd]=1100 [fsw]=2400 [iss]=3000 [ibs]=2600 [mree]=2400
                [puff]=2400 [rubk]=1000 [emp2]=1200 [cball]=1000 [fobj]=800 [skyr]=800 [dsbs]=2000

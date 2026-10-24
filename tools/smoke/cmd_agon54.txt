@@ -1,4 +1,4 @@
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2400, last check f2250.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2500, last check f2250.
 @f1120 status
 @f1690 objs spacepirate
 @f1900 send e00360030 Activate
