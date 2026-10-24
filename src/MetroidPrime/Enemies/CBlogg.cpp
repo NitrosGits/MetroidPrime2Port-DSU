@@ -1755,6 +1755,7 @@ void CBlogg::FindAttackPositions(CStateManager& mgr, const CVector3f& playerPosi
   }
 }
 
+// @ fn_7_7E90
 void CBlogg::ComputeAttackPositions(CStateManager& mgr, float dt) {
   if (mHintIds.size() != 0u) {
     const TUniqueId hintId = FindNearestHint(mgr, GetTranslation(), false);
