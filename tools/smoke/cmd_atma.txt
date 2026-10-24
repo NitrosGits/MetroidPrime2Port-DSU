@@ -4,7 +4,7 @@
 # e000300b4. The steps boot the area, list them, activate and place one, damage it so its hp
 # drops, force its Attack state, shoot it, and damage the second one.
 # Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC): its area
-# boots quickly. F=2400, last check f2200.
+# boots quickly. F=2600, last check f2400.
 @f280 god 1
 @f300 objs AtomicAlpha
 @f320 send e000300a4 Activate; send e000300b4 Activate
@@ -18,3 +18,9 @@
 @f720 obj e000300b4
 @f900 objs AtomicAlpha
 @f2200 objs AtomicAlpha
+@f2250 obj e000300a4
+@f2270 obj e000300a4
+@f2290 obj e000300a4
+@f2310 fsm e000300a4 Attack
+@f2330 kill e000300a4
+@f2400 objs AtomicAlpha

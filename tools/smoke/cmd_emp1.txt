@@ -15,3 +15,10 @@
 @f1000 obj u04e3
 @f1400 objs emperoring
 @f1960 obj u04e3
+@f2000 obj u04e3
+@f2020 obj u04e3
+@f2040 obj u04e3
+@f2060 fsm u04e3 Taunt
+@f2080 objs emperoring
+@f2100 send u04e3 Delete
+@f2200 objs emperoring
