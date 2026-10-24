@@ -164,3 +164,29 @@ Still open, with what is left:
 | 1C78 FindBestLockOnIndex | 1634:1/3 | `!delta.CanBeNormalized()`, a boid exactly at the camera |
 | 50B8 Think | 754, 764-772 (occlusion timer) and 785-857 | the occlusion arms need the player to leave the area with the swarm still loaded (a door walk-out); 785-857 are the boid loops |
 | A1BC GetModelDataForAnimRes | inlined | the invalid-asset-id arm |
+
+## swb3: the recipes applied - and why the forced run stalls
+
+`tools/cov/specs/swarmbasics_force3.py` implements the swb2 recipes (FORCE_RET on
+UpdateAllBoidMovement mAnimated, Render mEnableLighting/mUseSoftwareLight, UpdateBoid
+mLaunched/mVulnerableToSafeZone/mFramesNotOnSurface/mLifeTime; FORCE_INNER stubs on
+GetWaypointForState/NextWaypoint returning 0xffff, and a rewrite of FindBestCollisionInBox's returned
+triangle so its normal is -Z for CreateBoid's upside-down arm). Two runs (swamp_hall, cliff_hall,
+3000 f) **stalled instead of finishing**: the port watchdog reports `no frame for 15.3 s (frame 283);
+main thread in 'game update'` and no `gcov` directory was written, so the lane produced no new
+coverage. Two causes, both to fix before this recipe is retried:
+
+1. **FORCE_RET restores through a dead register.** `((CSwarmBasics::CBoid*)$rcx)->mLaunched` is
+   written at the body entry (fine) but the restore runs in the caller (`FinishBreakpoint`), where
+   `$rcx` no longer points at the boid: `restore failed (...): Cannot access memory at address
+   0x100b9`. The written value therefore sticks, the boid stays `mLaunched` forever and the launch
+   loop (`while (distance >= 0 && !found)` plus the falling branch) never settles. Write swarm
+   members (`$this->...`) or the vector element (`$this->mBoids[<index>]`) instead, or take the boid
+   pointer from a convenience variable captured at the entry.
+2. **Forcing Render's light flags is very expensive.** `mEnableLighting = 1` + `mUseSoftwareLight =
+   0` sends every in-frustum boid through `HardwareLight`, which builds a `CActorLights` (area light
+   list + dynamic lights) per boid per frame; with 50-100 boids the frame time explodes. Force it on a
+   handful of frames (a high `skip`) or for one boid only.
+
+Neither `CreateBoid`'s three arms nor `UpdateAllBoidMovement`/`UpdateBoid` were re-measured, so no
+marker was added in swb3.
