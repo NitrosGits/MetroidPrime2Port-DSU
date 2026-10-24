@@ -1,0 +1,15 @@
+# Torvus Bog ok_swamp_hall layer 3: CPlantScarabSwarm placements e0c2d009a and e0c2d0076.
+# psc9 launch 2: the layer is loaded, unloaded and loaded again so four constructor calls happen in
+# one run (two placements per load), each with its own phase.  The player is kept far away and both
+# swarms are deactivated after each load: a phase that leaves a swarm without attack models or
+# without the shared model must never let a boid take an attack slot.
+@f150 god 1
+@f200 tp -60.0 -66.0 -28.0
+@f220 layer 3
+@f260 send e0c2d009a Deactivate; send e0c2d0076 Deactivate
+@f400 layer off 3
+@f430 layer 3
+@f470 send e0c2d009a Deactivate; send e0c2d0076 Deactivate
+@f600 obj e0c2d009a; obj e0c2d0076
+@f900 obj e0c2d009a; obj e0c2d0076
+@f1190 obj e0c2d009a; obj e0c2d0076
