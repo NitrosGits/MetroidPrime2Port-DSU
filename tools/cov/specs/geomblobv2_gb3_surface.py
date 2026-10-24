@@ -164,5 +164,6 @@ if not hasattr(gdb, '_gb3_surface_installed'):
                 self.enabled = False
             return False
 
-    Normal('*' + symbol('BuildOrientationFromNormal('), internal=True)
-    Surface('*' + symbol('CCollisionTracker::Think('), internal=True)
+    if not globals().get('GB3_SURFACE_LIBRARY', False):
+        Normal('*' + symbol('BuildOrientationFromNormal('), internal=True)
+        Surface('*' + symbol('CCollisionTracker::Think('), internal=True)

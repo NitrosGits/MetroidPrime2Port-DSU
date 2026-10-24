@@ -198,3 +198,151 @@ Discarded setup attempts: `gb3-helpers` (inferior allocator call from a breakpoi
 be explicitly disabled). None contributed counters. Successful replacement specs use memory
 writes / scheduled calls and complete normally. Large run directories are removed after retaining
 the merged module counters and this evidence.
+
+## Coverage (gb4)
+
+2026-10-24, base `4a6d20f9e`: **the four remaining SPE bodies are marked**. Each has
+every source line and every non-exception gcov edge executed; no dead-arm exemptions.
+The four bodies were rechecked instruction-by-instruction against retail. No behavioural
+discrepancy was found, so the production diff is four marker comments only.
+
+### Reproduction
+
+```sh
+T=$PWD/../MetroidPrimePort/build/review-tools/bin
+$T/cmake -S . -B build-port-cov -DMP_PORT_COVERAGE=ON \
+  -DCMAKE_PROJECT_metroid_prime2_port_INCLUDE=$PWD/tools/cov/specs/geomblobv2_gb4_keep_static.cmake
+$T/ninja -C build-port-cov metroid_prime2_port
+tools/games_running.sh --wait
+BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/cov_force.py SECS=180 \
+  tools/cov/force.sh tools/cov/specs/geomblobv2_gb4.py /tmp/opencode/gb4-verified \
+  1baa96c2,2735236b --frames 2400 --fast
+python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/gb4-verified/gcov \
+  --module GeomBlobV2 --fn fn_25_4BEC,fn_25_5650,fn_25_5C34,fn_25_5D7C
+```
+
+The final run used the **post-marker** coverage binary, exited normally after 2400 updates,
+and logged zero caught/reach-stub/Python errors plus `gb4 complete; private SPE destroyed`.
+All assertions passed. `run.sh`'s rc alone is insufficient: a debugger stop can still return 0.
+Retained evidence: `/tmp/opencode/reports/gb4-{gcov.json,coverage.txt,runtime.txt,asmcheck.txt,review.txt}`;
+report `/tmp/opencode/reports/gb4.md`. The JSON preserves counters, CFG block ids and throw flags.
+
+The x86-64 SysV spec reuses gb3's private factory and separate-stack scheduler. The gb3 driver
+now has a library-only switch; its normal invocation still installs its original breakpoints.
+The coverage-only CMake include retains static helper copies with GCC `-fkeep-static-functions`;
+the normal link uses its ordinary flags. All hooks select symbols, so marker line shifts are safe.
+No production probes or helper exports were added.
+
+### Arms and assertions
+
+All cases below are **forced** by `geomblobv2_gb4.py` using the command above. The private SPE
+first runs 300 Think calls (one zero-rate early-out, 299 ordinary emission/update calls).
+Scratch geometry is above the scheduled callee's stack and is never retained by game objects.
+
+| retail id / function | lines; edges | cases |
+|---|---|---|
+| 4BEC Think | **113/113; 50/50** | zero-rate early return; ordinary spawning and bounds; capacity clamp; forced particle cases 0–12 below; custom light present/absent, active/inactive, non-light ID |
+| 5650 GatherCollisionSurfaces | **54/54; 36/36** | real static cache traversal, duplicates, overlap rejection/acceptance, full capacity; dynamic cases 0–11 below |
+| 5C34 GatherFromObbTree | **12/12; 11/11** | geometry cases 5–9: zero triangles, no overlap, excluded material, append at 255 then full, initially full; dynamic case 3 also gathers both triangles through a group |
+| 5D7C GatherFromBox | **9/9; 6/6** | geometry cases 1–4: all 12 triangles, no overlap, append at 255 then full, initially full |
+
+The helpers assert surface/ID counts and `0xA4000000 | triangleIndex`. The OBB fixture is a
+nondegenerate triangle repeated twice in a controlled collision-array view, using the actual
+`GetTriangle`/transform/filter/overlap implementations. Box geometry is the unit box.
+
+| Think case | input and observed result |
+|---|---|
+| 0 | changed surface, tangent velocity, aligned previous normal: attach to ID 123, preserve lifetime |
+| 1 | normal velocity: stop and detach; shorten lifetime by 11 |
+| 2 | tangent velocity but perpendicular previous normal: stop and detach |
+| 3 | previous-normal dot 0.8: project velocity and change target orientation |
+| 4 | already on ID 123: skip migration |
+| 5 | no gathered surfaces: detach |
+| 6 | already detached, long lifetime: shorten by 11 |
+| 7 | already detached with end frame -1: leave sentinel unchanged |
+| 8 | already detached, short lifetime: new end precedes current frame, set -1 |
+| 9 / 10 | phase mismatch with unequal/equal orientations: interpolate / skip |
+| 11 | phase match with unequal orientations: commit target; resulting perpendicular normal detaches |
+| 12 | spawn into an empty surface set: mark newborns expired; actual Update removes them, empty post-update path |
+
+Cases 0–11 use one real allocated particle, with ADV/parent/particle counts kept consistent;
+the spec writes surface-state inputs after the generator's real Update and asserts resulting
+surface ids, fade end frames, and zero velocity on stop cases. The last five cases repeat
+0–4 while exercising the light branches. An initial 128-particle forcing attempt tripped the
+watchdog while Python edited all records; reducing this private fixture to one avoids that.
+
+| Gather case | input and observed result |
+|---|---|
+| 0 / 11 | broad real static bounds with initially empty/full output: 256 surfaces |
+| 1 | near-list id equals ignored id: skip |
+| 2 | platform-only flag on ordinary ScriptActor: reject |
+| 3 | platform predicate accepted; private OBB group with one tree: two surfaces |
+| 4 | OBB group with zero trees: none |
+| 5 / 6 | solid ScriptActor with AABox primitive, active/inactive: 12 surfaces / absent touch bounds |
+| 7 | nonphysics tracker without Solid or Water: reject |
+| 8 | Water predicate accepted, tracker touch bounds absent: none |
+| 9 | invalid near id: null actor, skip |
+| 10 | nonphysics tracker with Solid but absent touch bounds: none |
+
+Dynamic fixtures replace the near-list result after the real builder; cases 1–10 then clear
+the static output to isolate dynamic results. Cases 3/4 return a private OBB primitive with
+the real vtable and a controlled group/tree view. Cases 5/6 return the actor's embedded AABox.
+**Platform and Water success cases force only the cast return used as a boolean predicate**;
+these are caller-arm tests, not evidence of a naturally spawned platform/water asset.
+Real actor active/material mutations are restored at call return, including assertion failure.
+Dynamic counts and `(uid << 22) | triangleIndex` are asserted for OBB and box outputs.
+
+### Retail audit anchors
+
+- **Think:** 0x4C90–0x4CB4 uses min(wanted, MAXP-existing), with the both-zero branch landing at
+  the epilogue; 0x4D54 forces creation before bounds/gather; 0x4EC0/0x5038 handles no spawn surface.
+  At 0x50EC/0x50F0 the start-frame phase is `&7`; 0x5100–0x5140 commits changed orientation.
+  0x517C skips an unchanged surface. 0x5294/0x5298 is `abs(normalDot/speed)>0.95`;
+  0x52A4/0x52A8 is `previousDot<0.3`; 0x5320/0x5324 is the `<0.995` orientation threshold.
+  These ordered comparisons retain the PPC NaN branch shape. 0x53AC masks the phase delta by 7,
+  0x53E0 computes `1-0.125*delta`; 0x5444 is signed fade division, with rodata 0x90
+  `{11,11,11,5,0}` and 0x5474/0x5478's strict expiry test. 0x54D0 masks the full frame word
+  by 7, and 0x54EC–0x554C performs the light-id/cast/active checks in source order.
+- **GatherCollisionSurfaces:** center/half extents use rodata 0xD0=0.5; 0x5720 shifts area id
+  by 16; 0x5750–0x5768 performs duplicate suppression. 0x57AC tests equality with 256 and
+  0x57F8 skips the rest of the current leaf cache (not the dynamic tail). The five material
+  exclusion shifts at 0x5834–0x58C0 use data words `{33,32,35,20,53}`. 0x591C ignores the
+  selected id; 0x593C tests mFlag=0x40; 0x5958 shifts uid by 22. 0x5988/0x598C tests
+  `'OBTG'`; tree-loop calls retain the actor's primitive transform. 0x5A1C masks Solid bit 59
+  (`0x08000000` in the high word), with Water fallback and optional bounds at 0x5A44/0x5AAC.
+- **GatherFromObbTree:** 0x5C64–0x5C74 builds `1ull << 20` (ProjectilePassthrough), not a mask
+  of 20. 0x5CB8 transforms each reconstructed triangle; 0x5CE8/0x5D08 reject material/overlap.
+  0x5D10 tests count==256; 0x5D30 ORs id bits with the signed-short index; 0x5D5C explicitly
+  sign-extends that index before comparison, matching the source's `short` loop variable.
+- **GatherFromBox:** 0x5DC8/0x5DCC select face `i/2` and vertex `(i&1)*2`, 0x5DF0/0x5DF4
+  supply both -1 flag words, 0x5E18 rejects overlap, 0x5E20 tests count==256, 0x5E40 ORs the
+  index, and 0x5E6C terminates at 12.
+
+### All-tags checker review
+
+The final SPE-only all-tags check has **57 findings + 3 NOPOS notes**; no
+MASK/CROP/XBIT/XCMP/XSTORE/OFFS finding. All are resolved as follows:
+
+- The 29 BIT entries at Think 0x54D0 are a full-word `mFrameCounter &= 7`, not 29 missing
+  boolean stores. Its `floor` CALL is `CMath::FloorF`.
+- Gather's x176_40 BIT is the named `mFlag`. CTri copy (5EDC), CCollisionSurface constructor
+  (5E88), CCollisionSurface copy (B14), and bitwise_copy<6> (6918) are implicit/header code
+  used by the real helper operations and POD pushes. Cache destructor 5B08 is automatic.
+- Existing ctor findings: named mHasRenderBounds/mFlag initializers, highlighted-dark-visor
+  setter, CStopwatch::GetGlobalMicros/CRandom16 construction, and implicit CEntityInfo destruction;
+  the checker omits initializer-list calls. Destructor Free/BRANCH findings are compiler-emitted
+  member/base destruction and deleting-destructor logic.
+- BuildOrientation's 2034 is CVector3f::Cross; message-handler internal_dereference is string
+  destruction. PreRender x150_01 is Get/SetPreRenderClipped (header mOutOfFrustum), x176_80 is
+  mHasRenderBounds; that same flag explains AddToRenderer and PreRenderAllViewports BITs.
+  AddToRenderer's XCALL Render is the virtual call through vtable offset 0x2c at 0x64A4/0x64AC.
+  SetFlag's x176_40 is mFlag. The three NOPOS notes name those already-audited bitfields.
+
+### Gates and scope
+
+Normal host link and post-marker coverage link: **0 FAILED**. Generator `--check`: **rc 0**.
+`configure.py && ninja` passed; explicit `dtk shasum -q -c config/G2ME01/build.sha1`:
+**87 files OK**. Removing marker comments makes the entire source byte-identical to base
+(both TARGET_PC and non-PC). Spec syntax and `git diff --check` passed. No additional B
+functions were newly marked; existing bulk tags and shared/header bodies retain their status.
+Only this SPE/caller-area run was needed; no unrelated smoke or module sweep.
