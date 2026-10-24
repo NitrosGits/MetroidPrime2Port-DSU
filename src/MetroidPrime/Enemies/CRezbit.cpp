@@ -1115,6 +1115,7 @@ void CRezbit::DeflectMissiles(CStateManager& mgr) {
   }
 }
 
+// @ fn_53_2414
 void CRezbit::StartVirusAttack(CStateManager& mgr, const rstl::string& locator) {
   if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetId))) {
     if (player->GetSpawnedMorphballState() != CPlayer::kMS_Morphed &&
