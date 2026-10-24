@@ -78,3 +78,45 @@ Forcing these needs console `fsm`/`kill` support for non-CPatterned CGenericFSM2
 `ingp`: area `42b935e4,06_sand_alamofront_dark`, driver `tools/cov/specs/ingpuddle.con`, 3200 frames fast (last
 check @f2900), NC no. Expect `objs IngPuddle` to show 6 objects at @f2700 and 5 after the Delete at @f2900; pass
 condition 0 `[port] caught` / `reach-stub`.
+
+## ipd2: HealthInfo (fn_32_0) - verified and marked
+
+`include/MetroidPrime/Enemies/CIngPuddle.hpp:34`, the inline `CHealthInfo* HealthInfo() override { return
+&mHealthInfo; }`. Retail fn_32_0 is exactly that: `build/G2ME01/IngPuddle/asm/.../CIngPuddle.s`
+`/* 00000000 */ addi r3, r3, 0x460` and `/* 00000004 */ blr` - one add of the member's retail offset
+(0x460) and a return, no branches. This build's offset is 0x4C8 (1224): host objects outgrow retail, so
+the offset is not a constant to copy, and the check below is "return == this + mHealthInfo", not
+"return == this + 0x460".
+
+**Runtime return evidence** (spec `tools/cov/specs/ipd2_healthinfo.py`, driver
+`tools/cov/specs/ingpuddle.con`, coverage build, `42b935e4,06_sand_alamofront_dark`, `--fast`, 3200
+frames, `/tmp/opencode/ipd2/a`): `game rc=0`, `caught/reach-stub: 0`, normal inferior exit. The oracle
+sits on the out-of-line copy the vtable dispatches to (`_ZN10CIngPuddle10HealthInfoEv`), writes
+nothing and forces nothing; the puddles are damaged naturally by the driver's shots and `damage`.
+For every call it captures `this`, the caller frame, arms a finish breakpoint and compares the actual
+`$rax` with `this + mHealthInfo`:
+
+    5496 calls, 5496 MATCH, 0 MISMATCH, 0 unreadable return, 0 unarmed breakpoints, status=OK
+    callers: CActor::GetHealthInfo (5490), CStateManager::ApplyLocalDamage (3),
+             CStateManager::RecordDamageSource (3)
+
+The gcov data of the same run attributes **5496 hits to that header line** - the same count, so the
+line's executions and the oracle's out-of-line calls agree (no call went through an inlined copy that
+the oracle would have missed). The only live arm is the single `return &mHealthInfo`, so "every arm
+ran" is this one path, taken 5496 times with the pointer verified each time.
+
+`asmcheck.py check IngPuddle src/…/CIngPuddle.cpp fn_32_0` reports `MISSING` - it maps definitions in
+the .cpp it is given, and this body is header-inline - so the body's asm was read by hand against the
+`.s` above (`addi`+`blr`, 8 bytes, no branches).
+
+Gates: host build 0 FAILED; `configure.py && ninja` + forced `build/G2ME01/ok` re-check **87 files
+OK**; `gen_files_cmake.py --check` rc 0. Evidence frozen before the marker:
+`/tmp/opencode/reports/ipd2-evidence/` (gcno, gcda, raw gcda JSON, the module's asm, binary/source
+hashes, the oracle log, the run and game logs).
+
+Independent review reproduced 5496 executions, 1/1 blocks and no branches from the
+archived gcno/gcda pair. The still-present coverage binary matched the recorded
+`ba5b08db...` hash and was frozen as `/tmp/opencode/ipd2-independent/executed-binary`;
+its getter is a coverage increment followed by `lea 0x4c8(%rdi),%rax; ret`.
+The pre-marker header hash matches the base git blob. The oracle logs six individual
+pointer pairs and aggregates all 5496 matches; it does not retain every pointer pair.
