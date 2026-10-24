@@ -57,7 +57,7 @@ Open (unmarked):
 
 | function | open arm |
 |---|---|
-| Render C88 | 299, the clampedY min arm (`maxY < -1`): every corner must be below the screen while the portal's point bounds stay visible. Close-ups, drops and an `aim 0 0..60` pitch sweep at 12, 6 and 4 units did not reach it |
+| Render C88 | UNMARKED; fixture `tools/cov/specs/srp2_render.py` (driver `srp2_render.con`, selftest `srp2_render_selftest.py`, 13 tests) forces xmm2=maxY (-1.5 min, +1.5 max) at the post-loop clamp (host d349f1 = Render+897, retail 0xFF8) and checks GXSetTexCopySrc/PSMTX44Trans; its only launch (srp2b, 2026-10-25) died before the game started: the site breakpoint was an absolute address in a PIE binary (`Cannot insert breakpoint`, fixed to symbol+offset afterwards, never re-run; launch cap 2/2 spent). Arm 299, the clampedY min arm (`maxY < -1`): every corner must be below the screen while the portal's point bounds stay visible. Close-ups, drops and an `aim 0 0..60` pitch sweep at 12, 6 and 4 units did not reach it |
 | CanRenderUnsorted C30 | never called |
 
 ## AdvanceModel fn_64_23F8 (srp2, 2026-10-25), marked
