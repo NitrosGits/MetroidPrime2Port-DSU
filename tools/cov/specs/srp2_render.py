@@ -1,5 +1,9 @@
 """srp2b: CScriptRiftPortal::Render (fn_64_C88) screen-space clamp arms, owned fixture calls.
 
+OFFLINE ONLY, never executed in this form: the one srp2b launch (/tmp/opencode/srp2-b) ran the
+previous version, whose absolute PIE breakpoint failed to insert (0 cases). The Site at line ~303
+is now symbol+offset, checked only by a static gdb dry run and the offline selftests.
+
 Use default force.py (FORCE = []). A window is one natural Render call, owned by guarded frame
 equality + inferior/thread, armed with a FinishBreakpoint before anything is written. Right after
 the corner loop (host `addss xmm3,1.0; pxor xmm0,xmm0; comiss xmm0,xmm3; jbe`, retail 0xFF8) the
