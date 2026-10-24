@@ -18,6 +18,7 @@
 #include "Kyoto/Math/CMath.hpp"
 #include "rstl/math.hpp"
 
+// @ fn_28_9390
 CGunTurretTop::CGunTurretTop(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                              const CTransform4f& xf, const CModelData& modelData,
                              const CPatternedInfo& patternedInfo,
@@ -72,6 +73,7 @@ CGunTurretTop::CGunTurretTop(TUniqueId uid, const rstl::string& name, const CEnt
       rstl::vector< CAssetId >(), rstl::vector< CAssetId >()));
 }
 
+// @ fn_28_90C4
 void CGunTurretTop::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_AIUpdateDisabled:
@@ -156,6 +158,7 @@ bool CGunTurretTop::ShouldPatrol(CStateManager&, const CTriggerData&) const {
   return mShouldPatrol;
 }
 
+// @ fn_28_9028
 bool CGunTurretTop::Attacked(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::Attacked(mgr, data);
 }
@@ -172,6 +175,7 @@ bool CGunTurretTop::PowerDownOver(CStateManager&, const CTriggerData&) const {
   return over;
 }
 
+// @ fn_28_8F70
 bool CGunTurretTop::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
@@ -270,6 +274,7 @@ void CGunTurretTop::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); 
 // @ fn_28_8B58
 void CGunTurretTop::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_28_8A08
 void CGunTurretTop::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                     const CModelFlags& flags) const {
   const CModelData* modelData = GetModelData();
@@ -287,6 +292,7 @@ void CGunTurretTop::ScanVisorRender(const CStateManager& mgr, const CTransform4f
   }
 }
 
+// @ fn_28_87E4
 CAABox CGunTurretTop::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   CAABox bounds = GetModelBounds();
   if (const CGunTurretBase* base = TCastToConstPtr< CGunTurretBase >(mgr.GetObjectById(mBaseId))) {
@@ -309,6 +315,7 @@ CAABox CGunTurretTop::GetModelBounds() const {
   return box;
 }
 
+// @ fn_28_856C
 void CGunTurretTop::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;

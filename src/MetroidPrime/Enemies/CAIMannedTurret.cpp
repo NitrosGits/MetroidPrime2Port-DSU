@@ -524,9 +524,11 @@ void CAIMannedTurret::Think(float dt, CStateManager& mgr) {
   CAi::Think(dt, mgr);
 }
 
+// @ fn_1_19C0
 void CAIMannedTurret::Death(CStateManager& mgr, const CVector3f& direction,
                             EScriptObjectState state) {}
 
+// @ fn_1_19BC
 void CAIMannedTurret::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {}
 
 // @ fn_1_1494
@@ -618,6 +620,7 @@ CEntity* LoadAIMannedTurret(CStateManager& mgr, CInputStream& input, CEntityInfo
 }
 
 #ifndef MONOLITHIC
+// @ fn_1_A4
 static void SetFuncPtrs() {
   static SAIMannedTurret_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadAIMannedTurret;

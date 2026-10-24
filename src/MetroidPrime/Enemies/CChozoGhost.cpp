@@ -79,6 +79,7 @@ CChozoGhost::CBehaveChance::CBehaveChance(float lurk, float taunt, float attack,
   mMove *= average;
 }
 
+// @ fn_8_5434
 CChozoGhost::EBehaveType CChozoGhost::CBehaveChance::GetBehave(const EBehaveType type,
                                                                CStateManager& mgr) const {
   float lurkChance = mLurk;
@@ -125,6 +126,7 @@ CChozoGhost::EBehaveType CChozoGhost::CBehaveChance::GetBehave(const EBehaveType
   return ret;
 }
 
+// @ fn_8_49C8
 CChozoGhost::CChozoGhost(
     const TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
     const CModelData& mData, const CActorParameters& actParms, const CPatternedInfo& pInfo,
@@ -248,6 +250,7 @@ void CChozoGhost::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_8_46E8
 void CChozoGhost::Touch(CActor& act, CStateManager& mgr) {
   if (IsVisibleEnough(mgr)) {
     if (CPlayer* player = TCastToPtr< CPlayer >(act)) {
@@ -335,11 +338,13 @@ bool CChozoGhost::IsVisibleEnough(const CStateManager& mgr) const {
   return GetModelAlphau8(mgr) > 31;
 }
 
+// @ fn_8_439C
 CVector3f CChozoGhost::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                                  const CVector3f& aimPos) const {
   return GetTranslation();
 }
 
+// @ fn_8_42F0
 void CChozoGhost::AddToTeam(CStateManager& mgr) {
   if (mTeamMgr == kInvalidUniqueId) {
     mTeamMgr = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
@@ -355,6 +360,7 @@ void CChozoGhost::AddToTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_8_4248
 void CChozoGhost::RemoveFromTeam(CStateManager& mgr) {
   if (mTeamMgr == kInvalidUniqueId) {
     return;
@@ -380,6 +386,7 @@ bool CChozoGhost::IsOnGround() const { return mOnGround; }
 
 static EMaterialTypes AnchorFloorMaterial = kMT_Floor;
 
+// @ fn_8_3C00
 void CChozoGhost::FindBestAnchor(CStateManager& mgr) {
   float bestScore = 3.4028235e38f;
   mPlayerInLeashRange = false;
@@ -501,6 +508,7 @@ void CChozoGhost::SetWarpPosition(CStateManager& mgr, const CVector3f& dir) {
   }
 }
 
+// @ fn_8_38E0
 void CChozoGhost::InActive(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -557,6 +565,7 @@ void CChozoGhost::Growth(CStateManager& mgr, EStateMsg msg, float arg) {
 
 static EMaterialTypes GenerateFloorMaterial = kMT_Floor;
 
+// @ fn_8_338C
 void CChozoGhost::Generate(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -616,6 +625,7 @@ void CChozoGhost::Generate(CStateManager& mgr, EStateMsg msg, float arg) {
   }
 }
 
+// @ fn_8_3168
 void CChozoGhost::WallDetach(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -654,6 +664,7 @@ void CChozoGhost::WallDetach(CStateManager& mgr, EStateMsg msg, float arg) {
   }
 }
 
+// @ fn_8_2F24
 void CChozoGhost::Run(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -712,6 +723,7 @@ bool CChozoGhost::ShouldAttack(CStateManager& mgr, const CTriggerData& data) con
 
 static EMaterialTypes AttackSolidMaterial = kMT_Solid;
 
+// @ fn_8_2B14
 void CChozoGhost::Attack(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -762,6 +774,7 @@ void CChozoGhost::Attack(CStateManager& mgr, EStateMsg msg, float arg) {
   }
 }
 
+// @ fn_8_2A9C
 void CChozoGhost::Land(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Update: {
@@ -774,6 +787,7 @@ void CChozoGhost::Land(CStateManager& mgr, EStateMsg msg, float arg) {
   }
 }
 
+// @ fn_8_291C
 void CChozoGhost::Shuffle(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -808,6 +822,7 @@ bool CChozoGhost::ShouldTaunt(CStateManager& mgr, const CTriggerData& data) cons
   return mBehaveType == kBT_Taunt;
 }
 
+// @ fn_8_2794
 void CChozoGhost::Taunt(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -828,6 +843,7 @@ void CChozoGhost::Taunt(CStateManager& mgr, EStateMsg msg, float arg) {
 
 static EMaterialTypes HurledFloorMaterial = kMT_Floor;
 
+// @ fn_8_249C
 void CChozoGhost::Hurled(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -881,6 +897,7 @@ bool CChozoGhost::ShouldMove(CStateManager& mgr, const CTriggerData& data) const
   return mBehaveType == kBT_Move;
 }
 
+// @ fn_8_23E0
 bool CChozoGhost::Leash(CStateManager& mgr, const CTriggerData& data) const {
   return mPlayerInLeashRange || CPatterned::Leash(mgr, data);
 }
@@ -895,6 +912,7 @@ bool CChozoGhost::AggressionCheck(CStateManager& mgr, const CTriggerData& data) 
   return mAggressive;
 }
 
+// @ fn_8_2188
 void CChozoGhost::Deactivate(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -935,6 +953,7 @@ void CChozoGhost::Dead(CStateManager& mgr, EStateMsg msg, float arg) {
   }
 }
 
+// @ fn_8_20BC
 CProjectileInfo* CChozoGhost::ProjectileInfo() {
   if (mAttackType == 2) {
     return &mProjectileInfo1;
@@ -942,6 +961,7 @@ CProjectileInfo* CChozoGhost::ProjectileInfo() {
   return &mProjectileInfo2;
 }
 
+// @ fn_8_174C
 void CChozoGhost::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                   EUserEventType type, float dt) {
   bool handled = false;
@@ -1015,6 +1035,7 @@ void CChozoGhost::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
   }
 }
 
+// @ fn_8_15D0
 void CChozoGhost::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   if (!GetAlive()) {
     KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_Hurled, false);
@@ -1097,6 +1118,7 @@ CEntity* LoadChozoGhost(CStateManager& mgr, CInputStream& input, CEntityInfo& in
 }
 
 #ifndef MONOLITHIC
+// @ fn_8_458
 static void SetFuncPtrs() {
   static SChozoGhost_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadChozoGhost;

@@ -236,6 +236,7 @@ void CPlantScarabSwarm::PreRenderBoid(CBoid* boid, uint* drawMask) {
   }
 }
 
+// @ fn_49_1254
 void CPlantScarabSwarm::RenderBoid(CBoid* boid) const {
   if (boid->mAttacking) {
     if (boid->mAttackSlot == -1) {
@@ -248,6 +249,7 @@ void CPlantScarabSwarm::RenderBoid(CBoid* boid) const {
   }
 }
 
+// @ fn_49_1228
 void CPlantScarabSwarm::ApplySteeringBehaviors(
     CStateManager& mgr, CBoid& boid, CVector3f& ahead,
     const rstl::reserved_vector< CBoid*, 50 >& nearList) {
@@ -256,10 +258,12 @@ void CPlantScarabSwarm::ApplySteeringBehaviors(
   }
 }
 
+// @ fn_49_11C0
 void CPlantScarabSwarm::BoidCollidedCallback(CStateManager& mgr, CBoid& boid) {
   KillBoid(boid, mgr, CWeaponMode());
 }
 
+// @ fn_49_1144
 void CPlantScarabSwarm::BoidCollidedWithPlayerCallback(CStateManager& mgr, CBoid& boid) {
   if (boid.mLaunched) {
     KillBoid(boid, mgr, CWeaponMode());

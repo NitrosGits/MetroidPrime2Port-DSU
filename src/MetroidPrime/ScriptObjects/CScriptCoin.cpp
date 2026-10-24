@@ -31,6 +31,7 @@ static inline float coin_frand_range(CStateManager& mgr, float min, float max) {
   return (max - min) * mgr.Random()->Float() + min;
 }
 
+// @ fn_58_3484
 static CVector3f coin_cone(CStateManager& mgr, float coneAngle, float minMag, float maxMag) {
   const float mag = coin_frand_range(mgr, minMag, maxMag);
   const float cosAngle = CMath::FastCosR((M_PIF / 360.f) * coneAngle);
@@ -140,8 +141,10 @@ CScriptCoin::CScriptCoin(
   SetMomentumWR(CVector3f(0.f, 0.f, -downwardSpeed * GetMass()));
 }
 
+// @ fn_58_27D0
 CScriptCoin::~CScriptCoin() {}
 
+// @ fn_58_1C38
 void CScriptCoin::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -282,6 +285,7 @@ void CScriptCoin::Think(float dt, CStateManager& mgr) {
   SetSolid(mSolid && mDisableCollisionTime < mCurTime);
 }
 
+// @ fn_58_1BA4
 void CScriptCoin::Touch(CActor& other, CStateManager& mgr) {
   if (mDieOnProjectile && TCastToPtr< CGameProjectile >(other)) {
     SendScriptMsgs(kSS_Dead, mgr);
@@ -289,6 +293,7 @@ void CScriptCoin::Touch(CActor& other, CStateManager& mgr) {
   }
 }
 
+// @ fn_58_1B24
 rstl::optional_object< CAABox > CScriptCoin::GetTouchBounds() const {
   if (mDieOnProjectile) {
     return GetBoundingBox();
@@ -398,8 +403,10 @@ void CScriptCoin::PreRenderAllViewports(CStateManager& mgr) {
       CModelFlags::AlphaBlended(color).DepthCompareUpdate(true, color.GetAlphau8() == 255));
 }
 
+// @ fn_58_1350
 void CScriptCoin::Render(const CStateManager& mgr) const { CPhysicsActor::Render(mgr); }
 
+// @ fn_58_1218
 void CScriptCoin::AddToRenderer(const CStateManager& mgr) const {
   if (!mParticleGen0.null() && (mCurTime < mDuration || mDeferDeleteTillParticle0Done)) {
     gpRender->AddParticleGen(*mParticleGen0);
@@ -415,6 +422,7 @@ void CScriptCoin::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_58_109C
 void CScriptCoin::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                CStateManager& mgr) {
   if (list.GetCount() == 0) {
@@ -441,6 +449,7 @@ void CScriptCoin::CollidedWith(const TUniqueId& id, const CCollisionInfoList& li
   }
 }
 
+// @ fn_58_F10
 void CScriptCoin::SetSolid(bool solid) {
   if (solid) {
     SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
@@ -488,6 +497,7 @@ CEntity* LoadCoin(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
 }
 
 #ifndef MONOLITHIC
+// @ fn_58_70
 static void SetFuncPtrs() {
   static SCoin_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadCoin;

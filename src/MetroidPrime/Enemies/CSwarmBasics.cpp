@@ -77,6 +77,7 @@ struct SSwarmBasics_FuncPtrs {
   void* (*mFactory)();
 };
 
+// @ fn_80_A4B0
 CTransform4f CSwarmBasics::ShortestRotationArcWrapped(const CVector3f& a, const CVector3f& b,
                                                       const CRelAngle& angle) {
   const float dot = CVector3f::Dot(a, b);
@@ -95,6 +96,7 @@ CTransform4f CSwarmBasics::ShortestRotationArcWrapped(const CVector3f& a, const 
 }
 
 // Guessed names: qsort comparators over the listener distance cached in each boid.
+// @ fn_80_A200
 static int CompareBoidsByListenerDistance(const void* a, const void* b) {
   const CSwarmBasics::CBoid* boidA = *static_cast< CSwarmBasics::CBoid* const* >(a);
   const CSwarmBasics::CBoid* boidB = *static_cast< CSwarmBasics::CBoid* const* >(b);
@@ -107,6 +109,7 @@ static int CompareBoidsByListenerDistance(const void* a, const void* b) {
   return 0;
 }
 
+// @ fn_80_A234
 static int CompareBoidsByListenerDistanceReverse(const void* a, const void* b) {
   const CSwarmBasics::CBoid* boidA = *static_cast< CSwarmBasics::CBoid* const* >(a);
   const CSwarmBasics::CBoid* boidB = *static_cast< CSwarmBasics::CBoid* const* >(b);
@@ -119,6 +122,7 @@ static int CompareBoidsByListenerDistanceReverse(const void* a, const void* b) {
   return 0;
 }
 
+// @ fn_80_A268
 static int CompareBoidRefsByListenerDistance(const void* a, const void* b) {
   const CSwarmBasics::CBoid* boidA = static_cast< const CSwarmBasics::CBoid* >(a);
   const CSwarmBasics::CBoid* boidB = static_cast< const CSwarmBasics::CBoid* >(b);
@@ -290,6 +294,7 @@ CSwarmBasics::CSwarmBasics(TUniqueId uid, const rstl::string& name, const CEntit
   FinishConstruction();
 }
 
+// @ fn_80_89F4
 CSwarmBasics::~CSwarmBasics() {}
 
 // @ fn_80_7580
@@ -303,6 +308,7 @@ CAABox CSwarmBasics::GetBoundingBox() const {
 // @ fn_80_7544
 rstl::optional_object< CAABox > CSwarmBasics::GetTouchBounds() const { return mAabox; }
 
+// @ fn_80_81C8
 void CSwarmBasics::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CActor::AcceptScriptMsg(mgr, msg);
@@ -396,6 +402,7 @@ void CSwarmBasics::StopLocomotionSounds() {
   }
 }
 
+// @ fn_80_7B7C
 void CSwarmBasics::AllocateSkinnedModels(CStateManager& mgr, CModelData::EWhichModel which) {
   mSkinnedModelStates.clear();
   if (mAnimated) {
@@ -500,6 +507,7 @@ bool CSwarmBasics::PointOnSurface(const CCollisionSurface& surface, const CVecto
   return true;
 }
 
+// @ fn_80_6F58
 CCollisionSurface CSwarmBasics::FindBestCollisionInBox(CStateManager& mgr, const CVector3f& pos) {
   CCollisionSurface result(CVector3f(1.f, 0.f, 0.f), CVector3f(0.f, 1.f, 0.f),
                            CVector3f(0.f, 0.f, 1.f), ~0);
@@ -549,6 +557,7 @@ bool CSwarmBasics::FindBestSurface(const CAreaCollisionCache& cache, CVector3f p
   return found;
 }
 
+// @ fn_80_6B14
 void CSwarmBasics::UpdateLightComboBeam(CBoid& boid, CStateManager& mgr) {
   if (boid.xaa_ != kInvalidUniqueId) {
     CLightComboProjectile* proj = TCastToPtr< CLightComboProjectile >(mgr.ObjectById(boid.xa8_));
@@ -674,6 +683,7 @@ void CSwarmBasics::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mgr, fl
   }
 }
 
+// @ fn_80_5EFC
 void CSwarmBasics::ApplySteeringBehaviors(CStateManager& mgr, CBoid& boid, CVector3f& ahead,
                                           const rstl::reserved_vector< CBoid*, 50 >& nearList) {
   if (boid.mFreezeTimer <= 0.f) {
@@ -714,6 +724,7 @@ void CSwarmBasics::ApplySteeringBehaviors(CStateManager& mgr, CBoid& boid, CVect
   }
 }
 
+// @ fn_80_5CE4
 void CSwarmBasics::AddDoorRepulsors(CStateManager& mgr) {
   CObjectList& objects = mgr.ObjectListById(kOL_PhysicsActor);
   int count = 0;
@@ -874,6 +885,7 @@ void CSwarmBasics::UpdateAllBoidMovement(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_80_4F00
 void CSwarmBasics::UpdateSwarmAnimations(CStateManager& mgr, float dt) {
   if (mAnimated && mBoidUpdatedThisFrame) {
     uint count = mModelDatas.size();
@@ -885,6 +897,7 @@ void CSwarmBasics::UpdateSwarmAnimations(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_80_4D8C
 void CSwarmBasics::MoveBoid(CStateManager& mgr, CBoid& boid, const CVector3f& offsetDelta,
                             float dt) {
   if (boid.mActive) {
@@ -901,6 +914,7 @@ void CSwarmBasics::MoveBoid(CStateManager& mgr, CBoid& boid, const CVector3f& of
   }
 }
 
+// @ fn_80_4A58
 void CSwarmBasics::UpdatePartition() {
   mActiveBoidIndices.clear();
   mPartitionedBoidLists.clear();
@@ -1126,6 +1140,7 @@ void CSwarmBasics::DrawBoidSkinnedModel(
   mDisplayList->DrawFromState(state);
 }
 
+// @ fn_80_3FA0
 void CSwarmBasics::AddToRenderer(const CStateManager& mgr) const {
   if (GetActive()) {
     RenderParticles();
@@ -1219,6 +1234,7 @@ void CSwarmBasics::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_80_3A2C
 void CSwarmBasics::BuildBoidNearList(const CBoid& boid, float radius,
                                      rstl::reserved_vector< CBoid*, 50 >& nearList) {
   CBoid* other = GetListAt(boid.GetTranslation());
@@ -1232,6 +1248,7 @@ void CSwarmBasics::BuildBoidNearList(const CBoid& boid, float radius,
   }
 }
 
+// @ fn_80_3960
 void CSwarmBasics::ApplySeparation(CBoid& boid, const rstl::reserved_vector< CBoid*, 50 >& nearList,
                                    CVector3f& ahead) {
   if (nearList.size() > 0) {
@@ -1250,6 +1267,7 @@ void CSwarmBasics::ApplySeparation(CBoid& boid, const rstl::reserved_vector< CBo
   }
 }
 
+// @ fn_80_383C
 void CSwarmBasics::ApplySeparation(CBoid& boid, const CVector3f& pos, float radius, float magnitude,
                                    CVector3f& ahead) {
   const CVector3f delta = boid.GetTranslation() - pos;
@@ -1277,6 +1295,7 @@ void CSwarmBasics::ApplyCohesion(CBoid& boid, const rstl::reserved_vector< CBoid
   }
 }
 
+// @ fn_80_3628
 void CSwarmBasics::ApplyCohesion(CBoid& boid, const CVector3f& pos, float radius, float magnitude,
                                  CVector3f& ahead) {
   const CVector3f delta = pos - boid.GetTranslation();
@@ -1288,6 +1307,7 @@ void CSwarmBasics::ApplyCohesion(CBoid& boid, const CVector3f& pos, float radius
   }
 }
 
+// @ fn_80_3504
 void CSwarmBasics::ApplyAttraction(CBoid& boid, const CVector3f& pos, float radius, float magnitude,
                                    CVector3f& ahead) {
   const float radiusSquared = radius * radius;
@@ -1315,6 +1335,7 @@ void CSwarmBasics::ApplyAlignment(CBoid& boid, const rstl::reserved_vector< CBoi
   }
 }
 
+// @ fn_80_31C4
 static CPlane GetClosestBoxFacePlane(const CAABox& box, const CVector3f& point) {
   float minDistance = FLT_MAX;
   int bestFace = 0;
@@ -1331,6 +1352,7 @@ static CPlane GetClosestBoxFacePlane(const CAABox& box, const CVector3f& point) 
   return CPlane(tri.GetPointA(), tri.GetPointC(), tri.GetPointB());
 }
 
+// @ fn_80_3044
 void CSwarmBasics::ApplyBoundsAvoidance(CBoid& boid,
                                         const rstl::reserved_vector< CBoid*, 50 >& nearList,
                                         CVector3f& ahead) {
@@ -1344,6 +1366,7 @@ void CSwarmBasics::ApplyBoundsAvoidance(CBoid& boid,
   }
 }
 
+// @ fn_80_2D28
 void CSwarmBasics::MoveToWayPoint(CBoid& boid, CStateManager& mgr, CVector3f& ahead) {
   CScriptWaypoint* wp = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(boid.mTargetWaypoint));
   if (wp) {
@@ -1388,6 +1411,7 @@ void CSwarmBasics::MoveToWayPoint(CBoid& boid, CStateManager& mgr, CVector3f& ah
   }
 }
 
+// @ fn_80_2BB4
 TUniqueId CSwarmBasics::GetWaypointForState(EScriptObjectState state, CStateManager& mgr) {
   rstl::vector< TUniqueId > waypoints;
   waypoints.reserve(8);
@@ -1410,6 +1434,7 @@ TUniqueId CSwarmBasics::GetWaypointForState(EScriptObjectState state, CStateMana
   return kInvalidUniqueId;
 }
 
+// @ fn_80_2A9C
 void CSwarmBasics::ApplyRadiusDamage(CVector3f pos, const CDamageInfo& info, CStateManager& mgr) {
   const float radiusSquared = info.GetRadius() * info.GetRadius();
   for (rstl::vector< CBoid >::iterator it = mBoids.begin(); it != mBoids.end(); ++it) {
@@ -1528,6 +1553,7 @@ void CSwarmBasics::Touch(CActor& actor, CStateManager& mgr) {
   }
 }
 
+// @ fn_80_2138
 void CSwarmBasics::SetExplodeTimers(const CVector3f& pos, float radius, float minTime,
                                     float maxTime) {
   const float radiusSquared = radius * radius;
@@ -1562,6 +1588,7 @@ bool CSwarmBasics::IsBoidVisibleForLockOn(const CStateManager& mgr, const CBoid&
   return false;
 }
 
+// @ fn_80_1E40
 int CSwarmBasics::GetLockOnIndex(CStateManager& mgr) const {
   if (!x4f0_26_) {
     return -1;
@@ -1659,6 +1686,7 @@ void CSwarmBasics::AssignSeekerBoids(CStateManager& mgr, const rstl::vector< uin
   }
 }
 
+// @ fn_80_18BC
 void CSwarmBasics::UpdateLockOnBlend(int prevIndex, int newIndex, float dt) {
   if (x54c_24_) {
     if (newIndex >= 0) {
@@ -1681,6 +1709,7 @@ void CSwarmBasics::UpdateLockOnBlend(int prevIndex, int newIndex, float dt) {
   }
 }
 
+// @ fn_80_17C4
 CVector3f CSwarmBasics::GetAimPosition(const CStateManager& mgr, float dt) const {
   if (mLockOnIndex == -1) {
     return mLastOrbitPosition;
@@ -1696,6 +1725,7 @@ CVector3f CSwarmBasics::GetOrbitPosition(const CStateManager& mgr) const {
   return mLastOrbitPosition;
 }
 
+// @ fn_80_15E8
 void CSwarmBasics::KillBoid(CBoid& boid, CStateManager& mgr, const CWeaponMode& weapon) {
   mHealthInfo.SetCauseOfDeathWeapon(weapon, kInvalidUniqueId, kInvalidUniqueId, false, false);
   mLastKilledOffset = boid.GetTranslation();
@@ -1726,6 +1756,7 @@ void CSwarmBasics::KillBoid(CBoid& boid, CStateManager& mgr, const CWeaponMode& 
   }
 }
 
+// @ fn_80_1548
 void CSwarmBasics::StopLoopedSound(CBoid& boid, rstl::vector< TLoopedSound >& sounds) {
   for (uint i = 0; i < sounds.size(); ++i) {
     if (boid.mIndex == sounds[i].second) {
@@ -1737,6 +1768,7 @@ void CSwarmBasics::StopLoopedSound(CBoid& boid, rstl::vector< TLoopedSound >& so
   }
 }
 
+// @ fn_80_14A0
 void CSwarmBasics::AddParticle(const CTransform4f& xf) {
   if (mParticleGenerator.get()) {
     mParticleGenerator->SetParticleEmission(true);
@@ -1746,18 +1778,21 @@ void CSwarmBasics::AddParticle(const CTransform4f& xf) {
   }
 }
 
+// @ fn_80_1468
 void CSwarmBasics::UpdateParticles(float dt) {
   if (mParticleGenerator.get()) {
     mParticleGenerator->Update(dt);
   }
 }
 
+// @ fn_80_1424
 void CSwarmBasics::RenderParticles() const {
   if (mParticleGenerator.get()) {
     gpRender->AddParticleGen(*mParticleGenerator);
   }
 }
 
+// @ fn_80_12C0
 void CSwarmBasics::FreezeCollision(const CMarkerGrid& grid) {
   const float radius = mTouchRadius * mTouchRadius;
   const float xy = radius + 0.3f;
@@ -1773,6 +1808,7 @@ void CSwarmBasics::FreezeCollision(const CMarkerGrid& grid) {
   }
 }
 
+// @ fn_80_1280
 int CSwarmBasics::EvaluateActiveBoidCount() const {
   int count = 0;
   for (int i = 0; i < mBoids.size(); ++i) {
@@ -1892,6 +1928,7 @@ void CSwarmBasics::UpdateClosestPartitionLoopedSounds(const CVector3f& listener,
   }
 }
 
+// @ fn_80_C50
 bool CSwarmBasics::AddLoopedSoundToHandlesList(CBoid& boid, rstl::vector< TLoopedSound >& sounds,
                                                ushort sfx) {
   for (uint i = 0; i < sounds.size(); ++i) {
@@ -1911,6 +1948,7 @@ void CSwarmBasics::StartLoopedSound(CBoid& boid, rstl::vector< TLoopedSound >& s
   boid.mHasLoopedSound = true;
 }
 
+// @ fn_80_B0C
 void CSwarmBasics::UpdateLoopedSoundPositions(const rstl::vector< TLoopedSound >& sounds) const {
   uint count = sounds.size();
   for (uint i = 0; i < count; ++i) {
@@ -1921,6 +1959,7 @@ void CSwarmBasics::UpdateLoopedSoundPositions(const rstl::vector< TLoopedSound >
   }
 }
 
+// @ fn_80_A9C
 bool CSwarmBasics::CanStartLoopedSound(const CBoid& boid, ELoopedSoundType type) const {
   switch (type) {
   case kLST_Locomotion:
@@ -1980,6 +2019,7 @@ CAreaCollisionCache CSwarmBasics::GetAreaCollisionCacheForPartition(int x, int y
   return CAreaCollisionCache(BoxForPosition(x, y, z, mBoidRadius + 0.5f));
 }
 
+// @ fn_80_718
 void CSwarmBasics::BoidCollidedWithPlayerCallback(CStateManager& mgr, CBoid& boid) {
   if (x4f0_29_) {
     KillBoid(boid, mgr, CWeaponMode());
@@ -1991,8 +2031,10 @@ bool CSwarmBasics::ShouldBuildAreaCollisionCacheForPartition(int partitionIndex)
   return true;
 }
 
+// @ fn_80_78C
 void CSwarmBasics::BoidCollidedCallback(CStateManager& mgr, CBoid& boid) {}
 
+// @ fn_80_668
 void CSwarmBasics::QueueDeathMessage(CStateManager& mgr) {
   if (x530_ < 10) {
     SendScriptMsgs(kSS_DeathRattle, mgr);
@@ -2003,6 +2045,7 @@ void CSwarmBasics::QueueDeathMessage(CStateManager& mgr) {
   }
 }
 
+// @ fn_80_5AC
 void CSwarmBasics::FlushDeathMessages(CStateManager& mgr) {
   int count = x534_;
   int avail = 10 - x530_;
@@ -2017,6 +2060,7 @@ void CSwarmBasics::FlushDeathMessages(CStateManager& mgr) {
   x530_ = 0;
 }
 
+// @ fn_80_534
 void CSwarmBasics::FreezeBoids(const CVector3f& position, float radius) {
   for (rstl::vector< CBoid >::iterator it = mBoids.begin(); it != mBoids.end(); ++it) {
     if (it->mActive) {
@@ -2090,6 +2134,7 @@ void CSwarmBasics::UpdateSeekerTargets(CStateManager& mgr) {
   }
 }
 
+// @ fn_80_F4
 TUniqueId CSwarmBasics::GetSeekerTargetLockedOn() const {
   int lockOn = mLockOnIndex;
   if (lockOn == -1) {
@@ -2112,9 +2157,11 @@ CHealthInfo* CSwarmBasics::HealthInfo() { return &mHealthInfo; }
 // @ fn_80_E0
 void CSwarmBasics::FinishConstruction() {}
 
+// @ fn_80_D8
 static void* NullSwarmBasicsFactory() { return nullptr; }
 
 #ifndef MONOLITHIC
+// @ fn_80_A8
 static void SetFuncPtrs() {
   static SSwarmBasics_FuncPtrs funcPtrs;
   funcPtrs.mFactory = &NullSwarmBasicsFactory;

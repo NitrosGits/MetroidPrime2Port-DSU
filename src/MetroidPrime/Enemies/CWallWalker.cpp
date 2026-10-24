@@ -92,6 +92,7 @@ void CWallWalker::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_85_3A30
 void CWallWalker::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CWallCrawler::AcceptScriptMsg(mgr, msg);
   switch (msg.GetMessage()) {
@@ -123,6 +124,7 @@ void CWallWalker::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_85_37E0
 void CWallWalker::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (mPatrolState) {
   case kPS_Patrol:
@@ -287,6 +289,7 @@ void CWallWalker::DestroyCollisionManager(CStateManager& mgr) {
   }
 }
 
+// @ fn_85_2ABC
 void CWallWalker::UpdateCollisionManager(float dt, CStateManager& mgr) {
   if (mCollisionActorManager.get() != nullptr) {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
@@ -448,6 +451,7 @@ void CWallWalker::LaunchProjectiles(const CTransform4f& xf, CStateManager& mgr) 
   mNumShots = 0;
 }
 
+// @ fn_85_13C
 CEntity* LoadWallWalker(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrWallWalker sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrWallWalker.inc"

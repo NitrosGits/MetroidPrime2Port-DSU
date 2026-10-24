@@ -49,6 +49,7 @@ struct SRenderItemDepthSort {
 static float sMaxSpin = 1080.f;
 static float sSpinAccel = 120.f;
 
+// @ fn_59_683C
 SDataNetworkNode::SDataNetworkNode(TUniqueId id, int index, int parent, const bool isProxy,
                                    const bool parentIsProxy)
 : mId(id)
@@ -68,33 +69,53 @@ SDataNetworkNode::SDataNetworkNode(TUniqueId id, int index, int parent, const bo
   mChildren.reserve(8);
 }
 
+// @ fn_59_66D4
 CScriptFrontEndDataNetwork* SDataNetworkNode::GetNetwork(CStateManager& mgr) {
   return TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(mId));
 }
 
+// @ fn_59_6708
 const CScriptFrontEndDataNetwork*
 SDataNetworkNode::GetConstNetwork(const CStateManager& mgr) const {
   return TCastToConstPtr< CScriptFrontEndDataNetwork >(mgr.GetObjectById(mId));
 }
 
+// @ fn_59_673C
 void SDataNetworkNode::SetX64(float v) { x64 = v; }
+// @ fn_59_6744
 void SDataNetworkNode::SetX60(float v) { x60 = v; }
+// @ fn_59_674C
 void SDataNetworkNode::SetX5C(float v) { x5c = v; }
+// @ fn_59_6754
 void SDataNetworkNode::SetSelectedChild(int v) { mSelectedChild = v; }
+// @ fn_59_675C
 int SDataNetworkNode::GetSelectedChild() const { return mSelectedChild; }
+// @ fn_59_6764
 void SDataNetworkNode::SetParent(int v) { mParent = v; }
+// @ fn_59_676C
 void SDataNetworkNode::SetVelocity(const CVector3f& v) { mVelocity = v; }
+// @ fn_59_6788
 const CVector3f& SDataNetworkNode::GetVelocity() const { return mVelocity; }
+// @ fn_59_6790
 void SDataNetworkNode::SetX38(const CVector3f& v) { x38 = v; }
+// @ fn_59_67AC
 const CVector3f& SDataNetworkNode::GetX38() const { return x38; }
+// @ fn_59_67B4
 void SDataNetworkNode::SetRenderPos(const CVector3f& v) { mRenderPos = v; }
+// @ fn_59_67D0
 const CVector3f& SDataNetworkNode::GetRenderPos() const { return mRenderPos; }
+// @ fn_59_67D8
 void SDataNetworkNode::SetPos(const CVector3f& v) { mPos = v; }
+// @ fn_59_67F4
 const CVector3f& SDataNetworkNode::GetPos() const { return mPos; }
+// @ fn_59_67FC
 void SDataNetworkNode::SetOffset(const CVector3f& v) { mOffset = v; }
+// @ fn_59_6818
 const CVector3f& SDataNetworkNode::GetOffset() const { return mOffset; }
+// @ fn_59_6820
 void SDataNetworkNode::AddChild(int idx) { mChildren.push_back_unsafe(idx); }
 
+// @ fn_59_6140
 CScriptFrontEndDataNetwork::CScriptFrontEndDataNetwork(
     TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
     const CMayaSpline& shrinkSpline, const CMayaSpline& moveSpline, const CMayaSpline& expandSpline,
@@ -150,6 +171,7 @@ CScriptFrontEndDataNetwork::CScriptFrontEndDataNetwork(
   }
 }
 
+// @ fn_59_5D40
 void CScriptFrontEndDataNetwork::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Lock:
@@ -323,16 +345,21 @@ void CScriptFrontEndDataNetwork::Think(float dt, CStateManager& mgr) {
   CSfxManager::SfxVolume(mRotationSfx, volume);
 }
 
+// @ fn_59_5724
 void CScriptFrontEndDataNetwork::AddToRenderer(const CStateManager& mgr) const {
   EnsureRendered(mgr);
 }
 
+// @ fn_59_571C
 bool CScriptFrontEndDataNetwork::CanRenderUnsorted(const CStateManager&) const { return false; }
 
+// @ fn_59_5710
 void CScriptFrontEndDataNetwork::SetRootId(TUniqueId id) { mRootId = id; }
 
+// @ fn_59_5704
 TUniqueId CScriptFrontEndDataNetwork::GetPlatformId() const { return mPlatformId; }
 
+// @ fn_59_5578
 void CScriptFrontEndDataNetwork::BuildNetwork(CStateManager& mgr) {
   mNodes.reserve(64);
   mNodes.push_back_unsafe(SDataNetworkNode(GetUniqueId(), 0, -1, false, false));
@@ -351,6 +378,7 @@ void CScriptFrontEndDataNetwork::BuildNetwork(CStateManager& mgr) {
   LayoutChildren(0, mgr);
 }
 
+// @ fn_59_521C
 int CScriptFrontEndDataNetwork::AddNode(CStateManager& mgr, TUniqueId id, int parent) {
   const int count = mNodes.size();
   for (int i = 0; i < count; ++i) {
@@ -386,6 +414,7 @@ void CScriptFrontEndDataNetwork::LayoutChildren(int idx, CStateManager& mgr) {
   }
 }
 
+// @ fn_59_4FB4
 void CScriptFrontEndDataNetwork::ResetTransition(CStateManager& mgr) {
   if (mCurIndex != 0) {
     mNodes[mCurIndex].SetSelectedChild(-1);
@@ -760,6 +789,7 @@ void CScriptFrontEndDataNetwork::UpdateRenderPositions(CStateManager& mgr, int i
   }
 }
 
+// @ fn_59_3624
 void CScriptFrontEndDataNetwork::SetLocked(bool locked, CStateManager& mgr) {
   mIsLocked = locked;
   if (mIsLocked) {
@@ -771,6 +801,7 @@ void CScriptFrontEndDataNetwork::SetLocked(bool locked, CStateManager& mgr) {
   }
 }
 
+// @ fn_59_34BC
 void CScriptFrontEndDataNetwork::OpenNode(TUniqueId id, CStateManager& mgr) {
   int idx = 0;
   for (int i = 0; i < mNodes.size(); ++i, ++idx) {
@@ -814,6 +845,7 @@ void CScriptFrontEndDataNetwork::CloseNode(CStateManager& mgr) {
   }
 }
 
+// @ fn_59_3208
 void CScriptFrontEndDataNetwork::FaceNode(TUniqueId id, const CStateManager& mgr,
                                           bool onlyWhenInactive) {
   if (TCastToConstPtr< CScriptFrontEndDataNetwork >(mgr.GetObjectById(id))) {
@@ -836,6 +868,7 @@ void CScriptFrontEndDataNetwork::FaceNode(TUniqueId id, const CStateManager& mgr
   }
 }
 
+// @ fn_59_31C0
 void CScriptFrontEndDataNetwork::AddController(int controller) {
   for (int i = 0; i < mControllers.size(); ++i) {
     if (controller == mControllers[i]) {
@@ -845,11 +878,13 @@ void CScriptFrontEndDataNetwork::AddController(int controller) {
   mControllers.push_back_unsafe(controller);
 }
 
+// @ fn_59_317C
 void CScriptFrontEndDataNetwork::ClearControllers(CStateManager& mgr) {
   mControllers.clear();
   mActiveController = 0;
 }
 
+// @ fn_59_2E30
 void CScriptFrontEndDataNetwork::Render(const CStateManager& mgr) const {
   if (!mIsRoot) {
     return;
@@ -981,6 +1016,7 @@ void CScriptFrontEndDataNetwork::RenderNode(const CStateManager& mgr, const CTra
   }
 }
 
+// @ fn_59_2090
 void CScriptFrontEndDataNetwork::DrawConnection(const CTransform4f& xf, const CVector3f& a,
                                                 const CVector3f& b, const CColor& colorA,
                                                 const CColor& colorB, float t) const {
@@ -1031,6 +1067,7 @@ void CScriptFrontEndDataNetwork::DrawBillboard(const CTransform4f& xf, const CVe
   CGraphics::StreamEnd();
 }
 
+// @ fn_59_1BA4
 uchar CScriptFrontEndDataNetwork::HandleRotation(const CFinalInput& input, CStateManager& mgr) {
   const float scale = 100.f * input.DeltaTime();
   bool handled = false;
@@ -1067,6 +1104,7 @@ uchar CScriptFrontEndDataNetwork::HandleRotation(const CFinalInput& input, CStat
   return handled;
 }
 
+// @ fn_59_18DC
 const bool CScriptFrontEndDataNetwork::HandleButtons(const CFinalInput& input, CStateManager& mgr) {
   bool handled = false;
   SDataNetworkNode* node = &mNodes[mCurIndex];
@@ -1119,6 +1157,7 @@ const bool CScriptFrontEndDataNetwork::HandleButtons(const CFinalInput& input, C
   return handled;
 }
 
+// @ fn_59_165C
 const bool CScriptFrontEndDataNetwork::HandleStick(const CFinalInput& input, CStateManager& mgr) {
   bool handled = false;
   SDataNetworkNode& node = mNodes[mCurIndex];
@@ -1186,6 +1225,7 @@ void CScriptFrontEndDataNetwork::SetSelection(CStateManager& mgr, int index, boo
   }
 }
 
+// @ fn_59_1440
 CVector3f CScriptFrontEndDataNetwork::GetFalloff(float radius, float strength, const CVector3f& a,
                                                  const CVector3f& b) const {
   const CVector3f delta = a - b;
@@ -1200,6 +1240,7 @@ CVector3f CScriptFrontEndDataNetwork::GetFalloff(float radius, float strength, c
   return CVector3f::Zero();
 }
 
+// @ fn_59_124C
 CVector3f CScriptFrontEndDataNetwork::GetSeparation(const CStateManager& mgr,
                                                     const SDataNetworkNode& node, int idx) const {
   CVector3f result = CVector3f::Zero();
@@ -1225,6 +1266,7 @@ CVector3f CScriptFrontEndDataNetwork::GetSeparation(const CStateManager& mgr,
   return result;
 }
 
+// @ fn_59_FD8
 CVector3f CScriptFrontEndDataNetwork::GetCohesion(const CStateManager& mgr,
                                                   const SDataNetworkNode& node, int idx) const {
   CVector3f sum = CVector3f::Zero();
@@ -1260,6 +1302,7 @@ CVector3f CScriptFrontEndDataNetwork::GetCohesion(const CStateManager& mgr,
   return CVector3f::Zero();
 }
 
+// @ fn_59_E90
 CVector3f CScriptFrontEndDataNetwork::GetAttraction(const SDataNetworkNode& node,
                                                     const CVector3f& pos) const {
   const CVector3f delta = pos - node.GetPos();
@@ -1303,6 +1346,7 @@ CEntity* LoadFrontEndDataNetwork(CStateManager& mgr, CInputStream& input, CEntit
 }
 
 #ifndef MONOLITHIC
+// @ fn_59_3C4
 static void SetFuncPtrs() {
   static SFrontEndDataNetwork_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadFrontEndDataNetwork;
@@ -1314,4 +1358,5 @@ void RELMain() { SetFuncPtrs(); }
 void RELExit() { SetSFrontEndDataNetwork_FuncPtrs(nullptr); }
 #endif
 
+// @ fn_59_0
 CScriptFrontEndDataNetwork::~CScriptFrontEndDataNetwork() {}

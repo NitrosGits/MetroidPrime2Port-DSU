@@ -27,6 +27,7 @@
 
 #include "REL/REL_Setup.h"
 
+// @ fn_19_22B8
 CEyeBall::CEyeBall(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                    const CTransform4f& xf, const CModelData& mData, const CPatternedInfo& pInfo,
                    const CActorParameters& actParams, float attackDelay, float attackStartTime,
@@ -67,8 +68,10 @@ CEyeBall::CEyeBall(TUniqueId uid, const rstl::string& name, const CEntityInfo& i
   mKnockBackController.EnableKnockBackPhysics(false);
 }
 
+// @ fn_19_1FB8
 CEyeBall::~CEyeBall() {}
 
+// @ fn_19_1D70
 void CEyeBall::CreateBeam(CStateManager& mgr) {
   if (mProjectileId != kInvalidUniqueId) {
     return;
@@ -85,6 +88,7 @@ void CEyeBall::CreateBeam(CStateManager& mgr) {
   mgr.AddObject(*proj);
 }
 
+// @ fn_19_1A48
 void CEyeBall::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   bool skipForward = false;
   const EScriptObjectMessage message = msg.GetMessage();
@@ -158,6 +162,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
 
 const char* const CEyeBall::skEyeLocator = "Particle_LCTR";
 
+// @ fn_19_19DC
 void CEyeBall::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -165,6 +170,7 @@ void CEyeBall::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_19_1918
 void CEyeBall::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                                float dt) {
   bool skipForward = false;
@@ -188,6 +194,7 @@ void CEyeBall::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EU
   }
 }
 
+// @ fn_19_18E0
 void CEyeBall::InActive(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -200,6 +207,7 @@ void CEyeBall::InActive(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_19_1790
 void CEyeBall::Active(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -233,11 +241,13 @@ void CEyeBall::PreRender(CStateManager& mgr) {
   mLaserLocatorXf = GetLctrTransform(rstl::string_l(skEyeLocator));
 }
 
+// @ fn_19_1670
 void CEyeBall::PreThink(float dt, CStateManager& mgr) {
   mBoneTracking.PreThink(*AnimationData());
   CPatterned::PreThink(dt, mgr);
 }
 
+// @ fn_19_1410
 void CEyeBall::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
   if (!GetActive()) {
@@ -277,8 +287,10 @@ void CEyeBall::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_19_13F0
 void CEyeBall::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_19_1268
 void CEyeBall::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -296,6 +308,7 @@ void CEyeBall::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_19_11FC
 void CEyeBall::Cover(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -310,18 +323,22 @@ void CEyeBall::Cover(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_19_11B0
 bool CEyeBall::CloseDelay(CStateManager& mgr, const CTriggerData& data) const {
   return mStateMachine->GetTime() > mAttackDelay;
 }
 
+// @ fn_19_119C
 bool CEyeBall::ShouldFire(CStateManager& mgr, const CTriggerData& data) const {
   return !mAttackDisabled;
 }
 
+// @ fn_19_1190
 bool CEyeBall::ScriptingTriggered(CStateManager& mgr, const CTriggerData& data) const {
   return mAlert;
 }
 
+// @ fn_19_EFC
 void CEyeBall::UpdateCycleAnimation(float dt) {
   if (!close_enough(
           GetModelData()->GetAnimationData()->GetAnimTimeRemaining(rstl::string_l("Whole Body")),
@@ -341,8 +358,10 @@ void CEyeBall::UpdateCycleAnimation(float dt) {
   }
 }
 
+// @ fn_19_EF8
 void CEyeBall::Touch(CActor&, CStateManager&) {}
 
+// @ fn_19_DCC
 void CEyeBall::TurnLaserOn(CStateManager& mgr, const CTransform4f& xf) {
   CPlasmaProjectile* proj = static_cast< CPlasmaProjectile* >(mgr.ObjectById(mProjectileId));
   if (!proj) {
@@ -366,6 +385,7 @@ void CEyeBall::TurnLaserOn(CStateManager& mgr, const CTransform4f& xf) {
   mBeamSfx = CSfxManager::AddEmitter(parmData, id.Value(), true, true, CSfxManager::kMedPriority);
 }
 
+// @ fn_19_D30
 void CEyeBall::TurnLaserOff(CStateManager& mgr) {
   if (CPlasmaProjectile* proj = static_cast< CPlasmaProjectile* >(mgr.ObjectById(mProjectileId))) {
     proj->ResetBeam(mgr, true);
@@ -378,6 +398,7 @@ void CEyeBall::TurnLaserOff(CStateManager& mgr) {
   mBeamSfx.Clear();
 }
 
+// @ fn_19_CB8
 void CEyeBall::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   const CTransform4f xf = GetTransform();
   CPatterned::Death(mgr, direction, state);
@@ -410,6 +431,7 @@ CEntity* LoadEyeBall(CStateManager& mgr, CInputStream& input, CEntityInfo& info)
 #ifndef MONOLITHIC
 SEyeBall_FuncPtrs REL_loader_EyeBall;
 
+// @ fn_19_148
 void SetRelLoaderFunctionToLoader() {
   REL_loader_EyeBall.mLoader = LoadEyeBall;
   SetSEyeBall_FuncPtrs(&REL_loader_EyeBall);

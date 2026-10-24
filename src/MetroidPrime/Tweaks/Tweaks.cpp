@@ -25,10 +25,13 @@ const char* gkTweakContainer = "Standard.NTWK";
 STweaks_FuncPtrs REL_loader_Tweaks;
 #endif
 
+// @ fn_82_1290
 CTweakContents::CTweakContents() {}
 
+// @ fn_82_1184
 CTweakContents::~CTweakContents() {}
 
+// @ fn_82_EEC
 void DecodeAnyTweak(uint instanceId, CInputStream& input) {
   switch (instanceId) {
 
@@ -85,6 +88,7 @@ void DecodeAnyTweak(uint instanceId, CInputStream& input) {
   }
 }
 
+// @ fn_82_CD4
 void LoadTweaks(CInputStream& input) {
   if (static_cast< uint >(input.ReadInt32()) == 0x4e54574b && input.ReadUint8() == 1) {
     gpTweakContents = rs_new CTweakContents();
@@ -118,6 +122,7 @@ void LoadTweaks(CInputStream& input) {
   }
 }
 
+// @ fn_82_508
 void CreateTweakGlobals() {
   gpTweakAutoMapper = rs_new CTweakAutoMapper(gpTweakContents->TweakAutoMapper);
   gpTweakBall = rs_new CTweakBall(gpTweakContents->TweakBall);
@@ -140,6 +145,7 @@ void CreateTweakGlobals() {
   CMappableObject::ReadAutomapperTweaks();
 }
 
+// @ fn_82_8C
 void FreeTweaks() {
   delete gpTweakContents;
   gpTweakContents = nullptr;
@@ -161,6 +167,7 @@ void FreeTweaks() {
 }
 
 #ifndef MONOLITHIC
+// @ fn_82_44
 void TweaksInit() {
   REL_loader_Tweaks.mLoadTweaks = LoadTweaks;
   REL_loader_Tweaks.mCreateGlobals = CreateTweakGlobals;

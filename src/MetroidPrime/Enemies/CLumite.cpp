@@ -207,6 +207,7 @@ void CLumite::AddToRenderer(const CStateManager& mgr) const { CPatterned::AddToR
 // @ fn_39_5B1C
 void CLumite::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_39_5B3C
 CScannableObjectInfo* CLumite::GetScannableObjectInfo() const {
   if (mAlphaFactor == 0.f) {
     return nullptr;
@@ -599,6 +600,7 @@ void CLumite::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
 
 // Team
 
+// @ fn_39_1098
 void CLumite::JoinTeam(CStateManager& mgr) {
   if (mTeamAiMgrId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId))) {
@@ -628,6 +630,7 @@ const CScriptTeamAiMgr* CLumite::GetTeamAiMgr(const CStateManager& mgr) const {
   return TCastToConstPtr< CScriptTeamAiMgr >(mgr.GetObjectById(mTeamAiMgrId));
 }
 
+// @ fn_39_F9C
 int CLumite::GetTeamRole(const CStateManager& mgr) const {
   const CScriptTeamAiMgr* team = GetTeamAiMgr(mgr);
   if (team == nullptr || team->GetRoleCount() < 2) {
@@ -636,12 +639,14 @@ int CLumite::GetTeamRole(const CStateManager& mgr) const {
   return team->GetTeamRole(GetUniqueId());
 }
 
+// @ fn_39_2E58
 void CLumite::StartTeamAction(CStateManager& mgr) {
   if (GetTeamAiMgr(mgr) != nullptr) {
     GetTeamAiMgr(mgr)->StartTeamAction(GetUniqueId(), CScriptTeamAiMgr::kTA_Hop);
   }
 }
 
+// @ fn_39_2DF4
 void CLumite::EndTeamAction(CStateManager& mgr) {
   if (GetTeamAiMgr(mgr) != nullptr) {
     GetTeamAiMgr(mgr)->EndTeamAction(GetUniqueId(), CScriptTeamAiMgr::kTA_Hop);
@@ -650,16 +655,19 @@ void CLumite::EndTeamAction(CStateManager& mgr) {
 
 // Triggers
 
+// @ fn_39_49A4
 bool CLumite::InSmallShotRange(CStateManager& mgr, const CTriggerData& data) const {
   const float distance = DistanceToPlayer(mgr);
   return distance > mSmallShot.mMinRange && distance < mSmallShot.mMaxRange;
 }
 
+// @ fn_39_4958
 bool CLumite::InBigShotRange(CStateManager& mgr, const CTriggerData& data) const {
   const float distance = DistanceToPlayer(mgr);
   return distance > mBigShot.mMinRange && distance < mBigShot.mMaxRange;
 }
 
+// @ fn_39_3BFC
 bool CLumite::InSunlight(CStateManager& mgr, const CTriggerData& data) const { return mInSunlight; }
 
 // @ fn_39_3E24
@@ -715,6 +723,7 @@ bool CLumite::FacingHopPoint(CStateManager& mgr, const CTriggerData& data) const
   return mHop.mHopFailed || (mHop.mHopSelected && FacingHint(mHop.mTarget));
 }
 
+// @ fn_39_DB4
 bool CLumite::ClearLineOfFire(CStateManager& mgr, const CTriggerData& data) const {
   const CVector3f start = GetTranslation() + GetTransform().GetUp();
   const CVector3f end = mgr.GetPlayer(0)->GetTranslation() + CVector3f(0.f, 0.f, 1.5f);
@@ -768,6 +777,7 @@ void CLumite::ResetAttackTimer(CStateManager& mgr) {
   }
 }
 
+// @ fn_39_4A58
 void CLumite::Null(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 // @ fn_39_4A54
@@ -793,6 +803,7 @@ void CLumite::BigShot(CStateManager& mgr, EStateMsg msg, float dt) {
                  CBCProjectileAttackCmd(pas::kS_Two, mgr.GetPlayer(0)->GetTranslation(), false));
 }
 
+// @ fn_39_45D8
 CVector3f CLumite::RandomVector(CStateManager& mgr, float scale) {
   if (!mgr.IsRandomAvailable()) {
     return CVector3f::Zero();
@@ -1349,6 +1360,7 @@ CEntity* LoadLumite(CStateManager& mgr, CInputStream& input, CEntityInfo& info) 
 }
 
 #ifndef MONOLITHIC
+// @ fn_39_160
 static void SetFuncPtrs() {
   static SLumite_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadLumite;

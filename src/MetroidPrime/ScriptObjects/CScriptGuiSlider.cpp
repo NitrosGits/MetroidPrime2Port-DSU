@@ -34,6 +34,7 @@ CScriptGuiSlider::CScriptGuiSlider(TUniqueId uid, const rstl::string& name, cons
 , mSlideSfx(slideSfx)
 , mSlideSfxVolume(slideSfxVolume) {}
 
+// @ fn_60_9A04
 void CScriptGuiSlider::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CScriptGuiWidget::AcceptScriptMsg(mgr, msg);
 
@@ -153,16 +154,19 @@ static inline float RoundToNearest(float value) {
   return value - lower < upper - value ? lower : upper;
 }
 
+// @ fn_60_9518
 int CScriptGuiSlider::GetRoundedValue(float rangeMin, float rangeMax) const {
   const float t = (mTargetValue - mMinValue) / (mMaxValue - mMinValue);
   return RoundToNearest(CMath::Clamp(rangeMin, t * (rangeMax - rangeMin) + rangeMin, rangeMax));
 }
 
+// @ fn_60_94D8
 float CScriptGuiSlider::GetValue(float rangeMin, float rangeMax) const {
   const float t = (mValue - mMinValue) / (mMaxValue - mMinValue);
   return CMath::Clamp(rangeMin, t * (rangeMax - rangeMin) + rangeMin, rangeMax);
 }
 
+// @ fn_60_946C
 void CScriptGuiSlider::SetValue(CStateManager& mgr, float value, float rangeMin, float rangeMax) {
   const float t = (value - rangeMin) / (rangeMax - rangeMin);
   const float scaled = CMath::Clamp(mMinValue, t * (mMaxValue - mMinValue) + mMinValue, mMaxValue);
@@ -172,6 +176,7 @@ void CScriptGuiSlider::SetValue(CStateManager& mgr, float value, float rangeMin,
   UpdatePlatforms(mgr);
 }
 
+// @ fn_60_940C
 void CScriptGuiSlider::SetSecondaryValue(CStateManager& mgr, float value, float rangeMin,
                                          float rangeMax) {
   const float t = (value - rangeMin) / (rangeMax - rangeMin);
@@ -179,6 +184,7 @@ void CScriptGuiSlider::SetSecondaryValue(CStateManager& mgr, float value, float 
   UpdatePlatforms(mgr);
 }
 
+// @ fn_60_9310
 void CScriptGuiSlider::FindPlatforms(CStateManager& mgr) {
   for (rstl::vector< SConnection >::const_iterator it = GetConnectionList().begin();
        it != GetConnectionList().end(); ++it) {
@@ -197,6 +203,7 @@ void CScriptGuiSlider::FindPlatforms(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_9144
 void CScriptGuiSlider::UpdatePlatforms(CStateManager& mgr) {
   if (CScriptPlatform* platform = TCastToPtr< CScriptPlatform >(mgr.ObjectById(mPrimaryPlatform))) {
     const float t = mMaxValue == mMinValue ? 0.f : (mValue - mMinValue) / (mMaxValue - mMinValue);

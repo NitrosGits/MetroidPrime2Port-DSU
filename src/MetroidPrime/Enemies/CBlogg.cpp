@@ -175,6 +175,7 @@ CBloggBodyVulnerability::CBloggBodyVulnerability(const CDamageVulnerability& vul
 , mOwner(nullptr)
 , mFlag(flag) {}
 
+// @ fn_7_1884
 const CDamageVulnerability* CBloggBodyVulnerability::GetDamageVulnerability(
     const CDamageVulnerability* defaultVuln, const CVector3f& position, const CVector3f& direction,
     const CDamageInfo& damage) {
@@ -207,6 +208,7 @@ CBloggMouthVulnerability::CBloggMouthVulnerability(const CDamageVulnerability& v
 : CBloggBodyVulnerability(vulnerability, otherVulnerability, flag)
 , mResponseType(kWCR_EnemyShielded) {}
 
+// @ fn_7_1690
 const CDamageVulnerability* CBloggMouthVulnerability::GetDamageVulnerability(
     const CDamageVulnerability* defaultVuln, const CVector3f& position, const CVector3f& direction,
     const CDamageInfo& damage) {
@@ -405,6 +407,7 @@ CBlogg::CBlogg(TUniqueId uid, const rstl::string& name, CEntityInfo& info, const
   }
 }
 
+// @ fn_7_12BC
 int CBlogg::GetHealthPhase() const {
   const float health = GetHealthInfo()->GetHP();
   const float fraction = health / GetHealthInfo()->GetInitialHP();
@@ -414,6 +417,7 @@ int CBlogg::GetHealthPhase() const {
   return fraction < 0.66f;
 }
 
+// @ fn_7_1220
 void CBlogg::ChoosePhaseValue(CStateManager& mgr) {
   const uchar phaseIndex = GetHealthPhase();
   if (phaseIndex < mPhases.size()) {
@@ -427,6 +431,7 @@ void CBlogg::ChoosePhaseValue(CStateManager& mgr) {
   }
 }
 
+// @ fn_7_1404
 void CBlogg::SyncCollisionActorHealth(CStateManager& mgr) {
   for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
     const TUniqueId id = mCollisionActorManager->GetCollisionDescFromIndex(i).GetCollisionActorId();
@@ -448,6 +453,7 @@ void CBlogg::SetIngPossessed(bool possessed, CStateManager& mgr) {
   SyncCollisionActorHealth(mgr);
 }
 
+// @ fn_7_14F4
 CVector3f CBlogg::GetIngSnatchingPoint(float t) const {
   const CAABox localBounds = GetModelData()->GetBounds();
   CAABox bounds = GetModelData()->GetBounds(GetTransform());
@@ -457,6 +463,7 @@ CVector3f CBlogg::GetIngSnatchingPoint(float t) const {
   return center + (0.5f - t) * height * normal;
 }
 
+// @ fn_7_1658
 CVector3f CBlogg::GetIngSnatchingNormal(float) const { return -GetTransform().GetForward(); }
 
 // @ fn_7_B7A0
@@ -493,6 +500,7 @@ bool CBlogg::IsHitInMouthDirection(const CVector3f& direction) const {
 // @ fn_7_2790
 uchar CBlogg::HasCollisionTimeElapsed() const { return mCollisionTime >= mMaxCollisionTime; }
 
+// @ fn_7_299C
 bool CBlogg::IsAtAttackPosition() const {
   return CPatterned::GetSearchPath()->IsOver() && mState == kBS_MoveToAttackPosition;
 }
@@ -525,6 +533,7 @@ void CBlogg::ComputeTauntProbability(CStateManager& mgr, float dt) {
 // @ fn_7_7E2C
 void CBlogg::EndMeleePursuit(CStateManager& mgr, float dt) { mMeleePursuitEnded = true; }
 
+// @ fn_7_6334
 bool CBlogg::ShouldPatrol(CStateManager& mgr, const CTriggerData& data) const { return false; }
 
 // @ fn_7_633C
@@ -558,10 +567,12 @@ bool CBlogg::InBiteRange(CStateManager& mgr, const CTriggerData& data) const {
   return IsPlayerWithin(mgr, 3.f * GetModelData()->GetScale().GetX());
 }
 
+// @ fn_7_61BC
 bool CBlogg::InProjectileRange(CStateManager& mgr, const CTriggerData& data) const {
   return IsPlayerWithin(mgr, 2.f * mMaxAttackRange);
 }
 
+// @ fn_7_5C50
 bool CBlogg::CantMoveToPlayer(CStateManager& mgr, const CTriggerData& data) const { return false; }
 
 // @ fn_7_594C
@@ -584,6 +595,7 @@ CVector3f CBlogg::GetDirectionToPlayer(CStateManager& mgr) const {
   return CVector3f::Forward();
 }
 
+// @ fn_7_2150
 void CBlogg::FindFluid(CStateManager& mgr, CAABox& bounds, TUniqueId& waterId) const {
   if (GetFluidCount() != 0) {
     waterId = InFluidId();
@@ -595,6 +607,7 @@ void CBlogg::FindFluid(CStateManager& mgr, CAABox& bounds, TUniqueId& waterId) c
   }
 }
 
+// @ fn_7_8E24
 bool CBlogg::IsInhabitingFluid(CStateManager& mgr, TUniqueId waterId, TUniqueId uid) const {
   const CScriptWater* water = TCastToConstPtr< CScriptWater >(mgr.GetObjectById(waterId));
   if (water != nullptr && water->HasInhabitant(uid)) {
@@ -643,6 +656,7 @@ bool CBlogg::ProjectileAttackDelay(CStateManager& mgr, const CTriggerData& data)
   return mStateMachine->GetTime() > mProjectileDelay;
 }
 
+// @ fn_7_5FBC
 bool CBlogg::ShouldCharge(CStateManager& mgr, const CTriggerData& data) const {
   if (mIsMegaBlogg && xbc5_29_ && !xbc5_27_ && !xbc5_26_ && !xbc5_30_) {
     return false;
@@ -715,6 +729,7 @@ bool CBlogg::CanRangedAttack(CStateManager& mgr, const CTriggerData& data) const
   return result;
 }
 
+// @ fn_7_5D04
 bool CBlogg::CanTaunt(CStateManager& mgr, const CTriggerData& data) const {
   return !CanMeleeAttack(mgr, data) && !CanRangedAttack(mgr, data) && mTauntReady;
 }
@@ -724,6 +739,7 @@ bool CBlogg::ShouldEndPursuit(CStateManager& mgr, const CTriggerData& data) cons
   return !CanMeleeAttack(mgr, data) || mPlayerPursuitTime >= mMaxPlayerPursuitTime;
 }
 
+// @ fn_7_5B48
 bool CBlogg::ShouldEndBallPursuit(CStateManager& mgr, const CTriggerData& data) const {
   CPlayer* player = GetPlayer(mgr);
   if (player != nullptr) {
@@ -738,6 +754,7 @@ bool CBlogg::ShouldEndBallPursuit(CStateManager& mgr, const CTriggerData& data) 
   return !CanMeleeAttack(mgr, data) || mBallPursuitTime >= mMaxBallPursuitTime;
 }
 
+// @ fn_7_5AF4
 bool CBlogg::PlayerInBallMode(CStateManager& mgr, const CTriggerData& data) const {
   CPlayer* player = GetPlayer(mgr);
   if (player != nullptr) {
@@ -841,6 +858,7 @@ TUniqueId CBlogg::FindNearestHint(CStateManager& mgr, const CVector3f& position,
   return nearest;
 }
 
+// @ fn_7_1F70
 void CBlogg::CollectHints(CStateManager& mgr) {
   CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
   mHintIds.reserve(32);
@@ -854,6 +872,7 @@ void CBlogg::CollectHints(CStateManager& mgr) {
   }
 }
 
+// @ fn_7_2070
 void CBlogg::UpdateCollisionActorMaterials(CStateManager& mgr, const CMaterialList& materials,
                                            EMaterialAction action) {
   for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
@@ -917,6 +936,7 @@ uchar CBlogg::GetNextPositionIndex() const {
   return 0;
 }
 
+// @ fn_7_2608
 void CBlogg::PathToAttackPosition(CStateManager& mgr, float dt) {
   CVector3f destination = GetTranslation();
   if (mHintIds.size() != 0u) {
@@ -943,6 +963,7 @@ void CBlogg::PathToAttackPosition(CStateManager& mgr, float dt) {
   mPathFindNavigation.PathFind(mgr, kStateMsg_Activate, dt, *this);
 }
 
+// @ fn_7_4284
 void CBlogg::LeaveTeam(CStateManager& mgr) {
   if (mTeamManagerId != kInvalidUniqueId) {
     CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamManagerId));
@@ -955,6 +976,7 @@ void CBlogg::LeaveTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_7_432C
 void CBlogg::JoinTeam(CStateManager& mgr) {
   if (mTeamManagerId == kInvalidUniqueId) {
     mTeamManagerId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
@@ -968,6 +990,7 @@ void CBlogg::JoinTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_7_2A70
 void CBlogg::ApplyContactDamage(CStateManager& mgr, CPlayer& player, const CDamageInfo& damage) {
   if (mCurDamageRemTime <= 0.f) {
     CVector3f direction = CVector3f::Forward();
@@ -983,6 +1006,7 @@ void CBlogg::ApplyContactDamage(CStateManager& mgr, CPlayer& player, const CDama
   }
 }
 
+// @ fn_7_2BDC
 bool CBlogg::IsPlayerInMouthRange(CStateManager& mgr) const {
   CPlayer* player = GetPlayer(mgr);
   if (player != nullptr) {
@@ -997,6 +1021,7 @@ bool CBlogg::IsPlayerInMouthRange(CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_7_27AC
 void CBlogg::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list, CStateManager& mgr) {
   if (mState == kBS_ChargeAttack || mState == kBS_MoveToPlayer || mState == kBS_Patrol ||
       mState == kBS_MoveToAttackPosition || mState == kBS_MoveToValidPosition) {
@@ -1024,6 +1049,7 @@ void CBlogg::Touch(CActor& actor, CStateManager& mgr) {
   }
 }
 
+// @ fn_7_2D7C
 void CBlogg::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   CPlayer* player = GetPlayer(mgr);
   if (player != nullptr) {
@@ -1053,6 +1079,7 @@ void CBlogg::Death(CStateManager& mgr, const CVector3f& direction, EScriptObject
   mVerticalMovement = true;
 }
 
+// @ fn_7_4728
 void CBlogg::ApplyCollisionActorDamage(CStateManager& mgr, TUniqueId senderId, float multiplier) {
   if (mAlive) {
     CCollisionActor* collisionActor = TCastToPtr< CCollisionActor >(mgr.ObjectById(senderId));
@@ -1094,6 +1121,7 @@ void CBlogg::ApplyCollisionActorDamage(CStateManager& mgr, TUniqueId senderId, f
   }
 }
 
+// @ fn_7_7AD4
 void CBlogg::MoveToValidPosition(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -1124,6 +1152,7 @@ void CBlogg::MoveToValidPosition(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_7C70
 void CBlogg::MoveToAttackPosition(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1157,6 +1186,7 @@ void CBlogg::MoveToAttackPosition(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_787C
 void CBlogg::FacePlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1192,6 +1222,7 @@ void CBlogg::FacePlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_7228
 void CBlogg::ChargeTelegraph(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1211,6 +1242,7 @@ void CBlogg::ChargeTelegraph(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_7464
 void CBlogg::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1256,6 +1288,7 @@ void CBlogg::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_69D0
 void CBlogg::Stunned(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1283,6 +1316,7 @@ void CBlogg::Stunned(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_635C
 void CBlogg::MoveToPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -1386,6 +1420,7 @@ bool CBlogg::IsPlayerWithinChargeRange(CStateManager& mgr, CPlayer* player) cons
   return offset.MagSquared() < range * range;
 }
 
+// @ fn_7_3688
 void CBlogg::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1407,6 +1442,7 @@ void CBlogg::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_6C94
 void CBlogg::ChargeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1490,6 +1526,7 @@ void CBlogg::ChargeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_3458
 void CBlogg::Thrash(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1510,6 +1547,7 @@ void CBlogg::Thrash(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_3154
 void CBlogg::SpitBall(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1553,6 +1591,7 @@ void CBlogg::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_2F00
 void CBlogg::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1579,6 +1618,7 @@ void CBlogg::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_8410
 void CBlogg::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -2224,6 +2264,7 @@ CEntity* LoadBlogg(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
 }
 
 #ifndef MONOLITHIC
+// @ fn_7_D8
 static void SetFuncPtrs() {
   static SBlogg_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadBlogg;

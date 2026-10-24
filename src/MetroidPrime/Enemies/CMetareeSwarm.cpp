@@ -61,8 +61,10 @@ CMetareeSwarm::CMetareeSwarm(TUniqueId uid, const rstl::string& name, const CEnt
   }
 }
 
+// @ fn_43_16B4
 CMetareeSwarm::~CMetareeSwarm() {}
 
+// @ fn_43_1694
 void CMetareeSwarm::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CSwarmBasics::AcceptScriptMsg(mgr, msg);
 }
@@ -132,6 +134,7 @@ void CMetareeSwarm::AllocateSkinnedModels(CStateManager& mgr, CModelData::EWhich
   CSwarmBasics::AllocateSkinnedModels(mgr, which);
 }
 
+// @ fn_43_E64
 void CMetareeSwarm::UpdateSwarmAnimations(CStateManager& mgr, float dt) {
   CSwarmBasics::UpdateSwarmAnimations(mgr, dt);
   const uint count = mAttackModels.size();
@@ -235,6 +238,7 @@ void CMetareeSwarm::PreRenderBoid(CBoid* boid, uint* drawMask) {
   }
 }
 
+// @ fn_43_704
 void CMetareeSwarm::RenderBoid(CBoid* boid) const {
   if (boid->mAttacking) {
     if (boid->mAttackSlot == -1) {
@@ -247,6 +251,7 @@ void CMetareeSwarm::RenderBoid(CBoid* boid) const {
   }
 }
 
+// @ fn_43_6D8
 void CMetareeSwarm::ApplySteeringBehaviors(CStateManager& mgr, CBoid& boid, CVector3f& ahead,
                                            const rstl::reserved_vector< CBoid*, 50 >& nearList) {
   if (!boid.mAttacking) {
@@ -254,10 +259,12 @@ void CMetareeSwarm::ApplySteeringBehaviors(CStateManager& mgr, CBoid& boid, CVec
   }
 }
 
+// @ fn_43_670
 void CMetareeSwarm::BoidCollidedCallback(CStateManager& mgr, CBoid& boid) {
   KillBoid(boid, mgr, CWeaponMode());
 }
 
+// @ fn_43_5F4
 void CMetareeSwarm::BoidCollidedWithPlayerCallback(CStateManager& mgr, CBoid& boid) {
   if (boid.mLaunched) {
     KillBoid(boid, mgr, CWeaponMode());
@@ -266,6 +273,7 @@ void CMetareeSwarm::BoidCollidedWithPlayerCallback(CStateManager& mgr, CBoid& bo
   }
 }
 
+// @ fn_43_584
 void CMetareeSwarm::KillBoid(CBoid& boid, CStateManager& mgr, const CWeaponMode& weapon) {
   CSwarmBasics::KillBoid(boid, mgr, weapon);
   if (boid.mAttackSlot != -1) {
@@ -295,6 +303,7 @@ CEntity* LoadMetareeSwarm(CStateManager& mgr, CInputStream& input, CEntityInfo& 
 }
 
 #ifndef MONOLITHIC
+// @ fn_43_A8
 static void SetFuncPtrs() {
   static SMetareeSwarm_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadMetareeSwarm;

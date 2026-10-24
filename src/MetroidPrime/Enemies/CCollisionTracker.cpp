@@ -600,14 +600,19 @@ CCollisionTracker::CCollisionTracker(const TLockedToken< CGenDescription >& desc
 // @ fn_25_3F78
 CCollisionTracker::~CCollisionTracker() {}
 
+// @ fn_25_2544
 CElementGen* CCollisionTracker::ParticleSystem() const { return mParticleSystem.get(); }
 
+// @ fn_25_254C
 CElementGen* CCollisionTracker::GetParticleSystem() const { return mParticleSystem.get(); }
 
+// @ fn_25_2554
 void CCollisionTracker::SetMinimumPathLength(float length) { mMinimumPathLength = length; }
 
+// @ fn_25_255C
 float CCollisionTracker::GetMinimumPathLength() const { return mMinimumPathLength; }
 
+// @ fn_25_2564
 float CCollisionTracker::GetParticleEmissionRateScalar() const {
   return mParticleEmissionRateScalar;
 }
@@ -617,6 +622,7 @@ void CCollisionTracker::SetParticleEmissionRateScalar(float intensity) {
   mParticleEmissionRateScalar = intensity;
 }
 
+// @ fn_25_2574
 void CCollisionTracker::Touch(CActor&, CStateManager&) {}
 
 // @ fn_25_2578
@@ -776,6 +782,7 @@ void CCollisionTracker::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_25_3724
 void CCollisionTracker::Render(const CStateManager& mgr) const {
   int alpha = GetRenderAlphaBufferAlpha(mgr);
   if (alpha != -1 && mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Dark) {
@@ -789,6 +796,7 @@ void CCollisionTracker::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_25_3EA8
 SPathPosition SBlobStrand::GetPathPosition(float offset) const {
   int index = mSegmentIndex;
   float distance = mSegmentDistance + offset;
@@ -914,6 +922,7 @@ CEffect* LoadGeomBlobV2(const TLockedToken< CGenDescription >& desc, TUniqueId u
 }
 
 #ifndef MONOLITHIC
+// @ fn_25_2460
 static void SetFuncPtrs() {
   static SGeomBlobV2_FuncPtrs funcPtrs;
   funcPtrs.mFactory = &LoadGeomBlobV2;

@@ -33,6 +33,7 @@ CFlyerSwarm::CFlyerSwarm(TUniqueId uid, const rstl::string& name, const CEntityI
 , mRollUprightMinAngle(rollUprightMinAngle * (M_PIF / 180.f))
 , mPartitionHasCollision(false) {}
 
+// @ fn_21_192C
 CFlyerSwarm::~CFlyerSwarm() {}
 
 void CFlyerSwarm::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
@@ -110,6 +111,7 @@ void CFlyerSwarm::CreateBoid(CStateManager& mgr, int index) {
   }
 }
 
+// @ fn_21_CE8
 void CFlyerSwarm::Think(float dt, CStateManager& mgr) { CSwarmBasics::Think(dt, mgr); }
 
 void CFlyerSwarm::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mgr, float dt, CBoid& boid,
@@ -191,11 +193,13 @@ void CFlyerSwarm::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mgr, flo
   }
 }
 
+// @ fn_21_5D8
 void CFlyerSwarm::ApplySteeringBehaviors(CStateManager& mgr, CBoid& boid, CVector3f& ahead,
                                          const rstl::reserved_vector< CBoid*, 50 >& nearList) {
   CSwarmBasics::ApplySteeringBehaviors(mgr, boid, ahead, nearList);
 }
 
+// @ fn_21_5BC
 bool CFlyerSwarm::ShouldBuildAreaCollisionCacheForPartition(int partitionIndex) const {
   if (partitionIndex == -1) {
     return true;
@@ -203,6 +207,7 @@ bool CFlyerSwarm::ShouldBuildAreaCollisionCacheForPartition(int partitionIndex) 
   return mPartitionHasCollision[partitionIndex];
 }
 
+// @ fn_21_59C
 void CFlyerSwarm::Render(const CStateManager& mgr) const { CSwarmBasics::Render(mgr); }
 
 CEntity* LoadFlyerSwarm(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
@@ -241,6 +246,7 @@ CEntity* LoadFlyerSwarm(CStateManager& mgr, CInputStream& input, CEntityInfo& in
 }
 
 #ifndef MONOLITHIC
+// @ fn_21_A8
 static void SetFuncPtrs() {
   static SFlyerSwarm_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadFlyerSwarm;

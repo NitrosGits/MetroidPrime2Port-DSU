@@ -166,6 +166,7 @@ void CMetroid::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
 // @ fn_40_7580
 void CMetroid::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_40_74DC
 const CDamageVulnerability* CMetroid::GetDamageVulnerability() const {
   if (IsSuckingEnergy()) {
     if (mIsEnergyDrainVulnerable) {
@@ -188,6 +189,7 @@ const CDamageVulnerability* CMetroid::GetDamageVulnerability(const CVector3f&, c
   return GetDamageVulnerability();
 }
 
+// @ fn_40_741C
 EWeaponCollisionResponseTypes CMetroid::GetCollisionResponseType(const CVector3f&, const CVector3f&,
                                                                  const CWeaponMode& mode,
                                                                  int) const {
@@ -199,6 +201,7 @@ EWeaponCollisionResponseTypes CMetroid::GetCollisionResponseType(const CVector3f
   return response;
 }
 
+// @ fn_40_7384
 void CMetroid::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                                float dt) {
   bool handled = false;
@@ -221,6 +224,7 @@ void CMetroid::Death(CStateManager& mgr, const CVector3f& direction, EScriptObje
   SwarmRemove(mgr);
 }
 
+// @ fn_40_7214
 void CMetroid::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   const CWeaponMode& mode = info.GetDamageInfo().GetWeaponMode();
   const CDamageVulnerability* vulnerability = GetDamageVulnerability();
@@ -246,6 +250,7 @@ void CMetroid::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   }
 }
 
+// @ fn_40_F50
 bool CMetroid::CanBeIngPossessed(CStateManager& mgr) const {
   bool ret = false;
   if (CPatterned::CanBeIngPossessed(mgr) && !IsSuckingEnergy() && !mIsAttacking) {
@@ -254,6 +259,7 @@ bool CMetroid::CanBeIngPossessed(CStateManager& mgr) const {
   return ret;
 }
 
+// @ fn_40_6DBC
 bool CMetroid::Attacked(CStateManager& mgr, const CTriggerData&) const {
   if (mGrowthEnergy - mLastGrowthEnergy > 0.f) {
     if (mLastGrowthEnergy < mMetroidData.mStage2GrowthEnergy) {
@@ -266,6 +272,7 @@ bool CMetroid::Attacked(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_40_6D2C
 bool CMetroid::ShouldAttack(CStateManager& mgr, const CTriggerData&) const {
   if (CanStartAttack(mgr)) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiManagerId))) {
@@ -276,10 +283,12 @@ bool CMetroid::ShouldAttack(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_40_4780
 bool CMetroid::IsSuckingEnergy() const {
   return mAttackState == 2 && !GetBodyController()->IsFrozen();
 }
 
+// @ fn_40_470C
 bool CMetroid::IsPirateValidTarget(const CSpacePirate& pirate) const {
   if (pirate.GetAttachedActor() == kInvalidUniqueId) {
     const CHealthInfo* healthInfo = pirate.GetHealthInfo();
@@ -288,6 +297,7 @@ bool CMetroid::IsPirateValidTarget(const CSpacePirate& pirate) const {
   return false;
 }
 
+// @ fn_40_15A8
 bool CMetroid::IsPlayerInFluid(const CPlayer& player, const CStateManager& mgr) const {
   if (player.GetFluidCount() != 0) {
     if (player.InFluidId() != kInvalidUniqueId) {
@@ -302,6 +312,7 @@ bool CMetroid::IsPlayerInFluid(const CPlayer& player, const CStateManager& mgr) 
   return false;
 }
 
+// @ fn_40_1938
 bool CMetroid::IsTargetGettingSucked(const CStateManager& mgr) const {
   if (const CEntity* target = mgr.GetObjectById(GetAttackTargetId())) {
     if (const CPlayer* player = TCastToConstPtr< CPlayer >(target)) {
@@ -331,6 +342,7 @@ void CMetroid::UpdateAILogicTimers(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_40_13D4
 bool CMetroid::CanStartAttack(CStateManager& mgr) const {
   if (mAttackChance <= 0.f) {
     const CEntity* target = mgr.GetObjectById(mAttackTarget);
@@ -363,6 +375,7 @@ void CMetroid::SwarmRemove(CStateManager& mgr) {
   }
 }
 
+// @ fn_40_3F24
 void CMetroid::SwarmAdd(CStateManager& mgr) {
   if (mTeamAiManagerId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiManagerId))) {
@@ -374,6 +387,7 @@ void CMetroid::SwarmAdd(CStateManager& mgr) {
   }
 }
 
+// @ fn_40_625C
 bool CMetroid::Leash(CStateManager& mgr, const CTriggerData&) const {
   if (const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget))) {
     if (IsPlayerInFluid(*player, mgr)) {
@@ -395,6 +409,7 @@ bool CMetroid::Leash(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_40_6EE4
 bool CMetroid::LostInterest(CStateManager& mgr, const CTriggerData&) const {
   if (mAttackTarget != kInvalidUniqueId) {
     if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mAttackTarget))) {
@@ -415,6 +430,7 @@ bool CMetroid::LostInterest(CStateManager& mgr, const CTriggerData&) const {
   return true;
 }
 
+// @ fn_40_6E18
 bool CMetroid::PatternShagged(CStateManager& mgr, const CTriggerData&) const {
   if (mAttackTarget != kInvalidUniqueId) {
     if (const CSpacePirate* pirate =
@@ -434,6 +450,7 @@ bool CMetroid::PatternShagged(CStateManager& mgr, const CTriggerData&) const {
   return true;
 }
 
+// @ fn_40_694C
 bool CMetroid::InPosition(CStateManager& mgr, const CTriggerData&) const {
   if (mPathFindSearch.GetCurrentWaypoint() < mPathFindSearch.GetWaypoints().size() - 1) {
     const CVector3f delta = x7c0_ - GetTranslation();
@@ -442,6 +459,7 @@ bool CMetroid::InPosition(CStateManager& mgr, const CTriggerData&) const {
   return true;
 }
 
+// @ fn_40_6864
 bool CMetroid::InRange(CStateManager& mgr, const CTriggerData&) const {
   if (mAttackTarget != kInvalidUniqueId) {
     if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mAttackTarget))) {
@@ -457,6 +475,7 @@ bool CMetroid::InRange(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_40_64A0
 bool CMetroid::AggressionCheck(CStateManager& mgr, const CTriggerData&) const {
   if (mAttackTarget != kInvalidUniqueId) {
     const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mAttackTarget));
@@ -478,6 +497,7 @@ bool CMetroid::AggressionCheck(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_40_63A4
 bool CMetroid::ShouldTurn(CStateManager& mgr, const CTriggerData&) const {
   if (mAttackTarget != kInvalidUniqueId) {
     if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mAttackTarget))) {
@@ -511,6 +531,7 @@ void CMetroid::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_40_590C
 void CMetroid::TurnAround(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Update:
@@ -567,6 +588,7 @@ void CMetroid::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_40_4BF4
 void CMetroid::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -657,6 +679,7 @@ bool CMetroid::PreDamageSpacePirate(CStateManager& mgr) {
 }
 #endif
 
+// @ fn_40_6FF0
 bool CMetroid::AttackOver(CStateManager& mgr, const CTriggerData&) const {
   if (mState == kAiState_Two && !GetBodyController()->IsFrozen()) {
     const CVector3f targetPos = GetAttackTargetPos(mgr);
@@ -677,6 +700,7 @@ bool CMetroid::AttackOver(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_40_4544
 CVector3f CMetroid::GetAttackTargetPos(const CStateManager& mgr) const {
   if (mAttackTarget != kInvalidUniqueId) {
     const CEntity* target = mgr.GetObjectById(GetAttackTargetId());
@@ -809,6 +833,7 @@ void CMetroid::SelectNewTarget(CStateManager& mgr) {
   }
 }
 
+// @ fn_40_1080
 void CMetroid::UpdateAttackTarget(CStateManager& mgr) {
   if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mAttackTarget))) {
     if (const CPlayer* player = TCastToConstPtr< CPlayer >(actor)) {
@@ -860,6 +885,7 @@ void CMetroid::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_40_65AC
 bool CMetroid::InDetectionRange(CStateManager& mgr, const CTriggerData&) const {
   if (mAttackTarget == kInvalidUniqueId) {
     if (mAlert) {
@@ -937,6 +963,7 @@ CVector3f CMetroid::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
   return result;
 }
 
+// @ fn_40_34D4
 void CMetroid::PreventWorldCollisions(float dt, CStateManager& mgr) {
   const float size = 2.f * mCollisionPrimitive.GetSphere().GetRadius();
   if (IsSuckingEnergy()) {
@@ -962,6 +989,7 @@ void CMetroid::PreventWorldCollisions(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_40_3110
 void CMetroid::RestoreSolidCollision(CStateManager& mgr) {
   const CMaterialFilter filter =
       CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_AIBlock));
@@ -1070,6 +1098,7 @@ void CMetroid::ComputeSuckTargetPosRot(CStateManager& mgr, CVector3f& pos, CQuat
   }
 }
 
+// @ fn_40_19F8
 float CMetroid::ComputeMorphingPlayerSuckUpPos(const CPlayer& player) const {
   float height = 0.f;
   if (player.HasModelData()) {
@@ -1100,6 +1129,7 @@ void CMetroid::ComputeSuckPiratePosRot(CStateManager& mgr, CVector3f& pos, CQuat
   }
 }
 
+// @ fn_40_4890
 void CMetroid::SetTargetDest(CStateManager& mgr, float) {
   BodyController()->SetLocomotionType(pas::kLT_Lurk);
   BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);
@@ -1134,6 +1164,7 @@ void CMetroid::SetTargetDest(CStateManager& mgr, float) {
   mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
 }
 
+// @ fn_40_4264
 void CMetroid::ApplyGrowth(float damage, CStateManager& mgr) {
   mGrowthEnergy += damage;
   const float scale = mMetroidData.mStage2GrowthScale - mScale3.GetY();
@@ -1388,6 +1419,7 @@ void CMetroid::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_40_36C4
 void CMetroid::SetupExitFaceHugDirection(CActor* actor, CStateManager& mgr,
                                          const CVector3f& direction, const CTransform4f& xf) {
   if (actor == nullptr) {
@@ -1600,6 +1632,7 @@ bool CMetroid::ShouldWallHang(CStateManager&, const CTriggerData&) const {
 // @ fn_40_6248
 bool CMetroid::ShouldDodge(CStateManager&, const CTriggerData&) const { return false; }
 
+// @ fn_40_FB4
 void CMetroid::OnDockTouch(CStateManager& mgr) {
   DetachFromTarget(mgr, true);
   mPendingDeath = true;
@@ -1657,6 +1690,7 @@ void CMetroid::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_40_17C
 CEntity* LoadMetroidAlpha(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrMetroidAlpha sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrMetroidAlpha.inc"
@@ -1695,6 +1729,7 @@ CEntity* LoadMetroidAlpha(CStateManager& mgr, CInputStream& input, CEntityInfo& 
 #ifndef MONOLITHIC
 SMetroid_FuncPtrs REL_loader_Metroid;
 
+// @ fn_40_12C
 void SetRelLoaderFunctionToLoader() {
   REL_loader_Metroid.mLoadMetroid = LoadMetroidAlpha;
   REL_loader_Metroid.mOnDockTouch = &CMetroid::OnDockTouch;

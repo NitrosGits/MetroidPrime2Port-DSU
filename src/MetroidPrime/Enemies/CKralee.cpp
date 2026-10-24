@@ -263,6 +263,7 @@ void CKralee::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_37_1080
 void CKralee::PreRender(CStateManager& mgr) {
   if (mAlive) {
     if ((mWarpState == kWS_WarpOut || mWarpState == kWS_Invisible) &&
@@ -278,6 +279,7 @@ void CKralee::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
 }
 
+// @ fn_37_1018
 void CKralee::AddToRenderer(const CStateManager& mgr) const {
   if (mAlive && mWarpState == kWS_Invisible &&
       mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Echo) {
@@ -289,6 +291,7 @@ void CKralee::AddToRenderer(const CStateManager& mgr) const {
 // @ fn_37_13A8
 void CKralee::Render(const CStateManager& mgr) const { CWallCrawler::Render(mgr); }
 
+// @ fn_37_117C
 void CKralee::WarpIn(CStateManager& mgr) {
   if (mWarpState != kWS_Invisible) {
     return;

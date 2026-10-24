@@ -33,6 +33,7 @@ CScriptGuiPlayerJoinManager::CScriptGuiPlayerJoinManager(TUniqueId uid, const rs
                                                          const CEntityInfo& info)
 : CEntity(uid, info, name, 0), mJoinStates(sInitialJoinState[0]), mPlayerCountState(0) {}
 
+// @ fn_60_82C
 void CScriptGuiPlayerJoinManager::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CEntity::AcceptScriptMsg(mgr, msg);
 
@@ -142,6 +143,7 @@ void CScriptGuiPlayerJoinManager::Think(float dt, CStateManager& mgr) {
   UpdatePlayerCount(mgr);
 }
 
+// @ fn_60_458
 void CScriptGuiPlayerJoinManager::RestorePreviousPlayers(CStateManager& mgr) {
   const CGameState::SPreviousGameResults& results = gpGameState->PreviousGameResults();
   if (results.mGameMode == 'COIN' || results.mGameMode == 'DTHM') {
@@ -151,6 +153,7 @@ void CScriptGuiPlayerJoinManager::RestorePreviousPlayers(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_328
 void CScriptGuiPlayerJoinManager::SendControllerStates(CStateManager& mgr) {
   for (int i = 0; i < 4; ++i) {
     if (gpController->GetGamepadData(i).DeviceIsPresent()) {
@@ -166,6 +169,7 @@ void CScriptGuiPlayerJoinManager::SendControllerStates(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_248
 void CScriptGuiPlayerJoinManager::UpdatePlayerCount(CStateManager& mgr) {
   int joined = 0;
   rstl::reserved_vector< EJoinState, 4 >::iterator end = mJoinStates.end();
@@ -187,6 +191,7 @@ void CScriptGuiPlayerJoinManager::UpdatePlayerCount(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_1EC
 bool CScriptGuiPlayerJoinManager::NoPlayersJoined() const {
   rstl::reserved_vector< EJoinState, 4 >::const_iterator end = mJoinStates.end();
   for (rstl::reserved_vector< EJoinState, 4 >::const_iterator it = mJoinStates.begin(); it != end;
@@ -205,6 +210,7 @@ bool CScriptGuiPlayerJoinManager::NoPlayersJoined() const {
   return true;
 }
 
+// @ fn_60_1D8
 bool CScriptGuiPlayerJoinManager::HasEnoughPlayers() const { return mPlayerCountState != 0; }
 
 // @ fn_60_B8

@@ -394,6 +394,7 @@ void COctapedeSegment::AddToRenderer(const CStateManager& mgr) const {
 }
 
 // Finds the head of the chain that the given segment follows.
+// @ fn_46_278C
 static TUniqueId FindHeadSegment(CStateManager& mgr, TUniqueId segmentId) {
   const CEntity* segment = mgr.GetObjectById(segmentId);
   if (segment) {
@@ -597,6 +598,7 @@ void COctapedeSegment::CollidedWith(const TUniqueId& id, const CCollisionInfoLis
   CPatterned::CollidedWith(id, list, mgr);
 }
 
+// @ fn_46_1318
 void COctapedeSegment::Explode(CStateManager& mgr) {
   const TUniqueId effectId = FindConnectedObject(mgr, kSS_DeGenerate, kSM_Activate);
   if (effectId != kInvalidUniqueId) {
@@ -615,6 +617,7 @@ void COctapedeSegment::Explode(CStateManager& mgr) {
   mgr.DeleteObjectRequest(GetUniqueId());
 }
 
+// @ fn_46_11FC
 void COctapedeSegment::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                        EUserEventType type, float dt) {
   switch (type) {
@@ -658,6 +661,7 @@ void COctapedeSegment::Freeze(CStateManager& mgr, const CVector3f& position,
   }
 }
 
+// @ fn_46_1014
 void COctapedeSegment::Burn(CStateManager& mgr, float duration, float damage) {
   if (mKnockBackController.IsBurnEnabled()) {
     CPatterned::Burn(mgr, duration, damage);

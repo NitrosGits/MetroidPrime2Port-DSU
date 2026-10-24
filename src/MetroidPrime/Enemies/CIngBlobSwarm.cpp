@@ -347,6 +347,7 @@ CEntity* LoadIngBlobSwarm(CStateManager& mgr, CInputStream& input, CEntityInfo& 
 }
 
 #ifndef MONOLITHIC
+// @ fn_31_A8
 static void SetFuncPtrs() {
   static SIngBlobSwarm_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadIngBlobSwarm;

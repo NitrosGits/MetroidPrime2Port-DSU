@@ -516,6 +516,7 @@ void CScriptRiftPortal::PreRender(CStateManager& mgr) {
   }
 }
 
+// @ fn_64_C30
 bool CScriptRiftPortal::CanRenderUnsorted(const CStateManager& mgr) const { return false; }
 
 // @ fn_64_B68

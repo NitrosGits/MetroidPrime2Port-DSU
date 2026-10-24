@@ -19,6 +19,7 @@ CScriptGuiMenu::CScriptGuiMenu(TUniqueId uid, const rstl::string& name, const CE
 , mVertical(vertical)
 , mSelectionChangedSfx(selectionChangedSfx) {}
 
+// @ fn_60_899C
 void CScriptGuiMenu::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CScriptGuiWidget::AcceptScriptMsg(mgr, msg);
 
@@ -83,6 +84,7 @@ void CScriptGuiMenu::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) 
   }
 }
 
+// @ fn_60_8878
 void CScriptGuiMenu::Think(float dt, CStateManager& mgr) {
   CScriptGuiWidget::Think(dt, mgr);
   if (!GetActive()) {
@@ -155,6 +157,7 @@ void CScriptGuiMenu::SetSelection(int idx, CStateManager& mgr) {
   mgr.SendScriptMsg(newItem, GetUniqueId(), kSM_Open);
 }
 
+// @ fn_60_84DC
 void CScriptGuiMenu::SelectPrevious(CStateManager& mgr) {
   const int count = mItems.size();
   if (mWrapSelection) {
@@ -174,6 +177,7 @@ void CScriptGuiMenu::SelectPrevious(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_83D0
 void CScriptGuiMenu::SelectNext(CStateManager& mgr) {
   const int count = mItems.size();
   if (mWrapSelection) {
@@ -193,6 +197,7 @@ void CScriptGuiMenu::SelectNext(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_8348
 void CScriptGuiMenu::SelectFirst(CStateManager& mgr) {
   const int count = mItems.size();
   for (int i = 0; i < count; ++i) {
@@ -203,6 +208,7 @@ void CScriptGuiMenu::SelectFirst(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_82C8
 void CScriptGuiMenu::SelectLast(CStateManager& mgr) {
   for (int i = mItems.size() - 1; i >= 0; --i) {
     if (!IsItemLocked(i, mgr)) {
@@ -212,6 +218,7 @@ void CScriptGuiMenu::SelectLast(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_817C
 void CScriptGuiMenu::UpdateItemStates(CStateManager& mgr, EScriptObjectMessage msg) {
   for (int i = 0; i < mItems.size(); ++i) {
     TUniqueId id = mItems[i];
@@ -232,6 +239,7 @@ void CScriptGuiMenu::UpdateItemStates(CStateManager& mgr, EScriptObjectMessage m
   }
 }
 
+// @ fn_60_811C
 bool CScriptGuiMenu::IsItemLocked(int idx, CStateManager& mgr) const {
   if (CEntity* item = mgr.ObjectById(mItems[idx])) {
     if (const CScriptGuiWidget* widget = TCastToConstPtr< CScriptGuiWidget >(item)) {
@@ -242,6 +250,7 @@ bool CScriptGuiMenu::IsItemLocked(int idx, CStateManager& mgr) const {
   return true;
 }
 
+// @ fn_60_7F54
 bool CScriptGuiMenu::ProcessMenuInput(const CFinalInput& input, CStateManager& mgr) {
   bool prev = mVertical ? input.DLAUp() || input.DDPUp() : input.DLALeft() || input.DDPLeft();
   bool next = mVertical ? input.DLADown() || input.DDPDown() : input.DLARight() || input.DDPRight();

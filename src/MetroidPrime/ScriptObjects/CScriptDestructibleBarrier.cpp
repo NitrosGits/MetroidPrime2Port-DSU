@@ -264,6 +264,7 @@ void CBarrierChunkGrid::AddBoxGeometry(COBBTree::SIndexData& data, rstl::vector<
   }
 }
 
+// @ fn_13_5214
 COBBTree::CNode* CBarrierChunkGrid::BuildBoxNode(COBBTree::SIndexData& data, const CVector3i& min,
                                                  const CVector3i& size) const {
   const CVector3f extent = GetExtent(size);
@@ -401,6 +402,7 @@ void CBarrierChunkGrid::Render(const CTransform4f& xfIn, const CModelFlags& flag
   }
 }
 
+// @ fn_13_3684
 CScriptDestructibleBarrier::CScriptDestructibleBarrier(
     TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
     const CActorParameters& actParms, const CHealthInfo& healthInfo,
@@ -799,6 +801,7 @@ const CCollisionPrimitive* CScriptDestructibleBarrier::GetCollisionPrimitive() c
 // @ fn_13_1934
 CTransform4f CScriptDestructibleBarrier::GetPrimitiveTransform() const { return mRenderXf; }
 
+// @ fn_13_17E8
 void CScriptDestructibleBarrier::SetDamageVulnerability(const CDamageVulnerability& dVuln) {
   mDamageVulnerability = dVuln;
 }
@@ -950,6 +953,7 @@ CEntity* LoadDestructibleBarrier(CStateManager& mgr, CInputStream& input, CEntit
 }
 
 #ifndef MONOLITHIC
+// @ fn_13_70
 static void SetFuncPtrs() {
   static SDestructibleBarrier_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadDestructibleBarrier;

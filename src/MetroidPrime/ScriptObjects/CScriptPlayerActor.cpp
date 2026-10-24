@@ -250,12 +250,14 @@ CTransform4f CScriptPlayerActor::GetGrappleTransform() const {
          GetModelData()->GetScaledLocatorTransform(rstl::string_l(kGrappleLocator));
 }
 
+// @ fn_61_22E8
 void CScriptPlayerActor::RenderGrapple(const CStateManager& mgr) const {
   if (HasGrappleModelData() && HasModelData() && mDrawGrapple) {
     mGrappleModelData->Render(mgr, GetGrappleTransform(), GetActorLights(), GetModelFlags());
   }
 }
 
+// @ fn_61_23BC
 void CScriptPlayerActor::RenderGun(const CStateManager& mgr) const {
   if (HasGunModelData() && HasModelData() && !(mFlags & 0x40)) {
     mBeamModelData->Render(mgr, GetGunTransform(), GetActorLights(), GetModelFlags());
@@ -275,6 +277,7 @@ void CScriptPlayerActor::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_61_2238
 void CScriptPlayerActor::TouchModels(CStateManager& mgr) {
   TouchModels_Internal(mgr);
   TUniqueId id = mNextPlayerActor;
@@ -290,6 +293,7 @@ void CScriptPlayerActor::TouchModels(CStateManager& mgr) {
   }
 }
 
+// @ fn_61_20E0
 void CScriptPlayerActor::TouchModels_Internal(const CStateManager& mgr) const {
   if (mWaitForIncrement) {
     return;
@@ -308,6 +312,7 @@ void CScriptPlayerActor::TouchModels_Internal(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_61_2084
 void CScriptPlayerActor::AddToRenderer(const CStateManager& mgr) const {
   if (!mWaitForIncrement) {
     TouchModels_Internal(mgr);
@@ -338,6 +343,7 @@ void CScriptPlayerActor::UsePlayerBeamModel(CPlayer& player) {
   mBeamModelLoading = false;
 }
 
+// @ fn_61_1DC0
 void CScriptPlayerActor::SetupOnlineModelData(CStateManager& mgr) {
   if (mLoadedCharIdx == mSuitRes.GetCharacterNodeId() && HasModelData() &&
       GetModelData()->HasAnimation()) {
@@ -354,6 +360,7 @@ void CScriptPlayerActor::SetupOnlineModelData(CStateManager& mgr) {
   }
 }
 
+// @ fn_61_1C28
 void CScriptPlayerActor::SetupOfflineModelData() {
   mSuitRes = CAnimRes(mSuitRes.GetId(), mLoadedCharIdx, mSuitRes.GetScale(),
                       mSuitRes.GetDefaultAnim(), mSuitRes.CanLoop());
@@ -395,6 +402,7 @@ void CScriptPlayerActor::LoadBeam(CPlayerState::EBeamId beam) {
   mSetBeamId = beam;
 }
 
+// @ fn_61_189C
 void CScriptPlayerActor::CancelBeamLoad() {
   if (mBeamModelLoading) {
     mBeamModel = nullptr;
@@ -403,6 +411,7 @@ void CScriptPlayerActor::CancelBeamLoad() {
   }
 }
 
+// @ fn_61_16A8
 void CScriptPlayerActor::CancelGrappleLoad() {
   if (mGrappleModelLoading) {
     mGrappleModel = nullptr;
@@ -410,6 +419,7 @@ void CScriptPlayerActor::CancelGrappleLoad() {
   }
 }
 
+// @ fn_61_1718
 void CScriptPlayerActor::UpdateGrappleModel(CStateManager& mgr) {
   if (mgr.GetPlayerState(0)->ShouldDrawGrapple()) {
     if (!mGrappleModelLoading && mGrappleModel.get() == nullptr &&
@@ -426,6 +436,7 @@ void CScriptPlayerActor::UpdateGrappleModel(CStateManager& mgr) {
   }
 }
 
+// @ fn_61_11F4
 void CScriptPlayerActor::PumpSuitModel(CStateManager& mgr) {
   if (mSuitModel.get() != nullptr && mSuitModel->TryCache() && mSuitSkin->IsLoaded()) {
     if (mSuitModel->IsLoaded()) {
@@ -450,6 +461,7 @@ void CScriptPlayerActor::PumpSuitModel(CStateManager& mgr) {
   }
 }
 
+// @ fn_61_1154
 void CScriptPlayerActor::PumpBeamModel(CStateManager& mgr) {
   if (mBeamModel.get() != nullptr && mBeamModel->IsLoaded()) {
     BuildBeamModelData();
@@ -460,6 +472,7 @@ void CScriptPlayerActor::PumpBeamModel(CStateManager& mgr) {
   }
 }
 
+// @ fn_61_10B4
 void CScriptPlayerActor::PumpGrappleModel(CStateManager& mgr) {
   if (mGrappleModel.get() != nullptr && mGrappleModel->IsLoaded()) {
     BuildGrappleModelData();

@@ -36,6 +36,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
 static EMaterialTypes skCollideMaterial = kMT_Player;
 static EMaterialTypes skDeadMaterial = kMT_Player;
 
+// @ fn_42_1B90
 CMetaree::CMetaree(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                    const CTransform4f& xf, const CModelData& modelData,
                    const CActorParameters& actorParams, const CPatternedInfo& patternedInfo,
@@ -60,6 +61,7 @@ CMetaree::CMetaree(TUniqueId uid, const rstl::string& name, const CEntityInfo& i
 , mStarted(false)
 , mDropped(false) {}
 
+// @ fn_42_1AEC
 void CMetaree::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -77,8 +79,10 @@ void CMetaree::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_42_1AE8
 void CMetaree::ThinkAboutMove(float) {}
 
+// @ fn_42_19FC
 void CMetaree::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                             CStateManager& mgr) {
   if (mAlive && list.GetCount() > 0) {
@@ -89,6 +93,7 @@ void CMetaree::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
   }
 }
 
+// @ fn_42_1958
 void CMetaree::Touch(CActor& actor, CStateManager& mgr) {
   if (!mAlive) {
     return;
@@ -104,10 +109,12 @@ void CMetaree::Touch(CActor& actor, CStateManager& mgr) {
   }
 }
 
+// @ fn_42_1940
 bool CMetaree::ShouldAttack(CStateManager&, const CTriggerData&) const {
   return GetTranslation().GetZ() < mLookPos.GetZ();
 }
 
+// @ fn_42_18B0
 bool CMetaree::InRange(CStateManager& mgr, const CTriggerData&) const {
   if (mStarted) {
     return true;
@@ -117,26 +124,31 @@ bool CMetaree::InRange(CStateManager& mgr, const CTriggerData&) const {
   return magSq < range * range;
 }
 
+// @ fn_42_1864
 bool CMetaree::DropDelay(CStateManager&, const CTriggerData&) const {
   return mStateMachine->GetTime() > mHaltDelay;
 }
 
+// @ fn_42_1818
 bool CMetaree::AttackDelay(CStateManager&, const CTriggerData&) const {
   return mStateMachine->GetTime() > mDelay;
 }
 
+// @ fn_42_17E8
 void CMetaree::InActive(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);
   }
 }
 
+// @ fn_42_17B8
 void CMetaree::InActiveReady(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     BodyController()->SetLocomotionType(pas::kLT_Crouch);
   }
 }
 
+// @ fn_42_14E0
 void CMetaree::Active(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -158,6 +170,7 @@ void CMetaree::Active(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_42_13F0
 void CMetaree::Halt(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -175,6 +188,7 @@ void CMetaree::Halt(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_42_1294
 void CMetaree::Attack(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -199,6 +213,7 @@ void CMetaree::Attack(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_42_11EC
 void CMetaree::Dead(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -212,6 +227,7 @@ void CMetaree::Dead(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_42_F78
 void CMetaree::Flee(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -245,6 +261,7 @@ void CMetaree::Flee(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_42_EA0
 void CMetaree::Explode(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -259,6 +276,7 @@ void CMetaree::Explode(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_42_E08
 void CMetaree::Think(float dt, CStateManager& mgr) {
   SetValidTarget(0, (mgr.GetPlayerState(0)->GetCurrentVisor() == CPlayerState::kPV_Dark ||
                      mgr.GetPlayerState(0)->GetCurrentVisor() == CPlayerState::kPV_Scan) ||
@@ -266,6 +284,7 @@ void CMetaree::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
 }
 
+// @ fn_42_D9C
 void CMetaree::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -294,6 +313,7 @@ CEntity* LoadMetaree(CStateManager& mgr, CInputStream& input, CEntityInfo& info)
 }
 
 #ifndef MONOLITHIC
+// @ fn_42_430
 static void SetFuncPtrs() {
   static SMetaree_FuncPtrs funcPtrs;
   funcPtrs.mLoadMetaree = &LoadMetaree;

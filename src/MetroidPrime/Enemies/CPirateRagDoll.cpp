@@ -444,6 +444,7 @@ void CPirateRagDoll::AlignShoulderPad(CJointData_LinearStorage& pose, int should
   }
 }
 
+// @ fn_50_74
 static CRagDoll* CreatePirateRagDoll(CStateManager& mgr, CPatterned* actor, ushort soundId,
                                      uint flags, float gravity, float floatingGravity,
                                      const rstl::reserved_vector< float, 14 >& radii) {
@@ -451,6 +452,7 @@ static CRagDoll* CreatePirateRagDoll(CStateManager& mgr, CPatterned* actor, usho
 }
 
 #ifndef MONOLITHIC
+// @ fn_50_44
 static void SetFuncPtrs() {
   static SPirateRagDoll_FuncPtrs funcPtrs;
   funcPtrs.mFactory = &CreatePirateRagDoll;

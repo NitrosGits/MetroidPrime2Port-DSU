@@ -182,6 +182,7 @@ bool CIngPuddle::HasPatrolPath(CStateManager& mgr, const float& arg) {
 // @ fn_32_1700
 void CIngPuddle::Start(CStateManager& mgr, int msg, float dt) {}
 
+// @ fn_32_1628
 void CIngPuddle::Idle(CStateManager& mgr, int msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -226,6 +227,7 @@ void CIngPuddle::Dead(CStateManager& mgr, int msg, float dt) {
   }
 }
 
+// @ fn_32_1154
 void CIngPuddle::Patrol(CStateManager& mgr, int msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:

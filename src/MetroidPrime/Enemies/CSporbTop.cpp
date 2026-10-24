@@ -79,6 +79,7 @@ void CSporbTop::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_76_207C
 void CSporbTop::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_AreaLoaded: {
@@ -152,6 +153,7 @@ void CSporbTop::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_1CC0
 void CSporbTop::WakeUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -170,6 +172,7 @@ void CSporbTop::WakeUp(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_1A6C
 void CSporbTop::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -188,6 +191,7 @@ void CSporbTop::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_1814
 void CSporbTop::GoToSleep(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -207,6 +211,7 @@ void CSporbTop::GoToSleep(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_15D8
 void CSporbTop::Fire(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -249,6 +254,7 @@ void CSporbTop::Close(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_1288
 void CSporbTop::Reload(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -308,6 +314,7 @@ void CSporbTop::ResetAttack(CStateManager& mgr, bool flag) {}
 // @ fn_76_11B4
 CVector3f CSporbTop::GetOrbitPosition(const CStateManager& mgr) const { return mOrbitPosition; }
 
+// @ fn_76_1164
 void CSporbTop::Freeze(CStateManager& mgr, const CVector3f& position, CUnitVector3f direction,
                        float duration, float intoFreezeDuration) {
   if (!BodyController()->IsFrozen()) {
@@ -356,6 +363,7 @@ void CSporbTop::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf
   }
 }
 
+// @ fn_76_C24
 CAABox CSporbTop::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   CAABox bounds = GetModelBounds();
   if (const CSporbBase* base = TCastToConstPtr< CSporbBase >(mgr.GetObjectById(mBaseId))) {
@@ -370,6 +378,7 @@ CAABox CSporbTop::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   return bounds;
 }
 
+// @ fn_76_AC8
 CAABox CSporbTop::GetModelBounds() const {
   CAABox box = GetAnimationData()->CalcBoundingBoxFromModelVerts();
   box = box.GetTransformedAABox(CTransform4f::Translate(-GetTranslation()) * GetTransform() *
@@ -377,6 +386,7 @@ CAABox CSporbTop::GetModelBounds() const {
   return box;
 }
 
+// @ fn_76_838
 void CSporbTop::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   if (mAlive) {
     BodyController()->SetTimeScale(1.f);

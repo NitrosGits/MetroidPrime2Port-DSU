@@ -27,6 +27,7 @@ static EMaterialTypes skExcludeMaterial1 = kMT_NoStaticCollision;
 static EMaterialTypes skExcludeMaterial2 = kMT_NoPlatformCollision;
 static EMaterialTypes skExcludeMaterial3 = kMT_Platform;
 
+// @ fn_54_13C0
 CRipper::CRipper(TUniqueId uid, const rstl::string& name, EFlavorType flavor,
                  const CEntityInfo& info, const CTransform4f& xf, const CModelData& modelData,
                  const CPatternedInfo& patternedInfo, const CActorParameters& actorParams,
@@ -44,8 +45,10 @@ CRipper::CRipper(TUniqueId uid, const rstl::string& name, EFlavorType flavor,
                                              CKnockBackMgr::kAR_KnockBack);
 }
 
+// @ fn_54_10E8
 CRipper::~CRipper() {}
 
+// @ fn_54_FA0
 void CRipper::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -84,6 +87,7 @@ void CRipper::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_54_E84
 void CRipper::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -112,6 +116,7 @@ void CRipper::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_54_E28
 EWeaponCollisionResponseTypes CRipper::GetCollisionResponseType(const CVector3f& position,
                                                                 const CVector3f& direction,
                                                                 const CWeaponMode& mode,
@@ -123,11 +128,13 @@ EWeaponCollisionResponseTypes CRipper::GetCollisionResponseType(const CVector3f&
   return ret;
 }
 
+// @ fn_54_C8C
 void CRipper::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   CPatterned::KnockBack(mgr, info);
   BodyController()->CommandMgr().DeliverCmd(CBCKnockBackCmd(-info.GetDirection(), pas::kS_One));
 }
 
+// @ fn_54_C20
 void CRipper::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -135,14 +142,17 @@ void CRipper::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_54_C18
 bool CRipper::PathOver(CStateManager& mgr, const CTriggerData& data) const { return false; }
 
+// @ fn_54_B8C
 void CRipper::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);
   BodyController()->CommandMgr().SetSteeringSpeedRange(1.f, 1.f);
   CPatterned::Patrol(mgr, msg, dt);
 }
 
+// @ fn_54_968
 void CRipper::AddGrapplePoint(CStateManager& mgr) {
   if (mGrapplePoint != kInvalidUniqueId) {
     return;
@@ -155,6 +165,7 @@ void CRipper::AddGrapplePoint(CStateManager& mgr) {
       mGrappleParams));
 }
 
+// @ fn_54_908
 void CRipper::RemoveGrapplePoint(CStateManager& mgr) {
   if (mGrapplePoint == kInvalidUniqueId) {
     return;
@@ -164,6 +175,7 @@ void CRipper::RemoveGrapplePoint(CStateManager& mgr) {
   mGrapplePoint = kInvalidUniqueId;
 }
 
+// @ fn_54_898
 void CRipper::ProcessGrapplePoint(CStateManager& mgr) {
   if (GetFlavorType() == kFT_One && mGrapplePoint != kInvalidUniqueId) {
     if (CScriptGrapplePoint* gp =
@@ -173,6 +185,7 @@ void CRipper::ProcessGrapplePoint(CStateManager& mgr) {
   }
 }
 
+// @ fn_54_178
 CEntity* LoadRipper(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrRipper sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrRipper.inc"
@@ -194,6 +207,7 @@ CEntity* LoadRipper(CStateManager& mgr, CInputStream& input, CEntityInfo& info) 
 }
 
 #ifndef MONOLITHIC
+// @ fn_54_148
 static void SetFuncPtrs() {
   static SRipper_FuncPtrs funcPtrs;
   funcPtrs.mLoadRipper = &LoadRipper;

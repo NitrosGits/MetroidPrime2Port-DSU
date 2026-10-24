@@ -36,6 +36,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Dead", static_cast< CPatterned::StateMachine::StateFunc >(&CAtomicAlpha::Dead)},
 };
 
+// @ fn_2_2064
 CAtomicAlpha::CAtomicAlpha(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                            const CTransform4f& xf, const CModelData& mData,
                            const CActorParameters& actParms, const CPatternedInfo& pInfo,
@@ -65,8 +66,10 @@ CAtomicAlpha::CAtomicAlpha(TUniqueId uid, const rstl::string& name, const CEntit
   mBombLocators.push_back(SBomb(rstl::string_l("bomb4_LCTR"), pas::kLT_Internal13, 3.4028235e38f));
 }
 
+// @ fn_2_1CBC
 CAtomicAlpha::~CAtomicAlpha() {}
 
+// @ fn_2_1BDC
 void CAtomicAlpha::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -87,6 +90,7 @@ void CAtomicAlpha::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_2_1B58
 void CAtomicAlpha::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
 
@@ -101,6 +105,7 @@ void CAtomicAlpha::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_2_1A38
 void CAtomicAlpha::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                 CStateManager& mgr) {
   if (GetAlive()) {
@@ -119,6 +124,7 @@ void CAtomicAlpha::CollidedWith(const TUniqueId& id, const CCollisionInfoList& l
   CPatterned::CollidedWith(id, list, mgr);
 }
 
+// @ fn_2_1968
 rstl::optional_object< CAABox > CAtomicAlpha::GetTouchBounds() const {
   const CVector3f extent = mTouchRadius * CVector3f::One();
   return rstl::optional_object< CAABox >(
@@ -158,6 +164,7 @@ void CAtomicAlpha::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_2_1690
 void CAtomicAlpha::AddToRenderer(const CStateManager& mgr) const {
   if (mInvisible) {
     return;
@@ -165,6 +172,7 @@ void CAtomicAlpha::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
 
+// @ fn_2_1514
 void CAtomicAlpha::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Patrol(mgr, msg, dt);
   switch (msg) {
@@ -195,6 +203,7 @@ void CAtomicAlpha::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_2_F28
 void CAtomicAlpha::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                    EUserEventType type, float dt) {
   bool handled = false;
@@ -218,6 +227,7 @@ void CAtomicAlpha::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
   }
 }
 
+// @ fn_2_ED8
 bool CAtomicAlpha::AggressionCheck(CStateManager& mgr, const CTriggerData& data) const {
   for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
     const CPlayer* player = mgr.GetPlayer(i);
@@ -228,6 +238,7 @@ bool CAtomicAlpha::AggressionCheck(CStateManager& mgr, const CTriggerData& data)
   return false;
 }
 
+// @ fn_2_CF4
 void CAtomicAlpha::Pathfind(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -254,6 +265,7 @@ void CAtomicAlpha::Pathfind(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_2_B70
 void CAtomicAlpha::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -278,6 +290,7 @@ void CAtomicAlpha::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_2_B20
 EWeaponCollisionResponseTypes CAtomicAlpha::GetCollisionResponseType(const CVector3f& position,
                                                                      const CVector3f& direction,
                                                                      const CWeaponMode& mode,
@@ -287,6 +300,7 @@ EWeaponCollisionResponseTypes CAtomicAlpha::GetCollisionResponseType(const CVect
              : static_cast< EWeaponCollisionResponseTypes >(103);
 }
 
+// @ fn_2_AB4
 void CAtomicAlpha::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -317,6 +331,7 @@ CEntity* LoadAtomicAlpha(CStateManager& mgr, CInputStream& input, CEntityInfo& i
 }
 
 #ifndef MONOLITHIC
+// @ fn_2_10C
 static void SetFuncPtrs() {
   static SAtomicAlpha_FuncPtrs funcPtrs;
   funcPtrs.mLoadAtomicAlpha = &LoadAtomicAlpha;

@@ -61,6 +61,7 @@ void CGrenchlerTail::PreRender(CStateManager& mgr) {
   SetModelFlags(CModelFlags(CModelFlags::kT_Blend, 1.f - mElapsedTime / 6.f));
 }
 
+// @ fn_27_14FE0
 void CGrenchlerTail::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                   CStateManager& mgr) {
   static CMaterialList floor(kMT_Floor);

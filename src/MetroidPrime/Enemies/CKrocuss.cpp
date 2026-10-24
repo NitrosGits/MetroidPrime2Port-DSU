@@ -31,6 +31,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
 
 static CVector3f skWingLightOffset(0.f, 0.f, 1.f); // Guessed name
 
+// @ fn_38_1AD8
 CKrocuss::CKrocuss(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                    const CTransform4f& xf, const CModelData& modelData,
                    const CPatternedInfo& patternedInfo, const CActorParameters& actorParams,
@@ -76,6 +77,7 @@ CKrocuss::CKrocuss(TUniqueId uid, const rstl::string& name, const CEntityInfo& i
   KnockBackController().EnableKnockBackPhysics(false);
 }
 
+// @ fn_38_17B0
 CKrocuss::~CKrocuss() {}
 
 void CKrocuss::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -95,6 +97,7 @@ void CKrocuss::Stop(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_38_16A4
 void CKrocuss::Sniff(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -108,22 +111,27 @@ void CKrocuss::Sniff(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_38_1690
 bool CKrocuss::WingsOpen(CStateManager& mgr, const CTriggerData& data) const {
   return mWingState == kWS_Open;
 }
 
+// @ fn_38_1680
 bool CKrocuss::WingsOpening(CStateManager& mgr, const CTriggerData& data) const {
   return mWingState == kWS_Opening;
 }
 
+// @ fn_38_166C
 bool CKrocuss::WingsClosed(CStateManager& mgr, const CTriggerData& data) const {
   return mWingState == kWS_Closed;
 }
 
+// @ fn_38_1658
 bool CKrocuss::WingsClosing(CStateManager& mgr, const CTriggerData& data) const {
   return mWingState == kWS_Closing;
 }
 
+// @ fn_38_15EC
 void CKrocuss::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -131,6 +139,7 @@ void CKrocuss::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
 }
 
+// @ fn_38_1460
 void CKrocuss::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Create:
@@ -162,6 +171,7 @@ void CKrocuss::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_38_FC4
 void CKrocuss::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     if (CGameLight* light = TCastToPtr< CGameLight >(mgr.ObjectById(mWingLightId))) {
@@ -230,6 +240,7 @@ void CKrocuss::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_38_F10
 void CKrocuss::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                                float dt) {
   switch (type) {
@@ -244,14 +255,19 @@ void CKrocuss::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EU
   }
 }
 
+// @ fn_38_EF0
 void CKrocuss::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_38_ED0
 void CKrocuss::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_38_EB0
 void CKrocuss::AddToRenderer(const CStateManager& mgr) const { CPatterned::AddToRenderer(mgr); }
 
+// @ fn_38_EA8
 const CDamageVulnerability* CKrocuss::GetDamageVulnerability() const { return &mOpenVulnerability; }
 
+// @ fn_38_DB8
 const CDamageVulnerability* CKrocuss::GetDamageVulnerability(const CVector3f& position,
                                                              const CVector3f& direction,
                                                              const CDamageInfo& damage) const {
@@ -290,6 +306,7 @@ CEntity* LoadKrocuss(CStateManager& mgr, CInputStream& input, CEntityInfo& info)
 }
 
 #ifndef MONOLITHIC
+// @ fn_38_148
 static void SetFuncPtrs() {
   static SKrocuss_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadKrocuss;

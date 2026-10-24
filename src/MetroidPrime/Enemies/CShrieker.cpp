@@ -447,6 +447,7 @@ void CShrieker::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
 // @ fn_69_2A48
 CProjectileInfo* CShrieker::ProjectileInfo() { return &mProjectileInfo; }
 
+// @ fn_69_13B0
 void CShrieker::ResetAttackTimer(CStateManager& mgr, int type) {
   float variation = 0.f;
   float* timer = nullptr;
@@ -488,6 +489,7 @@ void CShrieker::ApplySeparation(CStateManager& mgr) {
   }
 }
 
+// @ fn_69_1680
 void CShrieker::SetTeamMemberTarget(CStateManager& mgr) {
   if (mTeamAiMgrId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId))) {
@@ -503,6 +505,7 @@ void CShrieker::EndTeamAttack(CStateManager& mgr, bool projectile) {
                               mgr, mTeamAiMgrId, GetUniqueId(), true);
 }
 
+// @ fn_69_1750
 void CShrieker::QuitTeam(CStateManager& mgr) {
   if (mTeamAiMgrId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId))) {
@@ -514,6 +517,7 @@ void CShrieker::QuitTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_69_17F8
 void CShrieker::JoinTeam(CStateManager& mgr) {
   if (mTeamAiMgrId == kInvalidUniqueId) {
     mTeamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
@@ -526,6 +530,7 @@ void CShrieker::JoinTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_69_18A4
 CVector3f CShrieker::GetTranslationCopy() const { return GetTranslation(); }
 
 // @ fn_69_18C0
@@ -642,6 +647,7 @@ void CShrieker::DeflectMissiles(CStateManager& mgr) {
   }
 }
 
+// @ fn_69_220C
 void CShrieker::DetectPlayer(CStateManager& mgr) {
   const CVector3f position = GetTranslation();
   rstl::reserved_vector< TUniqueId, 1024 > nearList;
@@ -744,6 +750,7 @@ bool CShrieker::IsFacingTarget(CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_69_48D0
 bool CShrieker::UpdateTargetPosition(CStateManager& mgr) {
   if (const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId))) {
     mTargetPos = target->GetAimPosition(mgr, 0.2f);
@@ -1109,6 +1116,7 @@ void CShrieker::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Dead(mgr, msg, dt);
 }
 
+// @ fn_69_32C4
 bool CShrieker::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::PathShagged(mgr, data) && PlayerLeashReached(mgr, data);
 }
@@ -1118,6 +1126,7 @@ bool CShrieker::PlayerEntersProximity(CStateManager&, const CTriggerData&) const
   return mPlayerInProximity;
 }
 
+// @ fn_69_32A4
 bool CShrieker::PlayerLeavesProximity(CStateManager&, const CTriggerData&) const {
   return !mPlayerInProximity;
 }
@@ -1130,10 +1139,12 @@ bool CShrieker::EnterUprootShriek(CStateManager&, const CTriggerData&) const {
 // @ fn_69_328C
 bool CShrieker::HasPatrolPath(CStateManager&, const CTriggerData&) const { return mHasPatrolPath; }
 
+// @ fn_69_3258
 bool CShrieker::PlayerLeashReached(CStateManager&, const CTriggerData&) const {
   return mTargetId == kInvalidUniqueId || mChaseTimer > mPlayerLeashTime;
 }
 
+// @ fn_69_3208
 bool CShrieker::LeavePatrol(CStateManager& mgr, const CTriggerData& data) const {
   return mTargetId != kInvalidUniqueId || CPatterned::InDetectionRange(mgr, data);
 }
@@ -1157,6 +1168,7 @@ bool CShrieker::LineOfSight(CStateManager&, const CTriggerData&) const {
   return mLineOfSightTracker.HasLineOfSight();
 }
 
+// @ fn_69_2F08
 bool CShrieker::ShouldFire(CStateManager& mgr, const CTriggerData&) const {
   bool result = false;
   const CTeamAiRole* role = CScriptTeamAiMgr::GetTeamAiRole(mgr, mTeamAiMgrId, GetUniqueId());
@@ -1294,6 +1306,7 @@ CEntity* LoadShrieker(CStateManager& mgr, CInputStream& input, CEntityInfo& info
 }
 
 #ifndef MONOLITHIC
+// @ fn_69_124
 static void SetFuncPtrs() {
   static SShrieker_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadShrieker;

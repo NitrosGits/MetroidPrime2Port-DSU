@@ -140,6 +140,7 @@ void CTryclops::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_81_4378
 bool CTryclops::InMaxRange(CStateManager& mgr, const CTriggerData&) const {
   if (mBombId != kInvalidUniqueId) {
     return true;
@@ -188,6 +189,7 @@ bool CTryclops::InMaxRange(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_81_4268
 bool CTryclops::InDetectionRange(CStateManager& mgr, const CTriggerData& data) const {
   for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
     const CPlayer* player = mgr.GetPlayer(i);
@@ -204,6 +206,7 @@ bool CTryclops::InDetectionRange(CStateManager& mgr, const CTriggerData& data) c
   return false;
 }
 
+// @ fn_81_4114
 void CTryclops::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
   if (mAlive && mIgnoreMorphballTimer > 0.f) {
@@ -242,6 +245,7 @@ void CTryclops::TargetCover(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_81_3E98
 bool CTryclops::InAttackPosition(CStateManager& mgr, const CTriggerData&) const {
   mTargetPlayerId = kInvalidUniqueId;
   float nearestDistSq = 3.4028235e38f;
@@ -279,6 +283,7 @@ bool CTryclops::InRange(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_81_3A18
 bool CTryclops::ObjectInVortexArea(const CVector3f& pos, const CVector3f& center,
                                    const CAABox& bounds, const CStateManager& mgr) const {
   const CAABox ownBounds = GetBoundingBox();
@@ -390,6 +395,7 @@ void CTryclops::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_81_346C
 void CTryclops::AttractPlayer(CPlayer& player, CStateManager& mgr, float dt) {
   const CTransform4f xf = GetLctrTransform(rstl::string_l(kMouthLctr));
   const CVector3f delta = player.GetTranslation() - xf.GetTranslation();
@@ -487,6 +493,7 @@ void CTryclops::JumpBack(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_81_2E30
 void CTryclops::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::PathFind(mgr, msg, dt);
   const CVector3f forward = GetTransform().GetForward();
@@ -499,6 +506,7 @@ void CTryclops::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   ApplySeparationBehavior(mgr);
 }
 
+// @ fn_81_2E10
 void CTryclops::Shuffle(CStateManager& mgr, EStateMsg msg, float dt) { PathFind(mgr, msg, dt); }
 
 // @ fn_81_2DA0
@@ -610,6 +618,7 @@ void CTryclops::GetUp(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_81_2490
 void CTryclops::ShootPlayer(CPlayer& player, CStateManager& mgr, const CTransform4f& xf,
                             float speed) {
   const CVector3f direction = xf.GetForward().AsNormalized();
@@ -633,6 +642,7 @@ void CTryclops::ShootPlayer(CPlayer& player, CStateManager& mgr, const CTransfor
   }
 }
 
+// @ fn_81_2338
 void CTryclops::ShootBomb(CStateManager& mgr, const CTransform4f& xf) {
   if (mBombId != kInvalidUniqueId) {
     const CVector3f direction = xf.GetForward().AsNormalized();
@@ -646,6 +656,7 @@ void CTryclops::ShootBomb(CStateManager& mgr, const CTransform4f& xf) {
   mBombId = kInvalidUniqueId;
 }
 
+// @ fn_81_21F4
 bool CTryclops::SpotPlayer(CStateManager& mgr, const CTriggerData&) const {
   if (mBombId != kInvalidUniqueId) {
     if (CBomb* bomb = TCastToPtr< CBomb >(mgr.ObjectById(mBombId))) {
@@ -670,6 +681,7 @@ bool CTryclops::SpotPlayer(CStateManager& mgr, const CTriggerData&) const {
   return true;
 }
 
+// @ fn_81_1DF0
 void CTryclops::TurnAround(CStateManager& mgr, EStateMsg msg, float) {
   if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetPlayerId))) {
     switch (msg) {
@@ -728,6 +740,7 @@ void CTryclops::TurnAround(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_81_1CBC
 void CTryclops::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                                 float dt) {
   bool handled = false;
@@ -817,6 +830,7 @@ void CTryclops::Cover(CStateManager& mgr, EStateMsg msg, float) {
 // @ fn_81_1A5C
 void CTryclops::FixedDelay(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// @ fn_81_1A18
 bool CTryclops::CoverBlown(CStateManager&, const CTriggerData&) const {
   switch (mPathFindSearch.OnPath(GetTranslation())) {
   case CPathFindSearch::kR_InvalidArea:
@@ -829,6 +843,7 @@ bool CTryclops::CoverBlown(CStateManager&, const CTriggerData&) const {
 // @ fn_81_1A0C
 bool CTryclops::IsDizzy(CStateManager&, const CTriggerData&) const { return mDizzy; }
 
+// @ fn_81_197C
 bool CTryclops::ShouldRetreat(CStateManager& mgr, const CTriggerData&) const {
   const TUniqueId waypointId = GetConnectedObject(mgr, kSS_Modify, kSM_Next);
   if (const CActor* waypoint = TCastToConstPtr< CActor >(mgr.GetObjectById(waypointId))) {
@@ -843,6 +858,7 @@ bool CTryclops::HasRetreatPattern(CStateManager& mgr, const CTriggerData&) const
   return GetConnectedObject(mgr, kSS_Retreat, kSM_Follow) != kInvalidUniqueId;
 }
 
+// @ fn_81_17DC
 void CTryclops::ApplySeparationBehavior(CStateManager& mgr) {
   const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
@@ -874,6 +890,7 @@ void CTryclops::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_81_1658
 void CTryclops::TargetPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -929,6 +946,7 @@ void CTryclops::Dizzy(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_81_F90
 bool CTryclops::BallCloseToCollision(const CPlayer& player, const CStateManager& mgr) const {
   const CVector3f rayStart = GetLctrTransform(rstl::string_l(skRootLocator)).GetTranslation();
   if (!CGameCollision::RayStaticLineOfSightTest(mgr, rayStart, GetTransform().GetForward(), 3.f,
@@ -1027,6 +1045,7 @@ CEntity* LoadTryclops(CStateManager& mgr, CInputStream& input, CEntityInfo& info
 }
 
 #ifndef MONOLITHIC
+// @ fn_81_148
 static void SetFuncPtrs() {
   static STryclops_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadTryclops;

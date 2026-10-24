@@ -12,6 +12,7 @@
 #include "MetroidPrime/ScriptLoader/SLdrFogOverlay.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 
+// @ fn_23_D5C
 CScriptFogOverlay::CScriptFogOverlay(TUniqueId uid, const CEntityInfo& info,
                                      const rstl::string& name, float fullAlpha, float fadeDownTime,
                                      float fadeUpTime, bool startFadedOut, float ambientSpeed,
@@ -42,6 +43,7 @@ CScriptFogOverlay::CScriptFogOverlay(TUniqueId uid, const CEntityInfo& info,
 , mSpeedCommand(kFC_None)
 , mScaleCommand(kFC_None) {}
 
+// @ fn_23_BF4
 void CScriptFogOverlay::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CActor::AcceptScriptMsg(mgr, msg);
   if (!GetActive()) {
@@ -81,6 +83,7 @@ static float Fraction(float value) { return value - CMath::FloorF(value); }
 
 // Steps a value toward `high` (mode 1) or `low` (mode 2) over the given time, or snaps it to
 // `low` (mode 3) or `high` (mode 4). A step that reaches either bound ends the command.
+// @ fn_23_AB0
 static void UpdateFade(int* outMode, float* outValue, int mode, float value, float dt, float upTime,
                        float downTime, float low, float high) {
   switch (mode) {
@@ -173,8 +176,10 @@ void CScriptFogOverlay::Think(float dt, CStateManager& mgr) {
   cloud.mColor = mColor;
 }
 
+// @ fn_23_628
 void CScriptFogOverlay::PreRender(CStateManager& mgr) {}
 
+// @ fn_23_624
 void CScriptFogOverlay::Render(const CStateManager& mgr) const {}
 
 CEntity* LoadFogOverlay(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
@@ -192,6 +197,7 @@ CEntity* LoadFogOverlay(CStateManager& mgr, CInputStream& input, CEntityInfo& in
 }
 
 #ifndef MONOLITHIC
+// @ fn_23_D0
 static void SetFuncPtrs() {
   static SScriptFogOverlay_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadFogOverlay;

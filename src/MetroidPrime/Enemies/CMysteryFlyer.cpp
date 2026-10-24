@@ -150,6 +150,7 @@ CProjectileInfo* CMysteryFlyer::ProjectileInfo() { return &mShotProjectileInfo; 
 void CMysteryFlyer::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 // fn_45_1E14
+// @ fn_45_1E14
 void CMysteryFlyer::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   if (mData.needsToGenerate) {
     switch (msg) {
@@ -170,6 +171,7 @@ void CMysteryFlyer::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_45_1BEC
+// @ fn_45_1BEC
 void CMysteryFlyer::GoToPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -225,6 +227,7 @@ void CMysteryFlyer::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_45_1A04
+// @ fn_45_1A04
 void CMysteryFlyer::FollowAttackPath(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -362,6 +365,7 @@ bool CMysteryFlyer::StateOver(CStateManager& mgr, const CTriggerData& data) cons
 }
 
 // fn_45_2224
+// @ fn_45_2224
 bool CMysteryFlyer::NearPatrol(CStateManager& mgr, const CTriggerData& data) const {
   bool nearPatrol = true;
   if (mPatrolWaypointId != kInvalidUniqueId) {
@@ -371,16 +375,19 @@ bool CMysteryFlyer::NearPatrol(CStateManager& mgr, const CTriggerData& data) con
 }
 
 // fn_45_21DC
+// @ fn_45_21DC
 bool CMysteryFlyer::InDetectionRange(CStateManager& mgr, const CTriggerData& data) const {
   return mAlerted || CPatterned::InDetectionRange(mgr, data);
 }
 
 // fn_45_21AC
+// @ fn_45_21AC
 bool CMysteryFlyer::AttackPathOver(CStateManager& mgr, const CTriggerData& data) const {
   return !mHasAttackPath || mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
 // fn_45_20C4
+// @ fn_45_20C4
 bool CMysteryFlyer::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   bool shouldAttack = false;
   if (mAttackTimer > mAttackInterval) {
@@ -395,6 +402,7 @@ bool CMysteryFlyer::ShouldAttack(CStateManager& mgr, const CTriggerData& data) c
 }
 
 // fn_45_20A4
+// @ fn_45_20A4
 bool CMysteryFlyer::Leash(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::Leash(mgr, data);
 }
@@ -407,6 +415,7 @@ bool CMysteryFlyer::ShouldApproach(CStateManager& mgr, const CTriggerData& data)
 }
 
 // fn_45_1FFC
+// @ fn_45_1FFC
 bool CMysteryFlyer::PathOver(CStateManager& mgr, const CTriggerData& data) const {
   return mPathFindSearch.GetResult() || mPathFindSearch.IsOver();
 }
@@ -417,6 +426,7 @@ bool CMysteryFlyer::Stuck(CStateManager& mgr, const CTriggerData& data) const {
 }
 
 // fn_45_1FD4
+// @ fn_45_1FD4
 bool CMysteryFlyer::LineOfSight(CStateManager& mgr, const CTriggerData& data) const {
   return mHasLineOfSight;
 }
@@ -435,6 +445,7 @@ void CMysteryFlyer::JoinTeam(CStateManager& mgr) {
 }
 
 // fn_45_B68
+// @ fn_45_B68
 void CMysteryFlyer::QuitTeam(CStateManager& mgr) {
   if (mTeamAiMgrId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId))) {
@@ -465,6 +476,7 @@ bool CMysteryFlyer::UpdateLineOfSight(CStateManager& mgr) {
 }
 
 // fn_45_CBC
+// @ fn_45_CBC
 CVector3f CMysteryFlyer::CalculateSeparation(CStateManager& mgr) {
   CVector3f total = CVector3f::Zero();
   float count = 0.f;

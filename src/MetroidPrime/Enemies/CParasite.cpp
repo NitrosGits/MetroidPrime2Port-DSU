@@ -188,6 +188,7 @@ CVector3f CParasite::ProjectVectorToPlane(const CVector3f& vec, const CVector3f&
   return vec - CVector3f::Dot(vec, planeDir) * planeDir;
 }
 
+// @ fn_47_5FD8
 void CParasite::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId uid = msg.GetSenderId();
   const EScriptObjectMessage message = msg.GetMessage();
@@ -309,6 +310,7 @@ void CParasite::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_47_5E10
 void CParasite::AddDoorRepulsors(CStateManager& mgr) {
   const rstl::list< CEntity* >& doors = mgr.GetDoorList();
   int count = 0;
@@ -333,6 +335,7 @@ void CParasite::AddDoorRepulsors(CStateManager& mgr) {
 // @ fn_47_5DF0
 void CParasite::PreThink(float dt, CStateManager& mgr) { CWallCrawler::PreThink(dt, mgr); }
 
+// @ fn_47_5608
 void CParasite::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -462,10 +465,12 @@ void CParasite::Think(float dt, CStateManager& mgr) {
   mLanded = false;
 }
 
+// @ fn_47_55D8
 CAdvancementDeltas CParasite::UpdateWalkerAnimation(CStateManager& mgr, float dt) {
   return UpdateAnimation(dt, mgr, true);
 }
 
+// @ fn_47_5328
 void CParasite::UpdateJumpVelocity() {
   SetMomentumWR(CVector3f(0.f, 0.f, -GetWeight()));
   CVector3f velocity = CVector3f::Zero();
@@ -542,6 +547,7 @@ bool CParasite::PatrolPathOver(CStateManager&, const CTriggerData&) const {
 
 static EMaterialTypes skWallMaterial = kMT_Solid;
 
+// @ fn_47_5088
 bool CParasite::CloseToWall(CStateManager& mgr) const {
   static const CMaterialFilter kSolidFilter =
       CMaterialFilter::MakeInclude(CMaterialList(skWallMaterial));
@@ -558,6 +564,7 @@ bool CParasite::CloseToWall(CStateManager& mgr) const {
 static EMaterialTypes skPlayerMaterial = kMT_Player;
 static EMaterialTypes skCharacterMaterial = kMT_Character;
 
+// @ fn_47_4F08
 void CParasite::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                              CStateManager& mgr) {
   static const CMaterialList testList = CMaterialList(skPlayerMaterial, skCharacterMaterial);
@@ -578,6 +585,7 @@ void CParasite::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list
 // @ fn_47_4EFC
 bool CParasite::IsOnGround() const { return mOnGround; }
 
+// @ fn_47_4E28
 TUniqueId CParasite::RecursiveFindClosestWayPoint(CStateManager& mgr, TUniqueId id,
                                                   float& dist) const {
   TUniqueId ret = id;
@@ -591,6 +599,7 @@ TUniqueId CParasite::RecursiveFindClosestWayPoint(CStateManager& mgr, TUniqueId 
   return ret;
 }
 
+// @ fn_47_4D3C
 TUniqueId CParasite::GetClosestWaypointForState(EScriptObjectState state,
                                                 CStateManager& mgr) const {
   float minDist = FLT_MAX;
@@ -617,6 +626,7 @@ bool CParasite::AnimOver(CStateManager&, const CTriggerData&) const { return mSt
 // @ fn_47_4D1C
 bool CParasite::Landed(CStateManager&, const CTriggerData&) const { return mLanded; }
 
+// @ fn_47_4CB8
 bool CParasite::HitSomething(CStateManager& mgr, const CTriggerData&) const {
   if (mThinkCounter & 0x1) {
     return true;
@@ -624,6 +634,7 @@ bool CParasite::HitSomething(CStateManager& mgr, const CTriggerData&) const {
   return mTumbleAngle < 270.f && CloseToWall(mgr);
 }
 
+// @ fn_47_4BD4
 bool CParasite::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   bool shouldAttack = mReceivedTelegraph && mTelegraphRemTime > 0.1f;
   return !TooClose(mgr, data) && InMaxRange(mgr, data) &&
@@ -732,6 +743,7 @@ void CParasite::Jump(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_47_45A8
 void CParasite::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -749,6 +761,7 @@ void CParasite::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_47_4420
 void CParasite::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -794,6 +807,7 @@ void CParasite::FaceTarget(CVector3f target) {
   SetTransform(rotation.BuildTransform4f(GetTranslation()));
 }
 
+// @ fn_47_4038
 void CParasite::Attack(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -841,6 +855,7 @@ void CParasite::Attack(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_47_3CD4
 void CParasite::Retreat(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -894,6 +909,7 @@ void CParasite::Death(CStateManager& mgr, const CVector3f& direction, EScriptObj
   CPatterned::Death(mgr, direction, state);
 }
 
+// @ fn_47_39F4
 void CParasite::TelegraphAttack(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -919,6 +935,7 @@ void CParasite::TelegraphAttack(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_47_37F0
 void CParasite::Halt(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1003,6 +1020,7 @@ void CParasite::UpdatePFDestination(CStateManager&) {}
 
 static EMaterialTypes skFlockMaterial = kMT_Character;
 
+// @ fn_47_2E2C
 void CParasite::DoFlockingBehavior(CStateManager& mgr) {
   CVector3f upVec = GetTransform().GetUp();
   rstl::reserved_vector< TUniqueId, 1024 > parasiteList;
@@ -1121,6 +1139,7 @@ const CDamageVulnerability* CParasite::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
+// @ fn_47_2CB8
 EWeaponCollisionResponseTypes CParasite::GetCollisionResponseType(const CVector3f& position,
                                                                   const CVector3f& direction,
                                                                   const CWeaponMode& mode,
@@ -1135,6 +1154,7 @@ EWeaponCollisionResponseTypes CParasite::GetCollisionResponseType(const CVector3
   return CPatterned::GetCollisionResponseType(position, direction, mode, attributes);
 }
 
+// @ fn_47_2BA0
 CDamageInfo CParasite::GetContactDamage() const {
   switch (mType) {
   case kPT_Oculus:
@@ -1173,6 +1193,7 @@ void CParasite::SetupIceZoomerCollision(CStateManager& mgr) {
 // @ fn_47_26A4
 void CParasite::DestroyActorManager(CStateManager& mgr) { mCollisionActorManager->Destroy(mgr); }
 
+// @ fn_47_25B8
 void CParasite::SetupIceZoomerVulnerability(CStateManager& mgr, const CDamageVulnerability& dVuln,
                                             const CHealthInfo& hInfo) {
   for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
@@ -1185,6 +1206,7 @@ void CParasite::SetupIceZoomerVulnerability(CStateManager& mgr, const CDamageVul
   }
 }
 
+// @ fn_47_22D8
 void CParasite::UpdateCollisionActors(float dt, CStateManager& mgr) {
   mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   if (!mVulnerable) {
@@ -1217,6 +1239,7 @@ void CParasite::UpdateCollisionActors(float dt, CStateManager& mgr) {
 // @ fn_47_22B8
 void CParasite::MassiveDeath(CStateManager& mgr) { CPatterned::MassiveDeath(mgr); }
 
+// @ fn_47_2298
 void CParasite::MassiveFrozenDeath(CStateManager& mgr) { CPatterned::MassiveFrozenDeath(mgr); }
 
 // @ fn_47_222C
@@ -1227,6 +1250,7 @@ void CParasite::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_47_1F3C
 void CParasite::UpdateShell(CStateManager& mgr, int state) {
   x9c0_ = state;
   x9c4_ = rstl::min_val(state, GetModelData()->GetNumShaders() - 1);

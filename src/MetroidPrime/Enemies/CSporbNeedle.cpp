@@ -140,6 +140,7 @@ void CSporbPowerBomb::Render(const CStateManager& mgr) const { CEnergyProjectile
 // @ fn_76_11A50
 CSporbPowerBomb::~CSporbPowerBomb() {}
 
+// @ fn_76_11944
 static CElementGen* CreateElementGen(CAssetId id) {
   if (id != kInvalidAssetId) {
     TLockedToken< CGenDescription > desc = gpSimplePool->GetObj(SObjectTag('PART', id));
@@ -148,6 +149,7 @@ static CElementGen* CreateElementGen(CAssetId id) {
   return nullptr;
 }
 
+// @ fn_76_114D4
 CSporbNeedle::CSporbNeedle(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                            const CTransform4f& xf, const CModelData& modelData,
                            const CActorParameters& actorParams, TUniqueId ownerId,
@@ -187,6 +189,7 @@ CSporbNeedle::CSporbNeedle(TUniqueId uid, const rstl::string& name, const CEntit
   SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(include, exclude));
 }
 
+// @ fn_76_11414
 CSporbNeedle::~CSporbNeedle() {}
 
 // @ fn_76_1138C
@@ -230,6 +233,7 @@ void CSporbNeedle::Think(float dt, CStateManager& mgr) {
 // @ fn_76_1113C
 void CSporbNeedle::Touch(CActor& actor, CStateManager& mgr) { CActor::Touch(actor, mgr); }
 
+// @ fn_76_10DE4
 void CSporbNeedle::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                 CStateManager& mgr) {
   static const CMaterialList skSolidTypes(skCollideSolid, skCollideCeiling, skCollideWall,
@@ -266,6 +270,7 @@ void CSporbNeedle::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_76_10C98
 void CSporbNeedle::AddToRenderer(const CStateManager& mgr) const {
   CActor::AddToRenderer(mgr);
   if (mExploded) {
@@ -277,6 +282,7 @@ void CSporbNeedle::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_76_10AA0
 void CSporbNeedle::UpdateEffects(float dt, CStateManager& mgr) {
   if (GetActive()) {
     const CTransform4f orientation = GetTransform().GetRotation();

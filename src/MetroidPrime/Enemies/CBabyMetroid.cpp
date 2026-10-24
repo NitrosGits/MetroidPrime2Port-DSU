@@ -66,6 +66,7 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
     {"SetEnergySourceDest", static_cast< CodeFunc >(&CBabyMetroid::SetEnergySourceDest)},
 };
 
+// @ fn_40_9FC0
 CBabyMetroid::CBabyMetroid(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                            const CTransform4f& xf, const CModelData& mData,
                            const CPatternedInfo& pInfo, const CActorParameters& aParms,
@@ -98,8 +99,10 @@ CBabyMetroid::CBabyMetroid(TUniqueId uid, const rstl::string& name, const CEntit
   }
 }
 
+// @ fn_40_9EC4
 CBabyMetroid::~CBabyMetroid() {}
 
+// @ fn_40_9960
 void CBabyMetroid::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CMetroid::SetupStateMachine(mgr);
@@ -108,20 +111,25 @@ void CBabyMetroid::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_40_99EC
 void CBabyMetroid::Render(const CStateManager& mgr) const { CMetroid::Render(mgr); }
 
+// @ fn_40_9918
 bool CBabyMetroid::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_40_9954
 bool CBabyMetroid::ShouldSeekEnergySource(CStateManager&, const CTriggerData&) const {
   return mShouldSeekEnergySource;
 }
 
+// @ fn_40_9938
 bool CBabyMetroid::AbsorbFinished(CStateManager&, const CTriggerData&) const {
   return xa50_ >= xa4c_;
 }
 
+// @ fn_40_98D0
 bool CBabyMetroid::InEnergySourcePosition(CStateManager&, const CTriggerData&) const {
   const CVector3f delta = x7c0_ - GetTranslation();
   return delta.MagSquared() < 4.f;
@@ -137,6 +145,7 @@ void CBabyMetroid::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_40_8DEC
 void CBabyMetroid::ApplyContactDamage(CStateManager& mgr, CActor& target, const CDamageInfo& info) {
   if (mCurDamageRemTime <= 0.f) {
     mgr.ApplyDamage(GetUniqueId(), target.GetUniqueId(), GetUniqueId(), info,
@@ -146,6 +155,7 @@ void CBabyMetroid::ApplyContactDamage(CStateManager& mgr, CActor& target, const 
   }
 }
 
+// @ fn_40_8FE8
 void CBabyMetroid::TryJoinHive(CStateManager& mgr) {
   CScriptCounter* counter = TCastToPtr< CScriptCounter >(mgr.ObjectById(xa66_));
   if (counter != nullptr && counter->GetCurrent() < counter->GetMax()) {
@@ -167,6 +177,7 @@ void CBabyMetroid::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   CMetroid::Dodge(mgr, msg, dt);
 }
 
+// @ fn_40_918C
 void CBabyMetroid::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (!mShouldSeekEnergySource) {
     xa84_ = rstl::min_val(xa84_ + dt, mDodgeCheckTimeInterval);
@@ -174,8 +185,10 @@ void CBabyMetroid::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   CMetroid::PathFind(mgr, msg, dt);
 }
 
+// @ fn_40_98C4
 bool CBabyMetroid::ShouldDodge(CStateManager&, const CTriggerData&) const { return mShouldDodge; }
 
+// @ fn_40_9A0C
 void CBabyMetroid::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CMetroid::AcceptScriptMsg(mgr, msg);
@@ -258,6 +271,7 @@ void CBabyMetroid::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_40_8A6C
 CVector3f CBabyMetroid::FindAIHintPosition(CStateManager& mgr, int hintType) {
   rstl::reserved_vector< CScriptAIHint*, 20 > hints;
   CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
@@ -281,6 +295,7 @@ CVector3f CBabyMetroid::FindAIHintPosition(CStateManager& mgr, int hintType) {
   return hints[mgr.Random()->Range(0, hints.size() - 1)]->GetTranslation();
 }
 
+// @ fn_40_8ED4
 void CBabyMetroid::SetEnergySourceDest(CStateManager& mgr, float) {
   if (!xac8_25_) {
     BodyController()->SetLocomotionType(pas::kLT_Lurk);
@@ -297,6 +312,7 @@ void CBabyMetroid::SetEnergySourceDest(CStateManager& mgr, float) {
   mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
 }
 
+// @ fn_40_8C54
 void CBabyMetroid::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -328,6 +344,7 @@ void CBabyMetroid::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_40_9698
 void CBabyMetroid::AbsorbEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -347,6 +364,7 @@ void CBabyMetroid::AbsorbEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_40_91D8
 void CBabyMetroid::ExitHive(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -366,6 +384,7 @@ void CBabyMetroid::ExitHive(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_40_9418
 void CBabyMetroid::TransformIntoMetroid(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:

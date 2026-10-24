@@ -83,6 +83,7 @@ void CScriptStreamedMovie::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_67_A7C
 void CScriptStreamedMovie::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CActor::AcceptScriptMsg(mgr, msg);
   if (!GetActive()) {
@@ -115,6 +116,7 @@ void CScriptStreamedMovie::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
   }
 }
 
+// @ fn_67_A28
 void CScriptStreamedMovie::PreRender(CStateManager& mgr) {
   if (mWhenToDraw == 0) {
     mgr.RenderLastOverlay(GetUniqueId());
@@ -170,6 +172,7 @@ void CScriptStreamedMovie::LoadMovie(CStateManager& mgr) {
   }
 }
 
+// @ fn_67_6B8
 void CScriptStreamedMovie::PlayMovie(CStateManager& mgr) {
   if (mMoviePlayer.get() != nullptr && mMoviePlayer->CanDrawVideo() && sPlayingMovie == nullptr) {
     sPlayingMovie = this;
@@ -178,6 +181,7 @@ void CScriptStreamedMovie::PlayMovie(CStateManager& mgr) {
   }
 }
 
+// @ fn_67_648
 void CScriptStreamedMovie::StopMovie(CStateManager& mgr) {
   if (mMoviePlayer.get() != nullptr && mMoviePlayer->CanDrawVideo()) {
     if (this == sPlayingMovie) {
@@ -188,12 +192,14 @@ void CScriptStreamedMovie::StopMovie(CStateManager& mgr) {
   }
 }
 
+// @ fn_67_610
 void CScriptStreamedMovie::RewindMovie(CStateManager& mgr) {
   if (mMoviePlayer.get() != nullptr && mMoviePlayer->CanDrawVideo()) {
     mMoviePlayer->Rewind();
   }
 }
 
+// @ fn_67_5B4
 void CScriptStreamedMovie::UnloadMovie(CStateManager& mgr) {
   if (this == sPlayingMovie) {
     sPlayingMovie = nullptr;
@@ -232,6 +238,7 @@ CEntity* LoadStreamedMovie(CStateManager& mgr, CInputStream& input, CEntityInfo&
 }
 
 #ifndef MONOLITHIC
+// @ fn_67_F8
 static void SetFuncPtrs() {
   static SStreamedMovie_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadStreamedMovie;

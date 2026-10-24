@@ -635,6 +635,7 @@ CVector3f CWispTentacle::GetOrbitPosition(const CStateManager& mgr) const {
   return base;
 }
 
+// @ fn_86_EE0
 void CWispTentacle::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                     EUserEventType type, float dt) {
   switch (type) {
@@ -652,6 +653,7 @@ void CWispTentacle::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& nod
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }
 
+// @ fn_86_D8C
 void CWispTentacle::SnapWaypointToFloor(CStateManager& mgr) {
   if (mWaypointId != kInvalidUniqueId) {
     const CRayCastResult result =
@@ -697,6 +699,7 @@ CEntity* LoadWispTentacle(CStateManager& mgr, CInputStream& input, CEntityInfo& 
 }
 
 #ifndef MONOLITHIC
+// @ fn_86_438
 static void SetFuncPtrs() {
   static SWispTentacle_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadWispTentacle;

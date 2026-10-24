@@ -52,6 +52,7 @@ static EMaterialTypes skExcludeAIPassthrough = kMT_AIPassthrough;   // Guessed n
 static EMaterialTypes skExcludePlayer = kMT_Player;                 // Guessed name
 static EMaterialTypes skExcludeProjectile = kMT_Projectile;         // Guessed name
 
+// @ fn_17_1C74
 CEmperorIngStage2Tentacle::CEmperorIngStage2Tentacle(
     TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
     const CModelData& modelData, const CActorParameters& actorParams,
@@ -69,8 +70,10 @@ CEmperorIngStage2Tentacle::CEmperorIngStage2Tentacle(
   SetDrawShadow(false);
 }
 
+// @ fn_17_1984
 CEmperorIngStage2Tentacle::~CEmperorIngStage2Tentacle() {}
 
+// @ fn_17_1918
 void CEmperorIngStage2Tentacle::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -78,6 +81,7 @@ void CEmperorIngStage2Tentacle::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_17_17F0
 void CEmperorIngStage2Tentacle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
   switch (msg.GetMessage()) {
@@ -125,6 +129,7 @@ void CEmperorIngStage2Tentacle::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_17_1604
 void CEmperorIngStage2Tentacle::Touch(CActor& actor, CStateManager& mgr) {
   if (TCastToPtr< CPlayer >(actor)) {
     mgr.ApplyDamage(
@@ -134,6 +139,7 @@ void CEmperorIngStage2Tentacle::Touch(CActor& actor, CStateManager& mgr) {
   }
 }
 
+// @ fn_17_14C8
 rstl::optional_object< CAABox > CEmperorIngStage2Tentacle::GetTouchBounds() const {
   if (mAttacking && mActiveTime > 0.5f) {
     const CAnimData* animData = GetModelData()->GetAnimationData();
@@ -145,6 +151,7 @@ rstl::optional_object< CAABox > CEmperorIngStage2Tentacle::GetTouchBounds() cons
   return rstl::optional_object< CAABox >();
 }
 
+// @ fn_17_12D4
 void CEmperorIngStage2Tentacle::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -164,6 +171,7 @@ void CEmperorIngStage2Tentacle::Attack(CStateManager& mgr, EStateMsg msg, float 
   }
 }
 
+// @ fn_17_1288
 void CEmperorIngStage2Tentacle::Retracted(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -179,6 +187,7 @@ void CEmperorIngStage2Tentacle::Retracted(CStateManager& mgr, EStateMsg msg, flo
   }
 }
 
+// @ fn_17_124C
 void CEmperorIngStage2Tentacle::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Update:
@@ -191,14 +200,17 @@ void CEmperorIngStage2Tentacle::Dead(CStateManager& mgr, EStateMsg msg, float dt
   }
 }
 
+// @ fn_17_1234
 bool CEmperorIngStage2Tentacle::ShouldAttack(CStateManager&, const CTriggerData&) const {
   return mSpotTime > mDetectionTime;
 }
 
+// @ fn_17_1218
 bool CEmperorIngStage2Tentacle::ShouldRetract(CStateManager&, const CTriggerData&) const {
   return mAttackTime > 3.f;
 }
 
+// @ fn_17_B04
 void CEmperorIngStage2Tentacle::SetupCollisionActors(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > descs;
   descs.reserve(5);
@@ -230,6 +242,7 @@ void CEmperorIngStage2Tentacle::SetupCollisionActors(CStateManager& mgr) {
   RemoveMaterial(kMT_Target, kMT_Orbit, kMT_SeekerTarget, mgr);
 }
 
+// @ fn_17_AE0
 void CEmperorIngStage2Tentacle::DestroyCollisionActors(CStateManager& mgr) {
   mCollisionActorManager->Destroy(mgr);
 }
@@ -280,6 +293,7 @@ CEntity* LoadEmperorIngStage2Tentacle(CStateManager& mgr, CInputStream& input, C
 }
 
 #ifndef MONOLITHIC
+// @ fn_17_10C
 static void SetFuncPtrs() {
   static SEmperorIngStage2Tentacle_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadEmperorIngStage2Tentacle;
