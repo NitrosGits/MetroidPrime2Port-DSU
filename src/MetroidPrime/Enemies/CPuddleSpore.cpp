@@ -685,7 +685,6 @@ CEntity* LoadPuddleSpore(CStateManager& mgr, CInputStream& input, CEntityInfo& i
 #else
       sldrThis.flavor != 0 ? CPatterned::kFT_One : CPatterned::kFT_Zero,
 #endif
-
       LdrToEntityInfo(info, sldrThis.editorProperties), LdrToTransform4f(sldrThis.editorProperties),
       *modelData, LdrToPatternedInfo(sldrThis.patterned, nullptr),
       sldrThis.unknown_0x5cdc877d ? CPatterned::kCT_One : CPatterned::kCT_Zero,
