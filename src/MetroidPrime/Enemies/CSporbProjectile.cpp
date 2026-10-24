@@ -409,6 +409,7 @@ void CSporbProjectile::CollidedWith(const TUniqueId& id, const CCollisionInfoLis
   CPatterned::CollidedWith(id, list, mgr);
 }
 
+// @ fn_76_E4D4
 void CSporbProjectile::PlayBallSpitEffect(CStateManager& mgr) {
   char name[100];
   sprintf(name, "SPORB_TOP_EFFECT%d-%d", mBallSpitEffect, mEffectIndex++);
@@ -421,6 +422,7 @@ void CSporbProjectile::PlayBallSpitEffect(CStateManager& mgr) {
       GetModelData()->GetScale(), &mgr, GetCurrentAreaId(), false, 0);
 }
 
+// @ fn_76_E358
 void CSporbProjectile::PlayBallEscapeEffect(CStateManager& mgr) {
   char name[100];
   sprintf(name, "SPORB_TOP_EFFECT%d-%d", mBallEscapeEffect, mEffectIndex++);

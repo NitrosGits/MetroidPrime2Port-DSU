@@ -337,6 +337,7 @@ void CSporbTop::StartFlinch(CStateManager& mgr) {
   mStateMachine->SetState(mgr, *this, rstl::string_l("Flinch"));
 }
 
+// @ fn_76_E48
 void CSporbTop::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                 const CModelFlags& flags) const {
   const CTransform4f savedXf = GetTransform();

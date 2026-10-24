@@ -33,6 +33,7 @@ public:
   void Touch(CActor& actor, CStateManager& mgr) override;
 
   // CPhysicsActor
+  // @ fn_76_10468
   const CCollisionPrimitive* GetCollisionPrimitive() const override { return &mSphere; }
   void CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                     CStateManager& mgr) override;

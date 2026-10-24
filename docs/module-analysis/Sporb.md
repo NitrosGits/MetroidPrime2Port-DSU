@@ -695,3 +695,99 @@ real needles and are the starting point for that continuation. Its owner guards 
 collision-actor owner remapping; test those as well as direct/radius damage, trail-null,
 already-exploded, zero/NaN radius and distance boundaries. Do not count the static read
 alone as certification.
+
+## sporb6: needles, bombs, rendering and effects (2026-10-24)
+
+Base494a2ba23. Fifteen further bodies audited instruction-by-instruction with
+`tools/asmcheck.py annotate Sporb 0x<off> --all-ins`. No production correction in this
+checkpoint. Module **151 → 166/173**. Full annotated listings and compact runtime/static
+evidence: `/tmp/opencode/reports/sporb6-evidence/`.
+
+### Full block audit
+
+| body / blocks | retail correspondence |
+|---|---|
+| Explode10680–1071C | +330 bit80 already-exploded exits; remove Solid59, set bit, explosion emitter (area,true,false,medium), explosion emission=true, optional trail emission=false. |
+| 10720–107F4 | Compare hit uid to owner; successful CCollisionActor cast **replaces** ownership comparison with collision-owner uid. Noninvalid nonowner takes ApplyDamage(needle,hit,needle), original damage, include1ull<<59/exclude0/type3/zero direction. |
+| 107F8–108E0 | `fcmpo radius,0; ble` means strict positive, skipping NaN. Only invalid hit uid reaches radius path. Bounds=position±radius; include Character33/Player32, filter type1, no ignored actor; BuildNearList. |
+| 108E4–10958 | Iterate every uid; direct/collision-owner remap again, skip owner, ObjectById null skips. |
+| 1095C–10A9C | Euclidean distance; `fcmpo distance,radius; bge` means strict less, skipping equal/NaN. Scale=(radius-distance)/radius; damage and knockback scaled, same radius, both damage flags cleared, sound idsFFFF; ApplyDamage as above, loop/epilogue. |
+| ShootPowerBomb44BC–4590 | One-time tick-time initialization; virtual ProjectileInfo slotDC; cached token accepted, otherwise lock and loaded-object guards, GetObj/cache; unsuccessful cache exits. |
+| 4594–4694 | CanCreateProjectile(owner,AI11,count); GetGravity/PredictFlightTime; velocity=(dx/time,dy/time,-dz/time+.5*g*time), Translate(from), real CreatePowerBomb, nullable result guard. |
+| 4698–4734 | SetVelocity(tick*velocity), SetGravity(0,0,-g*tick), AddObject, epilogue. |
+| CreatePowerBomb4D70–4E88 | Allocate uid; allocate native-size bomb; active=true, AI11, excludeCharacter33, this owner, invalid homing, attrs0, underwaterfalse, scaleOne, no visor effect, unusedfalse/playImpacttrue; fuse/start/end/wait fields. Retail nullable allocation path is host throwing-new ABI (CMemory.hpp:62–63); no successful null return from allocation. |
+| 4E8C–4F08 | Emitter parms(maxDistance,distanceComp,1,128,20), transform translation, zero direction, configured sound/area,true,false,medium. |
+| 4F0C–4F84 | Iterate emitter slots, first handlezero **and** invalid projectile uid receives new handle/uid; otherwise exhaust loop. Return bomb. |
+| Base ScanVisorRender403C–410C | Save full transform/flags, install supplied values, capture scanning uid, CPatterned::Render, restore. |
+| 4110–41C4 | Only scanning self and state!=7(FakeDead),!=0(Sleeping): supplied transform times scaled connect locator; optional top renders with same flags. |
+| Top ScanVisorRenderE48–F50 | Save/install transform/flags, base render; optional projectile model renders with supplied xf/flags and its actor lights; restore top. |
+| F54–1044 | Scanning self or any successfully-cast Sporb projectile: optional base, scaled connect locator inverse, base scan render(xf*inverse,flags). Retail eagerly casts the scan uid; source short-circuits the side-effect-free lookup for self. |
+| Needle Render10D24–10DE0 | Require not exploded, model pointer and nonnull model contents; model Render(mgr,xf,null lights,opaque alpha1). |
+| EscapeE358–E4D0 / SpitE4D4–E64C | Format SPORB_TOP_EFFECT%d-%d with asset id and **old** byte counter; increment wraps. Lookup ball_attach_LCTR; invalidFF maps to0. Particle data time0, PART asset, scale1; escape mode1(continuous emitter), spit mode2(continuous system). AddParticleEffect(hash,64,data,model scale,mgr,area,false,0). |
+| CTendrilGen3C50–3CE0 | CElementGen(token,normal0,one1), derived vtable, copy all six max-inverted bounds floats. |
+| SetFuncPtrs2804–2854 | Static table base/ projectile/needle/top at offsets0/4/8/C, call SetSSporb_FuncPtrs; no conditions. |
+| SLdrSporbNeedle102CC–103B4 | Editor/actor/damage default ctors; model/trail/explosion invalidFFFFFFFF, sounds all-1; ambient white1, visor flags15, speed60, mass1, weapon9, damage5, knockback2, fuse1.5. Rodata380/384/388/38C/390=1/60/5/2/1.5. Existing TARGET_PC corrections already supply white/visor/sound defaults. |
+| Getters2E8/DE58/DE50/10468 | Top/Projectile self-render returntrue; Projectile/Needle collision primitive return member+7C8/+310 (host uses field address). |
+
+### Forced coverage / oracles
+
+`tools/cov/specs/sporb_needle_arms.py`: capture an ordinary shooting base without stopping;
+at a live CActor::Render entry, real UpdateShooting creates the needle. Allocate, construct
+and register a real CCollisionActor. Real ApplyDamage/emitter/model/particle callees execute.
+The radius broadphase executes before its result is replaced with owner, collision actor,
+player and stale uid (or empty), making ownership/null/boundary cases reproducible.
+GetLocatorSegId executes before overriding its returned byte toFF. State overrides restore;
+damage, particle effects and deferred fixture deletion are real. Scan tests compare every
+byte of both actors' transforms/flags before and after each call.
+
+| body | lines / edges | exercised cases |
+|---|---|---|
+| Explode10680 | 43/43,24/24 | already exploded, present/null trail, owner/direct player/collision owner/other collision owner, invalid hit, radius0/-1/NaN, empty/candidate near list, stale uid, distance0/1/2/3/NaN with radius2. Damage/knockback oracle8/4 at center,4/2 at distance1, none at boundary/outside/NaN. |
+| Needle Render10D24 | 4/4,6/6 | exploded, absent model pointer, present empty model, normal model. |
+| Base/Top ScanVisorRender403C/E48 | 14/14,12/12;20/20,13/13 | scan none/self/projectile; base states0/7/2; child/base present/missing; nine exact state-restoration assertions. |
+| EffectsE358/E4D4 | each10/10,10/10 | natural and forced-invalid locator; old index255 wraps to0, real particle effects. |
+| CTendrilGen3C50 / SetFuncPtrs2804 | 2/2,1/1;8/8,0/0 | natural hall loading. |
+| SLdrSporbNeedle102CC | 26/26,3/3 (header gcov) | natural needle loading/spawning, complete initializer execution. |
+| Getters2E8/DE58/DE50/10468 | each1/1,0/0 (header gcov) | explicit calls assert true/member-pointer results. |
+| ShootPowerBomb44BC | 19/19,10/11 | cached/uncached, unlocked/locked-unloaded/loaded, quota0, success, forced null CreatePowerBomb return; ballistic velocity/gravity assertions at height2,g9.81,dx3,dy4,dz0. |
+| CreatePowerBomb4D70 | 17/18,10/10 | zero slots, free first, busy handles, busy ids, mixed/free last. Unexecuted source line is exception cleanup; nullable retail allocation is replaced by standard throwing new. |
+
+ShootPowerBomb's sole untaken edge is host `__cxa_guard_acquire` returningfalse after the
+guard byte read uninitialized. Only this initializer writes the static; all callers are on
+the game thread, GetTickTime is nonrecursive. First-use and initialized paths ran. This
+contention edge is not a live retail arm. The forced null-result case bypasses only
+CreatePowerBomb; all ordinary construction cases execute its actual body.
+
+Reproduce with `BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py SECS=300`
+and `tools/games_running.sh --wait` before each run:
+
+```
+tools/cov/force.sh tools/cov/specs/sporb_needle_arms.py <hall-out> \
+  3dfd2249,0e_swamp_hall --con tools/drivers/sporb4_hall.con --fast --frames 1800
+tools/cov/force.sh tools/cov/specs/sporb_bomb_arms.py <guardian-out> \
+  3dfd2249,11_swamp_bloggtank_dark --con tools/cov/specs/sporb_pbg.con --fast --frames 3200
+```
+
+Both final candidate runs exit normally, caught/reach-stub0, no force failures. Do not trust
+force.sh rc0 alone: force_ret's default batch hook services only one stopping CALLS entry;
+a second stops the inferior without a gcov exit flush. This spec deliberately uses one
+stopping entry for its complete suite. No shared-tool changes.
+
+Checkpoint gates: both direct ninja host/coverage links0 FAILED; manifest rc0; configure+
+ninja All77.98% fuzzy/54.39% matched, Game94.14%/63.29%; dtk hash check87 files OK.
+All eight touched upstream C++/header files are **marker-only**, strip-diff CLEAN.
+Final runs `sporb6-checkpoint-hall`1800 / `sporb6-checkpoint-pbg`3200:41/10 calls,
+33/16 PASS assertions, exitnormal, caught/reach-stub0. Raw header coverage proves the
+five inline bodies in addition to the ten rows in coverage-checkpoint.txt.
+
+Static findings: asmcheck cannot parse in-class CTendrilGen/getter bodies (MISSING); their
+complete short listings were checked manually above. Needle +330 bit80 is mExploded;
+CModelFlags constructs the white CColor. TCastToConstPtr uses retail's same cast; implicit
+string destruction accounts for internal_dereference. CAnimData::GetLocatorSegId delegates
+the character-layout lookup; TryCache calls CToken::GetObj; ProjectileInfo is virtual slotDC.
+CreatePowerBomb's4F88/5334 are CImpactVisorEffect::None and its destructor, with three empty
+optionals (4F88–4FB0) and the corresponding optional cleanup (5334–5358); real host code is
+in Weapons/CImpactVisorEffect.hpp. SLdrSporbNeedle's XSTORE findings misread property hashes
+as member offsets; every actual store is mapped in the102CC audit. Its three constructor
+CALL findings are ordinary member initializers. retail_diff reports only the two visor
+effect aliases. No unexplained finding and no production probes.
