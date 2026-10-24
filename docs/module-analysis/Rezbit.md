@@ -127,3 +127,30 @@ Wall time about a minute per run. Run: `COV_GDB_SCRIPT=<spec> BUILD=build-port-c
 
 Gotchas (cost an hour each): a gdb `condition` on a Breakpoint subclass with `stop()` is ignored, test inside `stop()`; a gdb.Value of a memory lvalue is lazy, convert with int()/float() before the write you want to restore; `$al` is the x86 register (name scratch variables `$actl`); `send <rezbit> Create` crashes in CBSFall::Start (host, the natural spawn covers that arm).
 Not marked (not in this slice): CRezbit ctor/dtors, LoadRezbit (1447 modelData null arm), SLdrRezbitData, __sinit.
+
+## rez6 (2026-10-24)
+
+Marked (12): GetSearchPath 0, IsListening 8 (header), LoadRezbit 168, LoadTypedefRezbitData 85C, ~SLdrRezbitData F64,
+SLdrRezbitData ctor 1040 (header), BecomeDeRezzed 5A78, BecomeRezzed 5C90, ~CRezbit 74D4/75E4, CRezbit ctor 785C, `__sinit` 88E0
+(marker on the three tables: the 33 ptmf blobs at lbl_53_data_C..9C/178..208/2E4..32C, named through the TSV, equal the
+C++ names and order; first __sinit marker in the port). Rezbit B rows: 0 unmarked.
+
+Run: `tools/cov/specs/rezbit_force4.py` + `tools/drivers/rezbit_forced6.con` (1800 frames, about a minute): the first LoadRezbit /
+LoadTypedefRezbitData call has one property id overwritten by 0xfeedbeef (default-skip arm; consumed length checked, bytes
+restored); the first CRezbit ctor sees shieldExplodeEffect / derezModel invalid (restored at the return); `spawn REZB` without
+ANCS is LoadRezbit's model-null return; both Rezbits are killed for the dtor arms; `fsm ... BecomeRezzed/BecomeDeRezzed` in both rez states.
+Untaken after that: the switch default of BecomeRezzed/BecomeDeRezzed (EStateMsg has three values), and the ctor's lines 117/170
+(EH-cleanup edges, never executed, no normal successor).
+
+### `send <rezbit> Create` crash: not a port bug
+
+`CRezbit::AcceptScriptMsg(kSM_Create)` calls `BodyController()->Activate(mgr, kAS_Invalid)`. Sent a second time to a live Rezbit
+that call restarts the current/additive body state, whose `Start` reads a command that was never delivered this tick:
+
+    #0 CABSLoopReaction::Start (CABSLoopReaction.cpp:19)  mWeight = cmd->GetWeight();   // cmd == nullptr
+    #1 CRezbit::AcceptScriptMsg   #2 PortConsole::CmdSend   (earlier run: CBSFall::Start, CTransform4f::TransposeRotate on cmd->GetHitDirection())
+
+`CBodyStateCmdMgr::GetCmd` returns null for a command not delivered (retail 0x800EE0B8: `lbz 0xe8(r5); beq -> li r3,0`) and retail
+`CABSLoopReaction::Start` uses the result without a test (`bl GetCmd; lfs f0,0x8(r3)`): the null load reads low memory on the GameCube
+and faults on the host. Create is sent once, at load, when the additive state is the idle one; no shipped data sends it twice. Same
+code, same retail behaviour; no TARGET_PC guard added. Debug spec: tools/cov/specs/rezbit_create_dbg.py + tools/drivers/rezbit_create.con.
