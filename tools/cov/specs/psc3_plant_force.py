@@ -1,21 +1,23 @@
 # PlantScarabSwarm (module 49) psc3 targeted force for tools/cov/force.sh (force.py, persistent
 # writes), picking up where psc1/psc2 stopped.
 #
-# Measured first (read-only probe, same driver, 0g_swamp_hall): the ctor does build the shared attack
-# model (attackerCount 3, attackModels 3, modelDatas 4, sharedModel/sharedState/sharedDeltas 1,
-# mSharedAttackBit 7, mAttackModelBitBase 4) and the draw mask carries the shared bit on every one of
-# 1914 PreRenderBoid calls, so the gate psc1/psc2 blamed (the bit) is never the missing one.  What
-# never happens is an attacking boid with mAttackSlot == -1 *at draw time*: retail reaches it only in
-# the one tick between UpdateBoid releasing a finished slot (cpp:196-199, mAttackSlot = -1, mAttacking
-# still set) and the next tick's kill, so it needs a render tick inside a one-tick window.
+# Measured first (read-only probe, same driver, 0g_swamp_hall): the draw mask carries the shared bit on
+# every one of 1914 PreRenderBoid calls (the mask starts at `uint drawMask = -1`, CSwarmBasics
+# cpp:1027), so neither the shared bit nor an "already cleared" arm of that test is what the fight is
+# missing.  What never happens is an attacking boid with mAttackSlot == -1 *at draw time*: retail
+# reaches it only in the one tick between UpdateBoid releasing a finished slot (cpp:196-199,
+# mAttackSlot = -1, mAttacking still set) and the next tick's kill, so a render tick has to fall in
+# that one-tick window.
 #
-# The write below is the real boid argument ($rsi in PreRenderBoid; rdx is the draw mask) and only its
-# two attack fields: no mask write at all (`uint drawMask = -1` in CSwarmBasics::PreRender, cpp:1027,
-# so the shared bit is already set; the arm's own clear acts on that stack local).  The write is
-# guarded (shared model and skinned state non-null, boid active, not attacking, slot -1) and made at
-# most twice: once while the mask still carries mAttackModelBitBase (cpp:218's true arm) and once
-# after an earlier attack boid in the same pass cleared it (cpp:218's false arm).  Each forced boid
-# goes through retail's own next-tick path: UpdateBoid's `else if (boid.mAttacking)` -> KillBoid.
+# The write below is on the real boid argument ($rsi in PreRenderBoid; $rdx is a `uint*` pointing at
+# the `drawMask` local of CSwarmBasics::PreRender - a pointer, not a uint) and touches only its two
+# attack fields: no mask write at all, so nothing has to be restored.  It is guarded (shared model and
+# skinned state non-null on this call, boid active, not attacking, slot -1) and made at most twice,
+# once per state of the mAttackModelBitBase bit in the mask, which is *recorded only*: both calls take
+# cpp:218's TRUE arm, because that test reads the shared bit (7) and the mask never loses it.
+# cpp:229's false arm (a slot-0 attacker finding bit 4 already cleared by a shared pose in the same
+# pass) is not reached here; it is the one live arm the marker still waits for.  Each forced boid goes
+# through retail's own next-tick path: UpdateBoid's `else if (boid.mAttacking)` -> KillBoid.
 #   BUILD=$PWD/build-port-cov tools/cov/force.sh tools/cov/specs/psc3_plant_force.py <out> \
 #     3dfd2249,ok_swamp_hall --con tools/cov/specs/psc3_plant_ok.con --fast --frames 1200
 import os
@@ -41,7 +43,10 @@ def ev(expr, gdb):
 
 
 def think_diag(gdb):
-    # what the ctor built, once per object (keyed on its own bit numbers and model counts)
+    # What the ctor built.  The dedup key is (shared bit number, attack-model count, base model count),
+    # NOT the object pointer, so the first line proves only that some instance with this configuration
+    # ran; it cannot be attributed to a particular placement.  The per-call, object-attributed proof of
+    # the shared model and skinned state is prerender_arm's guard line below.
     key = (ev(P + '->mSharedAttackBit', gdb), ev(P + '->mAttackModels.mCount', gdb),
            ev(P + '->mModelDatas.mCount', gdb))
     if ('think',) + key in seen:
@@ -78,6 +83,8 @@ def prerender_arm(gdb):
             log('slot -1 arm: not forced, shared model/state missing (model=%s state=%s)' % (model, state))
         return
     bit = ev(P + '->mAttackModelBitBase', gdb)
+    # Recorded only: bitBase's bit (4) is not what cpp:218 tests (shared bit 7), so both states of this
+    # bit end in the same arm.  The two writes are a repeat of the same arm for the record.
     which = 'set' if ev('(*(unsigned int*)$rdx & (1u << ((CPlantScarabSwarm*)$rdi)->mAttackModelBitBase)) != 0', gdb) else 'clear'
     if wrote[which]:
         return
@@ -94,7 +101,7 @@ def prerender_arm(gdb):
 
 FORCE = [
     ('1B64 Think model', 'CPlantScarabSwarm::Think(', [], [think_diag], 0,
-     'read-only: the ctor-built attack model state, once per object'),
+     'read-only: a ctor-built attack model state, deduped by counts/bits and so not attributed to an object'),
     ('12AC PreRenderBoid slot -1', 'CPlantScarabSwarm::PreRenderBoid(', [], [prerender_arm], 0,
-     'read-only record + guarded boid state write for cpp:218/219/223 (both arms of the bit test)'),
+     'read-only record + guarded boid state write for cpp:217/218/219/223 (218 true arm; no mask write)'),
 ]

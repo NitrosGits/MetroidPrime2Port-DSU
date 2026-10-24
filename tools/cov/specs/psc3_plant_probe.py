@@ -19,8 +19,8 @@ SPEC = [
         P + '->mSharedAttackBit',
         P + '->mAttackModelBitBase',
     ], 'max=4000'),
-    # cpp:214-235: 214 the attacking test, 216 slot == -1, 218 the shared draw bit (the arm psc1
-    # could not reach), 229 the indexed slot bit.
+    # cpp:214-235: 214 the attacking test, 216 slot == -1, 218 the shared-bit test (its true side is what
+    # the psc3 force takes), 229 the indexed slot bit.
     ('12AC PreRenderBoid', 'CPlantScarabSwarm::PreRenderBoid(', [
         P + '->mSharedAttackBit',
         B + '->mActive',
