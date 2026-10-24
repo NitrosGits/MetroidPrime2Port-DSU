@@ -190,3 +190,23 @@ coverage. Two causes, both to fix before this recipe is retried:
 
 Neither `CreateBoid`'s three arms nor `UpdateAllBoidMovement`/`UpdateBoid` were re-measured, so no
 marker was added in swb3.
+
+## swb4: the recipes retried with both fixes
+
+`tools/cov/specs/swarmbasics_force4.py` (force_ret.py) fixes swb3's two defects: every FORCE_RET
+lvalue is a `$this` member, so the restore at the call's return writes the same object (no
+argument-register lvalue, which was what stuck `mLaunched`), and the hardware-light path is forced on
+one Render call in 600. Runs: swamp_hall and cliff_hall, **1200 frames, timeout 700**, both exit
+normally (`RC=0`, `caught/reach-stub: 0`), no failed or missing-symbol writes.
+
+**Marked: 76F4 CreateBoid - 36/36 lines, 10/10 branches (ALL-ARMS).** The waypoint stubs
+(`GetWaypointForState`/`NextWaypoint` -> 0xffff) take 437/440 and the rewritten triangle takes 446.
+
+Measured now, still open:
+
+| fn | now | why |
+|---|---|---|
+| 6104 UpdateBoid | 48/85, 17/44 | the `$this` writes took 589/597 but the launched path (604-641) and the no-surface/stuck arms (633-641, 655) need boid-field writes, which FORCE_RET cannot restore safely through a register; use force.py (persistent, one `skip`) or `$this->mBoids[<index>]` (the vector's element, resolved through $this) |
+| 5024 UpdateAllBoidMovement | 0/7 | **the body never runs even with `mAnimated` forced**: it has an out-of-line symbol (objdiff 99.5%) but no caller in the module - retail calls it from Think's tail, and Think does not reach line 867 in these runs (Think 82/88: 851/853/856/857, the outlier loop, are untaken). Next: find what returns before Think's tail (the occlusion block and the outlier loop) |
+| 4538 HardwareLight | 0/8 | Render 45/53 still leaves 1217/1218/1222/1223 untaken, so the forced `mEnableLighting`/`mUseSoftwareLight` did not reach the HardwareLight call; the locals are read at Render's entry, so a `loc:` write (with `$this` captured at the entry) is the next attempt |
+| 3B34 Render | 45/53, 37/56 | as above, plus the light-combo arms |
