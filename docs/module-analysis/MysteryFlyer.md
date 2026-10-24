@@ -78,3 +78,30 @@ and IsListening/GetSearchPath.
 `mysf`: area `3bfa3eff,0e_temple_hall`, driver `tools/cov/specs/mysteryflyer.con`, about 3100 frames. The driver
 runs god mode, Activate and Alert, then damage, forced states, kill, Deactivate and Delete. Expect three wasps in
 `objs MysteryFlyer`, then the killed one Dead. The pass condition is 0 `[port] caught` / `reach-stub`.
+
+## Coverage (mfly1: the 11 rows still unmarked)
+
+Same spec and driver as mf1 (`mysteryflyer.py` + `mysteryflyer.con`, 3100 frames, `--fast`,
+`caught/reach-stub: 0`). The TSV's marker column is stale; the list below is the TSV's B rows minus the
+`// @ fn_45_*` markers in src/include. No body differed from the asm (`asmcheck.py check`: no
+CROP/XCMP/XSTORE/MASK/OFFS finding on any of the 11), so nothing was changed but two header comments.
+
+Marked (4):
+
+| fn | evidence |
+|---|---|
+| 0 IsListening | objdiff 100%; `li r3,0x1; blr` at 0x0/0x4 = `return true` |
+| 8 GetSearchPath | objdiff 100%; `addi r3,r3,0x818; blr` at 0x8/0xC = `&mPathFindSearch`, which is therefore at 0x818 (now in the header) |
+| 840 LoadTypedefMysteryFlyerData | objdiff 100%; the compare tree re-read (0x894 0x1559f27, 0x8ac 0xc75998aa, 0x8c0 0x845ef489, 0x8d4 0xcea30138, 0x8e8 0x5f3fffd6, 0x8fc 0x51253ba3, default `input.ReadBytes` at 0x910) is exactly the six C++ cases. gcov 25/28 lines; the only untaken arm is the unknown-property default, data-gated (shipped lists carry only those six ids) |
+| 9B0 ~SLdrMysteryFlyerData | objdiff 100%; the empty inline dtor is the SLdrDamageInfo chain (0x9d8) plus the compiler's null-this (0x9cc) and delete-flag (0x9e0) guards |
+
+Left unmarked (7):
+
+| fn | why |
+|---|---|
+| 170 LoadMysteryFlyer | gcov 573:1/2: the `if (!modelData) return nullptr` arm needs LdrToModelData to fail; objdiff 81.4% (the SLdr ctor is inlined here in retail) |
+| 7C4 / A08 | **the REL names and the bodies disagree**: the code at 0x7C4 is an `SLdrMysteryFlyer` deleting dtor (0x7e0 null-this, 0x7ec `__dt__20SLdrMysteryFlyerDataFv`, 0x7f8/0x804/0x810 the three sub-dtors, 0x820 Free) while the symbol there is `__ct__16SLdrMysteryFlyerFv`, and the code at 0xA08 is the `SLdrMysteryFlyerData` ctor (0xa20 `stw -1,0x0`, 0xa24 `__ct__14SLdrDamageInfoFv`, 0xa64 2.0f, 0xa6c 1) while the symbol there is `__dt__16SLdrMysteryFlyerFv`. Our object emits `__ct__16SLdrMysteryFlyerFv` at 0x7C4 (objdiff None) and `__dt__16SLdrMysteryFlyerFv` at 0xA08 (27.8%), so the two names are attached to the wrong bodies in the symbol table. Marking by code would put fn_45_7C4 on `~SLdrMysteryFlyer()` and fn_45_A08 on `SLdrMysteryFlyerData()`; the lane left both alone - orchestrator's call |
+| C10 JoinTeam | 436:1/2, 439:0/2, 440:0/2, 440:1/2: needs a TeamAiMgr in the area (the hall has none), so `GetAssociatedTeamId` never returns an id and the `TCastToPtr<CScriptTeamAiMgr>` arm never runs |
+| 237C DoUserAnimEvent | 141:1/2: needs a FadeIn anim event; no MYSF animation has one |
+| 23B8 AcceptScriptMsg | 125:1/2, 126:1/2: `HasBodyState(pas::kAS_KnockBack)` is false for the War Wasp body and `GetCurrentStateId() != kAS_KnockBack` never sees any other state; the other states (Create/AreaLoaded/Damage/Alert) all ran |
+| 2BF8 __sinit_CMysteryFlyer_cpp | objdiff 100%, but it is compiler-generated from `skTriggers`/`skStates`/`skCodeFuncs`: there is no source line to put a marker on, which is why bulk_mark_matched skips it (no marker for __sinit exists anywhere in src) |

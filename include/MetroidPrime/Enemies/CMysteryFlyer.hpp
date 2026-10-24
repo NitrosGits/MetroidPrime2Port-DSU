@@ -22,9 +22,11 @@ public:
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
 
   // CAi
+  // @ fn_45_0
   bool IsListening() const override { return true; }
 
   // CPatterned
+  // @ fn_45_8
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                        float dt) override;
@@ -72,7 +74,8 @@ private:
   bool mHasLineOfSight : 1;            // Guessed name; 0x814 0x40 (`rlwimi` at 0x00000B40)
   bool mAlerted : 1;                   // Guessed name; 0x814 0x20
   bool mHasAttackPath : 1;             // Guessed name; 0x814 0x10
-  CPathFindSearch mPathFindSearch;     // Guessed name
+  CPathFindSearch mPathFindSearch;     // 0x818 (0x8 addi r3,r3,0x818)
+
   CSteeringBehaviors mSteering;        // Guessed name
   float mAttackInterval;               // Guessed name
   float mAttackTimer;                  // Guessed name
