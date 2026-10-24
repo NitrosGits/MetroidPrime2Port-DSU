@@ -73,8 +73,8 @@ placements: `tools/scan_darktrooper_props.py` (firesMissiles=1 only hive01 L6 e0
 | Sleep | 31BC | unmarked | not asm-read this slice; only call edges at 627 untaken |
 | Dead | 2C78 | unmarked | not asm-read; 734/740 are call edges |
 | Touch | 3000 | marked (dtr7) | forced run, see dtr7 section |
-| AcceptScriptMsg | - | unmarked | 247 untaken 3/4 |
-| KnockBack | - | unmarked | 280 untaken 3/4 |
+| AcceptScriptMsg | fn_12_5024 | marked (dtr8) | all arms evidenced, see dtr8 |
+| KnockBack | fn_12_4CE4 | marked (dtr8) | all arms evidenced, see dtr8 |
 | GetAimPosition | - | unmarked | 329 `mLockOnTarget != 0xff` false arm: set from `lockon_target_LCTR` at construction (CPatterned.cpp:194), probably dead by data, unproven |
 | FireSmallShot | - | unmarked | 342:1/2, 362:1/2, 366:1/4 degenerate geometry arms untaken (forces not written) |
 | DoUserAnimEvent | - | unmarked | 459, 480-481, 488, 502 untaken; needs the hive01 missile trooper kill (`damage u058a 999 0 missile` leaves hp 596) |
@@ -89,3 +89,9 @@ placements: `tools/scan_darktrooper_props.py` (firesMissiles=1 only hive01 L6 e0
 - Touch (fn_12_3000) marked: asm checked line by line (stwu/mflr prologue, ragdoll get + IsPrimed, TCastToPtr<CScriptTrigger>, GetActive, flags & 0x8000, magnitude `ble`, TorsoImpulse += force field). Arms: natural run (inactive triggers, no ragdoll) plus `tools/cov/specs/darktrooper_touch_force.py` with `tools/drivers/darktrooper_touch.con` (`touchact` calls Touch with a given trigger; the spec writes flags / force magnitude by trigger uid at Touch entry). Line 691 and 692 both arms taken.
 - Not marked (arms not yet evidenced): AcceptScriptMsg 248, KnockBack 281, FireSmallShot 343/363/367, DoUserAnimEvent 460/481/482/503, Sleep 630, Dead 738/744.
 - `tools/cov/force.py` now accepts a callable in a spec's sets (conditional writes).
+
+## dtr8
+
+- AcceptScriptMsg (fn_12_5024) and KnockBack (fn_12_4CE4) marked: asm checked line by line (switch on the message id, 'XDMG' 0x5350 / 'XXDG' 0x533C cases, rodata 0.5 / 0 / -1 / 1.5 / 0.2 / 20 / -1000, flotsam bits at 0x9d4, ragdoll 0x9d0, impulse 0x6ac / ragdoll+0xb8). No C++/asm difference.
+- Evidence: natural runs (`darktrooper_msgs.con`, `darktrooper_flotsam.con`, `darktrooper_unknown.con`) plus `tools/cov/specs/darktrooper_msg_force.py` (conditional writes by message / call count: mFiresMissiles on the first Activate and Alert, mAlive+mTransitioning on the first Damage (the early return) then mAlive only, mFlotsam=0 with mIsSleeper 1 / 0 on the first two AreaLoaded, the ragdoll pointer nulled on the second Decrement and on KnockBack 3 / 4 with HP -1 / 10, restored at the next Think). Run it with the msgs driver (AcceptScriptMsg) and the flotsam driver (KnockBack); every line-205..248 and 281..287 arm is taken in the merged gcov.
+- FireSmallShot (fn_12_46B4) stays unmarked: it is never called in any driver (`mSmallShotAttack.mProjectile` is null, 0/25 lines), so every arm needs the projectile built first.

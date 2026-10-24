@@ -198,6 +198,7 @@ CProjectileInfo* CDarkTrooper::ProjectileInfo() {
   }
 }
 
+// @ fn_12_5024
 void CDarkTrooper::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   bool handled = false;
   switch (msg.GetMessage()) {
@@ -277,6 +278,7 @@ const CDamageVulnerability* CDarkTrooper::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
+// @ fn_12_4CE4
 void CDarkTrooper::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   if (mRagDollHolder.mFlotsam && mRagDollHolder.mRagDoll.get()) {
     const float power = info.GetDamageInfo().GetKnockBackPower(*GetDamageVulnerability(), 0.f);
