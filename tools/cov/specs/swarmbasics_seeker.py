@@ -1,34 +1,41 @@
-# SwarmBasics (module 80) swb11: fn_80_1978 CSwarmBasics::AssignSeekerBoids, the boid-geometry
-# arms and the caller's taken/numNeeded/out loop.  force.py, one fixture per call, restored at
-# the call's return:
+# SwarmBasics (module 80) swb12: fn_80_1978 CSwarmBasics::AssignSeekerBoids, the taken-scan arms
+# (1685/1686/1691) plus the geometry arms.  force.py, two fixtures, every write restored:
 #   BUILD=$PWD/build-port-cov tools/cov/force.sh tools/cov/specs/swarmbasics_seeker.py <out> \
-#     3dfd2249,0g_swamp_hall --driver 'python3 tools/drivers/con.py {port} tools/drivers/swb11_seeker.con' \
+#     3dfd2249,0g_swamp_hall --driver "python3 tools/drivers/con.py {port} tools/drivers/swb12.con" \
 #     --fast --frames 1200
 #
-# The caller is the real one (UpdateSeekerTargets -> AssignSeekerBoids(mgr, keptBoids, numLost,
-# newBoids) every frame), so `taken`, `numNeeded` and `out` are the caller's own vectors: this spec
-# never writes them, never resizes them and never invents a descriptor.  It only moves ONE existing
-# element of $this->mBoids for the duration of the call and restores its absolute translation and
-# mActive from a finish breakpoint:
+# 1. `gun_fixture` at the entry of the real caller, CSwarmBasics::UpdateSeekerTargets: the swarm's own
+#    five kMT_SeekerTarget actors (created in kSM_Create, uids in mSeekerTargets, mapped to boid
+#    indices in mSeekerBoidIndices by the previous frame) give ONE real uid, and that uid is supplied
+#    as the single element of CPlayerGun::mSeekerTargets (reserved_vector<pair<TUniqueId,float>,5>,
+#    member near CPlayerGun.hpp:340) so the caller's own keep/lose loop puts the mapped boid index
+#    into keptBoids and passes a non-empty `taken` to AssignSeekerBoids.  Written only when the gun's
+#    vector is empty (never clobbers a real lock), element first and then mCount, restored at
+#    UpdateSeekerTargets' return from the cached addresses: mCount back to its original, and element
+#    0's exact bits (.first.value and .second) back to what they were.  The `taken`/`out` vectors are
+#    never touched: the caller builds them.
+# (the object-list lookup is CObjectList::GetObjectById's own two tests: mObjects[uid.Value()]
+#  and the uid equality - no inline function is called from gdb.)
+# 2. `assign_fixture` at AssignSeekerBoids' entry, one phase per call: ph0 a boid beyond the orbit
+#    distance, ph1 a boid exactly at the camera, ph2 no move, ph3 the taken boid (and a second boid)
+#    placed in front of the camera, so the candidate list holds one candidate whose index IS in
+#    `taken` and one whose index is not - the equality and inequality sides of the scan.  Boid
+#    translation and mActive are restored at AssignSeekerBoids' return.
+# Every restore breakpoint is armed BEFORE the first write, and a fixture aborts without writing if
+# arming fails (the swb11 version wrote first).  phase 2 is deliberate: it is what leaves the run a
+# natural swarm, not an observation that the gun locks by itself (swb11 measured that it does not).
 #
-#   phase 0  the boid is put beyond the orbit distance (camera + 1e6 on X) -> the
-#            `delta.MagSquared() > maxDistSq` true side (the `continue`).
-#   phase 1  the boid is put exactly at the camera (the camera's own floats) -> delta == 0 ->
-#            `CanBeNormalized()` false.
-#   phase 2  nothing is moved (the natural swarm), so the seeker lock the driver produces is what
-#            decides `taken`: the swarm's own 5 seeker-target actors are real objects, and once the
-#            gun locks one (the driver holds the use-item button with the launcher given), the
-#            caller's keptBoids is non-empty and the taken-scan arms run.
-#
-# Camera: mgr->mCameraManagers[0]->mFpCamera->mTransform (GetCameraManager(0),
-# GetFirstPersonCamera(), GetTransform() = CActor::mTransform), translation = (m03, m13, m23) of
-# CTransform4f.  Names verified against the build's DWARF before the run; the host layout differs
-# from retail's, so no retail offset is used.
-#
-# NOTE on the log label (correction): the swb10 spec's APPLY line labelled a field `boid=` but its
-# printf argument was `this`, the swarm actor pointer (see swarmbasics_lockon.py, now labelled
-# `swarm=`); the archived /tmp/opencode/swb10 logs keep the old label and are not rewritten. This
-# spec logs the swarm as `swarm=` and the moved element as `boid=` (the address of $this->mBoids[idx]).
+# CORRECTION (swb12 rework, after the run): the run that produced 26/26 lines / 27/28 branches used a
+# version of this fixture whose plan stored the TARGET position in the field the restore wrote, so its
+# "RESTORE-BOID" lines rewrote the target and the boids were never restored - the run's phase-2 calls
+# were therefore not natural either.  Its numbers are counts only and no transient-restore claim rests
+# on them.  Now the plan keeps `target` and the ORIGINAL translation (read before any write), the
+# restore writes the original through the cached &mBoids[idx]; the gun element is snapshotted and
+# restored as raw 32-bit words at the cached element address, not through a float %r; and phase 3
+# takes the index from THIS call's taken vector (guarded, in range) rather than a global from an
+# earlier call or another swarm.  Verified statically with an emulated gdb over a model of the boid
+# fields, the caller's vectors, the camera and the gun element: unchanged log files are the record of
+# the old run and must not be relabelled.
 CLASS = 'CSwarmBasics'
 
 import os
@@ -36,11 +43,17 @@ import os
 import gdb  # this spec is exec'd by tools/cov/force.py inside gdb's python
 
 _OUT = os.environ.get('COV_OUT', '/tmp')
-_LOG = os.path.join(_OUT, 'swb11_geom.log')
+_LOG = os.path.join(_OUT, 'swb12_geom.log')
 
-_VEC = 'rstl::vector<unsigned int, rstl::rmemory_allocator>'
+_VEC_U = 'rstl::vector<unsigned int, rstl::rmemory_allocator>'
+# the cast value is the auto_ptr array; index it with _OBJ_LIST0 % mgr wrapped in ((...))[0]
+_OBJ_LIST0 = '(rstl::auto_ptr<CObjectList>*)&((CStateManager*)%d)->mObjectLists.mData[0]'
+_GUN_EL = '(rstl::pair<TUniqueId, float>*)&((CPlayerGun*)%d)->mSeekerTargets.mData[0]'
 
-_st = {'n': 0, 'apply': 0, 'err': 0, 'takenSeen': 0, 'logN': 0}
+_st = {
+    'gunCalls': 0, 'gunWrites': 0, 'gunSkipCount': 0, 'gunSkipPick': 0, 'gunSkipNoGun': 0,
+    'assignCalls': 0, 'apply': 0, 'err': 0, 'takenIdx': -1, 'takenUid': -1, 'takenSlot': -1,
+}
 
 
 def _log(msg):
@@ -59,9 +72,60 @@ def _i(g, expr):
     return int(g.parse_and_eval(expr))
 
 
-class _Restore(gdb.FinishBreakpoint):
-    """Puts the moved boid's absolute translation and mActive back after the call."""
+def _cam(g, mgr):
+    """(eye, forward, right) of the first-person camera, the way the body reads it."""
+    cam = _i(g, '(long)((CStateManager*)%d)->mCameraManagers[0]' % mgr)
+    if not cam:
+        return None
+    fp = _i(g, '(long)((CCameraManager*)%d)->mFpCamera' % cam)
+    if not fp:
+        return None
+    xf = '((CActor*)%d)->mTransform' % fp
+    return ((_f(g, xf + '.m03'), _f(g, xf + '.m13'), _f(g, xf + '.m23')),
+            (_f(g, xf + '.m01'), _f(g, xf + '.m11'), _f(g, xf + '.m21')),
+            (_f(g, xf + '.m00'), _f(g, xf + '.m10'), _f(g, xf + '.m20')))
 
+
+def _actor_of(g, mgr, uid):
+    """CEntity* for uid out of the manager's kOL_All list, or 0 (CObjectList's own test, inline)."""
+    try:
+        list0 = _i(g, '((%s))[0].mItem' % (_OBJ_LIST0 % mgr))
+        if not list0:
+            return 0
+        ent = _i(g, '((CObjectList*)%d)->mObjects[%d].mEntity' % (list0, uid & 0x3FF))
+        if not ent:
+            return 0
+        if _i(g, '((CEntity*)%d)->mUniqueId.value' % ent) != uid:
+            return 0
+        return ent
+    except Exception:
+        return 0
+
+
+class _RestoreBoids(gdb.FinishBreakpoint):
+    def __init__(self, frame, items):
+        super().__init__(frame, internal=True)
+        self.items = items
+
+    def stop(self):
+        for it in self.items:
+            try:
+                # ORIGINAL translation (read before the write), not the target that was written
+                gdb.execute('set var %s.mTransform.m03 = %r' % (it['b'], it['orig'][0]))
+                gdb.execute('set var %s.mTransform.m13 = %r' % (it['b'], it['orig'][1]))
+                gdb.execute('set var %s.mTransform.m23 = %r' % (it['b'], it['orig'][2]))
+                gdb.execute('set var %s.mActive = %d' % (it['b'], it['active']))
+                _log('RESTORE-BOID %s boid=0x%x idx=%d written_target=(%.5f,%.5f,%.5f)'
+                     ' restored_original=(%.5f,%.5f,%.5f) active=%d'
+                     % (it['tag'], it['addr'], it['idx'], it['target'][0], it['target'][1],
+                        it['target'][2], it['orig'][0], it['orig'][1], it['orig'][2],
+                        it['active']))
+            except Exception as e:
+                _log('RESTORE-BOID %s FAILED: %s' % (it['tag'], e))
+        return False
+
+
+class _RestoreGun(gdb.FinishBreakpoint):
     def __init__(self, frame, info):
         super().__init__(frame, internal=True)
         self.info = info
@@ -69,21 +133,122 @@ class _Restore(gdb.FinishBreakpoint):
     def stop(self):
         info = self.info
         try:
-            b = info['b']
-            gdb.execute('set var %s.mTransform.m03 = %r' % (b, info['pos'][0]))
-            gdb.execute('set var %s.mTransform.m13 = %r' % (b, info['pos'][1]))
-            gdb.execute('set var %s.mTransform.m23 = %r' % (b, info['pos'][2]))
-            gdb.execute('set var %s.mActive = %d' % (b, info['active']))
-            _log('RESTORE %s pos=(%.5f,%.5f,%.5f) active=%d'
-                 % (info['tag'], info['pos'][0], info['pos'][1], info['pos'][2], info['active']))
+            gun, elem = info['gun'], info['elem']
+            gdb.execute('set var ((CPlayerGun*)%d)->mSeekerTargets.mCount = %d'
+                        % (gun, info['count']))
+            # the element's two 32-bit words, byte for byte (no float round-trip: a NaN payload or a
+            # signed zero would not survive %r -> parse)
+            gdb.execute('set {int}((char*)(%s) + 0) = %d' % (elem, info['w0']))
+            gdb.execute('set {int}((char*)(%s) + 4) = %d' % (elem, info['w1']))
+            _log('RESTORE-GUN %s gun=0x%x mCount back to %d, element 0 words back to'
+                 ' 0x%08x 0x%08x'
+                 % (info['tag'], gun, info['count'], info['w0'] & 0xFFFFFFFF,
+                    info['w1'] & 0xFFFFFFFF))
         except Exception as e:
-            _log('RESTORE %s FAILED: %s' % (info['tag'], e))
+            _log('RESTORE-GUN %s FAILED: %s' % (info['tag'], e))
         return False
 
 
-def assign_fixture(g):
+def gun_fixture(g):
+    """Supply ONE real swarm seeker-target uid in the player's gun for this call."""
     st = _st
-    st['n'] += 1
+    st['gunCalls'] += 1
+    try:
+        this = _i(g, '$rdi')
+        mgr = _i(g, '$rsi')
+        ntargets = _i(g, '((CSwarmBasics*)%d)->mSeekerTargets.mCount' % this)
+        nboids = _i(g, '((CSwarmBasics*)%d)->mBoids.mCount' % this)
+    except Exception as e:
+        if st['err'] < 4:
+            _log('gun entry read failed: %s' % e)
+        st['err'] += 1
+        return
+    if ntargets <= 0 or nboids <= 0:
+        if st['gunSkipPick'] < 3:
+            _log('no targets/boids yet (targets=%d boids=%d)' % (ntargets, nboids))
+        st['gunSkipPick'] += 1
+        return
+    try:
+        player = _i(g, '(long)((CStateManager*)%d)->mPlayers[0]' % mgr)
+        gun = _i(g, '(long)((CPlayer*)%d)->mGun.mPtr' % player) if player else 0
+    except Exception as e:
+        if st['err'] < 4:
+            _log('gun chain failed: %s' % e)
+        st['err'] += 1
+        return
+    if not player or not gun:
+        if st['gunSkipNoGun'] < 3:
+            _log('no player/gun yet (player=0x%x gun=0x%x)' % (player, gun))
+        st['gunSkipNoGun'] += 1
+        return
+    try:
+        gcount = _i(g, '((CPlayerGun*)%d)->mSeekerTargets.mCount' % gun)
+    except Exception as e:
+        if st['err'] < 4:
+            _log('gun vector read failed: %s' % e)
+        st['err'] += 1
+        return
+    if gcount != 0:
+        if st['gunSkipCount'] < 3:
+            _log('gun already has %d seeker target(s) - left alone' % gcount)
+        st['gunSkipCount'] += 1
+        return
+    pick = None
+    for k in range(ntargets if ntargets < 5 else 5):
+        try:
+            uid = _i(g, '((CSwarmBasics*)%d)->mSeekerTargets.mItems[%d].value' % (this, k))
+            idx = _i(g, '((CSwarmBasics*)%d)->mSeekerBoidIndices.mItems[%d]' % (this, k))
+        except Exception:
+            continue
+        ent = _actor_of(g, mgr, uid) if uid != 0xFFFF else 0
+        if st['gunCalls'] <= 2:
+            _log('slot %d uid=0x%x idx=%d actor=0x%x (boids=%d)' % (k, uid, idx, ent, nboids))
+        if uid == 0xFFFF or idx < 0 or idx >= nboids or not ent:
+            continue
+        pick = (k, uid, idx, ent)
+        break
+    if pick is None:
+        if st['gunSkipPick'] < 5:
+            _log('no slot with a real actor and a valid boid index (targets=%d boids=%d)'
+                 % (ntargets, nboids))
+        st['gunSkipPick'] += 1
+        return
+    slot, uid, idx, ent = pick
+    elem = _GUN_EL % gun
+    try:
+        # raw words of element 0: word 0 is the TUniqueId plus its padding, word 1 the float's bits
+        w0 = _i(g, '*(int*)((char*)(%s) + 0)' % elem)
+        w1 = _i(g, '*(int*)((char*)(%s) + 4)' % elem)
+    except Exception as e:
+        _log('gun element snapshot failed: %s' % e)
+        return
+    tag = 'swb12-gun-%d' % (st['gunWrites'] + 1)
+    try:
+        _RestoreGun(g.newest_frame(), {'gun': gun, 'elem': elem, 'count': gcount,
+                                       'w0': w0, 'w1': w1, 'tag': tag})
+    except Exception as e:
+        _log('%s: restore could not be armed (%s) - no writes' % (tag, e))
+        return
+    try:
+        setv = lambda e, v: g.execute('set var %s = %s' % (e, v))
+        setv('(%s)[0].first.value' % elem, str(uid))
+        setv('(%s)[0].second' % elem, '0.5')
+        setv('((CPlayerGun*)%d)->mSeekerTargets.mCount' % gun, '1')
+    except Exception as e:
+        _log('%s write failed: %s' % (tag, e))
+        return
+    st['gunWrites'] += 1
+    st['takenIdx'], st['takenUid'], st['takenSlot'] = idx, uid, slot
+    _log('%s gun=0x%x player=0x%x swarm=0x%x slot=%d uid=0x%x actor=0x%x boid_idx=%d of %d'
+         ' mCount %d->1 (element 0 words were 0x%08x 0x%08x)'
+         % (tag, gun, player, this, slot, uid, ent, idx, nboids, gcount,
+            w0 & 0xFFFFFFFF, w1 & 0xFFFFFFFF))
+
+
+def assign_fixture(g):
+    """One boid geometry per call, restored at the call's return."""
+    st = _st
+    st['assignCalls'] += 1
     try:
         this = _i(g, '$rdi')
         mgr = _i(g, '$rsi')
@@ -94,94 +259,111 @@ def assign_fixture(g):
         items = _i(g, '((CSwarmBasics*)%d)->mBoids.mItems' % this)
     except Exception as e:
         if st['err'] < 4:
-            _log('entry read failed: %s' % e)
+            _log('assign entry read failed: %s' % e)
         st['err'] += 1
         return
-    tcount = -1
-    ocount = -1
-    if taken:
-        try:
-            tcount = _i(g, '((%s*)%d)->mCount' % (_VEC, taken))
-        except Exception:
-            tcount = -2
-    if out:
-        try:
-            ocount = _i(g, '((%s*)%d)->mCount' % (_VEC, out))
-        except Exception:
-            ocount = -2
+    tcount = ocount = -1
+    try:
+        if taken:
+            tcount = _i(g, '((%s*)%d)->mCount' % (_VEC_U, taken))
+    except Exception:
+        tcount = -2
+    try:
+        if out:
+            ocount = _i(g, '((%s*)%d)->mCount' % (_VEC_U, out))
+    except Exception:
+        ocount = -2
+    if count <= 0 or items <= 0 or not taken:
+        return
+    # the index to place in front comes from THIS call's taken vector, never from a global left by
+    # an earlier call (or by another swarm's call): guarded read of its single entry
+    taken_first = -1
     if tcount > 0:
-        if st['takenSeen'] < 5:
-            _log('TAKEN non-empty: %d entries, numNeeded=%d out.size=%d' % (tcount, needed, ocount))
-        st['takenSeen'] += 1
-    phase = st['n'] % 3
-    if phase == 2 or count <= 0 or items <= 0:
-        if st['logN'] % 100 == 0:
-            _log('CALL %d phase=%d taken=%d needed=%d out=%d boids=%d (no move)'
-                 % (st['n'], phase, tcount, needed, ocount, count))
-        st['logN'] += 1
+        try:
+            v = _i(g, '((%s*)%d)->mItems[0]' % (_VEC_U, taken))
+            taken_first = v if 0 <= v < count else -1
+        except Exception:
+            taken_first = -1
+    phase = st['assignCalls'] % 4
+    cam = _cam(g, mgr) if phase in (0, 1, 3) else None
+    moves = []
+    if phase == 0 and cam:
+        moves.append((0, (cam[0][0] + 1.0e6, cam[0][1], cam[0][2])))
+    elif phase == 1 and cam:
+        moves.append((0, cam[0]))
+    elif phase == 3 and cam and taken_first >= 0:
+        # swb12 measured 27/28 with only two boids moved: 1682:1/4 (the `out.size() < numNeeded`
+        # false exit) needs `out` to actually reach numNeeded, i.e. numNeeded candidates that are
+        # NOT in `taken`.  So move min(count, numNeeded + 1) boids into the cone: the taken one
+        # first (index equality) and the rest as distinct non-taken indices (inequality), and the
+        # caller's newBoids has capacity numLost == numNeeded, so out stops exactly at the limit.
+        # NOTE: this wider cone is DERIVED from that uncovered arm, not yet measured.
+        eye, fwd, right = cam
+        ahead = (eye[0] + 2.0 * fwd[0], eye[1] + 2.0 * fwd[1], eye[2] + 2.0 * fwd[2])
+        want = min(count, (needed if needed > 0 else 1) + 1)
+        moves.append((taken_first, ahead))
+        for k in range(1, want):
+            idx = (taken_first + k) % count
+            if idx == taken_first:
+                break
+            lateral = 0.05 * k
+            moves.append((idx, (ahead[0] + lateral * right[0], ahead[1] + lateral * right[1],
+                                ahead[2] + lateral * right[2])))
+    if not moves:
+        if phase == 2 and st['assignCalls'] % 100 == 0:
+            _log('CALL %d phase=2 (no move) taken=%d needed=%d out=%d boids=%d'
+                 % (st['assignCalls'], tcount, needed, ocount, count))
         return
+    plan = []
+    for idx, target in moves:
+        b = '((CSwarmBasics*)%d)->mBoids.mItems[%d]' % (this, idx)
+        try:
+            # the ORIGINAL translation, read before anything is written to this boid
+            orig = (_f(g, b + '.mTransform.m03'), _f(g, b + '.mTransform.m13'),
+                    _f(g, b + '.mTransform.m23'))
+            plan.append({'b': b, 'idx': idx, 'target': target, 'orig': orig,
+                         'active': _i(g, b + '.mActive'),
+                         'addr': _i(g, '&' + b),
+                         'tag': 'swb12-%d-ph%d' % (st['apply'] + 1, phase)})
+        except Exception as e:
+            _log('boid %d read failed: %s' % (idx, e))
+            return
     try:
-        cam = _i(g, '(long)((CStateManager*)%d)->mCameraManagers[0]' % mgr)
-        fp = _i(g, '(long)((CCameraManager*)%d)->mFpCamera' % cam) if cam else 0
+        _RestoreBoids(g.newest_frame(), plan)
     except Exception as e:
-        if st['err'] < 4:
-            _log('camera chain failed: %s' % e)
-        st['err'] += 1
+        _log('boid restores could not be armed (%s) - no writes' % e)
         return
-    if not cam or not fp:
-        if st['err'] < 4:
-            _log('no first-person camera yet (manager=0x%x camera=0x%x)' % (cam, fp))
-        st['err'] += 1
-        return
-    xf = '((CActor*)%d)->mTransform' % fp
-    try:
-        cpos = (_f(g, xf + '.m03'), _f(g, xf + '.m13'), _f(g, xf + '.m23'))
-    except Exception as e:
-        if st['err'] < 4:
-            _log('camera transform read failed: %s' % e)
-        st['err'] += 1
-        return
-    idx = 0
-    b = '((CSwarmBasics*)%d)->mBoids.mItems[%d]' % (this, idx)
-    try:
-        pos = (_f(g, b + '.mTransform.m03'), _f(g, b + '.mTransform.m13'),
-               _f(g, b + '.mTransform.m23'))
-        active = _i(g, b + '.mActive')
-        boid = _i(g, '&' + b)
-    except Exception as e:
-        if st['err'] < 4:
-            _log('boid read failed: %s' % e)
-        st['err'] += 1
-        return
-    if phase == 0:
-        target = (cpos[0] + 1.0e6, cpos[1], cpos[2])
-    else:
-        target = cpos
-    tag = 'swb11-%d-ph%d' % (st['apply'] + 1, phase)
-    try:
-        setv = lambda e, v: g.execute('set var %s = %s' % (e, v))
-        setv(b + '.mTransform.m03', repr(target[0]))
-        setv(b + '.mTransform.m13', repr(target[1]))
-        setv(b + '.mTransform.m23', repr(target[2]))
-        setv(b + '.mActive', '1')
-    except Exception as e:
-        _log('APPLY %s write failed: %s' % (tag, e))
-        return
-    st['apply'] += 1
-    _log('APPLY %s swarm=0x%x boid=0x%x idx=%d of %d was_active=%d taken=%d needed=%d out=%d'
-         ' camera=0x%x cam_pos=(%.5f,%.5f,%.5f) target=(%.5f,%.5f,%.5f) saved=(%.5f,%.5f,%.5f)'
-         % (tag, this, boid, idx, count, active, tcount, needed, ocount, fp,
-            cpos[0], cpos[1], cpos[2], target[0], target[1], target[2],
-            pos[0], pos[1], pos[2]))
-    try:
-        _Restore(g.newest_frame(), {'b': b, 'pos': pos, 'active': active, 'tag': tag})
-    except Exception as e:
-        _log('RESTORE %s could not be armed: %s' % (tag, e))
+    wrote = []
+    for it in plan:
+        try:
+            g.execute('set var %s.mTransform.m03 = %r' % (it['b'], it['target'][0]))
+            g.execute('set var %s.mTransform.m13 = %r' % (it['b'], it['target'][1]))
+            g.execute('set var %s.mTransform.m23 = %r' % (it['b'], it['target'][2]))
+            g.execute('set var %s.mActive = 1' % it['b'])
+            wrote.append(it)
+        except Exception as e:
+            _log('APPLY %s write failed on idx %d: %s' % (it['tag'], it['idx'], e))
+            return
+    if wrote:
+        st['apply'] += 1
+        _log('APPLY %s swarm=0x%x boids=%d taken=%d needed=%d out=%d moved=%s was_active=%s'
+             ' targets=(%s) originals=(%s) cam=(%.5f,%.5f,%.5f) taken_first=%d'
+             % (wrote[0]['tag'], this, count, tcount, needed, ocount,
+                ','.join(str(it['idx']) for it in wrote),
+                ','.join(str(it['active']) for it in wrote),
+                ';'.join('(%.4f,%.4f,%.4f)' % it['target'] for it in wrote),
+                ';'.join('(%.4f,%.4f,%.4f)' % it['orig'] for it in wrote),
+                cam[0][0] if cam else 0.0, cam[0][1] if cam else 0.0, cam[0][2] if cam else 0.0,
+                taken_first))
 
 
 FORCE = [
+    ('1978 caller gun target', 'CSwarmBasics::UpdateSeekerTargets(', [], [gun_fixture], 0,
+     "one real swarm seeker-target uid (an existing kMT_SeekerTarget actor with a valid boid index)"
+     " is supplied as the gun's only target so the caller itself builds a non-empty taken; the gun"
+     ' vector and the element bits are restored when the call returns'),
     ('1978 seeker geometry', 'CSwarmBasics::AssignSeekerBoids(', [], [assign_fixture], 0,
-     'one existing boid of the swarm is put beyond the orbit distance (the continue arm) and'
-     ' exactly at the camera (CanBeNormalized false), restored when the call returns; the'
-     ' taken/numNeeded/out vectors stay the caller\'s own'),
+     'ph0 beyond the orbit distance, ph1 exactly at the camera, ph2 natural, ph3 the taken boid and'
+     ' a second boid in front of the camera (equality and inequality of the taken scan); restored at'
+     " the call's return"),
 ]

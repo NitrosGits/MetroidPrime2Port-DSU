@@ -1,0 +1,12 @@
+# Torvus 0g_swamp_hall layer 3, for swb12 (AssignSeekerBoids fn_80_1978): no input is needed.
+# The swarm's five kMT_SeekerTarget actors exist from kSM_Create, and the spec supplies one of their
+# uids in the gun's own seeker-target vector for one call, so the real caller
+# (UpdateSeekerTargets) builds a non-empty keptBoids by itself.  The player only has to stand in the
+# area with a camera; god mode keeps the swarm's contact damage out of the way.
+@f220 layer 3
+@f300 god 1
+@f340 tp -157.4 -63.1 39.5
+@f360 visor combat
+@f400 objs swarm
+@f1100 objs swarm
+@f1150 items
