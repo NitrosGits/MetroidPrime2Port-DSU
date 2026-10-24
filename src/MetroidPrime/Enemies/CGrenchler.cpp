@@ -3414,6 +3414,7 @@ CVector3f CGrenchler::GetManeuverTarget(CStateManager& mgr) const {
   return bestHint->GetTranslation();
 }
 
+// @ fn_27_533C
 void CGrenchler::Maneuver(CStateManager& mgr, EStateMsg msg, float dt) {
   if (mIsGrappleGuardian == true) {
     return;
