@@ -144,3 +144,16 @@ Not marked (gcov line:arm untaken):
 | RestoreDefaultJointVulnerability | never ran |
 | UpdateDamageFlash | 3/9 lines |
 | GrappleSlide, GrappleSlideBonk, GrappleStruggle | not entered: no immune dynamic solid lies in the beam path in either area |
+
+## Markers from merged coverage (gren3, 2026-10-24)
+
+Reran the gren1/gren2 drivers (`/tmp/opencode/gren3/runall.sh`, build-port-cov), merged gcov: 249 functions, 41 with
+every arm taken. 24 more bodies marked after a static asm check (`asmcheck` NOPOS/BIT hits verified by hand, MWCC
+bitfields MSB-first): 4978 6240 6274 7798 8FB4 8FC0 94D0 A5B8 B800 B824 B8F0 BFF0 D3C4 E188 EC50 EDB0 EEE0 12118
+12430 12EA8 12FB4 13034 1320C 139D4. UpdateMovement (D3C4): 3.6 (rodata_250) and 1.7 (rodata_258) confirmed; the
+TARGET_PC arm without the 2x stays as is. Ctor constants checked: -1000, 1.0, 0.15.
+
+Not closed (no forced arms run this slice): bodies with 1-2 untaken arms (StartElectricBeam, CreateCollisionManager,
+ReleasePlayer, Charge, GrappleSlide/Bonk/Struggle/Break, Patrol, GetContactDamage, BeamBadAngle, BeamHitWall,
+PickGrappleSide, PauseBetweenBites, DeliverCommand defaults) and zero-coverage bodies (IsBeamBlockedByHint,
+IsNearAvoidHint, GetJumpCost, StruggleOver, StopStruggling). They need new `.con` drivers / forced arms.
