@@ -60,6 +60,7 @@
 @f2820 obj u051f
 @f2885 shoot u051f 
 @f3000 beam light
+@f3001 fsm u051f Taunt
 @f3005 shoot u051f 
 @f3125 shoot u051f charged
 @f3180 obj u051f
@@ -83,6 +84,8 @@
 @f4325 shoot u051f 
 @f4440 beam light
 @f4445 shoot u051f 
+@f4500 kill u051f
+@f4540 objs SpaceJumpGuardian
 @f4565 shoot u051f charged
 @f4620 obj u051f
 @f4680 beam dark
@@ -96,5 +99,6 @@
 @f5165 shoot u051f missile
 @f5300 obj u051f
 @f5400 kill u051f
+@f5440 objs SpaceJumpGuardian
 @f5450 obj u051f
 @f5900 obj u051f

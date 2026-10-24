@@ -18,6 +18,8 @@
 @f1600 tp 154 -84 25
 @f2000 obj u05c4; obj u05be
 @f2140 damage u05be 5 1 missile; obj u05be
+@f2142 fsm u05be Lurk
+@f2144 obj u05be
 @f2150 obj u05be
 @f2250 damage u05c4 400; damage u0596 400 0 light; objs grenchler
 @f2260 send u05c4 Delete; send u0596 Delete

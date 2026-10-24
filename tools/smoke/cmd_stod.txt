@@ -30,6 +30,10 @@
 @f300 god 1; give LightBeam 1; beam light; objs StoneToad; obj e00410048; obj e00410066
 @f320 send e00410043 Activate
 @f330 damage e00410066 1
+@f332 damage e00410066 1 missile
+@f334 obj e00410066
+@f336 damage e00410066 1 light
+@f338 obj e00410066
 @f340 shoot e00410066
 @f380 obj e00410048; obj e00410066
 @f460 obj e00410048; obj e00410066
@@ -37,6 +41,12 @@
 @f600 send e00410043 Deactivate; send e00410048 Decrement
 @f660 obj e00410048; obj e00410066
 @f760 obj e00410048; obj e00410066; shoot e00410066 missile
+@f770 fsm e00410066 WakeUp
+@f780 obj e00410066
+@f800 obj e00410048; obj e00410066; damage e00410066 5 missile; hurt e00410066 5 missile
+@f820 obj e00410066
+@f830 shoot e00410066 missile
+@f840 obj e00410066
 @f860 obj e00410048; obj e00410066; send e00410066 Increment
 @f960 obj e00410048; obj e00410066; send e00410066 Decrement
 @f1060 obj e00410048; obj e00410066; send e00410066 AIUpdateDisabled
@@ -46,3 +56,4 @@
 @f1220 send e00410066 Delete
 @f1260 obj e00410048; objs StoneToad
 @f1300 obj e00410048; objs StoneToad
+@f1400 obj e00410048; objs StoneToad

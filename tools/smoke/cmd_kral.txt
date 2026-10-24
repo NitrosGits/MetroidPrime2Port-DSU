@@ -36,8 +36,16 @@
 @f800 visor dark
 @f860 send e00100090 Increment; visor combat
 @f900 obj e0010008f
-@f920 damage e0010008f 1
+@f905 damage e0010008f 1 missile
+@f910 obj e0010008f
+@f915 damage e0010008f 1 dark
+@f920 obj e0010008f
+@f925 damage e0010008f 1 light
+@f930 obj e0010008f
+@f935 damage e0010008f 1 powerbomb
 @f940 obj e0010008f
+@f945 fsm e00100090 WarpOut
+@f950 obj e00100090
 @f960 setarea e0010008f 16; obj e0010008f
 @f1000 kill e0010008f
 @f1100 visor dark
