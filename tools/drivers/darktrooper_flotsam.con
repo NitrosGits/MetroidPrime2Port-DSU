@@ -1,0 +1,24 @@
+# DarkTrooper (REL 12), flotsam placements (hanging, ragdoll from AreaLoaded): 0e_temple_hive_hall L0
+# (e000c0045 e000c0055 e000c0047 e000c0052 e000c004d), 01_temple_hive_04 L0 (e000b0031),
+# 05_temple_federationsite L9 (e002b0259 e002b0242). Set EID to the area's first id below via sed or
+# pass --con a copy; the default run is hive_hall:
+#   BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/darktrooper.py <out> 3bfa3eff,0e_temple_hive_hall \
+#     --con tools/drivers/darktrooper_flotsam.con --fast --frames 3000
+# Hits a hanging trooper with knockback (the flotsam KnockBack arm with a ragdoll), power, missile, then
+# kills one and knocks it again (the ragdoll after death), steps the player under another.
+@f300 god 1; give missile 50
+@f302 layer 1; layer 2; layer 3; layer 4; layer 5; layer 6; layer 7; layer 8; layer 9
+@f330 tp 85 -345 -95
+@f500 obj e000c0045; obj e000c0055
+@f700 damage e000c0045 2 5
+@f800 damage e000c0055 2 5 missile
+@f900 damage e000c0047 2
+@f1000 damage e000c0052 2 8 darkburst
+@f1200 damage e000c0045 999 5
+@f1400 damage e000c0045 2 5
+@f1500 damage e000c0055 999 5 missile
+@f1700 place e000c0047 player 3
+@f1800 damage e000c0047 999
+@f2000 damage e000c0052 999 5
+@f2200 damage e000c004d 5 5 power
+@f2400 obj e000c0045; obj e000c004d; objs DarkTrooper

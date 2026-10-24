@@ -1,0 +1,25 @@
+# DarkTrooper (REL 12), Temple Grounds 01_temple_hive01 layer 6: the Dark Missile Trooper u058a (e00060251,
+# mFiresMissiles=1 from the placement). Wake, alert (boss params), walk the state table, missile attack,
+# damage, kill. Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/darktrooper.py <out> \
+#   3bfa3eff,01_temple_hive01 --con tools/drivers/darktrooper_hive01.con --fast --frames 4600
+@f300 god 1; give missile 50
+@f302 layer 6
+@f400 tp 37 -225 -105
+@f420 send u058a Activate
+@f440 send u058a Alert
+@f600 obj u058a
+@f700 place u058a player 12; fsm u058a Pursue
+@f1000 fsm u058a SmallShotAttack
+@f1300 place u058a player 14; fsm u058a MissileAttack
+@f1500 place u058a player 4; fsm u058a MeleeAttack
+@f1700 fsm u058a Pause
+@f1900 place u058a player 7; fsm u058a Pursue
+@f2200 damage u058a 2
+@f2300 damage u058a 2 0 missile
+@f2500 place u058a player 20; fsm u058a MissileAttack
+@f2900 fsm u058a Sleep
+@f3100 fsm u058a Rise
+@f3300 fsm u058a Pursue
+@f3600 obj u058a
+@f3700 damage u058a 999 0 missile
+@f4300 obj u058a; objs DarkTrooper

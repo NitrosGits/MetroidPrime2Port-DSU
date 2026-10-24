@@ -1,0 +1,17 @@
+# DarkTrooper (REL 12), script messages the fights never send, on the hive_hall flotsam troopers (ragdoll
+# held) : Decrement with a ragdoll, Create/Deactivate/AIUpdateDisabled/Landed/Launching/OffGround (the no-op
+# cases), ReflectedDamage, AreaLoaded again (flotsam arm), Activate, Alert. Run:
+#   BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/darktrooper.py <out> 3bfa3eff,0e_temple_hive_hall \
+#     --con tools/drivers/darktrooper_msgs.con --fast --frames 2400
+@f300 god 1; give missile 50
+@f302 layer 1; layer 2; layer 3; layer 4; layer 5; layer 6; layer 7; layer 8; layer 9
+@f330 tp 85 -345 -95
+@f500 send e000c0045 Decrement; send e000c0055 Decrement
+@f520 send e000c0047 Create; send e000c0047 Deactivate; send e000c0047 AIUpdateDisabled
+@f540 send e000c0047 Landed; send e000c0047 Launching; send e000c0047 OffGround
+@f560 send e000c0052 ReflectedDamage; send e000c0052 Activate; send e000c0052 Alert
+@f600 send e000c004d AreaLoaded; send e000c0052 AreaLoaded
+@f700 damage e000c0045 2 5; damage e000c0045 999 5
+@f900 send e000c0045 Decrement
+@f1100 damage e000c0047 2; send e000c0047 Damage
+@f1500 objs DarkTrooper

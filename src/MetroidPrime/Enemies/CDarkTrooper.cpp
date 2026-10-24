@@ -566,6 +566,7 @@ void CDarkTrooper::PreThink(float dt, CStateManager& mgr) {
   CPatterned::PreThink(dt, mgr);
 }
 
+// @ fn_12_364C
 void CDarkTrooper::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -789,6 +790,7 @@ void CDarkTrooper::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   DeliverCommand(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_One));
 }
 
+// @ fn_12_24BC
 void CDarkTrooper::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(2, msg);
   const CVector3f target = GetTargetPosition(mgr);

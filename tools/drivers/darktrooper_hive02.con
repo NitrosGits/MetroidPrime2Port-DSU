@@ -1,0 +1,26 @@
+# DarkTrooper (REL 12), Temple Grounds 01_temple_hive02 layers 1-3: flotsam (hanging/pulled: u0656 001301d9,
+# u0526 001301a0 avoidDownFrames, u04c5 001300e8) and avoidDownFrames troopers. Wake, alert, hurt, kill.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/darktrooper.py <out> 3bfa3eff,01_temple_hive02 \
+#        --con tools/drivers/darktrooper_hive02.con --fast --frames 6000
+@f300 god 1; give missile 50
+@f302 layer 1; layer 2; layer 3
+@f320 tp 140 -430 -105
+@f340 send u0656 Activate; send u0526 Activate; send u04c5 Activate; send u0554 Activate; send u0552 Activate; send u054c Activate; send u04f4 Activate
+@f360 send u0656 Alert; send u0526 Alert; send u04c5 Alert; send u0661 Alert; send u054a Alert; send u0540 Alert
+@f600 obj u0656; obj u0526; obj u04c5
+@f900 place u0526 player 10; place u0656 player 12
+@f1200 fsm u0526 Sleep; fsm u0656 Sleep
+@f1500 fsm u0526 Rise; fsm u0656 Rise
+@f1800 fsm u0526 Pursue; fsm u0656 Pursue
+@f2100 damage u0526 2 5; damage u0656 2 5; damage u04c5 2 5
+@f2300 damage u0526 2 0 missile; damage u0656 2 0 missile
+@f2500 place u0526 player 2; place u0656 player 3
+@f2510 fsm u0526 MeleeAttack; fsm u0656 MeleeAttack
+@f2800 fsm u0526 Pause; fsm u0656 Pause
+@f3000 fsm u0526 SmallShotAttack; fsm u0656 SmallShotAttack
+@f3300 place u04c5 player 8; fsm u04c5 Sleep
+@f3500 fsm u04c5 Pursue
+@f3800 damage u0526 999; damage u0656 999 0 missile; damage u04c5 999
+@f4200 damage u054a 999 0 darkburst; damage u0540 999
+@f4600 obj u0526; obj u0656; obj u04c5
+@f5000 objs DarkTrooper

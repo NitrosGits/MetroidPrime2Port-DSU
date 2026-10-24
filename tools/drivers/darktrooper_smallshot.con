@@ -1,0 +1,67 @@
+# DarkTrooper (REL 12), small-shot and sleep episodes (dtr6): Temple Grounds 04_temple_unknownenemies, player at
+# 160 180 -39. u049d is placed at distance d with yaw y and driven into SmallShotAttack (FireSmallShot's facing,
+# range and morphed arms), then morphed (press X); then Sleep/Rise repeated (the Range(0,1) < 0.5 draw picks the
+# locomotion type), Decrement with no ragdoll, and Damage while the Sleep transition runs (mTransitioning).
+#   BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/darktrooper.py <out> 3bfa3eff,04_temple_unknownenemies \
+#     --con tools/drivers/darktrooper_smallshot.con --fast --frames 5200
+@f300 god 1; give missile 50
+@f302 layer 2; layer 3
+@f310 tp 160 180 -39
+@f330 send u049d Activate; send u0488 Activate; send u0487 Activate
+@f340 send u049d Alert; send u0488 Alert; send u0487 Alert
+@f500 obj u049d
+@f700 fsm u049d Pursue
+@f900 place u049d 160 183 -39 0; fsm u049d SmallShotAttack
+@f960 obj u049d
+@f970 place u049d 160 183 -39 180; fsm u049d SmallShotAttack
+@f1030 obj u049d
+@f1040 place u049d 160 183 -39 90; fsm u049d SmallShotAttack
+@f1100 obj u049d
+@f1110 place u049d 160 188 -39 0; fsm u049d SmallShotAttack
+@f1170 obj u049d
+@f1180 place u049d 160 188 -39 180; fsm u049d SmallShotAttack
+@f1240 obj u049d
+@f1250 place u049d 160 188 -39 90; fsm u049d SmallShotAttack
+@f1310 obj u049d
+@f1320 place u049d 160 195 -39 0; fsm u049d SmallShotAttack
+@f1380 obj u049d
+@f1390 place u049d 160 195 -39 180; fsm u049d SmallShotAttack
+@f1450 obj u049d
+@f1460 place u049d 160 195 -39 90; fsm u049d SmallShotAttack
+@f1520 obj u049d
+@f1530 place u049d 160 220 -39 0; fsm u049d SmallShotAttack
+@f1590 obj u049d
+@f1600 place u049d 160 220 -39 180; fsm u049d SmallShotAttack
+@f1660 obj u049d
+@f1670 place u049d 160 220 -39 90; fsm u049d SmallShotAttack
+@f1730 obj u049d
+@f1740 press X 8
+@f1820 place u049d 160 188 -39 0; fsm u049d SmallShotAttack
+@f1900 place u049d 160 195 -39 0; fsm u049d SmallShotAttack
+@f1980 place u049d 160 188 -39 180; fsm u049d SmallShotAttack
+@f2060 press X 8
+@f2140 place u049d player 10; fsm u049d Sleep
+@f2143 damage u049d 2
+@f2148 send u049d Decrement
+@f2208 fsm u049d Rise
+@f2268 place u049d player 10; fsm u049d Sleep
+@f2271 damage u049d 2
+@f2276 send u049d Decrement
+@f2336 fsm u049d Rise
+@f2396 place u049d player 10; fsm u049d Sleep
+@f2399 damage u049d 2
+@f2404 send u049d Decrement
+@f2464 fsm u049d Rise
+@f2524 place u049d player 10; fsm u049d Sleep
+@f2527 damage u049d 2
+@f2532 send u049d Decrement
+@f2592 fsm u049d Rise
+@f2652 place u049d player 10; fsm u049d Sleep
+@f2655 damage u049d 2
+@f2660 send u049d Decrement
+@f2720 fsm u049d Rise
+@f2780 place u049d player 10; fsm u049d Sleep
+@f2783 damage u049d 2
+@f2788 send u049d Decrement
+@f2848 fsm u049d Rise
+@f2908 objs DarkTrooper
