@@ -1094,8 +1094,15 @@ void CScriptGuiFrontEndScreen::SetPercentText(CScriptTextPane* pane, float value
 
 void CScriptGuiFrontEndScreen::ShowSlideShow(CStateManager& mgr) {
   CArchitectureQueue& queue = mgr.ArchQueue();
+#ifdef TARGET_PC
+  CSlideShow* slideShow = rs_new CSlideShow();
+  slideShow->mPortMgr = &mgr;
+  queue.Push(MakeMsg::CreateCreateIOWin(kAMT_IOWinManager, sSlideShowMsgPriority,
+                                        sSlideShowDrawPriority, slideShow));
+#else
   queue.Push(MakeMsg::CreateCreateIOWin(kAMT_IOWinManager, sSlideShowMsgPriority,
                                         sSlideShowDrawPriority, rs_new CSlideShow()));
+#endif
 }
 
 // @ fn_60_BD0

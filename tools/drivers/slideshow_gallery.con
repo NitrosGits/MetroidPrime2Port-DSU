@@ -1,0 +1,22 @@
+# Gallery slideshow smoke (FrontEnd world 69802220,cee3af0d, run with SKIP_FRONTEND=0): `gallery 63`
+# unlocks all six galleries (a forced ShowSlideShow with mask 0 faults in retail too), `send e0
+# InternalMessage13` is ShowSlideShow. The game's first update is ~70 s in and the slideshow loads
+# its pak for a few seconds after that; it stops the update counter, so the steps are wall-clock
+# (`@<secs>`) and a hold lasts until the next press/stick, so each press is released with `stick 0 0`.
+# Press right x2 (slides), a, left (gallery wraps), then B leaves; the run ends on MP2_FRAMES.
+# The game logs `[slideshow] phase/gallery/slide` as it goes.
+@f100 send e0 Unlock
+@f110 gallery
+@f120 gallery 63
+@f200 send e0 InternalMessage13
+@95 press right 0
+@97 stick 0 0
+@99 press right 0
+@101 stick 0 0
+@103 press a 0
+@105 stick 0 0
+@107 press left 0
+@109 stick 0 0
+@111 press b 0
+@113 stick 0 0
+@115 status

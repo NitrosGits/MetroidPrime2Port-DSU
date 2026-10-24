@@ -16,6 +16,7 @@ class CDependencyGroup;
 class CFinalInput;
 class CGuiTextSupport;
 class CRSFAudio;
+class CStateManager;
 class CStringTable;
 class CTexture;
 
@@ -30,6 +31,11 @@ public:
   void Draw() const override;
 
   static uint GetGalleriesUnlocked();
+
+#ifdef TARGET_PC
+  // The state manager that opened the slideshow; its timer tick serves the port console.
+  CStateManager* mPortMgr = nullptr;
+#endif
 
 private:
   struct SGalleryData {
