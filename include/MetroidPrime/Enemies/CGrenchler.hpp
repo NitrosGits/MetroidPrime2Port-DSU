@@ -284,9 +284,11 @@ public:
   // CAi
   void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
   void TakeDamage(const CVector3f& direction, float magnitude) override;
+  // @ fn_27_94
   bool CanBeShot(const CStateManager& mgr, int weaponType) override { return true; }
 
   // CPatterned
+  // @ fn_27_0
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   CDamageInfo GetContactDamage() const override;
   bool CanBeUnPossessed(CStateManager& mgr) const override;
