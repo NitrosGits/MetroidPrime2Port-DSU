@@ -3,7 +3,7 @@
 # fire at the player start. Steps follow tools/cov/specs/gunturret_0i_sand_hall.con (the gt1
 # coverage driver: the fight, the base's FSM states, the top's PowerDown/PowerUp and Death).
 # This is not the `turret` family: that one runs M06_ShootingGallery, the player's own turret.
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2600, last check f2360.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2600, last check f2400.
 @f300 god 1; give missile 50
 @f400 objs GunTurret; obj u043d; obj u043a
 @f500 tp 350 -180 20
@@ -33,3 +33,9 @@
 @f2340 send u0424 Delete
 @f2350 objs GunTurret; status
 @f2360 objs GunTurret
+
+# Added count drop: kill did not remove the base, so send Delete; objs shows the drop.
+@f2370 objs GunTurret
+@f2380 kill u0423
+@f2390 send u0423 Delete
+@f2400 objs GunTurret

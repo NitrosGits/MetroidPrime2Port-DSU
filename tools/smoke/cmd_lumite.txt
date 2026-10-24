@@ -34,3 +34,8 @@
 @f2250 damage u045a 999
 @f2280 objs lumite
 @f2320 status
+
+# Added kill: lethal damage on a second Lumite, then objs.
+@f2330 obj u0438
+@f2340 damage u0438 999
+@f2370 objs lumite

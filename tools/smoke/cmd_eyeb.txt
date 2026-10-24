@@ -3,7 +3,7 @@
 # The steps exercise one of them (u041d 001c002e): activate and place it, force InActive/Active/
 # Cover/Flinch, send Alert, shoot it (power beam and missile), then kill it, with `obj` reads and
 # `objs EyeBall` before and after. Checks are game updates (@f<n>), never wall seconds.
-# F=2000, last check f1800.
+# F=2100, last check f1900.
 @f240 objs EyeBall
 @f280 obj u041d
 @f320 send u041d Activate; place u041d player 5
@@ -21,3 +21,8 @@
 @f720 kill u041d
 @f760 objs EyeBall
 @f1800 objs EyeBall
+
+# Added hp fall on a fresh eye (u0452): activate, place, damage, obj read.
+@f1820 send u0452 Activate; place u0452 player 5
+@f1860 obj u0452
+@f1900 damage u0452 1 0 powerbomb; obj u0452
