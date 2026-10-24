@@ -179,6 +179,7 @@ CDarkTrooper::CDarkTrooper(TUniqueId uid, const rstl::string& name, const CEntit
 
 CDarkTrooper::~CDarkTrooper() {}
 
+// @ fn_12_549C
 CScannableObjectInfo* CDarkTrooper::GetScannableObjectInfo() const {
   if (mAlive && GetActive() && (!mTransitioning || mAttackState == 3) && mAttackScanInfo.get()) {
     return **mAttackScanInfo;
@@ -302,6 +303,7 @@ void CDarkTrooper::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   }
 }
 
+// @ fn_12_4B80
 void CDarkTrooper::PreRender(CStateManager& mgr) {
   if (mRagDollHolder.mRagDoll.get() && mRagDollHolder.mRagDoll->IsPrimed()) {
     mRagDollHolder.mRagDoll->PreRender(GetTranslation(), *ModelData());
@@ -342,6 +344,7 @@ CVector3f CDarkTrooper::GetAimPosition(const CStateManager&, float dt) const {
   return offset;
 }
 
+// @ fn_12_46B4
 void CDarkTrooper::FireSmallShot(CStateManager& mgr) {
   if (mSmallShotAttack.mProjectile) {
     CVector3f target = GetTargetPosition(mgr);
@@ -702,6 +705,7 @@ void CDarkTrooper::Touch(CActor& actor, CStateManager& mgr) {
   }
 }
 
+// @ fn_12_2F80
 void CDarkTrooper::PreRenderAllViewports(CStateManager& mgr) {
   if (mRagDollHolder.mRagDoll.get() && mRagDollHolder.mRagDoll->IsPrimed()) {
     mRagDollHolder.mRagDoll->PreRenderAllViewports(*this, 0.2f);
