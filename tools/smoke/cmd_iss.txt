@@ -29,3 +29,5 @@
 @f2085 place e000e018b player 0.5
 @f2300 objs Snatch
 @f2800 objs Snatch
+
+# No fsm change: CIngSnatchingSwarm is a CActor with a private FSM2; console fsm/statecall require CPatterned, so its states cannot be driven or shown through the console.

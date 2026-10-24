@@ -13,3 +13,5 @@
 @f440 send u044c Delete
 @f480 objs IngBlobSwarm
 @f2300 objs IngBlobSwarm
+
+# No fsm change: CIngBlobSwarm (CSwarmBasics -> CActor) has no generic FSM2 state (obj prints none) - swarm family.
