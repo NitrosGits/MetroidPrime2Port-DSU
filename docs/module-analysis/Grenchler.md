@@ -182,3 +182,19 @@ Marked with all arms taken (driver `tools/cov/specs/grenchler_gren5.con` in 08_s
 | DeliverCommand<ProjectileAttack/Step/MeleeAttack/Taunt> 13CA8/13DB4/13ED0/13FDC | 6/6 each | forced (statecall msg 0-3) |
 
 asmcheck leftovers are tool limits: unported-callee notes (DestroyGrappleBeam, SetSubmerged, CLineSeg ctor are cited elsewhere or inlined), bitfield NOPOS/BIT (MSB-first, checked by hand), Charge BRANCH count (inlined helpers).
+
+## gren6 (small predicates, 2026-10-24)
+
+Driver `tools/cov/specs/grenchler_gren6.con` (guardian area, frames 1500, `--fast`), alone on a fresh cov build
+(older gcda mismatch the new notes). Asm checked line by line (constants 2, 1, 0, pi/2, 0.2, 1.5882496,
+1.675516 read from the rodata; JustHit NaN arms: `ble` taken -> false, the C++ `>` agrees).
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| UpdateDamageFlash 1FAC | 2/2 | forced (gren.flash 0/5, gren.fncall 4) |
+| SpawnBeamHitEffect 3048 | 7/7 | forced (gren.fncall 5, 6 = no explosion asset) |
+| JustHit 48C8 | 8/8 | forced (gren.guardian, gren.lasthit, gren.turn 0/1, gren.fncall 1) |
+| PlayerBehindMe 85C4 | 2/2 | forced (gren.x2c, gren.fncall 2) |
+| LaunchToJumpTarget 96E0 | 2/2 | forced (gren.launched, gren.fncall 3) |
+
+New vars (`PortConsoleVar`): gren.lasthit, guardian, x2c, launched, flash, turn, fncall.

@@ -2456,6 +2456,7 @@ void CGrenchler::SetGroundCollision(CStateManager& mgr, EStateMsg msg) {
   }
 }
 
+// @ fn_27_96E0
 void CGrenchler::LaunchToJumpTarget() {
   if (mReflectInfo.mLaunched == 1) {
     return;
@@ -2690,6 +2691,7 @@ void CGrenchler::StopBeamAttack(CStateManager&, EStateMsg, float) {
   BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_NextState));
 }
 
+// @ fn_27_85C4
 bool CGrenchler::PlayerBehindMe(CStateManager& mgr, const CTriggerData&) const {
   if (mBeamAttack.x2c_) {
     return false;
@@ -3592,6 +3594,7 @@ bool CGrenchler::TookDamage(CStateManager&, const CTriggerData&) const {
   return GetHealthInfo()->GetHP() < mChargeAttack.mStartHealth;
 }
 
+// @ fn_27_48C8
 bool CGrenchler::JustHit(CStateManager& mgr, const CTriggerData&) const {
   if (!mIsGrappleGuardian) {
     if (0.2f + mLastHitTime > mElapsedTime) {
@@ -3980,6 +3983,7 @@ void CGrenchler::UpdateBeamTrace(CStateManager& mgr) {
   }
 }
 
+// @ fn_27_3048
 void CGrenchler::SpawnBeamHitEffect(CStateManager& mgr) {
   if (mEffectA.mExplosionAssetId == kInvalidAssetId) {
     return;
@@ -4259,6 +4263,7 @@ bool CGrenchler::Frustrated(CStateManager& mgr, const CTriggerData& data) const 
   return mPathBlockedTime > 1.f;
 }
 
+// @ fn_27_1FAC
 void CGrenchler::UpdateDamageFlash(float dt) {
   if (mDamageFlashTimer > 0.f) {
     mDamageFlashTimer = rstl::max_val(mDamageFlashTimer - dt, 0.f);
@@ -4767,6 +4772,94 @@ bool CGrenchler::PortConsoleVar(CEntity& ent, const char* name, const int* value
       }
     }
     current = gren->mPlayerGrabbed ? 1 : 0;
+    return true;
+  }
+  // gren6 coverage vars: field pokes and body calls for the small predicates.
+  // gren.lasthit 0 stamps mLastHitTime now, 1 backdates it; gren.guardian sets mIsGrappleGuardian;
+  // gren.turn <1|0> turns it toward/away from its target; gren.x2c sets the beam attack flag; gren.launched sets the jump launch flag; gren.flash <n> sets
+  // the damage flash timer to n/10 s; gren.fncall <n> runs 1 JustHit, 2 PlayerBehindMe,
+  // 3 LaunchToJumpTarget, 4 UpdateDamageFlash(0.05), 5 SpawnBeamHitEffect, 6 SpawnBeamHitEffect
+  // with no explosion asset, and reads the result (-1 for a void body).
+  if (strcmp(name, "gren.lasthit") == 0) {
+    if (value != nullptr) {
+      gren->mLastHitTime = *value == 0 ? gren->mElapsedTime : -100.f;
+    }
+    current = 0;
+    return true;
+  }
+  if (strcmp(name, "gren.guardian") == 0) {
+    if (value != nullptr) {
+      gren->mIsGrappleGuardian = *value != 0;
+    }
+    current = gren->mIsGrappleGuardian ? 1 : 0;
+    return true;
+  }
+  if (strcmp(name, "gren.x2c") == 0) {
+    if (value != nullptr) {
+      gren->mBeamAttack.x2c_ = *value != 0;
+    }
+    current = gren->mBeamAttack.x2c_ ? 1 : 0;
+    return true;
+  }
+  if (strcmp(name, "gren.launched") == 0) {
+    if (value != nullptr) {
+      gren->mReflectInfo.mLaunched = *value != 0;
+    }
+    current = gren->mReflectInfo.mLaunched ? 1 : 0;
+    return true;
+  }
+  if (strcmp(name, "gren.flash") == 0) {
+    if (value != nullptr) {
+      gren->mDamageFlashTimer = static_cast< float >(*value) / 10.f;
+    }
+    current = static_cast< int >(gren->mDamageFlashTimer * 10.f);
+    return true;
+  }
+  if (strcmp(name, "gren.turn") == 0) {
+    // 1 turns this Grenchler to look at its target (IsFacingTarget true), 0 away from it
+    CStateManager* mgr = PortConsole::VarManager();
+    if (value != nullptr && mgr != nullptr) {
+      CVector3f toTarget = gren->GetTargetPosition(*mgr) - gren->GetTranslation();
+      toTarget.SetZ(0.f);
+      if (toTarget.CanBeNormalized()) {
+        toTarget.Normalize();
+        const CVector3f dir = *value != 0 ? toTarget : -toTarget;
+        gren->SetTransform(
+            CTransform4f::LookAt(gren->GetTranslation(), gren->GetTranslation() + dir, CVector3f::Up()));
+      }
+    }
+    current = 0;
+    return true;
+  }
+  if (strcmp(name, "gren.fncall") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    current = -1;
+    if (value != nullptr && mgr != nullptr) {
+      switch (*value) {
+      case 1:
+        current = gren->JustHit(*mgr, CTriggerData(0.f)) ? 1 : 0;
+        break;
+      case 2:
+        current = gren->PlayerBehindMe(*mgr, CTriggerData(0.f)) ? 1 : 0;
+        break;
+      case 3:
+        gren->LaunchToJumpTarget();
+        break;
+      case 4:
+        gren->UpdateDamageFlash(0.05f);
+        break;
+      case 5:
+        gren->SpawnBeamHitEffect(*mgr);
+        break;
+      case 6: {
+        const uint saved = gren->mEffectA.mExplosionAssetId;
+        gren->mEffectA.mExplosionAssetId = kInvalidAssetId;
+        gren->SpawnBeamHitEffect(*mgr);
+        gren->mEffectA.mExplosionAssetId = saved;
+        break;
+      }
+      }
+    }
     return true;
   }
   float* field = nullptr;

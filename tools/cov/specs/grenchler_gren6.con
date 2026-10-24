@@ -1,0 +1,18 @@
+# gren6 (gren5 setup): the one-to-three-arm predicates and small bodies forced with gren.lasthit/guardian/x2c/
+# launched/flash/fncall; the player is moved with tp/face so IsFacingTarget answers both ways. Forced everywhere.
+# Run as grenchler_gren6.con (frames 1500).
+@f300 layer 3
+@f400 god 1; give morphBall 1; give missile 250
+@f420 send u052e Activate; send u04fa Activate
+@f460 tp -168 25 -28
+@f470 face 0
+@f600 var u052e gren.guardian 0; var u052e gren.lasthit 0; var u052e gren.fncall 1; var u052e gren.lasthit 1; var u052e gren.fncall 1
+@f610 var u052e gren.guardian 1; var u052e gren.lasthit 0; var u052e gren.fncall 1; var u052e gren.lasthit 1; var u052e gren.fncall 1
+@f620 var u052e gren.x2c 0; var u052e gren.fncall 2; var u052e gren.x2c 1; var u052e gren.fncall 2; var u052e gren.x2c 0
+@f630 var u052e gren.launched 1; var u052e gren.fncall 3; var u052e gren.launched 0; var u052e gren.fncall 3
+@f640 var u052e gren.flash 0; var u052e gren.fncall 4; var u052e gren.flash 5; var u052e gren.fncall 4
+@f650 var u052e gren.fncall 5; var u052e gren.fncall 6
+@f660 var u052e gren.turn 1
+@f670 var u052e gren.guardian 0; var u052e gren.lasthit 0; var u052e gren.fncall 1; var u052e gren.lasthit 1; var u052e gren.fncall 1; var u052e gren.fncall 2; var u052e gren.turn 0; var u052e gren.fncall 1
+@f680 var u052e gren.guardian 1; var u052e gren.lasthit 0; var u052e gren.fncall 1; var u052e gren.lasthit 1; var u052e gren.fncall 1
+@f690 var u052e gren.turn 1; var u052e gren.guardian 0; var u052e gren.lasthit 0; var u052e gren.fncall 1; var u052e gren.guardian 1; var u052e gren.fncall 1; var u052e gren.lasthit 1; var u052e gren.fncall 1
