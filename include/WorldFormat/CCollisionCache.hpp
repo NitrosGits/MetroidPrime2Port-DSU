@@ -108,6 +108,7 @@ public:
     return NextTriangle(iterator);
   }
   // Weak copies are emitted in CMorphBall.
+  // @ fn_25_1830
   SCachedCollisionSlot* NextTriangle(CCollisionCacheIterator& iterator) {
     if (iterator.mTrianglesRemaining != 0) {
       SCachedCollisionSlot* slot =
@@ -132,6 +133,7 @@ public:
     ReadLeaf(iterator);
     return NextTriangle(iterator);
   }
+  // @ fn_25_1948
   const CAABox* GetLeafBounds(CCollisionCacheIterator& iterator) {
     if (iterator.mTrianglesRemaining != 0) {
       return iterator.mLeafBounds;
