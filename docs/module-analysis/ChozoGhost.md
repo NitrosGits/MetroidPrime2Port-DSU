@@ -73,3 +73,146 @@ spawned ghost has none of).
 
 Host note: Shuffle's `Next() % numBolts` would raise SIGFPE on the host when numBolts is 0 (PPC
 `divwu` does not trap). No guard was added, because no shipped data reaches it.
+
+## cg2: PreRender fn_8_4468 (2026-10-24) — marked
+
+Base **cab73977149d500ad8eec66d82bab5b2f79ea6c8**, new exclusive worktree
+`../wt-mp2-cg2`, branch `decomp/cg2`. Only this production body gains comments and
+its marker: full-file C++ tokens equal the base. No behaviour divergence/fix, no
+loader/ctor/shared-file changes, no other slice or worker work duplicated.
+
+### Measured arms and native outputs
+
+**23/23 lines, 8/8 nonthrow branch rows**, final launch1 raw profile. The old cg1
+red-tint blocker is closed. All CHOG activity remains **forced console spawn**;
+there is still no shipped CHOG placement. Within that real actor, seven natural
+PreRender calls get explicitly forced transient input members; no function return
+or branch instruction is patched.
+
+| measured source arm | counts / evidence |
+|---|---|
+| 301: second GetActiveVisor is Echo / not Echo | **2 / 201**. Every fixture independently captures both actual native visor returns, exactly [0,0] or [1,1]. Echo sets particles=false/calculateLighting=false and its white ambient is checked before base and at return; combat sets both flags true. |
+| 309: alpha < 255 / alpha == 255 | **4 / 199**. Dead ghost fixtures use its actual alpha byte; live fixtures return255 despite input alpha19/29, through the actual virtual getter/inlined equivalent. |
+| 309: red != 0 / red == 0 when alpha ==255 | **2 / 197**. Opaque red still selects blending; opaque zero-red selects Normal. |
+| 310: tint / white branch after selecting blending | **5 / 1**. Nonzero red uses the saturation calculation; zero red + alpha64 produces white RGB with alpha64. |
+| 311: max(255-2*red,0) computation | Retail is branchless sign-mask arithmetic, not a missing gcov arm. Actual byte oracles cover red1→253, red64→127, red127→1, red128→0 and red255→0, including both sides of the127/128 boundary. |
+| Unconditional tails | Each of the seven calls verifies actual base PreRender(this,mgr), then CBoneTracking::PreRender with the real member/manager/animation/actor-transform/body-controller pointers and all three actual model-scale values. Native owner return verifies both calls completed exactly once. |
+
+The 203 body calls include seven forced-input calls and196 unforced calls. The
+complete per-fixture output oracles (before base **and** after full native return):
+
+| case | alive / input red,alpha / visor | actual mode; RGBA; particles/calculate |
+|---|---|---|
+| normal | 1 / 0,19 / combat | **0; (255,255,255,255); 1/1** |
+| white-alpha | 0 / 0,64 / combat | **5; (255,255,255,64); 1/1** |
+| red64-live | 1 / 64,29 / combat | **5; (255,127,127,255); 1/1** |
+| red127-echo | 0 / 127,128 / echo | **5; (255,1,1,128); 0/0** |
+| red128-echo | 0 / 128,255 / echo | **5; (255,0,0,255); 0/0** |
+| red255-zero-alpha | 0 / 255,0 / combat | **5; (255,0,0,0); 1/1** |
+| red1 | 0 / 1,254 / combat | **5; (255,253,253,254); 1/1** |
+
+All also verify material0 / flags3. No retail source arm needs a dead-arm exclusion.
+The native compiler's guarded devirtualization fallback at PreRender+168 is not a
+retail conditional: actual target dynamic type is CChozoGhost, its real constructor
+installs its getter, no subclasses exist in this source tree, and no fixture writes
+its vtable. The ordinary getter's alive/dead outcomes are both exercised. No fake
+vtable is introduced merely to take a GCC implementation alternative.
+
+### Retail audit and unchanged semantics
+
+- `0x448C..0x44AC`: Echo enum1; particle flag is byte0x421 mask **0x01**, set to
+  !echo via cntlzw/rlwimi. Host bit positions differ and come from DWARF, never
+  from these retail offsets. The second actual visor query at44B4 independently
+  selects false/white ambient or true lighting (44C8/44DC/44EC).
+- `0x44F4..0x4528`: local actor-color copy, virtual alpha getter slot0xC8,
+  alpha low byte <255 OR red nonzero. `0x452C..0x4554`: red guard, signed
+  255-2*red, arithmetic sign mask clamps negatives to0, red255 and equal G/B.
+- `0x455C..0x4564`: zero-red blend path takes whole White. `0x4568..0x45A8`:
+  blend5/material0/flags3, calculated RGB with separately returned alpha.
+  `0x45B0..0x4608`: Normal blend0/material0/flags3 and white RGBA1.
+- `0x4614`: direct CActor base PreRender, not CPatterned. `0x4618..0x4650`:
+  native model animation, actor transform, model scale, actual body controller
+  passed to the body-controller overload of CBoneTracking::PreRender.
+- The pre-existing uninitialized CModelFlags x0 word (retail4578/45E4 loads)
+  is unchanged, not "fixed" as part of this slice. Semantic oracles deliberately
+  check blend/material/flags/RGBA, not this unused word; raw snapshot/restore still
+  preserves every byte of the pre-call flags object.
+
+Full asmcheck RC1: one **XCALL** completeness heuristic (the alpha call is virtual
+at4504–450C) plus **NOPOS** advisory for particles (retail byte421 bit01 decoded
+above). Correctness MASK/XBIT/CROP/XCMP/XSTORE/OFFS: **RC0, no findings**.
+
+### Fixture safety and preflight
+
+New files only: `tools/cov/specs/cg2_prerender.py`, `cg2_selftest.py`, and
+`tools/drivers/cg2_prerender.con`. The existing console `rules 393ca543` option
+supplies the safe CHOG RULE directly; borrowed `ancs u04d0 1 34`, pirate AFSM
+5652a12f and both WPSCs681f3907 follow cg1's safe recipe. No loader breakpoint,
+loader edit or forged actor is needed. First target is verified dynamically as
+`CChozoGhost *`, editor0036ff00, uid0535.
+
+Each call reads all ORIGINAL bytes, arms its own FinishBreakpoint, then attempts
+member writes/readbacks. Seven regions per call: actual alive/particle/calculate
+flag storage bytes, mColor, complete mDrawFlags, existing CActorLights and the
+actual player-state current visor. Flag storage is derived recursively from DWARF
+bit positions (host1192/1193/373), not guessed uint units or retail offsets.
+Existing model/animation/lights/body controller are required; no owning pointer
+is replaced or resource lifetime raw-restored. Only those fixture/input/output
+regions are restored; the ordinary base/animation/bone-render work actually runs.
+
+Ownership uses real gdb.Frame equality and inferior/thread identity, not frame
+levels. Recursive fixture entry is refused before new writes; callee observations
+are attributed only to the immediate owning PreRender. Attempted-write exceptions
+restore even after a write lands; all restore regions and readbacks are attempted
+independently. Oracle failure/unwind also restore; stale/wrong-context callbacks
+cannot overwrite another owner's state. Pending/no-case/failed runs fail the exit
+summary. **18 offline tests pass**, including six post-mutation failure points,
+partial/silent rollback and readback errors, unwind, arm failure, stale/duplicate/
+recursive/context ownership, dynamically changing levels and boundary RGBA tables.
+These mocks test safety, not native arm coverage. Offline GDB installation caught
+the two CBoneTracking overloads before a launch; final hook selects the exact
+body-controller signature. Exact executed fixture == committed fixture.
+
+### Launch, frozen evidence, independent reproduction and gates
+
+**1/2 launches used**, no second run needed. `/tmp/opencode/cg2-a`, paced800 frames,
+normal exit, **zero caught/reach-stub/Python/fixture errors**, seven complete native
+result oracles and **seven restores / 49 actual byte-exact original/readback pairs**,
+no pending owner. Exact launch:
+
+```
+tools/games_running.sh --wait
+BUILD=$PWD/build-port-cov SECS=600 tools/cov/force.sh tools/cov/specs/cg2_prerender.py \
+  /tmp/opencode/cg2-a 42b935e4,08_sand_casualpirates \
+  --con tools/drivers/cg2_prerender.con --frames 800
+```
+
+Default force.py, not force_ret/cov_force. No fast flag is needed for this short,
+paced driver. All evidence/logs preserved, overriding old cleanup instructions.
+`/tmp/opencode/reports/cg2-evidence/` freezes actual executable bytes, binary/source/
+gcno hashes, pre-comment measured source, exact fixture/selftest/driver and native/
+retail asm; subdir **a/** freezes matching gcno/gcda, raw JSON and actual game/fixture
+logs before the marker rebuild. The measured source is exactly the base. The
+runtime BINARY hash matches the preserved executable, not just a later rebuilt
+binary. gcno/gcda and archive SHA256SUMS support independent reproduction after
+the live build directory has been rebuilt:
+
+```
+python3 /tmp/opencode/reports/cg2-evidence/reproduce.py
+# PASS frozen profile: PreRender 23/23 lines, 8/8 nonthrow branch rows
+```
+
+This was independently run using only archived gcno/gcda; new raw outputs remain
+under `/tmp/opencode/cg2-gcov-repro-aqib4smo` and log
+`/tmp/opencode/cg2-independent-coverage.log`. Do not feed old profiles to rebuilt
+gcno. The initial matching asm-target invocation generated the asm in SPLIT then
+reported an unknown target after Ninja regeneration; final matching build and all
+artifact hashes pass. No game launch was spent on that static build/preflight work.
+
+Gates `/tmp/opencode/cg2-{link-build,final-cov-build,manifest,matching-build,
+matching-sha1,strip-diff,asmcheck-all,asmcheck-correctness,selftest-final,runtime-audit,
+independent-coverage,review}.log`: actual mp_mod_ChozoGhost + executable host and
+coverage builds pass, manifest RC0, matching configure/build RC0, **87/87** SHA1s,
+whole-file token identity/non-PC strip-diff PASS,18 tests PASS, raw replay PASS.
+Review's one MARK is fn_8_4468. No behavioral token deletion, other-function edit,
+other-family run, broad smoke or second/post-marker game launch.
