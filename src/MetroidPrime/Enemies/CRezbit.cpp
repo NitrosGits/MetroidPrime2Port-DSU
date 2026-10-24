@@ -1187,6 +1187,7 @@ void CRezbit::DeleteLaser(CStateManager& mgr) {
   }
 }
 
+// @ fn_53_2E88
 void CRezbit::UpdateLaser(CStateManager& mgr, float dt) {
   if (CPlasmaProjectile* laser = static_cast< CPlasmaProjectile* >(mgr.ObjectById(mLaserId))) {
     const float t = mLaserElapsed / mLaserDuration;
