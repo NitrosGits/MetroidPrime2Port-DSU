@@ -805,6 +805,7 @@ void CBlogg::ReleaseHints(CStateManager& mgr) {
   }
 }
 
+// @ fn_7_1C0C
 TUniqueId CBlogg::FindNearestHint(CStateManager& mgr, const CVector3f& position,
                                   bool checkLineOfSight) const {
   TUniqueId nearest = kInvalidUniqueId;
