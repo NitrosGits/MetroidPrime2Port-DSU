@@ -6,6 +6,7 @@
 # The spec file (COV_SPEC) defines
 #   CLASS = 'CDarkSamus'                 # what `$this` is: ((CLASS*)$rdi)
 #   FORCE = [(label, 'CDarkSamus::Body(', [exprs], [sets], skip, 'what it forces'), ...]
+# A set may also be a function taking the gdb module (called at the same moment, for a conditional write).
 # `exprs` are the arm conditions (as in tools/cov/gdb_cov.py), `sets` the members to write, and
 # `skip` the number of hits to let pass before the write.  `exprs` are only recorded, never
 # tested: every set runs on every hit after `skip`, so a conditional force must put its
@@ -64,6 +65,9 @@ class ForceBp(gdb.Breakpoint):
         if self.n > self.skip:
             for s in self.sets:
                 try:
+                    if callable(s):  # a spec may pass a function(gdb): a write that needs a condition
+                        s(gdb)
+                        continue
                     s = s.strip()
                     if s.startswith('set var '):
                         s = s[len('set var '):]  # a spec's `sets` are expressions; tolerate the prefix

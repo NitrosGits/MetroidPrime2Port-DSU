@@ -22,4 +22,5 @@
 @f3300 fsm u058a Pursue
 @f3600 obj u058a
 @f3700 damage u058a 999 0 missile
+@f3760 obj u058a; kill u058a
 @f4300 obj u058a; objs DarkTrooper

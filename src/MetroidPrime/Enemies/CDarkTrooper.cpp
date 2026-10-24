@@ -684,6 +684,7 @@ void CDarkTrooper::Rise(CStateManager& mgr, EStateMsg msg, float dt) {
 // @ fn_12_30D4
 void CDarkTrooper::Null(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// @ fn_12_3000
 void CDarkTrooper::Touch(CActor& actor, CStateManager& mgr) {
   CPatterned::Touch(actor, mgr);
   if (mRagDollHolder.mRagDoll.get() && mRagDollHolder.mRagDoll->IsPrimed()) {

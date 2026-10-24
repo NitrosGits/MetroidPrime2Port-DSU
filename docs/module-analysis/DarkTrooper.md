@@ -72,7 +72,7 @@ placements: `tools/scan_darktrooper_props.py` (firesMissiles=1 only hive01 L6 e0
 | Pursue | 24BC | MARKED | asm read: constants 3/6/9/1.5/16/0.87266463 and flags match. Natural: Activate, Update (turn x3, x1.5, none; InRange 3 close arm; PathShagged arm), Deactivate. IsOver arm: **forced (tools/cov/specs/darktrooper_pursue_force.py)**, `mPathFindSearch.mCurWaypoint = 100000` after 50 hits. Remaining gcov branches are a call edge after SetTurnSpeed and the msg-not-in-3-enumerators arm (EStateMsg has three enumerators: dead). Edge: asm `IsOver` is a signed compare (empty waypoint list = over), upstream header's is unsigned; not changed (shared header). |
 | Sleep | 31BC | unmarked | not asm-read this slice; only call edges at 627 untaken |
 | Dead | 2C78 | unmarked | not asm-read; 734/740 are call edges |
-| Touch | 3000 | unmarked | 687 TCastToPtr<CScriptTrigger> and 688 (active && DetectAI && force>0) untaken: no trigger scan done |
+| Touch | 3000 | marked (dtr7) | forced run, see dtr7 section |
 | AcceptScriptMsg | - | unmarked | 247 untaken 3/4 |
 | KnockBack | - | unmarked | 280 untaken 3/4 |
 | GetAimPosition | - | unmarked | 329 `mLockOnTarget != 0xff` false arm: set from `lockon_target_LCTR` at construction (CPatterned.cpp:194), probably dead by data, unproven |
@@ -83,3 +83,9 @@ placements: `tools/scan_darktrooper_props.py` (firesMissiles=1 only hive01 L6 e0
 
 `darktrooper`: `3bfa3eff,04_temple_unknownenemies`, 2400 frames, cmd: `@f300 layer 2; layer 3`,
 `@f340 send u049d Alert`, `@f600 objs DarkTrooper`, `@f1500 damage u049d 999`, `@f2000 objs DarkTrooper`.
+
+## dtr7
+
+- Touch (fn_12_3000) marked: asm checked line by line (stwu/mflr prologue, ragdoll get + IsPrimed, TCastToPtr<CScriptTrigger>, GetActive, flags & 0x8000, magnitude `ble`, TorsoImpulse += force field). Arms: natural run (inactive triggers, no ragdoll) plus `tools/cov/specs/darktrooper_touch_force.py` with `tools/drivers/darktrooper_touch.con` (`touchact` calls Touch with a given trigger; the spec writes flags / force magnitude by trigger uid at Touch entry). Line 691 and 692 both arms taken.
+- Not marked (arms not yet evidenced): AcceptScriptMsg 248, KnockBack 281, FireSmallShot 343/363/367, DoUserAnimEvent 460/481/482/503, Sleep 630, Dead 738/744.
+- `tools/cov/force.py` now accepts a callable in a spec's sets (conditional writes).
