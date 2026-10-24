@@ -2530,6 +2530,7 @@ void CGrenchler::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   }
 }
 
+// @ fn_27_9018
 void CGrenchler::Jump(CStateManager& mgr, EStateMsg msg, float) {
   SetAttackState(kGA_Jump, msg);
   switch (msg) {
