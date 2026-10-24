@@ -1,0 +1,8 @@
+@f300 layer 2
+@f320 layer 3
+@f340 layer 5
+@f400 god 1; give morphBall 1; give morphBallBombs 1; fastmorph 1
+@f440 send u05fc Activate; send u05f1 Activate; send u05da Activate; send u05c5 Activate; send u0598 Activate; send u0589 Activate
+@f460 tp -160 -120 -48
+@f470 face 0
+@f1500 objs Blogg; status

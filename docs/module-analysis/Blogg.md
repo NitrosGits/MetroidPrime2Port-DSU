@@ -85,6 +85,8 @@ Marked by blog2 (asmcheck clean apart from the unported CanMeleeAttack call and 
 
 ## rez6 (2026-10-24)
 
+Current: **107/107** after blogg7 (completion below); rez6's remaining two are now verified.
+
 Marked (20 of 22; 105/107 behaviour rows): GetSearchPath 2A08, ProjectileInfo 45D8, GetContactDamage 4B00, ~CBloggMouthVulnerability 0,
 ~CBloggBodyVulnerability 17A8 (header inline); GetNextPositionIndex 2A10, CanRangedAttack 5D88, CanMeleeAttack 5E80, FindNearestHint 1C0C,
 FindAttackPositions 3B1C, ComputeAttackPositions 7E90, Dead 38C4, GrabBall 65F4, LaunchBloggProjectile 43D8, DoUserAnimEvent 4B4C,
@@ -122,3 +124,76 @@ Left for the next slice:
 - AcceptScriptMsg (8F7C): AreaLoaded pivot loop, HitObject (charge arm 0xbc4&0x2, collision-actor sender, mouth damage), Damage (the
   weapon-up arm of blogg1), bomb / power-bomb sender arm, InternalMessage0 (kill), fall-through. Plan: a `send`/direct-call queue with
   a crafted CScriptMsg and real CollisionActor / weapon senders.
+
+## blogg7 completion (2026-10-24)
+
+Base `a5d7f3cba`: **105 → 107/107**, Think `87C8` and AcceptScriptMsg `8F7C`.
+Production changes are marker comments only. Evidence root:
+`/tmp/opencode/reports/blogg7-evidence/`.
+
+### Queue and final coverage
+
+`tools/cov/specs/blogg7.py` under `force_ret.py`, driver `tools/drivers/blogg7.con`,
+GPU `3dfd2249,07_swamp_shaft`,1650 frames. The existing rez6 loader helper builds
+one real three-phase Blogg. Its first native Create briefly enables mega mode,
+then restores the original flag; direct-call Create fixtures do not install a
+FinishBreakpoint on gdb's dummy frame. Final run: **76/76 calls successful**,
+all oracles PASS, explicit normal inferior exit, zero failed calls/sets/restores,
+Python exceptions, caught or reach-stub.
+
+- Think: **73/73 lines,61/62 edges**. Forced all state/speed/turn combinations,
+  missing/valid player, all mouth-open prerequisites, spawned-morph-state variants,
+  GrabBall/Thrash, ball attachment, melee timer sides, hit-colour fade, mega phase
+  mismatch/threshold/counter combinations. Dying speed and mouth-open oracles PASS.
+  The shared CPatterned::Think call is explicitly stubbed only during direct calls,
+  holding the parent-state inputs stable; natural game frames still call the real
+  base. Collision/animation/audio/attachment helpers remain real.
+- AcceptScriptMsg: **132/136 lines,134/137 edges**. Native Create covers spatial
+  spheres/pivot/non-pivot processing and mega phase choice. Scoped Create calls
+  supply null model, no animation and no spatial primitive (base-message delivery
+  explicitly stubbed for these three synthetic model inputs); no duplicate
+  collision managers are constructed. Queued AreaLoaded, AIUpdateDisabled,
+  Activate/Deactivate, Alert/HitObject, Damage, ResistedDamage, IM0/IM1,
+  Increment/Decrement and default messages use a real CScriptMsg value and live
+  collision actors. A real registered player PowerBomb supplies the weapon input.
+  Mouth-hit/charge-over and positive/negative weapon-up damage oracles PASS;
+  real zero/positive vulnerable damage covers resisted-hit flinch. IM0/Delete are
+  sent to a different Blogg, never to the suspended current actor.
+
+### Untaken counters: three writer/type proofs
+
+1. Think's `newPhase < mPhases.size()` false and Create's mega+empty phase list:
+   the constructor is the **only** phase-list writer, pushing phase0/1/2 exactly
+   when mIsMegaBlogg is true (`CBlogg.cpp:406-408` before the two markers). Phase
+   indices are0/1/2 by GetHealthPhase. No clear/resize/removal exists. These two
+   false edges require an inconsistent mega flag/list pair.
+2. Create's collision lookup null arm: its newly built manager registers each
+   sphere collision actor and stores the fresh id before this loop. No callback
+   deletes it between construction, AddMaterialList and the loop. AllocateUniqueId
+   either returns a reserved non-invalid id or does not return on exhaustion
+   (host abort, retail loop); allocation cannot silently manufacture a missing id.
+3. Damage's bomb/power-bomb true arm after a **failed CWeapon cast** is unreachable:
+   both CBomb and CPowerBomb derive from CWeapon; `TypesMatch.cpp` forwards to that
+   parent. Fresh objdiff independently gives **100%** for all three exact DOL
+   functions `TypesMatch__5CBombCFi`, `TypesMatch__10CPowerBombCFi`,
+   `TypesMatch__7CWeaponCFi`. Thus a bomb necessarily took the earlier weapon arm.
+   The four untaken source lines are this dead bomb fallback, not a missing queued
+   sender. No type tags/vtables were forged to manufacture an impossible cast pair.
+
+### Audit / gates
+
+Reviewed both full retail listings and six anonymous helper listings. asmcheck's
+four NOPOS names are guest bc4 masks: CanBite20, BallGrabbed08, ChargeOver02,
+IsMegaBlogg01. The const team cast is the inline TCastToPtr wrapper. BA40 is
+collision-description vector reserve/reallocation;9E28 string concatenation;
+9D0C joint-description copy;9C8C vector push;9C38 CHealthInfo member copy;
+9E84 temporary vector destruction. The locator-name temporary explains string
+internal_dereference. SetVisualTarget is inside the LOS wrapper. Death is the
+virtual call at9B50, vtable offset98 (HealthInfo at9B08, slot38); XCALL is a
+symbolic-call limitation. The three retail-diff helper aliases are included above.
+No unexplained finding or native logic change.
+
+Host/coverage links0 FAILED; manifest rc0; matching configure+ninja and shasum
+**87 files OK**. PC/non-PC production code identical after removing the two marker
+comments. Whitespace clean. Review against `a5d7f3cba`:2 MARK only for this
+checkpoint. No unchanged-family sweep; only changed/marked bodies and their area.
