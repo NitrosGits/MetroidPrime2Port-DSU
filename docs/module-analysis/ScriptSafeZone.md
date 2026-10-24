@@ -88,3 +88,10 @@ Specs (all `42b935e4,02_sand_sandfalls_dark`; rebuild and rerun the three natura
 
 Header / loader rows marked without a run (objdiff 100%, user rule): ~SLdrSafeZoneAttributes 14A0, LoadTypedefSafeZoneAttributes 181C, ~SLdrSafeZoneFog 143C, LoadTypedefSafeZoneFog 16A4, ~SLdrSafeZone F40,
 ~SLdrSafeZoneCrystal 6408, CDarkWorldInfo copy ctor B00 / dtor D80 / LoadOptionalTexture 5400, and the CDarkWorldInfo ctor 51A8 (98.6%, regalloc). Not marked: the `__sinit` row 8B18 (82%).
+
+## sz2: Think (fn_66_3A40) — NOT marked
+
+Fixture `tools/cov/specs/sz2_think.py` (+ `sz2_think.con`, `sz2_selftest.py`, 17 offline tests): 37 forced cases (state-timer arms), owned by FinishBreakpoint window (frame equality + inferior/thread), snapshot/restore with readbacks, callee mocks. Model written from the retail asm and the source.
+Launch 1 failed (absolute-address line breakpoints). Launch 2 ran the whole game, but the entry guard `mEchoEmitter.mPtr != 0 -> skip` excluded all 26955 natural Think calls: **0/37 cases ran**, no forced result. Cap 2/2 consumed.
+Natural line hits (26955 calls): only the dark-grow arm (217/221, 6x), the full-shell no-op (222, 13263x), the inactive no-op (250, 13686x) and `UpdateSafeZoneManager` (261, 6x) ran. Never executed: non-dark clear (226), lifetime timer (230), moved block, Echo InformListeners, inactive decay and its zero arm (251-255), emitter off (266), lifetime expiry (273-279), camera-inside change, fog-dirty. Executed binary sha256 2ff8ee13…f12fb, fixture sha256 2dc6c107…fab44e, evidence in `/tmp/opencode/sz2-evidence/`.
+A corrected fixture (do not skip natural emitters; mock only) would be offline-only until run. No behaviour change; no `// @` marker.
