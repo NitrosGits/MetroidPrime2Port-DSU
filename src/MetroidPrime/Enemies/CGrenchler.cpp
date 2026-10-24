@@ -497,6 +497,7 @@ CGrenchler::SDamageEffect::SDamageEffect(const CDamageInfo& damage, CAssetId eff
 CGrenchler::SVectorTriple::SVectorTriple()
 : mEye(CVector3f::Zero()), mHorn(CVector3f::Zero()), mHead(CVector3f::Zero()) {}
 
+// @ fn_27_11FCC
 CGrenchler::SEffectD::SEffectD(CAssetId effect)
 : mWaterSplash(effect != kInvalidAssetId
                    ? rs_new CElementGen(gpSimplePool->GetObj(SObjectTag('PART', effect)),
