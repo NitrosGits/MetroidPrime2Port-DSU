@@ -33,3 +33,4 @@
 @f2250 kill u052e; damage u04fa 1000 0 missile; objs grenchler
 # later check: the killed guardian is gone by the next update (3 -> 2 objects)
 @f2280 objs grenchler
+@f2290 objs grenchler

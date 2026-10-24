@@ -8,8 +8,25 @@
 @f1290 send e00350060 Activate; send e0035000f Activate
 @f1460 objs digital
 @f1570 obj e00350060
+@f1575 obj e0035000f
+@f1580 damage e0035000f 10
+@f1585 obj e0035000f
+@f1590 hurt e00350060 10
+@f1592 obj e00350060
+@f1594 hurt e0035000f 10 missile
+@f1596 obj e0035000f
+@f1598 shoot e00350060 charged; shoot e0035000f charged
+@f1599 obj e00350060; obj e0035000f
 @f1600 damage e00350060 10
-@f1620 obj e00350060
+@f1610 obj e00350060
+@f1620 damage e00350060 10 missile
+@f1630 obj e00350060
+@f1640 damage e00350060 10 dark
+@f1650 obj e00350060
+@f1660 damage e00350060 10 light
+@f1670 obj e00350060
+@f1680 damage e00350060 10 powerbomb
+@f1690 obj e00350060
 @f1700 fsm e00350060 Idle
 @f1720 obj e00350060
 @f1800 send e00350060 Delete

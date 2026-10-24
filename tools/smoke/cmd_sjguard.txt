@@ -60,6 +60,7 @@
 @f2820 obj u051f
 @f2885 shoot u051f 
 @f3000 beam light
+@f3001 fsm u051f Taunt
 @f3005 shoot u051f 
 @f3125 shoot u051f charged
 @f3180 obj u051f

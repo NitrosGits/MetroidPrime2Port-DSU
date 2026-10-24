@@ -37,6 +37,7 @@
 @f4300 status; obj e001d0055
 @f8700 status; obj e001d0055
 @f8800 damage e001d0055 1
+@f8820 obj e001d0055
 @f8850 obj e001d0055
 @f9000 orbit e001d0055
 @f9100 damage e001d0055 1
