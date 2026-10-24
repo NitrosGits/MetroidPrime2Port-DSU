@@ -856,8 +856,12 @@ void CMediumIng::MistIn(CStateManager& mgr, EStateMsg msg, float dt) {
     break;
   case kStateMsg_Update: {
     float amount = mFCC + dt;
+#ifdef TARGET_PC
     // 0x5924 fcmpo cr0,f1,f0; 0x5928 bge .L_00005930: unordered also takes the clamp.
     if (!(amount < 1.f)) {
+#else
+    if (amount >= 1.f) { // 0x5924 fcmpo + bge, rodata_14
+#endif
       amount = 1.f;
     }
     mFCC = amount;
@@ -906,8 +910,12 @@ void CMediumIng::MistOut(CStateManager& mgr, EStateMsg msg, float dt) {
       mC0 = true;                                  // 0x4C08
     }
     float amount = mFCC - dt;
+#ifdef TARGET_PC
     // 0x4C20 fcmpo cr0,f0,f1; 0x4C24 bge .L_00004C2C: unordered also takes the clamp.
     if (!(0.f < amount)) {
+#else
+    if (0.f >= amount) { // 0x4C20 fcmpo rodata_40
+#endif
       amount = 0.f;
     }
     mFCC = amount; // 0x4C30
