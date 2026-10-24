@@ -430,6 +430,7 @@ void CSwarmBasics::AllocateSkinnedModels(CStateManager& mgr, CModelData::EWhichM
   mWhichModel = which;
 }
 
+// @ fn_80_76F4
 void CSwarmBasics::CreateBoid(CStateManager& mgr, int index) {
   const CAABox bounds = GetBoundingBox();
   const TUniqueId waypointId = GetWaypointForState(kSS_Patrol, mgr);
