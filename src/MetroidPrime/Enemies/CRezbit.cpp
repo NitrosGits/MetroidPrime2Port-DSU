@@ -250,6 +250,7 @@ void CRezbit::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_53_6FC4
 void CRezbit::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                               float dt) {
   bool handled = false;
