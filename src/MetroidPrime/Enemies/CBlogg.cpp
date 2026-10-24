@@ -1996,6 +1996,7 @@ void CBlogg::LaunchBloggProjectile(const CTransform4f& xf, CStateManager& mgr, i
   }
 }
 
+// @ fn_7_4B4C
 void CBlogg::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                              float dt) {
   switch (type) {
