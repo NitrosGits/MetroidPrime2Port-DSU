@@ -61,7 +61,7 @@ Open arms (cpp line), so these bodies stay unmarked:
 | ApplySteeringBehaviors 1228 | attacking-boid arm (cpp:254) |
 | BoidCollidedCallback 11C0 | never called |
 | BoidCollidedWithPlayerCallback 1144 | launched arm (cpp:264), forced but not reached |
-| SpawnGrenades C6C | POI arms (weight, character, value; ANCS data). psc6 measured 20/26: six arms stay open because `mInt32POINodes` is shared static storage (the walked node is the last writer's, not the passed `animData`'s), so the sampled tuple cannot prove deadness. `nodes == nullptr` is dead by construction; unmarked (arm table in the seventh pass) |
+| SpawnGrenades C6C | POI arms (weight, character, value; ANCS data). psc6 sampled 20/26 and could not prove the rest (the POI buffer is static shared storage); psc7 measured them with a transient node-field fixture on the real first node - 26/26 forced, natural calls unchanged - so the body is marked (arm table in the eighth pass) |
 
 Not driven arm by arm: the SLdr ctor (fixed above) and dtor, plus the weak copies (H).
 
@@ -413,3 +413,61 @@ matching `.gcno` 3d906014...c67b (one build served both), run-1 source copy (ee9
 close the six arms: log each model's own POI list right after *its* advance (so the buffer writer is known),
 and dump the shipped POI nodes of the base, into-attack (#2) and shared attack (#1) animations for all
 three placements.
+
+## Eighth pass (psc7, 2026-10-24, base f024872f3)
+
+One launch (of the slice's two), `3dfd2249,0g_swamp_hall`, 1200 frames, fast,
+`[port] caught/reach-stub: 0`, `[Inferior 1 (process N) exited normally]`, gcov flushed. Fixture
+`tools/cov/specs/psc7_grenade_fields.py` (spec + gdb side in one lane file), driver reused:
+`psc6_grenade_0g.con`.
+
+    BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/specs/psc7_grenade_fields.py tools/cov/force.sh \
+      tools/cov/specs/psc7_grenade_fields.py /tmp/opencode/psc7_r1 3dfd2249,0g_swamp_hall \
+      --con tools/cov/specs/psc6_grenade_0g.con --fast --frames 1200
+    python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/psc7_r1/gcov --module PlantScarabSwarm
+
+Profile: SpawnGrenades **29/29 lines, 26/26 edges, ALL-ARMS**.
+
+Fixture, and what its numbers mean: on a node-bearing call only - a claimed slot whose boid is active,
+`animData` non-null and 0 < mPassedIntCount <= 16 (a slot is only ever claimed by a boid that passed
+Think's proximity, timer, space-above and angle gates, cpp:107-110) - it snapshots the RAW words of the
+first node the body will walk (mWeight, mCharIdx, mVal at absolute addresses derived from the static
+`CAnimData::mInt32POINodes` plus the CInt32POINode layout: 0x3f800000 / 0xffffffff / 0x1a), installs a
+FinishBreakpoint *before* any write, then cycles one phase per call and writes back the ORIGINAL words at
+the body's return, reading them back to prove it. Count, pointer, node type, name, slot and object
+ownership are never touched, and the RNG is never forced.
+
+    calls=2928 node_calls=11 writes=9 restored=9 mismatch=0 reentrant=0
+    weight0:        targets 0x00000000/0xffffffff/0x1a   (x3)
+    equal:          targets 0x3f800000/animChar/0x1a     (x3)
+    unequal:        targets 0x3f800000/1/0x1a            (x3, nonnegative character != animChar)
+    nonobjectdrop:  targets 0x3f800000/0xffffffff/0x0    (x2)
+    natural:        no writes                            (x2)
+    every restore: "restored ORIGINAL words [0x3f800000, 0xffffffff, 0x1a] ... (read back
+    [0x3f800000, 0xffffffff, 0x1a])", with no "writer changed the words" note and no reentrancy.
+
+Edges (merged nothing: one run; forced arms are labelled **forced node-field fixture**, not shipped-asset
+behaviour):
+
+| arm (retail asm) | condition | edges | status |
+|---|---|---|---|
+| 0xCAC / 0xCB0 | `boidIndex == -1` -> 0xF88 | 704 / 2224 | ran (natural) |
+| 0xCC0 / 0xCC8 | `count <= 0` -> 0xF88 | 11 / 693 | ran (natural) |
+| 0xCE4..0xCF4 | `Float() <= node.GetWeight()` -> 0xF78 | 8 / **3** | both ran: false side = 3 `weight0` forced calls |
+| 0xD00 / 0xD04 | `character == -1` -> 0xD14 | 4 / **4** | both ran: 4 natural/weight0/nonobjectdrop nodes vs 4 forced equal/unequal nodes |
+| 0xD0C / 0xD10 | `character == animData.mCharIdx` -> 0xF78 | 4/4 and 2/2 | both ways ran (forced equal vs forced unequal) |
+| 0xD14 / 0xD18 | `node.GetValue() == kUE_ObjectDrop (26)` -> 0xF78 | 4 / **2** | both ran: false side = 2 `nonobjectdrop` forced calls |
+| 0xF80 / 0xF84 | loop `i < count` -> 0xCE0 | 11 / 11 | ran |
+| 0xCCC / 0xCD0 | `nodes == nullptr` -> 0xF88 | - | still dead by construction (no gcov edge here): `GetInt32POIList` returns `mInt32POINodes.data()`, the address of the static byte array (CAnimData.cpp:40) |
+| 0xE14 | retail `grenade == nullptr` -> 0xF18 | - | no host branch (operator new cannot return null here) |
+| EH | temporaries' landing pads (cpp:310, 311, 313, 314) | 0 | throw edges, excluded by tools/cov/gcov_report.py |
+
+The `weight0` phase also shows the RNG was non-zero on those calls (all three took the false side), so
+`Float() <= 1.0` keeps passing on the natural node exactly as the inclusive-[0,1] bound says.
+
+Marker: **added** `// @ fn_49_C6C` (cpp:288). Evidence archived before that edit and any rebuild, in
+`/tmp/opencode/psc7_evidence`: `psc7_r1.gcda` 916c1157...21f7, matching `psc7_r1.matching.gcno`
+3d906014...c67b, run source `CPlantScarabSwarm.r1-source.cpp` ee9a078a...c3e3 (identical to the base),
+binary d22c4c0f...3f93, `psc7_r1_raw.gcov.json`, `psc7_r1_spawngrenades_edges.txt`, the fixture log and
+counters, and the report file. The psc6 read-only sample (`/tmp/opencode/psc6_evidence`) is kept as the
+natural-call observation; this pass supersedes its conclusions with the direct measurement.
