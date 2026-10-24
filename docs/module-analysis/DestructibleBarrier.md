@@ -112,35 +112,48 @@ Smoke family proposal `dbar`: area 42b935e4,08_sand_casualpirates, `tools/driver
 
 ## db3 (2026-10-24, base cab739771): loader dtor fn_13_BA0 marked
 
-One launch (of the slice's two), `42b935e4,08_sand_casualpirates` (the module is data-dead, so the db1
-forced driver's `spawn DBAR` path is the only way in), 600 frames, fast, `[port] caught/reach-stub: 0`,
-inferior exited normally. Fixture `tools/cov/specs/db3_sldr_dtor.py` (read-only), mock
-`db3_sldr_dtor_selftest.py`, own driver `db3_dbar_dtor.con` (three spawns).
+**Boots: 2 of 2 used (r1, r2); no launch remains.** r1 ran an earlier fixture whose out-of-line-entry
+probe never fired while the member calls already showed the inlined dtor frame; that run's executed
+fixture was **not archived**, so r1 is log-only evidence (`/tmp/opencode/db3_r1`). r2 is the accepted run.
+**The binary is not frozen**: the evidence records binary `da8ea578...`, the later rebuilt coverage binary
+is `a61ff0db...`; only the recorded hash identifies the measured build.
 
-Retail fn_13_BA0 (`__dt__23SLdrDestructibleBarrierFv`, weak, 0xBA0..0xC1C): 0xBB8 `mr. r30,r3` / 0xBBC
-`beq` null-this guard, then the four member destructors (0xBC8 SLdrActorParameters +0x214, 0xBD4
-SLdrDamageVulnerability +0xB8, 0xBE0 SLdrHealthInfo +0xB0, 0xBEC SLdrEditorProperties +0), then 0xBF0
-`extsh. r0,r31` / 0xBF4 `ble` / `bl __dl__FPv` - the MWCC deleting-flag variant.
+Retail fn_13_BA0 (`__dt__23SLdrDestructibleBarrierFv`, weak, `CScriptDestructibleBarrier.s:855-890`):
+0xBB8 `mr. r30,r3` / 0xBBC `beq` **null-this guard**; then the four member destructors **in this order** -
+0xBC8 `bl __dt__19SLdrActorParametersFv` (+0x214), 0xBD4 `bl __dt__23SLdrDamageVulnerabilityFv` (+0xB8),
+0xBE0 `bl __dt__14SLdrHealthInfoFv` (+0xB0), 0xBEC `bl __dt__20SLdrEditorPropertiesFv` (+0); then 0xBF0
+`extsh. r0,r31` / 0xBF4 `ble`, 0xBF8 `mr r3,r30` and **0xBFC `bl Free__7CMemoryFPCv`**. The flag-positive
+arm frees through `CMemory::Free`, **not** a C++ `operator delete`/Itanium `D0` entry: MWCC's "deleting
+variant" is its own delete flag plus that game-heap free, and a host counterpart would be the port's
+`PortDelete` routing (`PortMwccNew.cpp`: `CMemory::Free` inside the arena, `std::free` outside).
 
-Host build: `_ZN23SLdrDestructibleBarrierD1Ev` == `D2Ev` at 0xde1b20 (four member calls, no null guard, no
-flag), **no `D0Ev` symbol at all**, and the only call site in the binary is 0xde26fc in
-`LoadDestructibleBarrier`'s `.cold` epilogue, with `this = lea -0x670(%rbp)` - the loader's own stack
-object. Measured on the run: the normal path **inlines** the empty body, so the four member dtors run
-with gdb showing an inlined `SLdrDestructibleBarrier::~SLdrDestructibleBarrier()` frame whose caller is
-`LoadDestructibleBarrier`, root `0x7fffffffbb90` inside the loader frame, three times (one per spawn);
-the out-of-line 0xde1b20 copy **never ran** (`outofline_hits=0`), i.e. the retail guard/delete variants
-have no host counterpart on this path.
+Host build (recorded binary): `_ZN23SLdrDestructibleBarrierD1Ev` == `D2Ev` at 0xde1b20 (the four member
+calls, no null guard, no flag), no `D0Ev` symbol, and the only call site is 0xde26fc in
+`LoadDestructibleBarrier`'s `.cold` epilogue with `this = lea -0x670(%rbp)` - the loader's own stack
+object. Measured on r2 (three `spawn DBAR`): the normal path **inlines** the empty body, so the member
+dtors run with an inlined `SLdrDestructibleBarrier::~SLdrDestructibleBarrier` frame under
+`LoadDestructibleBarrier`; the out-of-line 0xde1b20 copy never ran. gcov: header line 97, blocks 5/5,
+`execution_count 3`.
 
-gcov (same run, `--module DestructibleBarrier`): `SLdrDestructibleBarrier::~SLdrDestructibleBarrier()`
-header line 97, blocks 5/5 executed, `execution_count 3`, no branches.
+**Qualified accounting.** The raw r2 log shows exactly **three ordered member quadruples** in the order
+above, each under the inlined-dtor -> loader frames. The *executed* fixture's summary grouped member
+calls by root and printed `invocations=1` (the loader frame is reused across the spawns), so it does
+**not** prove per-invocation completeness, and its `in_frame` flag was cached from the first member with
+no `rsp`/`rbp` logged. The strict-chain fixture now in the tree is an **offline revision that has not
+run** (the executed version is archived unchanged as `/tmp/opencode/db3_evidence/db3_sldr_dtor.executed.py`):
+it requires a consecutive, ordered four-member chain with identical root/inferior/thread/frame context,
+re-reads and logs the loader frame bounds on **every** member, fails on a changed context, duplicate,
+out-of-order or pending chain, and keeps the per-root aggregate only as a diagnostic named `root_groups`.
+12 mocked-gdb scenarios pass (complete chain, reused same root twice, interleaved partial chain whose
+union covers four members, changed context, out-of-order, duplicate, pending at exit, outside frame,
+wrong caller, foreign member call, no invocation, no install).
 
-Live paths: the member-dtor chain ran on every invocation; the retail null-this and delete-flag arms are
-unreachable for this object (single caller-owned stack lifetime, non-null `lea`, object never deleted,
-and the host build emits no deleting variant), so all live arms are justified. Marker
-`// @ fn_13_BA0` added above the inline definition (header line 97).
+Live paths: the member chain ran on every invocation; the retail null-this and delete-flag arms are
+unreachable for this object (single caller-owned stack lifetime, non-null `lea`, never deleted, no
+deleting variant emitted). Marker `// @ fn_13_BA0` unchanged above the inline definition (header line 97).
 
-Evidence `/tmp/opencode/db3_evidence`: `db3_r2.gcda` ef655298..., matching `db3.matching.gcno`
-c6d42831..., pre-marker `SLdrDestructibleBarrier.source.hpp` 94a42706..., executed fixture
-`db3_sldr_dtor.executed.py` 8da67562..., binary da8ea578..., `dtor_outofline.disasm.txt`,
-`loader_callsite.disasm.txt`, `db3_r2_diag.log` (12 member-dtor lines), `db3_r2_fixture.txt`,
-`db3_r2_raw.gcov.json`, `sha256.txt`.
+Evidence `/tmp/opencode/db3_evidence`: `db3_r2.gcda` ef655298...b737, matching `db3.matching.gcno`
+c6d42831...46b9, pre-marker header `SLdrDestructibleBarrier.source.hpp` 94a42706...c0f6, executed fixture
+`db3_sldr_dtor.executed.py` 8da67562...1f5e (kept unchanged), binary hash `da8ea578...9773` (the binary
+itself was rebuilt to a61ff0db... afterwards), `dtor_outofline.disasm.txt`, `loader_callsite.disasm.txt`,
+`db3_r2_diag.log` (12 member-dtor lines), `db3_r2_fixture.txt`, `db3_r2_raw.gcov.json`, `sha256.txt`.
