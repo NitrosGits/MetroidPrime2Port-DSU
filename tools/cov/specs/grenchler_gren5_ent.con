@@ -1,0 +1,10 @@
+# gren5: 01_swamp_entrance layers 4+8 (u05c4 standing): Charge's Update with a found path that is
+# run out (PathShagged false, IsOver true), for the arm the grapple room's missing nav mesh denies.
+@f300 layer 4
+@f340 layer 8
+@f400 god 1; give morphBall 1
+@f440 send u05c4 Activate
+@f460 tp 160 -84 26
+@f500 var u05c4 gren.path 4; statecall u05c4 Charge 0; statecall u05c4 Charge 1 0.016
+@f510 var u05c4 gren.path 2; var u05c4 gren.path 2; var u05c4 gren.path 2; statecall u05c4 Charge 1 0.016
+@f520 var u05c4 gren.path 1; statecall u05c4 Charge 1 0.016; var u05c4 gren.path 2; var u05c4 gren.path 2; var u05c4 gren.path 2; var u05c4 gren.path 2; statecall u05c4 Charge 1 0.016
