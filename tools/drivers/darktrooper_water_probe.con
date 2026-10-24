@@ -1,0 +1,5 @@
+# dtr10: which areas keep a Water object loaded next to a DarkTrooper (objs Water / DarkTrooper).
+@f300 god 1
+@f320 layer 0; layer 2
+@f400 objs Water; objs DarkTrooper; objs ScriptWater; status
+@f600 objs Water; objs DarkTrooper

@@ -711,6 +711,7 @@ void CDarkTrooper::PreRenderAllViewports(CStateManager& mgr) {
   }
 }
 
+// @ fn_12_2D98
 void CDarkTrooper::ThinkRagDoll(float dt, CStateManager& mgr) {
   if (mRagDollHolder.mRagDoll.get()) {
     float waterTop = -FLT_MAX;
@@ -878,6 +879,7 @@ CPFArea* CDarkTrooper::GetPathArea(CStateManager& mgr) const {
   return mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea;
 }
 
+// @ fn_12_21A0
 void CDarkTrooper::MarkPathRegion(CStateManager& mgr) {
   const rstl::reserved_vector< CVector3f, 16 >& waypoints = mPathFindSearch.GetWaypoints();
   if (waypoints.size() != 0) {
