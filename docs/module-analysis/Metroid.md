@@ -163,3 +163,12 @@ forced (direct call + stub). A target with no model (waypoint) crashes `ComputeS
 Asm check of fn_40_2864: switch on `mAttackState` (cmpwi 0/2/4, 0x28CC-0x28F0), state 1 -> fn_40_2718(0.4) +
 CPlayer cast + SendScriptMsg (0x28FC-0x296C), state 2 CActor/health/Player casts (0x2990-0x2A58), state 3 ZRotation +
 SlerpLocal 0.95 (0x2DEC-0x2E44): no deviation found.
+
+## Coverage (met5)
+Forced run `tools/cov/specs/metroid_force7.py` (08_sand_casualpirates, direct calls from Think; water u0443/u043c).
+- fn_40_470C IsPirateValidTarget: 4/4 lines, 6/6 branches (valid, attached, null health info, hp 0, hp < 0).
+- fn_40_15A8 IsPlayerInFluid: 8/8 lines, 6/6 branches (count 0, invalid id, non-water id, water with z < / >= max.z).
+- fn_40_1170 FindNearestTarget: 19/19 lines, 21/22 branches. Untaken: null entity in the object-list walk (asm 0x128C `mr. r24,r3; beq`).
+  Dead: CObjectList::RemoveObject nulls mEntity and unlinks the slot, AddObject links only set entities, so a linked slot is never null.
+Asm check: IsPirateValidTarget 0x470C (attached id, vtable 0x3c, hp > 0 ble), IsPlayerInFluid 0x15A8 (count, id, vtable 0x54, CScriptWater cast, aimZ < max.z),
+FindNearestTarget 0x1170 (skip self/ignore, dist < min bge, pirate then player): no deviation.

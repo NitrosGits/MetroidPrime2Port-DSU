@@ -795,6 +795,7 @@ void CMetroid::SetPatrolDest(CStateManager& mgr, float) {
   mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
 }
 
+// @ fn_40_1170
 TUniqueId CMetroid::FindNearestTarget(CStateManager& mgr, TUniqueId ignore) const {
   CObjectList& list = mgr.ObjectListById(kOL_Actor);
   TUniqueId result = kInvalidUniqueId;
