@@ -507,6 +507,7 @@ CGrenchler::SEffectD::SEffectD(CAssetId effect)
 , mAnchorPosition(CVector3f::Zero())
 , mSplashTimer(0.f) {}
 
+// @ fn_27_11580
 CGrenchler::CGrenchler(
     TUniqueId uid, const rstl::string& name, CEntityInfo& info, const CTransform4f& xf,
     const CModelData& modelData, const CPatternedInfo& patternedInfo, CAssetId fsmId,

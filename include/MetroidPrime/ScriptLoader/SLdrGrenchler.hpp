@@ -175,6 +175,7 @@ inline SLdrGrenchler::SLdrGrenchler()
   damageInfo.dI_Damage = 5.0f;
 }
 
+// @ fn_27_12B0 (objdiff 100%)
 inline SLdrGrenchler::~SLdrGrenchler() {}
 
 #endif
