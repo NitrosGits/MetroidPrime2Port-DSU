@@ -4087,6 +4087,7 @@ void CGrenchler::GrappleStruggle(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_2A78
 void CGrenchler::PullPlayer(float dt, CStateManager& mgr, const CVector3f& targetPos) {
   CPlayer* player = mgr.GetPlayer(0);
   CVector3f facing = player->GetTransform().GetForward();
