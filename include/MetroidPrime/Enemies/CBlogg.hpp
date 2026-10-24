@@ -53,6 +53,7 @@ public:
                            const CDamageVulnerability& otherVulnerability, bool flag);
 
   // CNonUniformVulnerability
+  // @ fn_7_0
   ~CBloggMouthVulnerability() override {}
   const CDamageVulnerability* GetDamageVulnerability(const CDamageVulnerability* defaultVuln,
                                                      const CVector3f& position,
