@@ -889,6 +889,7 @@ void CRezbit::QuitTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_53_1370
 void CRezbit::JoinTeam(CStateManager& mgr) {
   if (mTeamAiMgrId == kInvalidUniqueId) {
     mTeamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
