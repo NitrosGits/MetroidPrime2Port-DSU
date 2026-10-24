@@ -158,6 +158,7 @@ static inline void FindAnimation(const CPASDatabase& pasDatabase, const CPASAnim
 static float sLocomotionSpeedA; // Guessed name
 static float sLocomotionSpeedB; // Guessed name
 
+// @ fn_7_B76C
 SBloggPhaseData::SBloggPhaseData(const SLdrBloggStruct& data)
 : mMin(data.min_________________________)
 , mMax(data.max_________________________)
@@ -461,10 +462,12 @@ CVector3f CBlogg::GetIngSnatchingNormal(float) const { return -GetTransform().Ge
 // @ fn_7_B7A0
 CBlogg::~CBlogg() {}
 
+// @ fn_7_45E0
 CPlayer* CBlogg::GetPlayer(CStateManager& mgr) const {
   return mPlayerId != kInvalidUniqueId ? TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId)) : nullptr;
 }
 
+// @ fn_7_2544
 bool CBlogg::IsPlayerWithin(CStateManager& mgr, float distance) const {
   CPlayer* player = GetPlayer(mgr);
   if (player != nullptr) {
@@ -571,6 +574,7 @@ bool CBlogg::ShouldAbortBallGrab(CStateManager& mgr, const CTriggerData& data) c
   return mAbortBallGrab;
 }
 
+// @ fn_7_462C
 CVector3f CBlogg::GetDirectionToPlayer(CStateManager& mgr) const {
   const CVector3f position = GetTransform().GetTranslation();
   CPlayer* player = GetPlayer(mgr);
@@ -747,6 +751,7 @@ bool CBlogg::DetectBall(CStateManager& mgr, const CTriggerData& data) const {
   return mIsMegaBlogg ? false : mCanBite && IsPlayerWithin(mgr, mMaxBallDetectionRange);
 }
 
+// @ fn_7_5958
 bool CBlogg::CanGrabBall(CStateManager& mgr, const CTriggerData& data) const {
   CPlayer* player = GetPlayer(mgr);
   if (player != nullptr) {
@@ -760,6 +765,7 @@ bool CBlogg::CanGrabBall(CStateManager& mgr, const CTriggerData& data) const {
   return false;
 }
 
+// @ fn_7_60D8
 bool CBlogg::IsPlayerReachable(CStateManager& mgr, const CTriggerData& data) const {
   CPlayer* player = GetPlayer(mgr);
   return player != nullptr ? CanReachPlayer(mgr, player) : false;
@@ -863,6 +869,7 @@ void CBlogg::UpdateCollisionActorMaterials(CStateManager& mgr, const CMaterialLi
   }
 }
 
+// @ fn_7_233C
 void CBlogg::StopPlayer(CStateManager& mgr) {
   CPlayer* player = GetPlayer(mgr);
   if (player != nullptr) {
@@ -873,6 +880,7 @@ void CBlogg::StopPlayer(CStateManager& mgr) {
   }
 }
 
+// @ fn_7_23A0
 void CBlogg::AttachPlayerToMouth(CStateManager& mgr) {
   StopPlayer(mgr);
   CPlayer* player = GetPlayer(mgr);

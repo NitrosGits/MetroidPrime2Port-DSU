@@ -49,6 +49,14 @@ InMeleeRange, InBiteRange, BallGrabbed, ShouldAbortBallGrab, IsFacingPlayer, Pro
 IsChargeOver, IsPlayerWithinChargeRange, IsHitInMouthDirection, ShouldPrepareToAttack, CanReachPlayer,
 InAttackPosition, InValidPosition, Touch, UpdateAimWeights.
 
+Marked by blog1 (8; forced where noted): SBloggPhaseData ctor, GetPlayer, IsPlayerWithin,
+GetDirectionToPlayer, CanGrabBall, IsPlayerReachable, StopPlayer, AttachPlayerToMouth. The null-player
+arms are forced (`tools/cov/specs/blogg_force.py`, `blogg_forced.con` at 07_swamp_shaft, 2800 frames:
+every 5th GetPlayer sees mPlayerId invalid; also forces pursuit times and mIsMegaBlogg, which left
+ShouldEndPursuit 719:1/4, ShouldEndBallPursuit, PlayerInBallMode 739-740, DetectBall 747:3/6 still short).
+Gcov dirs (kept): /tmp/opencode/blog1/{force1,shaft,forced,guard}/gcov; merge force1 first.
+asmcheck: only the rstl::string_l temporary's destructor call in CanGrabBall/AttachPlayerToMouth.
+
 Unmarked (arms or lines not run): the fixed AcceptScriptMsg (114/137 arms) and FindNearestHint
 (29/31); GetHealthPhase/ChoosePhaseValue/GetNextPositionIndex/IsPlayerInMouthRange/FindAttackPositions/
 GetIngSnatchingPoint/Normal/ShouldPatrol/InProjectileRange/CantMoveToPlayer (never ran); ShouldCharge,

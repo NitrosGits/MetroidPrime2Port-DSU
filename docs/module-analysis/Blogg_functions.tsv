@@ -42,10 +42,10 @@ offset	fn	size	class	name	slice	what	marker
 02070	fn_7_2070	E0	B	CBlogg::UpdateCollisionActorMaterials	-	upstream body (CBlogg)	no
 02150	fn_7_2150	CC	B	CBlogg::FindFluid	-	upstream body (CBlogg)	no
 0221C	fn_7_221C	120	B	CBlogg::CanReachPlayer	blogg1	upstream body (CBlogg)	yes
-0233C	fn_7_233C	64	B	CBlogg::StopPlayer	-	upstream body (CBlogg)	no
-023A0	fn_7_23A0	154	B	CBlogg::AttachPlayerToMouth	-	upstream body (CBlogg)	no
+0233C	fn_7_233C	64	B	CBlogg::StopPlayer	-	upstream body (CBlogg)	yes
+023A0	fn_7_23A0	154	B	CBlogg::AttachPlayerToMouth	-	upstream body (CBlogg)	yes
 024F4	fn_7_24F4	50	H	fn_7_24F4	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
-02544	fn_7_2544	C4	B	CBlogg::IsPlayerWithin	-	upstream body (CBlogg)	no
+02544	fn_7_2544	C4	B	CBlogg::IsPlayerWithin	-	upstream body (CBlogg)	yes
 02608	fn_7_2608	188	B	CBlogg::PathToAttackPosition	-	upstream body (CBlogg)	no
 02790	fn_7_2790	1C	B	CBlogg::HasCollisionTimeElapsed	blogg1	upstream body (CBlogg)	yes
 027AC	fn_7_27AC	1F0	B	CBlogg::CollidedWith	-	upstream body (CBlogg)	no
@@ -77,8 +77,8 @@ offset	fn	size	class	name	slice	what	marker
 0432C	fn_7_432C	AC	B	CBlogg::JoinTeam	-	upstream body (CBlogg)	no
 043D8	fn_7_43D8	200	B	CBlogg::LaunchBloggProjectile	-	upstream body (CBlogg)	no
 045D8	fn_7_45D8	8	B	CBlogg::ProjectileInfo	-	upstream body (CBlogg)	no
-045E0	fn_7_45E0	4C	B	CBlogg::GetPlayer	-	upstream body (CBlogg)	no
-0462C	fn_7_462C	FC	B	CBlogg::GetDirectionToPlayer	-	upstream body (CBlogg)	no
+045E0	fn_7_45E0	4C	B	CBlogg::GetPlayer	-	upstream body (CBlogg)	yes
+0462C	fn_7_462C	FC	B	CBlogg::GetDirectionToPlayer	-	upstream body (CBlogg)	yes
 04728	fn_7_4728	338	B	CBlogg::ApplyCollisionActorDamage	-	upstream body (CBlogg)	no
 04A60	fn_7_4A60	10	H	CPatterned::TakeDamage	-	weak copy / template instance	no
 04A70	fn_7_4A70	90	H	CDamageInfo::CDamageInfo	-	weak copy / template instance	no
@@ -104,7 +104,7 @@ offset	fn	size	class	name	slice	what	marker
 058E8	fn_7_58E8	60	H	fn_7_58E8	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
 05948	fn_7_5948	4	H	fn_7_5948	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
 0594C	fn_7_594C	C	B	CBlogg::BallGrabbed	blogg1	upstream body (CBlogg)	yes
-05958	fn_7_5958	140	B	CBlogg::CanGrabBall	-	upstream body (CBlogg)	no
+05958	fn_7_5958	140	B	CBlogg::CanGrabBall	-	upstream body (CBlogg)	yes
 05A98	fn_7_5A98	5C	B	CBlogg::DetectBall	-	upstream body (CBlogg)	no
 05AF4	fn_7_5AF4	54	B	CBlogg::PlayerInBallMode	-	upstream body (CBlogg)	no
 05B48	fn_7_5B48	AC	B	CBlogg::ShouldEndBallPursuit	-	upstream body (CBlogg)	no
@@ -120,7 +120,7 @@ offset	fn	size	class	name	slice	what	marker
 05E80	fn_7_5E80	13C	B	CBlogg::CanMeleeAttack	-	upstream body (CBlogg)	no
 05FBC	fn_7_5FBC	D0	B	CBlogg::ShouldCharge	-	upstream body (CBlogg)	no
 0608C	fn_7_608C	4C	B	CBlogg::ProjectileAttackDelay	blogg1	upstream body (CBlogg)	yes
-060D8	fn_7_60D8	54	B	CBlogg::IsPlayerReachable	-	upstream body (CBlogg)	no
+060D8	fn_7_60D8	54	B	CBlogg::IsPlayerReachable	-	upstream body (CBlogg)	yes
 0612C	fn_7_612C	8	B	CBlogg::IsPlayerStunned	blogg1	upstream body (CBlogg)	yes
 06134	fn_7_6134	88	B	CBlogg::IsFacingPlayer	blogg1	upstream body (CBlogg)	yes
 061BC	fn_7_61BC	30	B	CBlogg::InProjectileRange	-	upstream body (CBlogg)	no
@@ -182,7 +182,7 @@ offset	fn	size	class	name	slice	what	marker
 0B49C	fn_7_B49C	58	H	fn_7_B49C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
 0B4F4	fn_7_B4F4	1E4	H	fn_7_B4F4	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
 0B6D8	fn_7_B6D8	94	H	fn_7_B6D8	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
-0B76C	fn_7_B76C	2C	B	SBloggPhaseData::SBloggPhaseData	-	upstream body (CBlogg)	no
+0B76C	fn_7_B76C	2C	B	SBloggPhaseData::SBloggPhaseData	-	upstream body (CBlogg)	yes
 0B798	fn_7_B798	8	H	fn_7_B798	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
 0B7A0	fn_7_B7A0	FC	B	CBlogg::~CBlogg	blogg1	upstream body (CBlogg)	yes
 0B89C	fn_7_B89C	3C	H	CPatterned::GetTouchBounds	-	weak copy / template instance	no
