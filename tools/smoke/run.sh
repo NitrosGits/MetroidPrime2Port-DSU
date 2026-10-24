@@ -160,11 +160,11 @@ declare -A F=( [swamp1]=2400 [swamp2]=2400 [sandboss]=2400 [sandworm]=2400 [boos
                [darksamus]=4000 [splitter]=2400 [grenchler]=2500 [grenguard]=2500
                [flyingpirate]=2800 [mediuming]=2450 [metroid]=2700 [sporb]=2600 [blogg]=2800
                [swarm]=2600 [gunturret]=2600 [rezbit]=2600 [parasite]=2400 [lumite]=2600
-               [shrieker]=2600 [ingswarm]=2550 [darktrooper]=2400 [bacteriaswarm]=2400
+               [shrieker]=2600 [ingswarm]=2550 [darktrooper]=2600 [bacteriaswarm]=2400
                [tryclops]=2600 [wisptentacle]=6200 [octapede]=3000 [amt]=9400 [dbar]=1200
                [sjguard]=6000 [fishcloud]=2500 [spa]=2000 [wallwalker]=3700 [isbg]=5700 [spp]=1840
                [mysf]=3200 [spor]=2000 [scriptgui]=700 [kral]=1360 [gbug]=2700 [pssm]=3160
-               [stod]=1500 [pbug]=3600 [szone]=2500 [splinter]=3400 [rptl]=2200 [chog]=1020
+               [stod]=1500 [pbug]=3600 [szone]=2500 [splinter]=3400 [rptl]=2200 [chog]=1200
                [drkc]=4400 [plac]=2000 [plct]=2200 [ming]=1200 [snak]=1000 [eyeb]=2100 [kroc]=2000
                [atma]=2600 [atmb]=2600 [shrd]=1100 [fsw]=2400 [iss]=3000 [ibs]=2600 [mree]=2400
                [puff]=2400 [rubk]=1000 [emp2]=1200 [cball]=1000 [fobj]=800 [skyr]=800 [dsbs]=2000

@@ -8,7 +8,7 @@
 # Left out on purpose: the driver's Sleep/Rise/Pause walk and its `damage ... kb` line (`kb` is not
 # a weapon `damage` knows, so the console answers `=> err`); the states kept are the ones a 2400
 # update family has frames for.
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2350.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2600, last check f2380.
 # The family stays capped (run.sh NC): a fast run of 2400 updates is over in 0.3 s, before con.py
 # gets a console connection, so nothing would be driven.
 @f300 god 1; give missile 50
@@ -46,3 +46,6 @@
 @f2320 damage u0487 999 darkburst
 @f2340 objs DarkTrooper
 @f2350 status
+# appended: delete the dead troopers so objs shows the count drop
+@f2360 send u049d Delete; send u0488 Delete; send u0487 Delete
+@f2380 objs DarkTrooper

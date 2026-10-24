@@ -14,3 +14,6 @@
 @f3100 objs Splinter
 # appended: fsm change (forced) on a live splinter before its death
 @f1750 fsm u055b Patrol; obj u055b
+# appended: fsm change after activation has settled
+@f1900 obj u055b
+@f1910 fsm u055b Patrol; obj u055b
