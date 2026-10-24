@@ -1180,6 +1180,7 @@ void CGrenchler::MoveToTarget(CStateManager& mgr, float dt, const CVector3f& tar
   MarkPathRegion(mgr);
 }
 
+// @ fn_27_E634
 CScriptAiJumpPoint* CGrenchler::FindJumpPoint(CStateManager& mgr, const CVector3f& target,
                                               TUniqueId exclude) {
   CScriptAiJumpPoint* best = nullptr;
