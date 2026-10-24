@@ -132,3 +132,11 @@ scenario failures (both arms, forced call reaching the base, forced call missing
 restore mismatch, no natural call, implausible type value, install failure). Evidence
 `/tmp/opencode/mfly2_evidence` (both `.gcda` 52311cdf.../049c158f..., matching `.gcno` 03028ec0..., source
 5eee6f7e..., binary a054cbf4..., `doUserAnimEvent.disasm.txt`, both diag/fixture transcripts).
+
+Independent review: `/tmp/opencode/mfly2-independent/` reproduces 4/4 lines and both branch
+directions from the frozen profiles; source differs only by the marker. Run 1's actual summary is
+`FAIL` solely for no natural call; run 2 supplies that missing arm, rather than retroactively making
+run 1 pass. Both frozen profile hashes, gcno and source hash verify. The current coverage executable
+was rebuilt after evidence capture and no longer matches the recorded run hash; the original binary
+is not frozen. Caller-name attribution is sufficient for these single-entry runs, not proof of
+frame ownership under nesting. The fixture's forced mode still requires a natural call in that run.
