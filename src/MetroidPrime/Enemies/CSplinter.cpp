@@ -399,6 +399,7 @@ void CSplinter::DetachMorphBall(CStateManager& mgr) {
   player->AddMaterial(kMT_Solid, mgr);
 }
 
+// @ fn_74_2054
 void CSplinter::AttachMorphBall(CStateManager& mgr) {
   CPlayer* player = mgr.GetPlayer(0);
   player->AttachActorToPlayer(GetUniqueId(), true);
@@ -421,6 +422,7 @@ void CSplinter::PlayStepAnim(CStateManager& mgr, int direction, bool loop) {
   }
 }
 
+// @ fn_74_20D4
 void CSplinter::Retreat(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   if (msg == kStateMsg_Activate) {
@@ -429,6 +431,7 @@ void CSplinter::Retreat(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_74_2158
 void CSplinter::GrabMBall(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     PlayStepAnim(mgr, 1, false);
@@ -436,6 +439,7 @@ void CSplinter::GrabMBall(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_74_2590
 bool CSplinter::MorphballWaiting(CStateManager& mgr, const CTriggerData& data) const {
   return false;
 }
@@ -444,10 +448,12 @@ bool CSplinter::ReachedMBall(CStateManager& mgr, const CTriggerData& data) const
   return mgr.GetPlayer(0)->GetTranslation().GetZ() + 1.f < GetTranslation().GetZ();
 }
 
+// @ fn_74_3298
 bool CSplinter::ReachedTop(CStateManager& mgr, const CTriggerData& data) const {
   return GetTranslation().GetZ() > mSac.mDescendStartZ - 0.1f;
 }
 
+// @ fn_74_328C
 bool CSplinter::HoldingSac(CStateManager& mgr, const CTriggerData& data) const {
   return mSac.mHoldingSac;
 }
@@ -545,6 +551,7 @@ void CSplinter::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, E
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }
 
+// @ fn_74_28F4
 CSplinterAcidSac* CSplinter::GetSac(CStateManager& mgr) const {
   if (mSac.mSacId == kInvalidUniqueId) {
     return nullptr;
@@ -552,6 +559,7 @@ CSplinterAcidSac* CSplinter::GetSac(CStateManager& mgr) const {
   return static_cast< CSplinterAcidSac* >(mgr.ObjectById(mSac.mSacId));
 }
 
+// @ fn_74_28B4
 bool CSplinter::HasUnpoppedSac(CStateManager& mgr) const {
   CSplinterAcidSac* sac = GetSac(mgr);
   if (sac == nullptr) {
@@ -560,6 +568,7 @@ bool CSplinter::HasUnpoppedSac(CStateManager& mgr) const {
   return !sac->IsPopped();
 }
 
+// @ fn_74_293C
 void CSplinter::PopSac(CStateManager& mgr) {
   if (GetSac(mgr) != nullptr) {
     GetSac(mgr)->Pop();
@@ -582,6 +591,7 @@ bool CSplinter::SacMissing(CStateManager& mgr, const CTriggerData& data) const {
   return IsSacMissing(mgr);
 }
 
+// @ fn_74_280C
 bool CSplinter::CableShot(CStateManager& mgr, const CTriggerData& data) const {
   return !HasUnpoppedSac(mgr);
 }
@@ -593,6 +603,7 @@ bool CSplinter::DropCompleted(CStateManager& mgr, const CTriggerData& data) cons
   return GetBodyController()->IsAnimationOver();
 }
 
+// @ fn_74_32BC
 bool CSplinter::GrabbedIt(CStateManager& mgr, const CTriggerData& data) const {
   return GetBodyController()->IsAnimationOver() == true;
 }
@@ -630,6 +641,7 @@ bool CSplinter::SacPresent(CStateManager& mgr, const CTriggerData& data) const {
 
 static rstl::string skRelFileName = rstl::string_l("Splinter.rel");
 
+// @ fn_74_D144
 CSplinterAcidSac::CSplinterAcidSac(TUniqueId uid, TAreaId area, const rstl::string& name,
                                    const CModelData& modelData, int initialAnimation,
                                    int popAnimation, const CDamageVulnerability& vulnerability)
@@ -802,6 +814,7 @@ void CSplinter::SetCableMovement(CStateManager& mgr, bool onCable) {
   }
 }
 
+// @ fn_74_2A80
 void CSplinter::KillSelf(CStateManager& mgr) {
   CDamageInfo damage(CWeaponMode(kWT_Power), 1000.f, 1.f, 0.f, false, false);
   mgr.ApplyDamage(GetUniqueId(), GetUniqueId(), GetUniqueId(), damage,
@@ -863,6 +876,7 @@ void CSplinter::Rise(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_74_298C
 void CSplinter::DropAndExplode(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     SetCableMovement(mgr, false);
@@ -1220,6 +1234,7 @@ void CSplinter::SlideOff(CStateManager& mgr, EStateMsg msg, float dt) {
   mUnknownadc = false;
 }
 
+// @ fn_74_85E8
 void CSplinter::Scream(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mgr.InformListeners(GetTranslation(), kLNT_Scream);

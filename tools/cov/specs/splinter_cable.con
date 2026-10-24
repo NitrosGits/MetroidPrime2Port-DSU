@@ -1,0 +1,21 @@
+# 0e_temple_hive_hall (layers 3 4): drive the cable-worker chain by hand: morph ball, then fsm the Splinters through
+# WaitOnCable, Descend, GrabSac, Rise, Drop, DropAndExplode, GrabMBall, Retreat, Scream.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/splinter.py <out> 3bfa3eff,0e_temple_hive_hall --con <this> --fast --frames 3000
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f302 layer 3; layer 4
+@f305 send u0604 Activate; send u0602 Activate; send u048d Activate; send u048a Activate; send u0487 Activate
+@f310 tp 92 -345 -105
+@f330 send u0604 Alert; send u0602 Alert; send u048d Alert; send u048a Alert; send u0487 Alert
+@f360 press x 30
+@f400 fsm u0604 WaitOnCable; fsm u0602 WaitOnCable; fsm u048d WaitOnCable
+@f500 obj u0604; obj u0602; obj u048d
+@f600 fsm u0604 Descend; fsm u0602 Descend; fsm u048d Descend
+@f700 obj u0604; obj u0602; obj u048d
+@f800 fsm u0604 GrabMBall; fsm u0602 GrabSac; fsm u048d Rise
+@f900 obj u0604; obj u0602; obj u048d
+@f1000 fsm u0604 Rise; fsm u0602 Drop; fsm u048d DropAndExplode
+@f1100 obj u0604; obj u0602; obj u048d
+@f1200 fsm u048a GrabMBall; fsm u0487 Retreat
+@f1300 obj u048a; obj u0487
+@f1400 fsm u048a Scream; fsm u0487 GrabSac
+@f1600 obj u048a; obj u0487

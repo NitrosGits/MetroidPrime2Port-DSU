@@ -58,38 +58,38 @@ offset	fn	size	class	name	slice	what	marker
 01F58	fn_74_1F58	54	H	fn_74_1F58	-	unnamed (weak copy / template instance)	no
 01FAC	fn_74_1FAC	3C	B	CSplinter::SSacData::~SSacData	splin1	upstream body (CSplinter)	yes
 01FE8	fn_74_1FE8	6C	B	CSplinter::DetachMorphBall	-	upstream body (CSplinter)	no
-02054	fn_74_2054	80	B	CSplinter::AttachMorphBall	-	upstream body (CSplinter)	no
-020D4	fn_74_20D4	84	B	CSplinter::Retreat	-	upstream body (CSplinter)	no
-02158	fn_74_2158	54	B	CSplinter::GrabMBall	-	upstream body (CSplinter)	no
+02054	fn_74_2054	80	B	CSplinter::AttachMorphBall	-	upstream body (CSplinter)	yes
+020D4	fn_74_20D4	84	B	CSplinter::Retreat	-	upstream body (CSplinter)	yes
+02158	fn_74_2158	54	B	CSplinter::GrabMBall	-	upstream body (CSplinter)	yes
 021AC	fn_74_21AC	110	B	CSplinter::PlayStepAnim	-	upstream body (CSplinter)	no
 022BC	fn_74_22BC	3C	H	fn_74_22BC	-	unnamed (weak copy / template instance)	no
 022F8	fn_74_22F8	184	H	CPASAnimParmData::CPASAnimParmData	-	weak copy / template instance	no
 0247C	fn_74_247C	3C	H	fn_74_247C	-	unnamed (weak copy / template instance)	no
 024B8	fn_74_24B8	B0	B	CSplinter::MBallMoved	-	upstream body (CSplinter)	no
 02568	fn_74_2568	28	B	CSplinter::ReachedMBall	-	upstream body (CSplinter)	no
-02590	fn_74_2590	8	B	CSplinter::MorphballWaiting	-	upstream body (CSplinter)	no
+02590	fn_74_2590	8	B	CSplinter::MorphballWaiting	-	upstream body (CSplinter)	yes
 02598	fn_74_2598	20	B	CSplinter::SacMissing	splin1	upstream body (CSplinter)	yes
 025B8	fn_74_25B8	84	B	CSplinter::FindConnectedId	-	upstream body (CSplinter)	no
 0263C	fn_74_263C	180	B	CSplinter::CreateSac	-	upstream body (CSplinter)	no
 027BC	fn_74_27BC	50	H	rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::~basic_string	-	weak copy / template instance	no
-0280C	fn_74_280C	2C	B	CSplinter::CableShot	-	upstream body (CSplinter)	no
+0280C	fn_74_280C	2C	B	CSplinter::CableShot	-	upstream body (CSplinter)	yes
 02838	fn_74_2838	58	B	CSplinter::IsSacMissing	-	upstream body (CSplinter)	no
 02890	fn_74_2890	24	B	CSplinter::DropCompleted	-	upstream body (CSplinter)	no
-028B4	fn_74_28B4	40	B	CSplinter::HasUnpoppedSac	-	upstream body (CSplinter)	no
-028F4	fn_74_28F4	48	B	CSplinter::GetSac	-	upstream body (CSplinter)	no
-0293C	fn_74_293C	50	B	CSplinter::PopSac	-	upstream body (CSplinter)	no
-0298C	fn_74_298C	90	B	CSplinter::DropAndExplode	-	upstream body (CSplinter)	no
+028B4	fn_74_28B4	40	B	CSplinter::HasUnpoppedSac	-	upstream body (CSplinter)	yes
+028F4	fn_74_28F4	48	B	CSplinter::GetSac	-	upstream body (CSplinter)	yes
+0293C	fn_74_293C	50	B	CSplinter::PopSac	-	upstream body (CSplinter)	yes
+0298C	fn_74_298C	90	B	CSplinter::DropAndExplode	-	upstream body (CSplinter)	yes
 02A1C	fn_74_2A1C	64	B	CSplinter::Drop	splin1	upstream body (CSplinter)	yes
-02A80	fn_74_2A80	14C	B	CSplinter::KillSelf	-	upstream body (CSplinter)	no
+02A80	fn_74_2A80	14C	B	CSplinter::KillSelf	-	upstream body (CSplinter)	yes
 02BCC	fn_74_2BCC	1CC	B	CSplinter::Rise	-	upstream body (CSplinter)	no
 02D98	fn_74_2D98	A4	B	CSplinter::GrabSac	-	upstream body (CSplinter)	no
 02E3C	fn_74_2E3C	1B4	B	CSplinter::Descend	-	upstream body (CSplinter)	no
 02FF0	fn_74_2FF0	5C	H	CRayCastResult::CRayCastResult	-	weak copy / template instance	no
 0304C	fn_74_304C	1DC	B	CSplinter::WaitOnCable	-	upstream body (CSplinter)	no
 03228	fn_74_3228	64	B	CSplinter::ShouldDrop	-	upstream body (CSplinter)	no
-0328C	fn_74_328C	C	B	CSplinter::HoldingSac	-	upstream body (CSplinter)	no
-03298	fn_74_3298	24	B	CSplinter::ReachedTop	-	upstream body (CSplinter)	no
-032BC	fn_74_32BC	1C	B	CSplinter::GrabbedIt	-	upstream body (CSplinter)	no
+0328C	fn_74_328C	C	B	CSplinter::HoldingSac	-	upstream body (CSplinter)	yes
+03298	fn_74_3298	24	B	CSplinter::ReachedTop	-	upstream body (CSplinter)	yes
+032BC	fn_74_32BC	1C	B	CSplinter::GrabbedIt	-	upstream body (CSplinter)	yes
 032D8	fn_74_32D8	74	B	CSplinter::ReachedSac	-	upstream body (CSplinter)	no
 0334C	fn_74_334C	30	B	CSplinter::IsGrabbingPlayer	-	upstream body (CSplinter)	no
 0337C	fn_74_337C	4C	B	CSplinter::GetGrabbed	-	upstream body (CSplinter)	no
@@ -193,7 +193,7 @@ offset	fn	size	class	name	slice	what	marker
 08060	fn_74_8060	344	B	CSplinter::DoEvasion	-	upstream body (CSplinter)	no
 083A4	fn_74_83A4	74	B	CSplinter::Taunt	splin1	upstream body (CSplinter)	yes
 08418	fn_74_8418	1D0	B	CSplinter::ChooseEvasion	splin1	upstream body (CSplinter)	yes
-085E8	fn_74_85E8	38	B	CSplinter::Scream	-	upstream body (CSplinter)	no
+085E8	fn_74_85E8	38	B	CSplinter::Scream	-	upstream body (CSplinter)	yes
 08620	fn_74_8620	C	B	CSplinter::SkipAlert	splin1	upstream body (CSplinter)	yes
 0862C	fn_74_862C	14	B	CSplinter::ShouldTaunt	splin1	upstream body (CSplinter)	yes
 08640	fn_74_8640	3F4	B	CSplinter::CollidedWith	-	upstream body (CSplinter)	no
@@ -266,7 +266,7 @@ offset	fn	size	class	name	slice	what	marker
 0CF98	fn_74_CF98	C0	B	CSplinterAcidSac::PreRender	splin1	upstream body (CSplinterAcidSac)	yes
 0D058	fn_74_D058	20	B	CSplinterAcidSac::Render	splin1	upstream body (CSplinterAcidSac)	yes
 0D078	fn_74_D078	CC	B	CSplinterAcidSac::Think	splin1	upstream body (CSplinterAcidSac)	yes
-0D144	fn_74_D144	1BC	B	CSplinterAcidSac::CSplinterAcidSac	-	upstream body (CSplinterAcidSac)	no
+0D144	fn_74_D144	1BC	B	CSplinterAcidSac::CSplinterAcidSac	-	upstream body (CSplinterAcidSac)	yes
 0D300	fn_74_D300	5C	H	fn_74_D300	-	unnamed (weak copy / template instance)	no
 0D35C	fn_74_D35C	130	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::vector	-	weak copy / template instance	no
 0D48C	fn_74_D48C	58	H	fn_74_D48C	-	unnamed (weak copy / template instance)	no

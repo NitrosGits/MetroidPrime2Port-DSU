@@ -80,8 +80,24 @@ tools/cov/specs/splinter_<area>_{fight,ball}.con --fast --frames 3400`, then mer
 The `_fight` drivers wake, alert, fight, then damage (plain, knock-back, missile) and kill. The `_ball`
 drivers sit in morph ball among the splinters and boost. `splinter_te.con`, `splinter_te_fight.con` and
 `splinter_te_ball.con` cover 02_temple_exploration's layer-0 cocoon trio. `splinter_find*.con` are
-discovery drivers. All 24 runs merged: 141/171 functions, 79.8% lines, 66.2% branches.
+discovery drivers. All 27 runs merged: see `gcov_report.py` for the current totals.
 
-Fully covered but not marked (cap 60): the CSplinterAcidSac ctor (unnamed in retail).
-Uncovered: the grab/MBall chain (GrabMBall, MBallMoved, Attach/DetachMorphBall), Rise, GrabSac,
-DropAndExplode, RunAndHide/FindHideHint, Scream, Retreat, and the Mega spit.
+`splinter_cable.con` (hive_hall, layers 3 4, `--frames 1800`) drives the cable workers u048d/u048a/u0487
+(the same instances as 02_temple_hive u0636/u0633/u0630, which never activate from the hive02 area) through
+fsm WaitOnCable/Descend/GrabSac/Rise/Drop/DropAndExplode/Retreat/Scream. `splinter_mball.con` (same area,
+`--frames 1400`) adds `statecall`/`trigcall` for GrabMBall (not a node in the FSM asset, so `fsm` is a no-op),
+MBallMoved, Rise and GrabSac. `splinter_all.sh <outroot>` reruns every driver 3 at a time.
+
+Marked in the second pass (15 bodies, 75 total): AttachMorphBall, Retreat, GrabMBall, MorphballWaiting,
+CableShot, HasUnpoppedSac, GetSac, PopSac, DropAndExplode, KillSelf, HoldingSac, ReachedTop, GrabbedIt,
+Scream and the CSplinterAcidSac ctor, each with all live arms run and checked against the asm. asmcheck
+findings are tool limits (unported callee CALLs, the xab0_40 bitfield, inline-header BRANCH counts).
+
+Not marked, with reason:
+- MBallMoved: arms for an inactive player, a player in another area and the not-morphed case (730, 731,
+  733) did not all run. The first two cannot happen in play.
+- DetachMorphBall, IsGrabbingPlayer, ExplodeSac, the Rise detach arm, GrabSac holding arms: need
+  `mSac.mGrabbedId` set, which only FindConnectedId does for a `mSacOnCable` splinter with a connected
+  grabbed object; no spawn has one. Needs a FORCE spec (not written).
+- RunAndHide/FindHideHint, FacingPlayerExactly, SetUnhideTime, ReachedMBall, ProjectileInfo,
+  MegaSplinterSpit (no Mega splinter), CSplinterAcidSac::HealthInfo/GetDamageVulnerability: never reached.
