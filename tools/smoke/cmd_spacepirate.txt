@@ -4,13 +4,16 @@
 @f1370 face 270
 @f1540 press a 2
 @f1750 press a 2
-@f1960 press a 2
-@f2250 objs spacepirate
-
 @f1880 send u04d8 Activate
+# fsm change: forced state change (WarpIn -> Patrol)
 @f1900 fsm u04d8 Patrol
+# hp fall: lethal damage (60 -> -40)
 @f1920 damage u04d8 100
 @f1940 obj u04d8
+@f1960 press a 2
 @f2000 objs spacepirate
-@f2060 obj u04d8
+# kill: removal after death
+@f2020 send u04d8 Delete
+@f2040 objs spacepirate
 @f2120 objs spacepirate
+@f2250 objs spacepirate

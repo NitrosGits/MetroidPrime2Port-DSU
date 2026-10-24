@@ -1,12 +1,16 @@
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2400, last check f2250.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2600, last check f2250.
 @f1000 layer 4
 @f1420 objs emperoring
-@f1830 objs emperoring
-@f1500 obj e000b0094
-@f1600 damage e000b0094 10
-@f1620 obj e000b0094
-@f1700 fsm e000b0094 Idle
-@f1720 obj e000b0094
-@f1800 send e000b0094 Delete
+@f1460 send e000b0003 Activate
+@f1500 obj e000b0003
+# hp fall: direct damage reduces hp (700 -> 690)
+@f1600 damage e000b0003 10
+@f1620 obj e000b0003
+# fsm change: forced state change
+@f1700 fsm e000b0003 Taunt
+@f1720 obj e000b0003
+# kill: lethal damage then removal
+@f1780 damage e000b0003 1000
 @f1820 objs emperoring
+@f1830 objs emperoring
 @f2250 objs emperoring
