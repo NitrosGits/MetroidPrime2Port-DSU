@@ -1,0 +1,13 @@
+# Torvus Bog ok_swamp_hall layer 3 (the disc's own area name; the brief's "0k"), the two other PSSM
+# placements: e0c2d009a at (-177.9, -66.0, -28.3) and e0c2d0076 at (-175.9, -36.6, -24.2).
+# psc3 run 2: god-mode player stands by the first swarm, then by the second; `obj` reports each.
+# 1200 frames, fast.
+@f220 layer 3
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; fastmorph 1
+@f360 send e0c2d009a Activate; send e0c2d0076 Activate
+@f400 tp -177.9 -66.0 -28.3
+@f600 obj e0c2d009a
+@f800 tp -175.9 -36.6 -24.2
+@f900 obj e0c2d0076
+@f1100 obj e0c2d0076
+@f1190 obj e0c2d009a; obj e0c2d0076
