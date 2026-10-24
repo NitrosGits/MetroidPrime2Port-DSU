@@ -1,34 +1,42 @@
 # PlantScarabSwarm (module 49) psc9 fixture: the constructor's own argument-driven arms
 # (fn_49_2300, src/MetroidPrime/Enemies/CPlantScarabSwarm.cpp:24-75).  This file is BOTH the force.sh
-# spec argument and COV_GDB_SCRIPT.  It writes ONE 4-byte scalar per phase, on the real call, and puts
-# the ORIGINAL bytes back at the constructor's return, then reads them back to prove it.
+# spec argument and COV_GDB_SCRIPT.
 #
 # The constructor is a real out-of-line function.  Its three source conditions sit at these offsets in
-# the archived build (objdump -d --line-numbers, bound to the binary hash below):
-#   +0x32e  f4f6de  cmpl $0xffffffff,0x0(%r13)      cpp:50  animRes.GetId() != kInvalidAssetId
-#   +0x342  f4f6f2  cmpl $0xffffffff,0x1a8(%rsp)    cpp:50  intoAttackAnimation != -1
-#   +0x54f  f4f8ff  cmpl $0xffffffff,0x1b0(%rsp)    cpp:65  attackAnimation != -1
-# r13 holds the caller's CAnimRes* at +0x32e (the compare dereferences it); the two int arguments are
-# the stack slots the compares read.  Each phase patches exactly one of them for the call:
-#   natural            no write at all                     (all conditions true)
-#   invalidAnim        animRes.mAncsId 0xffffffff          (cpp:50 first operand false)
-#   intoAttackMinus1   the intoAttackAnimation slot        (cpp:50 second operand false)
-#   attackAnimMinus1   the attackAnimation slot            (cpp:65 operand false)
+# the archived build (objdump -d --line-numbers; bound to the binary hash below):
+#   +0x32e  cmpl $0xffffffff,0x0(%r13)      cpp:50  animRes.GetId() != kInvalidAssetId
+#   +0x342  cmpl $0xffffffff,0x1a8(%rsp)    cpp:50  intoAttackAnimation != -1
+#   +0x54f  cmpl $0xffffffff,0x1b0(%rsp)    cpp:65  attackAnimation != -1
+# r13 holds the caller's CAnimRes* at +0x32e; the two int arguments are the stack slots the compares
+# read.  Each phase patches exactly one of them for the call:
+#   natural            no write                       (all conditions true)
+#   invalidAnim        animRes.mAncsId 0xffffffff     (cpp:50 first operand false)
+#   intoAttackMinus1   the intoAttackAnimation slot    (cpp:50 second operand false)
+#   attackAnimMinus1   the attackAnimation slot        (cpp:65 operand false)
 # The caller's CAnimRes object is patched only at +0x32e, i.e. AFTER the base CSwarmBasics constructor
-# has consumed the valid resource, so the base ctor is never fed an invalid asset.  At the ctor's
-# return the fixture restores the snapshot, reads it back, and checks the CONSTRUCTED OBJECT's state
-# (attack-model count, shared model, bit base) - an output oracle, not an entry count.
+# has consumed the valid resource, so the base ctor is never fed an invalid asset.
 #
-# The breakpoints are addresses of one build, so the fixture hashes the binary first and refuses to
-# install on any other (status=FAIL, reason=BINARY SHA MISMATCH).  Every failure path - no hit, no
-# object state, unreadable slot, caught exception, restore mismatch - is a named FAIL in fixture.txt.
+# Restoration contract (what the summary enforces):
+#  - every ctor call gets its own record (id, phase, armed, obligations, returned); obligations are NOT
+#    keyed by phase, so two calls of the same phase cannot share or lose a snapshot;
+#  - a mutation is permitted ONLY when that call's FinishBreakpoint was created (armed); otherwise the
+#    patch refuses and the summary fails;
+#  - the 4 raw bytes are snapshotted and REGISTERED as an obligation BEFORE the write is attempted, and
+#    the obligation stays even if the write fails or the post-write readback is unreadable;
+#  - at the ctor's return the ORIGINAL bytes are written back and read back; the summary fails on any
+#    obligation that is not restored, on any call that never returned, and on any missing phase write;
+#  - a call that leaves without a return (out_of_scope) never writes expired stack storage; its
+#    obligations are reported unrestored and the summary fails.
+# Fail-closed guards: the binary hash must match (the offsets are one build's), the ctor symbol must be
+# in the run's nm dump, and every failure path (no hit, install failure, unreadable address, refused
+# mutation, restore readback) is a named reason in fixture.txt - status=OK only when everything above
+# held for every call.
 #
 #   PSC9_PHASE_START=0 BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/specs/psc9_ctor_args.py \
-#     tools/cov/force.sh tools/cov/specs/psc9_ctor_args.py /tmp/opencode/psc9_r1 \
+#     tools/cov/force.sh tools/cov/specs/psc9_ctor_args.py /tmp/opencode/psc9_rN \
 #     3dfd2249,ok_swamp_hall --con tools/cov/specs/psc9_ctor_ok.con --fast --frames 1200
 import hashlib
 import os
-import re
 
 import gdb
 
@@ -36,35 +44,19 @@ OUT = os.environ.get('COV_OUT', '/tmp')
 LOG = os.path.join(OUT, 'diag.log')
 TABLE = os.path.join(OUT, 'fixture.txt')
 EVIDENCE_SHA256 = 'cbab51dd3faee657cd725085e8d36d0074ba33f29b57980b5cd7b104772a2d15'
-def ctor_symbol():
-    """The ctor's mangled name, taken from the run's nm dump (COV_NM) by its demangled prefix."""
-    nm = os.environ.get('COV_NM')
-    if not nm or not os.path.exists(nm):
-        return None
-    with open(nm) as fh:
-        for ln in fh:
-            parts = ln.rstrip('\n').split('\t')
-            if len(parts) == 2 and parts[1].startswith('CPlantScarabSwarm::CPlantScarabSwarm('):
-                f = parts[0].split()
-                if len(f) == 3 and f[1] in 'tTW':
-                    return f[2]
-    return None
-
-
-CTOR = ctor_symbol()
 ANIM_ID_OFF = 0x32e
 INTO_OFF = 0x342
 ATTACK_OFF = 0x54f
 INTO_SLOT = 0x1a8
 ATTACK_SLOT = 0x1b0
 PHASES = ['natural', 'invalidAnim', 'intoAttackMinus1', 'attackAnimMinus1']
+WRITE_PHASES = ('invalidAnim', 'intoAttackMinus1', 'attackAnimMinus1')
 try:
     PHASE_START = int(os.environ.get('PSC9_PHASE_START', '0'))
 except ValueError:
     PHASE_START = 0
-state = {'installed': 0, 'binary': 'unchecked', 'hits': 0, 'objects': 0, 'writes': 0,
-         'restored': 0, 'restore_bad': 0, 'state_ok': 0, 'problems': [], 'phase': None,
-         'phase_idx': PHASE_START, 'pending': {}, 'checked': []}
+state = {'installed': 0, 'binary': 'unchecked', 'hits': 0, 'objects': 0, 'state_ok': 0,
+         'calls': [], 'current': None, 'problems': []}
 
 
 def log(msg):
@@ -82,7 +74,7 @@ def ev(expr):
         return int(gdb.parse_and_eval(expr))
     except gdb.error as e:
         return 'err:' + str(e)[:48]
-    except Exception as e:
+    except Exception as e:  # a broken expression must not abort the run
         return 'exc:' + repr(e)[:48]
 
 
@@ -91,45 +83,78 @@ def rd32(addr):
     return v if isinstance(v, int) else None
 
 
-class CtorReturn(gdb.FinishBreakpoint):
-    """At the ctor's return: restore the phase's snapshot, read it back, check the object state."""
+def fmt(v):
+    return '0x%x' % v if isinstance(v, int) else str(v)
 
-    def __init__(self, frame, this, phase):
+
+def ctor_symbol():
+    """The ctor's mangled name, taken from the run's nm dump (COV_NM) by its demangled prefix."""
+    nm = os.environ.get('COV_NM')
+    if not nm or not os.path.exists(nm):
+        return None
+    with open(nm) as fh:
+        for ln in fh:
+            parts = ln.rstrip('\n').split('\t')
+            if len(parts) == 2 and parts[1].startswith('CPlantScarabSwarm::CPlantScarabSwarm('):
+                f = parts[0].split()
+                if len(f) == 3 and f[1] in 'tTW':
+                    return f[2]
+    return None
+
+
+CTOR = ctor_symbol()
+
+
+class CtorReturn(gdb.FinishBreakpoint):
+    """Per-call return hook: restore this call's obligations (never another call's) and check state."""
+
+    def __init__(self, frame, this, call):
         super().__init__(frame, internal=True)
-        self.this, self.phase = this, phase
+        self.this, self.call = this, call
 
     def stop(self):
+        call = self.call
+        call['returned'] = True
         state['objects'] += 1
-        pend = state['pending'].pop(self.phase, [])
-        for addr, original, what in pend:
+        if state['current'] is call:
+            state['current'] = None
+        for ob in call['obligations']:
+            addr, orig, what = ob['addr'], ob['original'], ob['what']
             now = rd32(addr)
             try:
-                gdb.execute('set {unsigned int}0x%x = 0x%x' % (addr, original))
+                gdb.execute('set {unsigned int}0x%x = 0x%x' % (addr, orig))
                 back = rd32(addr)
             except gdb.error as e:
-                state['restore_bad'] += 1
-                problem('%s: RESTORE FAILED for %s at 0x%x: %s' % (self.phase, what, addr, str(e)[:60]))
+                problem('hit %d: restore of %s at 0x%x failed: %s'
+                        % (call['id'], what, addr, str(e)[:60]))
                 continue
-            if back == original:
-                state['restored'] += 1
-                log('%s: restored ORIGINAL %s at 0x%x = 0x%x (read back 0x%x; before the restore it '
-                    'was 0x%x)' % (self.phase, what, addr, original, back, now))
+            if back is None:
+                problem('hit %d: restore readback of %s at 0x%x unreadable (wanted %s)'
+                        % (call['id'], what, addr, fmt(orig)))
+            elif back == orig:
+                ob['restored'] = True
+                log('hit %d %s: restored ORIGINAL %s at 0x%x = %s (read back %s; before the restore it '
+                    'was %s)' % (call['id'], call['phase'], what, addr, fmt(orig), fmt(back), fmt(now)))
             else:
-                state['restore_bad'] += 1
-                problem('%s: restore readback mismatch for %s: wanted 0x%x read 0x%x'
-                        % (self.phase, what, original, back))
-        problems = self.check_state()
-        if problems:
-            for p in problems:
-                problem('%s: object state %s' % (self.phase, p))
+                problem('hit %d: restore readback mismatch for %s at 0x%x: wanted %s read %s'
+                        % (call['id'], what, addr, fmt(orig), fmt(back)))
+        bad = self.check_state()
+        if bad:
+            for p in bad:
+                problem('hit %d %s: object state %s' % (call['id'], call['phase'], p))
         else:
             state['state_ok'] += 1
-            log('%s: object state OK (models=%d sharedModel=%d sharedDelta=%d bitBase=%d sharedBit=%d)'
-                % ((self.phase,) + self.snapshot()))
+            log('hit %d %s: object state OK (models=%s sharedModel=%s sharedDelta=%s bitBase=%s '
+                'sharedBit=%s)' % ((call['id'], call['phase']) + tuple(
+                    fmt(x) for x in self.snapshot())))
         return False
 
     def out_of_scope(self):
-        problem('%s: the ctor left without a return; snapshot not restored' % self.phase)
+        self.call['returned'] = False
+        state['unreturned'] = state.get('unreturned', 0) + 1
+        n = len(self.call['obligations'])
+        problem('hit %d: the ctor left without a return; %d obligation(s) NOT restored (expired stack '
+                'storage, never written)' % (self.call['id'], n))
 
     def snapshot(self):
         obj = '((CPlantScarabSwarm*)0x%x)' % self.this
@@ -140,24 +165,18 @@ class CtorReturn(gdb.FinishBreakpoint):
                 ev(obj + '->mSharedAttackBit'))
 
     def check_state(self):
-        obj = '((CPlantScarabSwarm*)0x%x)' % self.this
-        models = ev(obj + '->mAttackModels.mCount')
-        shared = ev(obj + '->mSharedAttackModel.mPtr != 0')
-        delta = ev(obj + '->mSharedAttackDeltas.mPtr != 0')
-        bit = ev(obj + '->mSharedAttackBit')
-        base = ev(obj + '->mAttackModelBitBase')
-        if not all(isinstance(x, int) for x in (models, shared, delta, bit, base)):
-            return ['unreadable (%s/%s/%s/%s/%s)' % (models, shared, delta, bit, base)]
+        models, shared, delta, base, bit = self.snapshot()
+        if not all(isinstance(x, int) for x in (models, shared, delta, base, bit)):
+            return ['unreadable (%s/%s/%s/%s/%s)' % (models, shared, delta, base, bit)]
         want = {
             'natural': (3, 1, 1, 3, 1),
             'invalidAnim': (0, 0, 0, 0, 0),
             'intoAttackMinus1': (0, 0, 0, 0, 0),
             'attackAnimMinus1': (3, 0, 0, 3, 0),
-        }[self.phase]
+        }[self.call['phase']]
         got = (models, shared, delta, base, bit)
         if got != want:
-            return ['got models/shared/delta/base/bit=%s want %s (base must equal mModelDatas.size)'
-                    % (got, want)]
+            return ['got models/shared/delta/base/bit=%s want %s' % (got, want)]
         return []
 
 
@@ -167,17 +186,30 @@ class EntryBp(gdb.Breakpoint):
 
     def stop(self):
         try:
-            state['hits'] += 1
-            state['phase'] = PHASES[(state['phase_idx'] + state['hits'] - 1) % len(PHASES)]
-            this = ev('$rdi')
-            if not isinstance(this, int) or this == 0:
-                problem('hit %d: this unresolved' % state['hits'])
-                return False
-            CtorReturn(gdb.newest_frame(), this, state['phase'])
-            log('ctor hit %d: this=0x%x phase=%s' % (state['hits'], this, state['phase']))
+            self._stop()
         except Exception as e:
-            problem('entry fixture exception on hit %d: %r' % (state['hits'], e))
+            problem('entry exception on hit %d: %r' % (state['hits'] + 1, e))
         return False
+
+    def _stop(self):
+        state['hits'] += 1
+        call = {'id': state['hits'],
+                'phase': PHASES[(PHASE_START + state['hits'] - 1) % len(PHASES)],
+                'armed': False, 'obligations': [], 'returned': False}
+        state['calls'].append(call)
+        state['current'] = call
+        this = ev('$rdi')
+        if not isinstance(this, int) or this == 0:
+            problem('hit %d: this unresolved; no mutation will be attempted' % call['id'])
+            return
+        try:
+            CtorReturn(gdb.newest_frame(), this, call)
+            call['armed'] = True
+        except Exception as e:
+            problem('hit %d: FinishBreakpoint not created (%r); no mutation will be attempted'
+                    % (call['id'], e))
+            return
+        log('ctor hit %d: this=0x%x phase=%s armed' % (call['id'], this, call['phase']))
 
 
 class PatchBp(gdb.Breakpoint):
@@ -189,16 +221,25 @@ class PatchBp(gdb.Breakpoint):
         try:
             self._stop()
         except Exception as e:
-            problem('%s: patch exception in %s: %r' % (state['phase'], self.which, e))
+            problem('%s: patch exception in %s: %r'
+                    % ((state['current'] or {}).get('phase', '?'), self.which, e))
         return False
 
     def _stop(self):
-        phase = state['phase']
+        call = state['current']
+        if call is None:
+            problem('%s: patch ran with no live ctor call' % self.which)
+            return
+        phase = call['phase']
         if self.which == 'animid' and phase != 'invalidAnim':
             return
         if self.which == 'into' and phase != 'intoAttackMinus1':
             return
         if self.which == 'attack' and phase != 'attackAnimMinus1':
+            return
+        if not call['armed']:
+            problem('hit %d %s: mutation refused, the call has no FinishBreakpoint'
+                    % (call['id'], phase))
             return
         if self.which == 'animid':
             addr = ev('(long)&animRes')
@@ -212,51 +253,68 @@ class PatchBp(gdb.Breakpoint):
             slot = INTO_SLOT if self.which == 'into' else ATTACK_SLOT
             rsp = ev('$rsp')
             if not isinstance(rsp, int):
-                problem('%s: rsp unresolved for the %s slot' % (phase, self.which))
+                problem('hit %d %s: rsp unresolved for the %s slot' % (call['id'], phase, self.which))
                 return
             addr = rsp + slot
             how = '$rsp+0x%x' % slot
             what = 'intoAttackAnimation' if self.which == 'into' else 'attackAnimation'
         if not isinstance(addr, int) or addr == 0:
-            problem('%s: %s address unresolved' % (phase, self.which))
+            problem('hit %d %s: %s address unresolved' % (call['id'], phase, self.which))
             return
         original = rd32(addr)
         if original is None:
-            problem('%s: %s at 0x%x unreadable' % (phase, what, addr))
+            problem('hit %d %s: %s at 0x%x unreadable, nothing written' % (call['id'], phase, what, addr))
             return
+        ob = {'addr': addr, 'original': original, 'what': what, 'restored': False}
+        call['obligations'].append(ob)  # registered BEFORE the write; never discarded
+        log('hit %d %s: snapshot %s at 0x%x = %s via %s (obligation registered before the write)'
+            % (call['id'], phase, what, addr, fmt(original), how))
         try:
             gdb.execute('set {unsigned int}0x%x = 0x%x' % (addr, 0xffffffff))
         except gdb.error as e:
-            problem('%s: write to %s at 0x%x failed: %s' % (phase, what, addr, str(e)[:60]))
+            problem('hit %d %s: write to %s at 0x%x failed: %s (snapshot retained for the return)'
+                    % (call['id'], phase, what, addr, str(e)[:60]))
             return
         now = rd32(addr)
-        if now != 0xffffffff:
-            problem('%s: %s write did not take at 0x%x (read 0x%x)' % (phase, what, addr, now))
-            return
-        state['writes'] += 1
-        state.setdefault('pending', {}).setdefault(phase, []).append((addr, original, what))
-        log('%s: %s 0x%x -> 0x%x at 0x%x via %s (restored at the ctor return)'
-            % (phase, what, original, now, addr, how))
+        if now is None:
+            problem('hit %d %s: post-write readback of %s at 0x%x unreadable (snapshot retained)'
+                    % (call['id'], phase, what, addr))
+        elif now != 0xffffffff:
+            problem('hit %d %s: write to %s did not take at 0x%x (read %s; snapshot retained)'
+                    % (call['id'], phase, what, addr, fmt(now)))
+        else:
+            log('hit %d %s: %s %s -> 0xffffffff confirmed'
+                % (call['id'], phase, what, fmt(original)))
 
 
 def summarize():
     problems = list(state['problems'])
+    calls = state['calls']
     if state['hits'] == 0:
         problems.append('no ctor hit')
-    if state['objects'] == 0:
-        problems.append('no ctor return reached')
-    if state['phase'] in ('invalidAnim', 'intoAttackMinus1', 'attackAnimMinus1') and state['writes'] == 0:
-        problems.append('phase %s never wrote its argument' % state['phase'])
-    if state['restore_bad']:
-        problems.append('%d restore failure(s)' % state['restore_bad'])
-    if state['state_ok'] != state['objects']:
-        problems.append('object-state oracle passed %d of %d returns' % (state['state_ok'], state['objects']))
+    if state['installed'] != 1:
+        problems.append('fixture not installed')
+    unreturned = [c for c in calls if not c['returned']]
+    if unreturned:
+        problems.append('unreturned ctor call(s): %s' % [c['id'] for c in unreturned])
+    obligations = [(c['id'], ob) for c in calls for ob in c['obligations']]
+    unrestored = [(cid, ob['what'], hex(ob['addr'])) for cid, ob in obligations if not ob['restored']]
+    if unrestored:
+        problems.append('attempted write(s) not restored: %s' % unrestored)
+    missing = [c['id'] for c in calls
+               if c['returned'] and c['phase'] in WRITE_PHASES and not c['obligations']]
+    if missing:
+        problems.append('missing phase write for call(s): %s' % missing)
+    if calls and state['state_ok'] != sum(1 for c in calls if c['returned']):
+        problems.append('object-state oracle passed %d of %d returns'
+                        % (state['state_ok'], sum(1 for c in calls if c['returned'])))
     status = 'OK' if not problems else 'FAIL'
-    line = ('status=%s binary=%s installed=%d hits=%d objects=%d writes=%d restored=%d '
-            'restore_bad=%d state_ok=%d phase_start=%d reasons=%s\n'
+    line = ('status=%s binary=%s installed=%d hits=%d objects=%d attempted=%d restored=%d '
+            'unrestored=%d unreturned=%d state_ok=%d phase_start=%d reasons=%s\n'
             % (status, state['binary'], state['installed'], state['hits'], state['objects'],
-               state['writes'], state['restored'], state['restore_bad'], state['state_ok'],
-               PHASE_START, '; '.join(problems) if problems else '-'))
+               len(obligations), sum(1 for _c, ob in obligations if ob['restored']), len(unrestored),
+               len(unreturned), state['state_ok'], PHASE_START,
+               '; '.join(problems) if problems else '-'))
     with open(TABLE, 'a') as fh:
         fh.write(line)
     log('psc9 summary: ' + line.strip())
@@ -288,12 +346,15 @@ def binary_sha():
 
 gdb.events.exited.connect(lambda event: summarize())
 _sha, _why = binary_sha()
-if _sha == EVIDENCE_SHA256 and not CTOR:
-    state['binary'] = _sha
+state['binary'] = _sha or ('unavailable: ' + str(_why))
+if _sha != EVIDENCE_SHA256:
+    problem('BINARY SHA MISMATCH: expected %s, got %s (%s) - the +0x32e/+0x342/+0x54f offsets and the '
+            '0x1a8/0x1b0 stack slots are bound to the archived build, so the fixture is NOT installed'
+            % (EVIDENCE_SHA256, _sha, _why))
+elif not CTOR:
     problem('ctor symbol not found in COV_NM (no demangled "CPlantScarabSwarm::CPlantScarabSwarm(" '
             'entry) - fixture NOT installed')
-elif _sha == EVIDENCE_SHA256:
-    state['binary'] = _sha
+else:
     try:
         EntryBp()
         PatchBp(ANIM_ID_OFF, 'animid')
@@ -304,8 +365,3 @@ elif _sha == EVIDENCE_SHA256:
             % (CTOR[:40], _sha[:12], PHASE_START))
     except Exception as e:
         problem('breakpoint install failed on %s: %r' % (CTOR[:40], e))
-else:
-    state['binary'] = _sha or ('unavailable: ' + str(_why))
-    problem('BINARY SHA MISMATCH: expected %s, got %s (%s) - the +0x32e/+0x342/+0x54f offsets and the '
-            '0x1a8/0x1b0 stack slots are bound to the archived build, so the fixture is NOT installed'
-            % (EVIDENCE_SHA256, _sha, _why))

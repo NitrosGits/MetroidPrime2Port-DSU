@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """Mocked-gdb regression test for tools/cov/specs/psc9_ctor_args.py - no game boot, no gdb process.
 
-It loads the real fixture source with a fake `gdb` and drives its actual breakpoints:
-  natural        no write, object state matches -> status=OK, state oracle 1/1
-  invalidAnim    writes 0xffffffff, restores the ORIGINAL bytes, state matches -> OK
-  state mismatch scripted wrong object state       -> FAIL, named reason
-  unreadable     the animRes address is unreadable -> FAIL, named reason
-  exception      the patch raises inside stop()    -> FAIL, fixture exception
-  no hit         installed, never entered          -> FAIL, no ctor hit
-  restore read   the write-back is ignored         -> FAIL, restore failure
-  wrong binary   digest differs                    -> FAIL, not installed, no breakpoints
+It loads the real fixture source with a fake `gdb` and drives its real breakpoints, so the restoration
+contract is exercised: obligations are registered before the write, retained when the write or its
+readback misbehaves, restored per call at the return, and every gap fails the summary.
+
+  natural                 no write, state matches                -> OK
+  invalidAnim             write + exact restore + state          -> OK
+  readback fails          post-write read unreadable, return OK  -> FAIL for the readback, restored=1
+  mutate then raise       write applied, then gdb.error          -> FAIL, obligation restored anyway
+  second call unfinished  first returns, second never does       -> FAIL, call 2 unreturned/restored=1
+  no FinishBreakpoint     arming fails, no mutation permitted    -> FAIL, attempted=0
+  unreadable restore      the return cannot read the slot back   -> FAIL, obligation unrestored
+  pending obligations     a patched call that never returns      -> FAIL, unreturned + not restored
+  state mismatch          wrong object state                     -> FAIL
+  wrong binary            digest differs                         -> FAIL, not installed, no breakpoints
 
     python3 tools/cov/specs/psc9_ctor_args_selftest.py
 """
@@ -25,19 +30,27 @@ SPEC = pathlib.Path(__file__).with_name('psc9_ctor_args.py')
 THIS = 0x555557b00000
 ANIMRES = 0x7fffffffc100
 RSP = 0x7fffffffc800
+SLOT_INTO = RSP + 0x1a8
+SLOT_ATTACK = RSP + 0x1b0
 failures = []
+NM = ('0000000000f4f3b0 t _ZN17CPlantScarabSwarmC1E9TUniqueIdFAKE'
+      '\tCPlantScarabSwarm::CPlantScarabSwarm(TUniqueId)\n')
 
 
 class FakeGdb(types.ModuleType):
-    def __init__(self, binary, state, mem=None, write_works=True, raise_addr=False,
-                 ignore_restore=False):
+    def __init__(self, binary, obj, mem=None, finish_fails=False, execute_raise_after=False,
+                 read_fail_after_write=(), unreadable=(), drop_writes=()):
         super().__init__('gdb')
         self.binary = binary
-        self.state = state          # field name -> value for the object-state oracle
-        self.mem = dict(mem or {})  # absolute address -> 32-bit word
-        self.write_works = write_works
-        self.raise_addr = raise_addr
-        self.ignore_restore = ignore_restore
+        self.obj = obj
+        self.mem = dict(mem or {})
+        self.finish_fails = finish_fails
+        self.execute_raise_after = execute_raise_after
+        self.read_fail_after_write = set(read_fail_after_write)
+        self.unreadable = set(unreadable)
+        self.drop_writes = set(drop_writes)
+        self.written = set()
+        self.failed_once = set()
         self.exited = []
         outer = self
 
@@ -55,6 +68,8 @@ class FakeGdb(types.ModuleType):
             instances = []
 
             def __init__(self, frame, internal=False):
+                if outer.finish_fails:
+                    raise outer.error('no finish breakpoint available')
                 self.frame, self.internal = frame, internal
                 FinishBreakpoint.instances.append(self)
 
@@ -85,12 +100,15 @@ class FakeGdb(types.ModuleType):
         if e == '$rsp':
             return RSP
         if e == '(long)&animRes':
-            if self.raise_addr:
-                raise self.error('no member animRes')
             return ANIMRES
         m = re.match(r'\*\(unsigned int\*\)0x([0-9a-f]+)$', e)
         if m:
             a = int(m.group(1), 16)
+            if a in self.unreadable:
+                raise self.error('Cannot access memory at address 0x%x' % a)
+            if a in self.read_fail_after_write and a in self.written and a not in self.failed_once:
+                self.failed_once.add(a)
+                raise self.error('transient read failure at 0x%x' % a)
             if a not in self.mem:
                 raise self.error('Cannot access memory at address 0x%x' % a)
             return self.mem[a]
@@ -100,65 +118,21 @@ class FakeGdb(types.ModuleType):
                           ('mAttackModelBitBase', 'mAttackModelBitBase'),
                           ('mSharedAttackBit', 'mSharedAttackBit')):
             if e.endswith(tail) and e.startswith('((CPlantScarabSwarm*)'):
-                return self.state[key]
+                return self.obj[key]
         raise self.error('unsupported expression: ' + e[:60])
 
     def execute(self, cmd):
         m = re.match(r'set \{unsigned int\}0x([0-9a-f]+) = 0x([0-9a-f]+)$', cmd.strip())
-        if m and self.write_works:
-            val = int(m.group(2), 16)
-            if self.ignore_restore and val != 0xffffffff:
-                return None  # a write-back that silently does not take
-            self.mem[int(m.group(1), 16)] = val
+        if not m:
+            return None
+        addr, val = int(m.group(1), 16), int(m.group(2), 16)
+        if addr not in self.drop_writes:
+            self.mem[addr] = val
+            self.written.add(addr)
+        if self.execute_raise_after:
+            self.execute_raise_after = False
+            raise self.error('write fault after the store at 0x%x' % addr)
         return None
-
-
-def digest(path):
-    return hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()
-
-
-NM = '0000000000f4f3b0 t _ZN17CPlantScarabSwarmC1E9TUniqueIdFAKE\tCPlantScarabSwarm::CPlantScarabSwarm(TUniqueId)\n'
-
-
-def load(gdbmod, outdir, expect_sha=None):
-    os.makedirs(outdir, exist_ok=True)
-    os.environ['COV_OUT'] = outdir
-    os.environ['PSC9_PHASE_START'] = '0'
-    nm = pathlib.Path(outdir, 'nm.txt')
-    nm.write_text(NM)
-    os.environ['COV_NM'] = str(nm)
-    sys.modules['gdb'] = gdbmod
-    src = SPEC.read_text()
-    if expect_sha is not None:
-        src = re.sub(r"EVIDENCE_SHA256 = '[0-9a-f]+'", "EVIDENCE_SHA256 = '%s'" % expect_sha, src, count=1)
-    ns = {'__name__': 'psc9_spec_under_test', '__file__': str(SPEC)}
-    exec(compile(src, str(SPEC), 'exec'), ns)
-    return ns
-
-
-def line(outdir):
-    f = pathlib.Path(outdir, 'fixture.txt')
-    if not f.exists():
-        return ''
-    return [l for l in f.read_text().splitlines() if l.strip()][-1]
-
-
-def onephase(ns, gdbmod):
-    """Drive entry breakpoint, the one matching patch breakpoint, then the ctor return."""
-    bps = gdbmod.Breakpoint.instances
-    entry = next(b for b in bps if '+0x' not in b.spec)
-    patch = next((b for b in bps if b.spec.endswith('+0x32e')), None)
-    entry.stop()
-    if patch is not None:
-        patch.stop()
-    fin = gdbmod.FinishBreakpoint.instances[-1]
-    fin.stop()
-
-
-def scenario(name, cond, detail=''):
-    print(('PASS ' if cond else 'FAIL ') + '%-15s %s' % (name, detail))
-    if not cond:
-        failures.append(name)
 
 
 NATURAL = {'mAttackModels': 3, 'mSharedAttackModel': 1, 'mSharedAttackDeltas': 1,
@@ -167,93 +141,161 @@ SKIPPED = {'mAttackModels': 0, 'mSharedAttackModel': 0, 'mSharedAttackDeltas': 0
            'mAttackModelBitBase': 0, 'mSharedAttackBit': 0}
 
 
+def digest(path):
+    return hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()
+
+
+def load(gdbmod, outdir, expect_sha=None, phase_start=0):
+    os.makedirs(outdir, exist_ok=True)
+    os.environ['COV_OUT'] = outdir
+    os.environ['PSC9_PHASE_START'] = str(phase_start)
+    nm = pathlib.Path(outdir, 'nm.txt')
+    nm.write_text(NM)
+    os.environ['COV_NM'] = str(nm)
+    sys.modules['gdb'] = gdbmod
+    src = SPEC.read_text()
+    if expect_sha is not None:
+        src = re.sub(r"EVIDENCE_SHA256 = '[0-9a-f]+'", "EVIDENCE_SHA256 = '%s'" % expect_sha,
+                     src, count=1)
+    ns = {'__name__': 'psc9_spec_under_test', '__file__': str(SPEC)}
+    exec(compile(src, str(SPEC), 'exec'), ns)
+    return ns
+
+
+def line(outdir):
+    f = pathlib.Path(outdir, 'fixture.txt')
+    return [l for l in f.read_text().splitlines() if l.strip()][-1] if f.exists() else ''
+
+
+def bps(g, suffix):
+    return [b for b in g.Breakpoint.instances if suffix is None and '+0x' not in b.spec] or \
+           [b for b in g.Breakpoint.instances if suffix and b.spec.endswith(suffix)]
+
+
+def entry_bp(g):
+    return next(b for b in g.Breakpoint.instances if '+0x' not in b.spec)
+
+
+def patch_bp(g, suffix):
+    return next(b for b in g.Breakpoint.instances if b.spec.endswith(suffix))
+
+
+def run_call(ns, g, patch_suffix='+0x32e', do_return=True):
+    entry_bp(g).stop()
+    patch_bp(g, patch_suffix).stop()
+    if do_return and g.FinishBreakpoint.instances:
+        g.FinishBreakpoint.instances[-1].stop()
+
+
+def scenario(name, cond, detail=''):
+    print(('PASS ' if cond else 'FAIL ') + '%-22s %s' % (name, detail))
+    if not cond:
+        failures.append(name)
+
+
 def main():
     tmp = pathlib.Path(tempfile.mkdtemp(prefix='psc9-selftest-'))
     binary = tmp / 'metroid_prime2_port'
     binary.write_bytes(b'stand-in binary for the psc9 mocked-gdb test\n')
     sha = digest(binary)
+    base_mem = {ANIMRES: 0x8bb689b4, SLOT_INTO: 2, SLOT_ATTACK: 1}
 
-    # 1 natural (phase 0)
+    # 1 natural
     out = tmp / 'natural'
-    g = FakeGdb(str(binary), dict(NATURAL), mem={ANIMRES: 0x8bb689b4, RSP + 0x1a8: 2, RSP + 0x1b0: 1})
-    ns = load(g, str(out), expect_sha=sha)
-    onephase(ns, g)
+    g = FakeGdb(str(binary), dict(NATURAL), base_mem)
+    ns = load(g, str(out), expect_sha=sha, phase_start=0)
+    run_call(ns, g)
     ns['summarize']()
     l = line(out)
-    scenario('natural', 'status=OK' in l and 'writes=0' in l and 'state_ok=1' in l, l)
+    scenario('natural', 'status=OK' in l and 'attempted=0' in l and 'state_ok=1' in l, l)
 
-    # 2 invalidAnim (phase 1): writes animRes id, restores the original
+    # 2 invalidAnim
     out = tmp / 'invalid'
-    g = FakeGdb(str(binary), dict(SKIPPED), mem={ANIMRES: 0x8bb689b4, RSP + 0x1a8: 2, RSP + 0x1b0: 1})
-    ns = load(g, str(out), expect_sha=sha)
-    ns['state']['phase_idx'] = 1
-    onephase(ns, g)
+    g = FakeGdb(str(binary), dict(SKIPPED), base_mem)
+    ns = load(g, str(out), expect_sha=sha, phase_start=1)
+    run_call(ns, g)
     ns['summarize']()
     l = line(out)
-    scenario('invalidAnim', 'status=OK' in l and 'writes=1' in l and 'restored=1' in l
-             and g.mem[ANIMRES] == 0x8bb689b4, l + ' | animRes=0x%x' % g.mem[ANIMRES])
+    scenario('invalidAnim', 'status=OK' in l and 'attempted=1' in l and 'restored=1' in l
+             and 'unrestored=0' in l and g.mem[ANIMRES] == 0x8bb689b4, l)
 
-    # 3 object state mismatch
+    # 3 post-write readback fails, return still restores
+    out = tmp / 'readback'
+    g = FakeGdb(str(binary), dict(SKIPPED), base_mem, read_fail_after_write=(ANIMRES,))
+    ns = load(g, str(out), expect_sha=sha, phase_start=1)
+    run_call(ns, g)
+    ns['summarize']()
+    l = line(out)
+    scenario('readback fails', 'status=FAIL' in l and 'post-write readback' in l
+             and 'restored=1' in l and 'unrestored=0' in l, l)
+
+    # 4 write mutates then raises
+    out = tmp / 'mutate-raise'
+    g = FakeGdb(str(binary), dict(SKIPPED), base_mem, execute_raise_after=True)
+    ns = load(g, str(out), expect_sha=sha, phase_start=1)
+    run_call(ns, g)
+    ns['summarize']()
+    l = line(out)
+    scenario('mutate then raise', 'status=FAIL' in l and 'write to animRes.mAncsId' in l
+             and 'restored=1' in l and 'unrestored=0' in l, l)
+
+    # 5 second call unfinished after a successful first
+    out = tmp / 'second-open'
+    g = FakeGdb(str(binary), dict(SKIPPED), base_mem)
+    ns = load(g, str(out), expect_sha=sha, phase_start=1)
+    run_call(ns, g)
+    run_call(ns, g, patch_suffix='+0x342', do_return=False)
+    ns['summarize']()
+    l = line(out)
+    scenario('second call open', 'status=FAIL' in l and 'unreturned ctor call(s): [2]' in l
+             and 'attempted write(s) not restored' in l and 'restored=1' in l, l)
+
+    # 6 missing FinishBreakpoint: no mutation permitted
+    out = tmp / 'no-finish'
+    g = FakeGdb(str(binary), dict(SKIPPED), base_mem, finish_fails=True)
+    ns = load(g, str(out), expect_sha=sha, phase_start=1)
+    run_call(ns, g)
+    ns['summarize']()
+    l = line(out)
+    scenario('no finish bp', 'status=FAIL' in l and 'no FinishBreakpoint' in l and 'attempted=0' in l
+             and g.mem[ANIMRES] == 0x8bb689b4, l)
+
+    # 7 unreadable restore readback
+    out = tmp / 'unreadable-restore'
+    g = FakeGdb(str(binary), dict(SKIPPED), base_mem)
+    ns = load(g, str(out), expect_sha=sha, phase_start=1)
+    entry_bp(g).stop()
+    patch_bp(g, '+0x32e').stop()
+    g.unreadable.add(ANIMRES)          # the return can no longer read the slot back
+    g.FinishBreakpoint.instances[-1].stop()
+    ns['summarize']()
+    l = line(out)
+    scenario('unreadable restore', 'status=FAIL' in l and 'unreadable' in l and 'restored=0' in l
+             and 'unrestored=1' in l, l)
+
+    # 8 pending obligations: patched call that never returns
+    out = tmp / 'pending'
+    g = FakeGdb(str(binary), dict(SKIPPED), base_mem)
+    ns = load(g, str(out), expect_sha=sha, phase_start=1)
+    run_call(ns, g, do_return=False)
+    ns['summarize']()
+    l = line(out)
+    scenario('pending obligations', 'status=FAIL' in l and 'unreturned' in l
+             and 'not restored' in l, l)
+
+    # 9 object state mismatch
     out = tmp / 'badstate'
-    g = FakeGdb(str(binary), dict(NATURAL), mem={ANIMRES: 0x8bb689b4, RSP + 0x1a8: 2, RSP + 0x1b0: 1})
-    ns = load(g, str(out), expect_sha=sha)
-    ns['state']['phase_idx'] = 1          # invalidAnim expects the skipped state, script NATURAL
-    onephase(ns, g)
+    g = FakeGdb(str(binary), dict(NATURAL), base_mem)
+    ns = load(g, str(out), expect_sha=sha, phase_start=1)
+    run_call(ns, g)
     ns['summarize']()
     l = line(out)
-    scenario('state mismatch', 'status=FAIL' in l and 'invalidAnim: object state got' in l, l)
+    scenario('state mismatch', 'status=FAIL' in l and 'object state got' in l, l)
 
-    # 4 unreadable animRes address (falls back to r13, which the fake returns) -> make both fail
-    out = tmp / 'unreadable'
-    g = FakeGdb(str(binary), dict(SKIPPED), mem={ANIMRES: 0x8bb689b4, RSP + 0x1a8: 2, RSP + 0x1b0: 1},
-                raise_addr=True)
-    ns = load(g, str(out), expect_sha=sha)
-    ns['state']['phase_idx'] = 1
-    g.parse_and_eval_orig = g.parse_and_eval
-    g.parse_and_eval = lambda expr: (_ for _ in ()).throw(g.error('boom')) if expr.strip() in ('$r13',) \
-        else g.parse_and_eval_orig(expr)
-    onephase(ns, g)
-    ns['summarize']()
-    l = line(out)
-    scenario('unreadable', 'status=FAIL' in l and 'animid address unresolved' in l, l)
-
-    # 5 exception inside the patch
-    out = tmp / 'exception'
-    g = FakeGdb(str(binary), dict(SKIPPED), mem={ANIMRES: 0x8bb689b4, RSP + 0x1a8: 2, RSP + 0x1b0: 1})
-    ns = load(g, str(out), expect_sha=sha)
-    ns['state']['phase_idx'] = 1
-    ns['rd32'] = lambda a: (_ for _ in ()).throw(RuntimeError('simulated'))
-    entry = next(b for b in g.Breakpoint.instances if '+0x' not in b.spec)
-    patch = next(b for b in g.Breakpoint.instances if b.spec.endswith('+0x32e'))
-    entry.stop()
-    patch.stop()
-    ns['summarize']()
-    l = line(out)
-    scenario('exception', 'status=FAIL' in l and 'patch exception' in l, l)
-
-    # 6 no hit
-    out = tmp / 'nohit'
-    g = FakeGdb(str(binary), dict(NATURAL), mem={})
-    ns = load(g, str(out), expect_sha=sha)
-    ns['summarize']()
-    l = line(out)
-    scenario('no hit', 'status=FAIL' in l and 'no ctor hit' in l and 'no ctor return' in l, l)
-
-    # 7 restore readback ignored by the write
-    out = tmp / 'restore'
-    g = FakeGdb(str(binary), dict(SKIPPED), mem={ANIMRES: 0x8bb689b4, RSP + 0x1a8: 2, RSP + 0x1b0: 1},
-                ignore_restore=True)
-    ns = load(g, str(out), expect_sha=sha)
-    ns['state']['phase_idx'] = 1
-    onephase(ns, g)
-    ns['summarize']()
-    l = line(out)
-    scenario('restore failure', 'status=FAIL' in l and 'restore readback mismatch' in l, l)
-
-    # 8 wrong binary
+    # 10 wrong binary
     out = tmp / 'wrongbin'
-    g = FakeGdb(str(binary), dict(NATURAL), mem={})
-    ns = load(g, str(out))       # keep the archived digest
+    g = FakeGdb(str(binary), dict(NATURAL), base_mem)
+    ns = load(g, str(out))            # keeps the archived digest
     ns['summarize']()
     l = line(out)
     scenario('wrong binary', 'status=FAIL' in l and 'BINARY SHA MISMATCH' in l and 'installed=0' in l, l)

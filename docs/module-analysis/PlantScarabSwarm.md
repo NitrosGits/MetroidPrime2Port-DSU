@@ -54,7 +54,7 @@ Open arms (cpp line), so these bodies stay unmarked:
 
 | function | open arms |
 |---|---|
-| ctor 2300 | 50 1/4 and 3/4 (invalid animRes, intoAttack -1: data), 65 1/2 (attackAnimation -1: data), 71 1/3 (rs_new null/EH), EH cleanup lines. psc9: 50:1 and 50:3 measured with argument fixtures and exact restores + object-state oracles; merged profile 36/36 lines, 24/26 edges; 71:1 is host-only dead; 65:1 stays open (needs a third ctor call, one area load gives two; the launch budget is spent), so the body is NOT marked (ninth pass is the SLdr ctor; see the tenth pass for this one) |
+| ctor 2300 | 50 1/4 and 3/4 (invalid animRes, intoAttack -1: data), 65 1/2 (attackAnimation -1: data), 71 1/3 (old single_ptr delete continuation/EH; not the allocator), EH cleanup lines. psc9: 50:1 and 50:3 measured with argument fixtures and exact restores + object-state oracles; merged profile 36/36 lines, 24/26 edges; 71:1 dead by the only writer (old single_ptr is null); 65:1 stays open (needs a third ctor call, one area load gives two; the launch budget is spent), so the body is NOT marked (ninth pass is the SLdr ctor; see the tenth pass for this one) |
 | Think 1B64 | 112 1/2 (no free attack slot: attackerCount 3, live but not hit), 102 3/4 (compound loop condition). psc5: 86/90/108 ran; 112 ran only in the second launch's slot-full setup (it is live: CSwarmBasics.cpp:642/1409 deactivate a boid without clearing its slot); 102's second operand and one host static-guard edge are dead. Body marked (arm table in the sixth pass) |
 | PreRenderBoid 12AC | 218 1/2 (slot -1 path), not reached even with the force. psc3: 218:1/2 proved dead in the shipped configuration (4 base models, 3 slots, shared bit 7; only two mask clears, neither of the shared bit). psc4: 229:1/2 ran with a real slot-0 boid after a transient shared pose, so the body is marked (arm table in the fifth pass) |
 | RenderBoid 1254 | slot -1 arm (cpp:241), forced but not reached |
@@ -588,17 +588,16 @@ lines, 24/26 edges**, untaken @ **65:1/2** and **71:1/3**.
 | cpp:57 loop condition both edges | measured (three iterations, 3 back-edges / 1 exit) |
 | cpp:65 attackAnimation != -1, true | measured (natural) |
 | **cpp:65 attackAnimation != -1, false** | **OPEN** - needs one more ctor call with attackAnimation = -1 |
-| cpp:71 `mSharedAttackDeltas = rs_new ...` null path | **host-only dead**: the code is `call _Znwm$plt` then `test %rdi,%rdi / je` (`0xf4f9e3`..`0xf4fa18`); `_Znwm` is the host `operator new`, which throws `bad_alloc` instead of returning null, and `PortMwccNew.cpp` forwards `__nw__FUlPCcPCc`/`rs_new` to `::operator new` for the same reason. Only an allocator failure could take it, which the brief forbids forcing |
+| cpp:71 `mSharedAttackDeltas = rs_new CAdvancementDeltas(...)` untaken edge | **dead by the only writer** (corrected in the psc9 review fix; the earlier "allocator returned null" reading was wrong): the disassembly is `0xf4f9e3 call _Znwm` (the new object), `0xf4f9e8 mov %rax,%rbp` (kept in rbp), `0xf4f9f2 mov 0x900(%rbx),%rdi` (the **old** `mSharedAttackDeltas.mPtr`), then `0xf4fa15 test %rdi,%rdi` / `0xf4fa18 je` and `0xf4fa28 call _ZdlPvm` - i.e. the branch and the delete belong to `single_ptr::operator=(T*)`'s `delete mPtr;` (include/rstl/single_ptr.hpp:26-30), and the allocation result is never tested. `mSharedAttackDeltas` is a default-constructed `single_ptr` (its `mPtr` is null) and cpp:71 is its only writer, so the old pointer is always null and the delete path cannot be taken. A failing allocation throws (`bad_alloc`) instead of taking any null edge, which is not the justification - the edge is not reached at all |
 | EH edges (cpp:51-53, 58, 66-70, 71 throw continuations) | 0 hits, excluded by tools/cov/gcov_report.py |
 
 Why 65:1 is still open: the ctor runs once per placement load, and one area load has two PSSM placements
 (ok_swamp_hall), so a run gives two ctor calls. `layer off 3` followed by `layer 3` did **not** reload the
-objects (the second load produced no further hits), and the slice's two launches are spent. Closing it
-needs one more launch with `PSC9_PHASE_START=2` on a fresh load:
-`PSC9_PHASE_START=2 BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/specs/psc9_ctor_args.py
-tools/cov/force.sh tools/cov/specs/psc9_ctor_args.py <out> 3dfd2249,ok_swamp_hall --con
-tools/cov/specs/psc9_ctor_ok.con --fast --frames 1200` (the fixture's `attackAnimMinus1` phase expects
-`models=3 sharedModel=0 sharedDelta=0 bitBase=3 sharedBit=0`).
+objects (the second load produced no further hits - `psc9_ctor_ok2.con`'s comment said otherwise before the
+psc9 review fix and is now corrected), and the slice's two launches are spent. **The one remaining run is
+PARKED and NOT AUTHORIZED** by the current brief; if it is ever scheduled, it is a fresh load with the
+phase shifted (`PSC9_PHASE_START=2`), the same driver, and the fixture's `attackAnimMinus1` phase expects
+`models=3 sharedModel=0 sharedDelta=0 bitBase=3 sharedBit=0`.
 Caveat for that run: a swarm built without the shared model must never let a boid take an attack slot
 (`UpdateAllBoidMovement`/`PreRenderBoid` would dereference the missing shared deltas/state), which is why
 every phase here keeps the player far and deactivates the swarms.
@@ -608,5 +607,14 @@ ab5654e2...bedb) with the one matching `.gcno` (86c70136...fc50), the measured s
 (e7a71c84...41f0), the binary hash (cbab51dd...2d15), the ctor disassembly with line numbers
 (`ctor.disasm.txt`), both diag/fixture transcripts, and the merged report. Mocked-gdb regression:
 `python3 tools/cov/specs/psc9_ctor_args_selftest.py` -> 0 scenario failures (natural, forced write+restore,
-state mismatch, unreadable address, patch exception, no hit, restore readback mismatch, wrong binary with
-no breakpoints installed).
+post-write readback failure with a successful return restore, write that mutates then raises, a second call
+left unfinished after a successful first, missing FinishBreakpoint with no mutation, unreadable restore,
+pending obligations, state mismatch, wrong binary with no breakpoints installed).
+
+Tooling-only review fix (no boot): the fixture now registers each call's snapshot obligation BEFORE the
+attempted write and keeps it when the write or its readback misbehaves, tracks return/restoration per
+call rather than per phase, refuses to mutate without a successfully created FinishBreakpoint, never
+writes expired stack storage in `out_of_scope` (it reports the obligation unrestored and fails), and its
+summary fails on unreturned calls, unrestored attempts, missing phase writes and install failure. These
+changes and the corrected cpp:71 explanation above were **not** exercised by the two archived boots -
+those ran the earlier fixture and their evidence is untouched.
