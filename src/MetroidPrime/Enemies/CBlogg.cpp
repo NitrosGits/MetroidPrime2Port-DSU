@@ -701,6 +701,7 @@ bool CBlogg::CanMeleeAttack(CStateManager& mgr, const CTriggerData& data) const 
   return teamAllows || xbc5_26_ || xbc5_30_;
 }
 
+// @ fn_7_5D88
 bool CBlogg::CanRangedAttack(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   bool teamAllows = true;
