@@ -1,0 +1,32 @@
+# DarkTrooper (REL 12), Pursue's path arms (dtr6): Temple Grounds 04_temple_unknownenemies. u049d pursues a
+# player placed close (path of one waypoint: IsOver), then a player put off the path mesh (above it, far away:
+# the search fails, PathShagged), then back. Also hits u0488 while u049d chases (Touch/Think under load).
+#   BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/darktrooper.py <out> 3bfa3eff,04_temple_unknownenemies \
+#     --con tools/drivers/darktrooper_pursue.con --fast --frames 3000
+@f300 god 1; give missile 50
+@f302 layer 2; layer 3
+@f310 tp 160 180 -39
+@f330 send u049d Activate; send u0488 Activate; send u0487 Activate
+@f340 send u049d Alert; send u0488 Alert; send u0487 Alert
+@f500 obj u049d
+@f700 place u049d player 3.5; fsm u049d Pursue
+@f820 place u049d player 4; fsm u049d Pursue
+@f940 place u049d player 5; fsm u049d Pursue
+@f1060 place u049d player 6; fsm u049d Pursue
+@f1180 tp 160 180 15
+@f1185 fsm u049d Pursue
+@f1335 obj u049d
+@f1340 tp 160 180 40
+@f1345 fsm u049d Pursue
+@f1495 obj u049d
+@f1500 tp 160 180 -150
+@f1505 fsm u049d Pursue
+@f1655 obj u049d
+@f1660 tp 160 180 -39
+@f1665 tp 300 180 -39
+@f1670 fsm u049d Pursue
+@f1820 tp 160 400 -39
+@f1825 fsm u049d Pursue
+@f1975 tp 20 20 -39
+@f1980 fsm u049d Pursue
+@f2130 objs DarkTrooper

@@ -61,6 +61,24 @@ Still open after dtr5 (flag-gated, none reachable by console in the shipped area
 Next (superseded for missiles): a Dark Missile Trooper area (01_temple_hive02 / 01_temple_hive_04) for the missile arms;
 forced arms with `tools/cov/force.sh` for the rest.
 
+## dtr6 (marks and branch tables)
+
+Base 56e185886. Gcov line numbers are source lines of the pre-mark file. Drivers: `tools/drivers/darktrooper_{hive01,hive02,flotsam,msgs,smallshot,pursue}.con`;
+placements: `tools/scan_darktrooper_props.py` (firesMissiles=1 only hive01 L6 e00060251; flotsam=1 hive_04 L0, hive_hall L0/L2, hive02 L0/L2/L3, federationsite L9; avoidDownFrames=1 hive02 L2/L3).
+
+| Function | Offset | Result | Notes |
+|---|---|---|---|
+| Think | 364C | MARKED | asm read (4081-4229); all arms natural |
+| Pursue | 24BC | MARKED | asm read: constants 3/6/9/1.5/16/0.87266463 and flags match. Natural: Activate, Update (turn x3, x1.5, none; InRange 3 close arm; PathShagged arm), Deactivate. IsOver arm: **forced (tools/cov/specs/darktrooper_pursue_force.py)**, `mPathFindSearch.mCurWaypoint = 100000` after 50 hits. Remaining gcov branches are a call edge after SetTurnSpeed and the msg-not-in-3-enumerators arm (EStateMsg has three enumerators: dead). Edge: asm `IsOver` is a signed compare (empty waypoint list = over), upstream header's is unsigned; not changed (shared header). |
+| Sleep | 31BC | unmarked | not asm-read this slice; only call edges at 627 untaken |
+| Dead | 2C78 | unmarked | not asm-read; 734/740 are call edges |
+| Touch | 3000 | unmarked | 687 TCastToPtr<CScriptTrigger> and 688 (active && DetectAI && force>0) untaken: no trigger scan done |
+| AcceptScriptMsg | - | unmarked | 247 untaken 3/4 |
+| KnockBack | - | unmarked | 280 untaken 3/4 |
+| GetAimPosition | - | unmarked | 329 `mLockOnTarget != 0xff` false arm: set from `lockon_target_LCTR` at construction (CPatterned.cpp:194), probably dead by data, unproven |
+| FireSmallShot | - | unmarked | 342:1/2, 362:1/2, 366:1/4 degenerate geometry arms untaken (forces not written) |
+| DoUserAnimEvent | - | unmarked | 459, 480-481, 488, 502 untaken; needs the hive01 missile trooper kill (`damage u058a 999 0 missile` leaves hp 596) |
+
 ## Smoke family (proposal)
 
 `darktrooper`: `3bfa3eff,04_temple_unknownenemies`, 2400 frames, cmd: `@f300 layer 2; layer 3`,
