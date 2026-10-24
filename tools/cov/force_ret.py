@@ -191,15 +191,18 @@ class OuterBp(gdb.Breakpoint):
 
 
 class StubRetBp(gdb.Breakpoint):
-    # a scenario's third item [('Class::Fn(', value)]: while the scenario's call runs, that
+    # a scenario's third item [('Class::Fn(', value)] (value a list: the 1st call returns [0], the 2nd [1], ... the last repeats): while the scenario's call runs, that
     # function returns `value` at once (the entry pops the return address, as `ret` would)
     def __init__(self, where, value):
         m = [m for m, d in syms if d.startswith(where) and '.cold' not in d and 'clone' not in d]
         super().__init__('*' + m[0], internal=True)
-        self.value = value
+        self.value, self.where = value, where
+        self.base = counts.get('stub ' + where, 0)
 
     def stop(self):
-        gdb.execute('set $rax = %s' % self.value)
+        counts['stub ' + self.where] = counts.get('stub ' + self.where, 0) + 1
+        k = counts.get('stub ' + self.where, 1) - 1 - self.base
+        gdb.execute('set $rax = %s' % self.value[min(k, len(self.value) - 1)])
         gdb.execute('set $rip = *(unsigned long*)$rsp')
         gdb.execute('set $rsp = $rsp + 8')
         return False
@@ -238,7 +241,9 @@ class CallBp(gdb.Breakpoint):
         sub = lambda x: x.replace('$this', this).replace('$P', player).replace('$mgr', mgr)
         for i, sc in enumerate(self.scenarios):
             writes, call = sc[0], sc[1]
-            stubs = [StubRetBp(sym, val) for sym, val in (sc[2] if len(sc) > 2 else [])]
+            stubs = [StubRetBp(sym, [int(gdb.parse_and_eval(sub(str(v)))) for v in (val if isinstance(val, list) else [val])]) for sym, val in (sc[2] if len(sc) > 2 else [])]
+            for b in stubs:
+                log('%s #%d: stub %s returns %s' % (self.label, i, b.where, ' then '.join('%#x' % v for v in b.value)))
             saved = []
             for lv, val in writes:
                 lv, val = sub(lv), sub(val)

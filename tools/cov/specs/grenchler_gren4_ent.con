@@ -1,0 +1,14 @@
+# gren4: forced run driver (tools/cov/specs/grenchler_force4.py), 01_swamp_entrance layers 4+8, --frames 1100.
+@f300 layer 4
+@f340 layer 8
+@f400 god 1; give morphBall 1
+@f440 send u05c4 Activate
+@f460 tp 160 -84 26
+@f500 var u05c4 gren.fncall 21; var u05c4 gren.fncall 19; var u05c4 gren.path 1; var u05c4 gren.fncall 19; var u05c4 gren.fncall 19; var u05c4 gren.fncall 22; var u05c4 gren.fncall 19
+@f510 var u05c4 gren.path 4; var u05c4 gren.fncall 22; var u05c4 gren.fncall 19; var u05c4 gren.path 3; var u05c4 gren.fncall 22; var u05c4 gren.fncall 19; var u05c4 gren.path 2; var u05c4 gren.fncall 22; var u05c4 gren.fncall 19
+@f520 var u05c4 gren.path 1; var u05c4 gren.path 2; var u05c4 gren.fncall 22; var u05c4 gren.fncall 19; var u05c4 gren.fncall 21
+@f530 var u05c4 gren.mhint 6; var u05c4 gren.jp 1; var u05c4 gren.jp 2; var u05c4 gren.jp 3; var u05c4 gren.fncall 21; var u05c4 gren.fncall 23; var u05c4 gren.fncall 24
+@f540 tp -168 25 -28; var u05c4 gren.fncall 21; var u05c4 gren.fncall 23; var u05c4 gren.fncall 24
+@f560 tp 160 -84 26; var u05c4 gren.path 1; var u05c4 gren.fncall 22; var u05c4 gren.fncall 19; var u05c4 gren.fncall 19; var u05c4 gren.fncall 19
+@f580 var u05c4 gren.path 1; var u05c4 gren.fncall 19; var u05c4 gren.fncall 21; var u05c4 gren.fncall 23; var u05c4 gren.fncall 24
+@f600 var u05c4 gren.fncall 21; var u05c4 gren.fncall 23; var u05c4 gren.fncall 24
