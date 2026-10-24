@@ -1,6 +1,6 @@
 offset	fn	size	class	name	slice	what	marker
-00000	fn_25_0	1FC	B	Simplify__12CSurfacePathFv	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	no
-001FC	fn_25_1FC	894	B	Trace__12CSurfacePathFfRC9CVector3fRC9CVector3fR15CCollisionCacheiRCQ24rstl55optional_object<36TFunctor2<RC9CVector3f	gb1	upstream body (CCollisionTracker); audited gb1: fixed NaN shape 0x3F4	no
+00000	fn_25_0	1FC	B	Simplify__12CSurfacePathFv	gb3	asm rechecked; gcov 12/12 arms (forced)	yes
+001FC	fn_25_1FC	894	B	Trace__12CSurfacePathFfRC9CVector3fRC9CVector3fR15CCollisionCacheiRCQ24rstl55optional_object<36TFunctor2<RC9CVector3f	gb3	asm rechecked; gcov 57/60 plus callback/crossed dead-arm proofs	yes
 00A90	fn_25_A90	44	B	__ct__13STriangleSlotFRC17CCollisionSurfaceUs	-	upstream body (CCollisionTracker); 100% match	no
 00AD4	fn_25_AD4	40	B	__ct__15STriangleRecordFRC17CCollisionSurfaceUs	-	upstream body (CCollisionTracker); 100% match	no
 00B14	fn_25_B14	5C	B	__ct__17CCollisionSurfaceFRC17CCollisionSurface	-	upstream body (CCollisionTracker); 100% match	no
@@ -12,18 +12,18 @@ offset	fn	size	class	name	slice	what	marker
 00D14	fn_25_D14	198	B	SlideOffPlane__FRCQ24rstl32optional_object<13STriangleSlot>PC13STriangleSlotffR9CVector3f	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	yes
 00EAC	fn_25_EAC	24C	B	FindExitEdge__FPC13STriangleSlotRC9CVector3fRC9CVector3fR9CVector3fiRf	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	yes
 010F8	fn_25_10F8	128	B	IsMovingAlongEdge__FPC13STriangleSlotRC9CVector3fRC9CVector3ff	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	yes
-01220	fn_25_1220	68	B	FindSharedEdge__FUsiUsRC23CCollisionCacheIterator	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	no
+01220	fn_25_1220	68	B	FindSharedEdge__FUsiUsRC23CCollisionCacheIterator	gb3	asm rechecked; gcov 8/8 arms (forced)	yes
 01288	fn_25_1288	AC	B	GetOppositeEdge__FPC13STriangleSloti	gb1	upstream body (CCollisionTracker); 100% match	yes
 01334	fn_25_1334	1AC	B	GetBarycentric__FPC13STriangleSlotRC9CVector3ff	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	yes
 014E0	fn_25_14E0	128	B	GetInverseArea__FPC13STriangleSlot	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	yes
-01608	fn_25_1608	228	B	CastRay__FR15CCollisionCacheRC9CVector3fRC9CVector3fPPC13STriangleSlotPC13STriangleSlotPC13STriangleSlotPfR23CCollisionCacheIterator	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	no
+01608	fn_25_1608	228	B	CastRay__FR15CCollisionCacheRC9CVector3fRC9CVector3fPPC13STriangleSlotPC13STriangleSlotPC13STriangleSlotPfR23CCollisionCacheIterator	gb3	asm rechecked; gcov 17/18 plus ray-length dead-arm proof	yes
 01830	fn_25_1830	118	B	NextTriangle__15CCollisionCacheFR23CCollisionCacheIterator	-	upstream body (CCollisionTracker); 100% match	no
 01948	fn_25_1948	104	B	GetLeafBounds__15CCollisionCacheFR23CCollisionCacheIterator	-	upstream body (CCollisionTracker); 100% match	no
-01A4C	fn_25_1A4C	27C	B	FindNearestTriangle__12CSurfacePathFfRC9CVector3fPC13STriangleSlotRC9CVector3fR15CCollisionCachePPC13STriangleSlotP9CVector3fP9CVector3fR23CCollisionCacheIterator	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	no
-01CC8	fn_25_1CC8	2AC	B	AddSegment__12CSurfacePathFPC13STriangleSlotRC9CVector3fRC9CVector3fb	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	no
+01A4C	fn_25_1A4C	27C	B	FindNearestTriangle__12CSurfacePathFfRC9CVector3fPC13STriangleSlotRC9CVector3fR15CCollisionCachePPC13STriangleSlotP9CVector3fP9CVector3fR23CCollisionCacheIterator	gb3	asm rechecked; gcov 23/24 plus non-null out-pointer proof	yes
+01CC8	fn_25_1CC8	2AC	B	AddSegment__12CSurfacePathFPC13STriangleSlotRC9CVector3fRC9CVector3fb	gb3	asm rechecked; gcov 12/12 arms	yes
 01F74	fn_25_1F74	C0	B	__ct__19SSurfacePathSegmentFRC11CQuaternionfRC9CVector3fRC9CVector3f	gb1	upstream body (CCollisionTracker); 100% match	yes
 02034	fn_25_2034	40	H	Cross__9CVector3fFRC9CVector3fRC9CVector3f	gb1	weak copy / template instance / inline; audited gb1: asm equal	no
-02074	fn_25_2074	B0	B	IsSameTriangle__FPC13STriangleSlotPC13STriangleSlot	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	no
+02074	fn_25_2074	B0	B	IsSameTriangle__FPC13STriangleSlotPC13STriangleSlot	gb3	asm rechecked; gcov 10/10 arms (forced)	yes
 02124	fn_25_2124	BC	B	ProjectOntoPlane__FRC9CVector3fffRC9CVector3f	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	yes
 021E0	fn_25_21E0	7C	B	__ct__12CSurfacePathFi	gb1	upstream body (CCollisionTracker); 100% match	yes
 0225C	fn_25_225C	54	H	__dt__Q24rstl56vector<19SSurfacePathSegment	-	weak copy / template instance / inline; -	no
@@ -43,9 +43,9 @@ offset	fn	size	class	name	slice	what	marker
 0256C	fn_25_256C	8	B	SetParticleEmissionRateScalar__17CCollisionTrackerFf	gb1	upstream body (CCollisionTracker); 100% match	yes
 02574	fn_25_2574	4	B	Touch__17CCollisionTrackerFR6CActorR13CStateManager	-	upstream body (CCollisionTracker); 100% match	no
 02578	fn_25_2578	C	B	GetTouchBounds__17CCollisionTrackerCFv	gb1	upstream body (CCollisionTracker); 100% match	yes
-02584	fn_25_2584	208	B	AcceptScriptMsg__17CCollisionTrackerFR13CStateManagerRC10CScriptMsg	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	no
+02584	fn_25_2584	208	B	AcceptScriptMsg__17CCollisionTrackerFR13CStateManagerRC10CScriptMsg	gb3	asm rechecked; gcov 21/23 plus EH-only cleanup proof (forced light)	yes
 0278C	fn_25_278C	50	H	__dt__Q24rstl66basic_string<c	-	weak copy / template instance / inline; -	no
-027DC	fn_25_27DC	98C	B	Think__17CCollisionTrackerFfR13CStateManager	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	no
+027DC	fn_25_27DC	98C	B	Think__17CCollisionTrackerFfR13CStateManager	gb3	asm rechecked; gcov 53/54 plus swap-iterator dead-arm proof (forced)	yes
 03168	fn_25_3168	3C	H	__dt__Q24rstl32reserved_vector<9TUniqueId	-	weak copy / template instance / inline; -	no
 031A4	fn_25_31A4	38	H	push_back_unsafe__Q24rstl48vector<11SBlobStrand	-	weak copy / template instance / inline; -	no
 031DC	fn_25_31DC	20	H	construct<11SBlobStrand>__4rstlFPvRC11SBlobStrand	-	weak copy / template instance / inline; -	no
@@ -79,7 +79,7 @@ offset	fn	size	class	name	slice	what	marker
 04184	fn_25_4184	84	H	__dt__Q24rstl48vector<11SBlobStrand	-	weak copy / template instance / inline; -	no
 04208	fn_25_4208	38	H	destroy<Q24rstl116pointer_iterator<11SBlobStrand	-	weak copy / template instance / inline; -	no
 04240	fn_25_4240	50	H	destroy_impl<Q24rstl116pointer_iterator<11SBlobStrand	-	weak copy / template instance / inline; -	no
-04290	fn_25_4290	2CC	B	__ct__17CCollisionTrackerFRC31TLockedToken<15CGenDescription>9TUniqueId7TAreaIdbRCQ24rstl66basic_string<c	gb1	upstream body (CCollisionTracker); audited gb1: asm equal	no
+04290	fn_25_4290	2CC	B	__ct__17CCollisionTrackerFRC31TLockedToken<15CGenDescription>9TUniqueId7TAreaIdbRCQ24rstl66basic_string<c	gb3	asm rechecked; gcov 19/19 arms; one EH-only source line	yes
 0455C	fn_25_455C	6C	H	__dt__Q24rstl25single_ptr<11CElementGen>Fv	-	weak copy / template instance / inline; -	no
 045C8	fn_25_45C8	54	H	__dt__25TToken<15CGenDescription>Fv	-	weak copy / template instance / inline; -	no
 0461C	fn_25_461C	60	B	__dt__7CEffectFv	-	upstream body (CCollisionTracker); 100% match	no
@@ -92,14 +92,14 @@ offset	fn	size	class	name	slice	what	marker
 048A8	fn_25_48A8	24	B	ClearSurfaceParticleEffectFuncPtrs__Fv	gb1	upstream body (CCollisionTracker); 100% match	yes
 048CC	fn_25_48CC	30	B	SetSurfaceParticleEffectFuncPtrs__Fv	gb1	upstream body (CCollisionTracker); 100% match	yes
 048FC	fn_25_48FC	A8	B	CreateSurfaceParticleEffect__FRC31TLockedToken<15CGenDescription>9TUniqueId7TAreaIdbRCQ24rstl66basic_string<c	-	upstream body (CSurfaceParticleEffect); 100% match	no
-049A4	fn_25_49A4	8	B	GetParticleGen__22CSurfaceParticleEffectFv	-	upstream body (CSurfaceParticleEffect); 100% match	no
-049AC	fn_25_49AC	8	B	GetParticleGen__22CSurfaceParticleEffectCFv	-	upstream body (CSurfaceParticleEffect); 100% match	no
+049A4	fn_25_49A4	8	B	GetParticleGen__22CSurfaceParticleEffectFv	gb3	100% match; forced getter, gcov 1/1 lines	yes
+049AC	fn_25_49AC	8	B	GetParticleGen__22CSurfaceParticleEffectCFv	gb3	100% match; forced getter, gcov 1/1 lines	yes
 049B4	fn_25_49B4	8	B	GetGeneratorRate__22CSurfaceParticleEffectCFv	-	upstream body (CSurfaceParticleEffect); 100% match	no
 049BC	fn_25_49BC	10	B	SetFlag__22CSurfaceParticleEffectFb	-	upstream body (CSurfaceParticleEffect); 100% match	no
 049CC	fn_25_49CC	8	B	SetGeneratorRate__22CSurfaceParticleEffectFf	-	upstream body (CSurfaceParticleEffect); 100% match	no
 049D4	fn_25_49D4	4	B	Touch__22CSurfaceParticleEffectFR6CActorR13CStateManager	-	upstream body (CSurfaceParticleEffect); 100% match	no
 049D8	fn_25_49D8	C	B	GetTouchBounds__22CSurfaceParticleEffectCFv	-	upstream body (CSurfaceParticleEffect); 100% match	no
-049E4	fn_25_49E4	208	B	AcceptScriptMsg__22CSurfaceParticleEffectFR13CStateManagerRC10CScriptMsg	gb1	upstream body (CSurfaceParticleEffect); audited gb1: asm equal	no
+049E4	fn_25_49E4	208	B	AcceptScriptMsg__22CSurfaceParticleEffectFR13CStateManagerRC10CScriptMsg	gb3	asm rechecked; gcov 21/23 plus EH-only cleanup proof (forced)	yes
 04BEC	fn_25_4BEC	9A8	B	Think__22CSurfaceParticleEffectFfR13CStateManager	gb1	upstream body (CSurfaceParticleEffect); audited gb1: asm equal	no
 05594	fn_25_5594	8	B	GetEmitterTime__11CElementGenCFv	-	upstream body (CSurfaceParticleEffect); 100% match	no
 0559C	fn_25_559C	3C	H	__dt__Q24rstl23reserved_vector<Ui	-	weak copy / template instance / inline; -	no
@@ -113,14 +113,14 @@ offset	fn	size	class	name	slice	what	marker
 05D7C	fn_25_5D7C	10C	B	GatherFromBox__FRQ24rstl40reserved_vector<17CCollisionSurface	gb1	upstream body (CSurfaceParticleEffect); audited gb1: asm equal	no
 05E88	fn_25_5E88	54	H	__ct__17CCollisionSurfaceFRC9CVector3fRC9CVector3fRC9CVector3fUx	-	weak copy / template instance / inline; -	no
 05EDC	fn_25_5EDC	6C	B	__ct__4CTriFRC4CTri	-	upstream body (CSurfaceParticleEffect); 100% match	no
-05F48	fn_25_5F48	BC	B	ProjectOntoPlane__FRC9CVector3fffRC9CVector3f	gb1	upstream body (CSurfaceParticleEffect); audited gb1: asm equal	no
+05F48	fn_25_5F48	BC	B	ProjectOntoPlane__FRC9CVector3fffRC9CVector3f	gb3	asm rechecked; forced SPE run, gcov 5/5 lines	yes
 06004	fn_25_6004	10C	B	FindNearestSurfaceAlongDirection__FRCQ24rstl40reserved_vector<17CCollisionSurface	-	upstream body (CSurfaceParticleEffect); 100% match	no
 06110	fn_25_6110	B4	B	FindNearestSurface__FRCQ24rstl40reserved_vector<17CCollisionSurface	-	upstream body (CSurfaceParticleEffect); 100% match	no
-061C4	fn_25_61C4	204	B	BuildOrientationFromNormal__FRC9CVector3fR9CMatrix3f	gb1	upstream body (CSurfaceParticleEffect); audited gb1: asm equal	no
+061C4	fn_25_61C4	204	B	BuildOrientationFromNormal__FRC9CVector3fR9CMatrix3f	gb3	asm rechecked; gcov 5/6 plus fallback clamp dead-arm proof (forced)	yes
 063C8	fn_25_63C8	C0	B	Render__22CSurfaceParticleEffectCFRC13CStateManager	-	upstream body (CSurfaceParticleEffect); 100% match	no
 06488	fn_25_6488	38	B	AddToRenderer__22CSurfaceParticleEffectCFRC13CStateManager	-	upstream body (CSurfaceParticleEffect); 100% match	no
 064C0	fn_25_64C0	58	B	PreRender__22CSurfaceParticleEffectFR13CStateManager	-	upstream body (CSurfaceParticleEffect); 100% match	no
-06518	fn_25_6518	198	B	PreRenderAllViewports__22CSurfaceParticleEffectFR13CStateManager	gb1	upstream body (CSurfaceParticleEffect); audited gb1: asm equal	no
+06518	fn_25_6518	198	B	PreRenderAllViewports__22CSurfaceParticleEffectFR13CStateManager	gb3	asm rechecked; forced SPE empty/populated bounds, gcov 2/2 arms	yes
 066B0	fn_25_66B0	A0	B	__dt__22CSurfaceParticleEffectFv	-	upstream body (CSurfaceParticleEffect); 100% match	no
-06750	fn_25_6750	1C8	B	__ct__22CSurfaceParticleEffectFRC31TLockedToken<15CGenDescription>9TUniqueId7TAreaIdbRCQ24rstl66basic_string<c	gb1	upstream body (CSurfaceParticleEffect); audited gb1: asm equal	no
+06750	fn_25_6750	1C8	B	__ct__22CSurfaceParticleEffectFRC31TLockedToken<15CGenDescription>9TUniqueId7TAreaIdbRCQ24rstl66basic_string<c	gb3	asm rechecked; forced factory, gcov 8/8 arms; one EH-only source line	yes
 06918	fn_25_6918	34	H	bitwise_copy<6>__4rstlFPvPCv	-	weak copy / template instance / inline; -	no

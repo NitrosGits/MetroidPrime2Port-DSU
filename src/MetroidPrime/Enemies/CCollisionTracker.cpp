@@ -63,6 +63,7 @@ bool SBlobStrand::IsFinished() const {
   return CMath::AbsF(tail - mPath.GetTotalLength()) < 0.00001f;
 }
 
+// @ fn_25_0
 void CSurfacePath::Simplify() {
   if (mSegments.size() < 2) {
     return;
@@ -102,6 +103,7 @@ static bool CastRay(CCollisionCache& cache, const CVector3f& from, const CVector
                     const STriangleSlot* ignoreB, float* hitFraction,
                     CCollisionCacheIterator& hitIterator);
 
+// @ fn_25_1FC
 bool CSurfacePath::Trace(float distance, const CVector3f& start, const CVector3f& direction,
                          CCollisionCache& cache, int maxSteps,
                          const rstl::optional_object< TStepCallback >& cb) {
@@ -248,6 +250,7 @@ bool CSurfacePath::Trace(float distance, const CVector3f& start, const CVector3f
   return true;
 }
 
+// @ fn_25_2074
 static bool IsSameTriangle(const STriangleSlot* a, const STriangleSlot* b) {
   return a != nullptr && b != nullptr && a->mTriangle.mIndex == b->mTriangle.mIndex &&
          close_enough(a->mTriangle.mSurface.GetVert(0), b->mTriangle.mSurface.GetVert(0),
@@ -427,6 +430,7 @@ static bool IsMovingAlongEdge(const STriangleSlot* triangle, const CVector3f& ve
   return false;
 }
 
+// @ fn_25_1220
 static int FindSharedEdge(ushort triangleIndex, int edge, ushort neighborIndex,
                           const CCollisionCacheIterator& iterator) {
   const ushort* triangleEdges = iterator.GetGeometry().GetTriangleEdgeIndices(triangleIndex);
@@ -444,6 +448,7 @@ static int FindSharedEdge(ushort triangleIndex, int edge, ushort neighborIndex,
   return -1;
 }
 
+// @ fn_25_1608
 static bool CastRay(CCollisionCache& cache, const CVector3f& from, const CVector3f& to,
                     const STriangleSlot** hitTriangle, const STriangleSlot* ignoreA,
                     const STriangleSlot* ignoreB, float* hitFraction,
@@ -484,6 +489,7 @@ static bool CastRay(CCollisionCache& cache, const CVector3f& from, const CVector
   return true;
 }
 
+// @ fn_25_1A4C
 bool CSurfacePath::FindNearestTriangle(float radius, const CVector3f& position,
                                        const STriangleSlot* exclude, const CVector3f& velocity,
                                        CCollisionCache& cache, const STriangleSlot** triangle,
@@ -533,6 +539,7 @@ bool CSurfacePath::FindNearestTriangle(float radius, const CVector3f& position,
   return true;
 }
 
+// @ fn_25_1CC8
 void CSurfacePath::AddSegment(const STriangleSlot* slot, const CVector3f& start,
                               const CVector3f& step, bool isLast) {
   const float length = step.Magnitude();
@@ -573,6 +580,7 @@ void CSurfacePath::AddSegment(const STriangleSlot* slot, const CVector3f& start,
 
 const float CCollisionTracker::skDefaultExtents = 10.f;
 
+// @ fn_25_4290
 CCollisionTracker::CCollisionTracker(const TLockedToken< CGenDescription >& desc, TUniqueId uid,
                                      TAreaId area, bool active, const rstl::string& name,
                                      const CTransform4f& xf, TUniqueId owner, uint flags,
@@ -630,6 +638,7 @@ rstl::optional_object< CAABox > CCollisionTracker::GetTouchBounds() const {
   return rstl::optional_object_null();
 }
 
+// @ fn_25_2584
 void CCollisionTracker::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   const TUniqueId sender = msg.GetSenderId();
@@ -659,6 +668,7 @@ void CCollisionTracker::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
   }
 }
 
+// @ fn_25_27DC
 void CCollisionTracker::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
