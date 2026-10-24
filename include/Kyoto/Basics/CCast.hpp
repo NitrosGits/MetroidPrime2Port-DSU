@@ -69,8 +69,18 @@ inline int FtoL(float in) { return static_cast< int >(in); }
 inline float LtoF(int in) { return static_cast< float >(in); }
 
 #else
+#ifdef TARGET_PC
+// psq_st through the u8/s8 GQRs saturates; a plain cast of an out-of-range float is UB.
+inline uchar ToUint8(float in) {
+  return in > 0.f ? (in < 255.f ? static_cast< uchar >(in) : 255) : 0;
+}
+inline char ToInt8(float in) {
+  return in > -128.f ? (in < 127.f ? static_cast< char >(in) : 127) : -128;
+}
+#else
 inline uchar ToUint8(float in) { return static_cast< uchar >(in); }
 inline char ToInt8(float in) { return static_cast< char >(in); }
+#endif
 inline uchar ToUint8(int c) { return static_cast<uchar>(c); }
 inline float ToReal32(uchar in) { return static_cast< float >(in); }
 inline short FtoS(float in) { return static_cast< short >(in); }
