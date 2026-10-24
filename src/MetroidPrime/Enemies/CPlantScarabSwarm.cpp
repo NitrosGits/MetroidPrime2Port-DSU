@@ -211,6 +211,7 @@ void CPlantScarabSwarm::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mg
   }
 }
 
+// @ fn_49_12AC
 void CPlantScarabSwarm::PreRenderBoid(CBoid* boid, uint* drawMask) {
   if (boid->mAttacking) {
     const int slot = boid->mAttackSlot;
@@ -218,8 +219,8 @@ void CPlantScarabSwarm::PreRenderBoid(CBoid* boid, uint* drawMask) {
       if (*drawMask & (1 << mSharedAttackBit)) {
         CachePose(*mSharedAttackModel, *mSharedAttackState);
 #ifdef TARGET_PC
-        // Retail clears the slot-0 bit, not the shared one: 0x12E8 lwz r0,0x5f4(r30) tests
-        // mSharedAttackBit, 0x1308 lwz r0,0x5f8(r30) / 0x1314 andc clears mAttackModelBitBase.
+        // Retail clears the slot-0 bit, not the shared one: 0x12E4 lwz r0,0x5f4(r30) tests
+        // mSharedAttackBit, 0x1308 lwz r0,0x5f8(r30) / 0x1318 andc stores mAttackModelBitBase at 0x131C.
         *drawMask &= ~(1 << mAttackModelBitBase);
 #else
         *drawMask &= ~(1 << mSharedAttackBit);

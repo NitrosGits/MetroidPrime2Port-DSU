@@ -56,7 +56,7 @@ Open arms (cpp line), so these bodies stay unmarked:
 |---|---|
 | ctor 2300 | 50 1/4 and 3/4 (invalid animRes, intoAttack -1: data), 65 1/2 (attackAnimation -1: data), 71 1/3 (rs_new null/EH), EH cleanup lines |
 | Think 1B64 | 112 1/2 (no free attack slot: attackerCount 3, live but not hit), 102 3/4 (compound loop condition) |
-| PreRenderBoid 12AC | 218 1/2 (slot -1 path), not reached even with the force. psc3: 218:1/2 proved dead in the shipped configuration (4 base models, 3 slots, shared bit 7; only two mask clears, neither of the shared bit), so 229:1/2 is the one live arm left |
+| PreRenderBoid 12AC | 218 1/2 (slot -1 path), not reached even with the force. psc3: 218:1/2 proved dead in the shipped configuration (4 base models, 3 slots, shared bit 7; only two mask clears, neither of the shared bit). psc4: 229:1/2 ran with a real slot-0 boid after a transient shared pose, so the body is marked (arm table in the fifth pass) |
 | RenderBoid 1254 | slot -1 arm (cpp:241), forced but not reached |
 | ApplySteeringBehaviors 1228 | attacking-boid arm (cpp:254) |
 | BoidCollidedCallback 11C0 | never called |
@@ -177,16 +177,73 @@ What the runs settled, per arm of PreRenderBoid (fn_49_12AC, cpp:214-236), which
   0x5f8, read at 0x1308) and 0x1370 `andc` with its `stw` at 0x1374 (`slw` at 0x136C; bit base+slot); the
   base PreRenderBoid clears the bits of `mIndex & (mModelDatas.size() - 1)`, i.e. bits 0..3 with 4 base
   models, so no path clears bit 7. The test itself is 0x12E4 `lwz r0,0x5f4(r30)`, 0x12F0 `slw`,
-  0x12F4 `and.`, 0x12F8 `beq`. This is not a claim about other configurations: the bit numbers move with
-  attackerCount, and with 8 or more base models the base clear (`size()-1` = 7 masks) could reach the
-  shared bit and make the arm live.
+  0x12F4 `and.`, 0x12F8 `beq`.
 - 229:1/2 (a slot-0 attacker finding bit 4 already cleared by a shared pose in the same pass) is live and
   did **not** run in psc3 - it is the one arm the marker waits for. psc1's recorded profile (12/12 lines,
   7/8 with only 218:1/2 open) implies both of its arms ran there, its force having cleared bit base with
   the no-restore `!` form; that gcov dir is gone, so psc3 does not re-cite it as evidence.
 
-Marker: **absent** - 229:1/2 is still outside a preserved psc3 profile. `// @ fn_49_12AC` goes above the
-body once it is in one: the next run extends the r2 force so that, in the pass where the shared pose has
-already cleared bit 4, a later boid is written with `mAttacking = 1, mAttackSlot = 0` instead of the
-repeated slot -1 write (the spec's two writes today differ only in the bitBase bit, which 218 does not
-read).
+Marker: **absent at psc3** - 229:1/2 was still outside a preserved psc3 profile. The fifth pass below ran
+it and added `// @ fn_49_12AC`.
+
+## Fifth pass (psc4, 2026-10-24, base 791ddc44e)
+
+One launch (1 of the slice's 2), `3dfd2249,0g_swamp_hall`, 1200 frames, fast, `[port] caught/reach-stub: 0`,
+`[Inferior 1 (process N) exited normally]`. Spec and gdb side in one lane file: `tools/cov/specs/psc4_plant_arm.py`
+(the fixture lives there, so no shared tooling changes), driver `tools/cov/specs/psc4_plant_0g.con`.
+
+    BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/specs/psc4_plant_arm.py tools/cov/force.sh \
+      tools/cov/specs/psc4_plant_arm.py /tmp/opencode/psc4_r1 3dfd2249,0g_swamp_hall \
+      --con tools/cov/specs/psc4_plant_0g.con --fast --frames 1200
+    python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/psc4_r1/gcov --module PlantScarabSwarm
+
+Fixture: the slot-0 side is a **real** boid - the swarm's own mAttackSlotBoids[0] owner, attacking, drawn
+after the pose boid because the pose boid is the first active boid the pass draws. Only the shared pose is
+supplied, transiently: on the first PreRenderBoid call of a pass whose mask is 0xffffffff, with slot 0
+owned and a clean boid, its `mAttacking`/`mAttackSlot` are written for that call only and restored at the
+body's return through the cached absolute boid pointer, before any movement or render uses them. No mask
+byte is ever written: the bit-4 clear is the body's own 0x1318 `andc`. Nothing ran before slot 0 had a real
+owner (diag: "pose: waiting, no real slot-0 owner yet ... slots=[-1, -1, -1]").
+
+Measured, per instance (`this`, boid and owner pointers; `/tmp/opencode/psc4_r1/diag.log`, `fixture.txt`):
+
+    pose: this=0x555558a83340 boid=0x7fffab41e240 mask before=0xffffffff (bitBase 1, shared 1); shared
+      model+state present; models=3 states=3 modelDatas=4 attackers=3 sharedBit=7; real slot-0 owner
+      index 7; transient attacking=1 slot=-1 for this call
+    pose: restored boid 0x7fffab41e240 attacking=0 slot=-1; mask 0xffffffff -> 0xffffffef (body cleared bitBase)
+    229 FALSE ARM: this=0x555558a83340 boid=0x7fffab41e300 slot=0 mask=0xffffffef (shared bit 1, bitBase 0
+      clear); models=3 states=3 base=4 sharedBit=7 slots=[7, 8, -1]
+    passes=122 poses=1 false_arm=1
+
+So a real slot-0 boid's own `*drawMask & (1 << (mAttackModelBitBase + 0))` read bit 4 clear later in the
+same pass, after the shared pose's CachePose, with the real body doing the clearing (0x1318) and the
+counts validated at the pose (3 attack models, 3 skinned states, 4 base models, 3 attacker slots, slot 0
+owned by boid index 7). Profile now: PreRenderBoid **12/12 lines, 7/8 branches**, untaken @ 218:1/2 only
+(psc3's 12/12 + 6/8 merged with this run).
+
+Arms of fn_49_12AC (cpp:214-236 before the marker line, 215-237 after):
+
+| arm (cpp) | asm | status |
+|---|---|---|
+| 214 `boid->mAttacking` true / false | 0x12CC `lbz r0,0xb2(r4)`, 0x12D0 `extrwi. r0,r0,1,28`, 0x12D4 `beq` -> 0x137C base | both ran |
+| 216 `slot == -1` true / false | 0x12D8 `lwz r29,0x9c(r4)`, 0x12DC `cmpwi r29,-0x1`, 0x12E0 `bne` | both ran |
+| 218 shared-bit test true / false | 0x12E4 `lwz r0,0x5f4(r30)`, 0x12F0 `slw`, 0x12F4 `and.`, 0x12F8 `beq` | true ran (psc4 pose); false dead (below) |
+| 219 `CachePose(*mSharedAttackModel, *mSharedAttackState)` | 0x12FC `lwz r4,0x5e8`, 0x1300 `lwz r5,0x5ec`, 0x1304 `bl` | ran |
+| 223 clear mAttackModelBitBase | 0x1308 `lwz r0,0x5f8`, 0x1314 `slw`, 0x1318 `andc`, 0x131C `stw` | ran |
+| 229 slot-bit test true / false | 0x1324 `lwz r0,0x5f8`, 0x1330 `add r0,r0,r29`, 0x1334 `slw`, 0x1338 `and.`, 0x133C `beq` | both ran (false in psc4) |
+| 230 `CachePose(mAttackModels[slot], mAttackModelStates[slot])` | 0x1340 `mulli r5,r29,0x24`, 0x1344 `lwz r6,0x5b4`, 0x1348 `lwz r4,0x5c4`, 0x134C `mulli r0,r29,0x4c`, 0x1358 `bl` | ran |
+| 231 clear base+slot | 0x135C `lwz r0,0x5f8`, 0x1368 `add`, 0x1370 `andc`, 0x1374 `stw` | ran |
+| 235 base `CSwarmBasics::PreRenderBoid` | 0x137C `bl` | ran |
+
+Dead-arm proof for 218's false side, shipped configuration only (modelDatas 4, attackerCount 3,
+mAttackModelBitBase 4, mSharedAttackBit 7): the mask starts at `-1` (CSwarmBasics cpp:1027) and the only
+stores that clear mask bits are 0x1318 (bit 4), 0x1370 (bit base+slot) and the base body's
+`mIndex & (mModelDatas.size() - 1)` (bits 0..3); `mAttackSlot` is only ever written -1 or
+0..mAttackerCount-1 (Think cpp:118, UpdateBoid cpp:196-199, KillBoid cpp:277-283), so base+slot <= 6 < 7
+and no path clears the shared bit, i.e. the test cannot fail. Not claimed for any other configuration.
+
+Marker: **added** `// @ fn_49_12AC` (cpp:214). The same commit corrects the TARGET_PC comment's offsets to
+the listing: the test load is 0x12E4 `lwz r0,0x5f4(r30)` (was 0x12E8) and the clear store is 0x1318 `andc`
+with `stw` at 0x131C (0x1314 is `slw`). The profile above was taken before those line changes, so it maps
+to the pre-marker numbering. RenderBoid 1254 and ApplySteering 1228 markers untouched; strip-diff of the
+non-PC text against 791ddc44e is marker-only, matching build 87 files OK, 94.14% fuzzy / 63.29% matched.
