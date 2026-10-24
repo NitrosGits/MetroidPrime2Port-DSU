@@ -34,8 +34,10 @@ inline SLdrIngSpiderballGuardianStruct::SLdrIngSpiderballGuardianStruct() {
   maxChargeTime = 15.0f;
 }
 
+// @ fn_35_E60
 inline SLdrIngSpiderballGuardianStruct::~SLdrIngSpiderballGuardianStruct() {}
 
+// @ fn_35_CC4
 inline void LoadTypedefIngSpiderballGuardianStruct(SLdrIngSpiderballGuardianStruct& sldrThis,
                                                    CInputStream& input) {
   const int propertyCount = input.ReadUint16();
@@ -131,6 +133,7 @@ inline SLdrIngSpiderballGuardianData::SLdrIngSpiderballGuardianData()
 
 inline SLdrIngSpiderballGuardianData::~SLdrIngSpiderballGuardianData() {}
 
+// @ fn_35_86C
 inline void LoadTypedefIngSpiderballGuardianData(SLdrIngSpiderballGuardianData& sldrThis,
                                                  CInputStream& input) {
   const int propertyCount = input.ReadUint16();
@@ -235,6 +238,7 @@ inline SLdrIngSpiderballGuardian::SLdrIngSpiderballGuardian()
 #endif
 }
 
+// @ fn_35_7F0
 inline SLdrIngSpiderballGuardian::~SLdrIngSpiderballGuardian() {}
 
 #endif
