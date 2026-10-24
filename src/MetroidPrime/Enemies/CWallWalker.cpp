@@ -56,6 +56,14 @@ CWallWalker::CWallWalker(TUniqueId uid, const rstl::string& name, CEntityInfo& i
 // @ fn_85_3D10
 CWallWalker::~CWallWalker() {}
 
+// Retail `__sinit_CWallWalker_cpp` (0x41B8-0x434C) writes exactly these three tables and nothing
+// else: `lis skCodeFuncs@ha` 0x41BC, `lis skTriggers@ha` 0x4204, `lis skStates@ha` 0x4214, then
+// 15+12+3 word copies from the initialiser image at .data 0xC-0x48 (`stw` 0x4378-0x43B0,
+// 0x43B8-0x43F4, 0x43F8-0x4400). Values read from the retail REL's module-85 relocation list:
+// names .rodata 0x7c/0x83/0x96/0xaa/0xaf, 0xbf/0xcc/0xda/0xe9, 0xff; functions 0x37E0/0x3664/
+// 0x3484/(Dead: virtual, vtable+0x14C)/0x32B8, 0x32AC/0x32A0/0x3280/0x3178, 0x313C - the same
+// names, order and targets as below.
+// @ fn_85_41B8
 static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Patrol", static_cast< CPatterned::StateMachine::StateFunc >(&CWallWalker::Patrol)},
     {"LeftLegHitReaction",
