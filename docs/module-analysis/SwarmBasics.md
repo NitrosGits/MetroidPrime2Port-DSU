@@ -90,3 +90,41 @@ FindBestLockOnIndex 1630: a boid exactly at the camera). The gdb call/force appr
 `tools/cov/specs/lumite_lum2_calls.py`, the `CbnForce` caller-line force and `tools/cov/branch_lines.py` for per-edge counts) applies; the
 natural drivers need a frozen-boid source (Ice/Plasma on a CHomingBlob swarm) and a door walk-out. This module needs its own
 chunking: Touch (93 branches) and UpdateBoid (85 lines) alone are a slice each.
+
+## Coverage (swb1: the 21 rows left)
+
+Counted with port_progress.py's marker rule at 3d8091b41: 21 B rows carry no `// @ fn_80_*` marker.
+Runs: the sand_entrance and swamp_entrance drivers (3000 f each) natural, then the same two with
+`tools/cov/specs/swarmbasics_force.py`, all four `caught/reach-stub: 0`, 0 failed writes.
+
+Marked (6, all objdiff 100%; the three render bodies only differ on the host path):
+
+| fn | note |
+|---|---|
+| 0 GetLockOnLocationValid, 3C GetLockOnLocation | header-inline lock-on queries |
+| 8FE0 ctor | 34/44 arms taken, the rest are the host-model/optional arms |
+| 4640 PreRender, 4210 CachePose, 4128 RenderBoid | TARGET_PC async-model guards differ on the host only |
+
+Left unmarked (15):
+
+| fn | untaken (merged gcov lines) |
+|---|---|
+| 6104 UpdateBoid | **0/85: never ran.** The boid update path needs active boids, and CreateBoid never fires (below) |
+| 76F4 CreateBoid | **0/36: never ran.** Forcing the generation loop on (`x4f0_30_ = true`, mMaxCreatedBoids 24, mBoidGenRate 2, mBoidGenCooldownTimer -1 at Think) took Think's 768/771 arms but still created nothing: the areas' swarms have no inactive boid to activate, so `mBoids` is empty or all active |
+| 50B8 Think | 61/80: 763/764/765 (the occlusion timer, the player never leaves the swarm's area) and the boid-loop arms 784-856 |
+| 220C Touch | 48/93: the light-combo arm (Sunburst), the boid-box arms (no boids) and the death-message arms |
+| 3B34 Render | 39/56: the light-combo/hardware-light arms (1159, 1165, 1173, 1184, 1200, 1212, 1217, 1232) and the boid draw arms |
+| 4538 HardwareLight | 0/8: only called from Render's two light-combo arms (0x3DA8, 0x3F3C), which need that state |
+| 07E4 UpdateEffects | 24/34: 1993-2004, the boid history/animation arms |
+| 0168 UpdateSeekerTargets | 40/47: 2087/2088 (the seeker launcher lock), 2105-2125 |
+| 1978 AssignSeekerBoids | 23/28: 1665:2/3, 1677/1678, 1683 |
+| 1C78 FindBestLockOnIndex | 13/14: 1630:1/3, the `!delta.CanBeNormalized()` arm (a boid exactly at the camera) |
+| 4038 DrawBoidSkinnedModel | 3/6: 1131/1132/1136, needs a live skinned model |
+| 4194 PreRenderBoid | 5/8: 1065/1066/1069 |
+| 5024 UpdateAllBoidMovement | 4/6: 879/880 (the boid loop's empty/all-active arms) |
+| 10C0 FindClosestCell | 0/12: **unreachable** - no call site in the module (0 `bl`, no vtable slot); it is the CBacteriaSwarm/CIngBlobSwarm path |
+| A1BC GetModelDataForAnimRes | inlined into the ctor in this build (objdiff None, no gcov entry): the `animRes.GetId() == kInvalidAssetId` arm needs the null-model case |
+
+**Next attempt for the boid bodies**: a swarm area whose data actually generates boids (mNumBoids >
+0 with generation on) - the note's Agon 08_sand_casualpirates_dark / Temple 0e_temple_hive_hall
+(CIngBlobSwarm) rows are the candidates; the two entrance areas used here never spawn one.
