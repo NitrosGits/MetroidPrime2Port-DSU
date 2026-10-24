@@ -69,6 +69,10 @@ CHECK_SIZEOF(CShriekerData, 0xdc)
 // Guessed class: a burrowed enemy that rises from the ground to shriek, fire and bite.
 class CShrieker : public CPatterned {
 public:
+#ifdef TARGET_PC
+  // Host: the console's `var <id> shr.<name> [value]` (coverage fixtures, see CShrieker.cpp).
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
+#endif
   CShrieker(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
             const CTransform4f& xf, const CModelData& modelData,
             const CPatternedInfo& patternedInfo, const CActorParameters& actorParams,
