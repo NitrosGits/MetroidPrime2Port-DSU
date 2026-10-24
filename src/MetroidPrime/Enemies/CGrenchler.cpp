@@ -4395,6 +4395,7 @@ void CGrenchler::OnScanStateChange(EScanState state, CStateManager& mgr) {
   CActor::OnScanStateChange(state, mgr);
 }
 
+// @ fn_27_177C
 void CGrenchler::PreRenderAllViewports(CStateManager& mgr) {
   CPatterned::PreRenderAllViewports(mgr);
   if (mIsGrappleGuardian == 1 && mCollisionManager.get()) {
