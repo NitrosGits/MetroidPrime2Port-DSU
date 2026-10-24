@@ -23,6 +23,7 @@
 #include "WorldFormat/CMetroidAreaCollider.hpp"
 #include "WorldFormat/COBBTree.hpp"
 
+// @ fn_25_6750
 CSurfaceParticleEffect::CSurfaceParticleEffect(const TLockedToken< CGenDescription >& desc,
                                                TUniqueId uid, TAreaId area, bool active,
                                                const rstl::string& name, const CTransform4f& xf,
@@ -60,6 +61,7 @@ static EMaterialTypes sNearListExcludeMaterial2 = kMT_Projectile;
 static EMaterialTypes sNearListExcludeMaterial3 = kMT_ProjectilePassthrough;
 static EMaterialTypes sNearListExcludeMaterial4 = kMT_AIJoint;
 
+// @ fn_25_5F48
 static CVector3f ProjectOntoPlane(const CVector3f& vector, float normalDot, float magnitude,
                                   const CVector3f& normal) {
   CVector3f result = vector - normal * normalDot;
@@ -114,6 +116,7 @@ static uint FindNearestSurface(const rstl::reserved_vector< CCollisionSurface, 2
   return bestIndex;
 }
 
+// @ fn_25_61C4
 static void BuildOrientationFromNormal(const CVector3f& normal, CMatrix3f& orientation) {
   float dot = CMath::Limit(CVector3f::Dot(CVector3f::Right(), normal), 1.f);
   CVector3f tangent = CVector3f::Right() - normal * dot;
@@ -395,6 +398,7 @@ void CSurfaceParticleEffect::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_25_49E4
 void CSurfaceParticleEffect::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   const TUniqueId sender = msg.GetSenderId();
@@ -451,6 +455,7 @@ void CSurfaceParticleEffect::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_25_6518
 void CSurfaceParticleEffect::PreRenderAllViewports(CStateManager& mgr) {
   rstl::optional_object< CAABox > bounds = mParticleGen->GetBounds();
   if (bounds.valid()) {
@@ -474,8 +479,10 @@ rstl::optional_object< CAABox > CSurfaceParticleEffect::GetTouchBounds() const {
 // @ fn_25_49D4
 void CSurfaceParticleEffect::Touch(CActor&, CStateManager&) {}
 
+// @ fn_25_49A4
 CElementGen* CSurfaceParticleEffect::GetParticleGen() { return mParticleGen.get(); }
 
+// @ fn_25_49AC
 const CElementGen* CSurfaceParticleEffect::GetParticleGen() const { return mParticleGen.get(); }
 
 // @ fn_25_49B4
