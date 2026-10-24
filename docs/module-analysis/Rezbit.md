@@ -64,7 +64,7 @@ Build `-B build-port-cov -DMP_PORT_COVERAGE=ON -DMP_SDK_HEADERS_ONLY=OFF`. Run
 Drivers (frames): `tools/drivers/tail21_rezbit.txt` (20500), `tail21_rezbit_hp.txt` (19500),
 `tail21_rezbit_shield.txt` (8000), `tail24_rezbit_missile.con` (2900, de-rez forced with
 `codecall`), `rezbit_arms.con` (6000, gcov /tmp/opencode/rez1/arms: `fsm` Idle, `trigcall`, `uevent`, `codecall`, `kill`), `rezbit_forced.con` (4200: `fsm` FollowAttackPath, `send`
-Deactivate/Activate/Alert/ResistedDamage). The natural runs reach StartVirusAttack through
+Deactivate/Activate/Alert/ResistedDamage), `rezbit_states.con` (7000) and `rezbit_states2.con` (2500; rez2: Alert/PathFind/Strafe/CuttingLaserAttack by `fsm`, `noise 0` for a non-zero mAlertDelay, `place ... player 0` for a zero toTarget, `kill` with a laser live). The natural runs reach StartVirusAttack through
 ApplyDamage (new filter), FireEnergyBolt (153 entries), SpawnLaser (15), JoinTeam, LowerShields
 and UpdateShield.
 
@@ -80,3 +80,5 @@ other states and triggers, the fixed helpers (CheckVerticalClearance, DeflectMis
 FireEnergyBolt, StartVirusAttack, LowerShields, UpdateShield, JoinTeam), the ctor/dtors and the
 loaders. Uncovered: UpdateDeflectSfx (no retail caller). Merged report: /tmp/opencode/rez1/report1.txt (gcov dirs nat, shield, missile, forced, arms under /tmp/opencode/rez1).
 Missing arms of the unmarked bodies (base line:arm): Death 202:1,205:1 (no-state machine); Dead 627:1,630:0 (live shield/laser sfx at death); Alert 384/391/393; PathFind 443/445; Strafe 455/468; ShouldBecomeDeRezzed 764:4; ShouldStrafe 779:1; ShouldLaser/EnergyBolt/VirusAttack team and target arms; SelectStrafeDirection 647/650; SetTargetDest 658/668; RaiseShields 693-703; BreakShield, CheckShieldBroken, HandleShieldHit (shield hit ids); CheckVerticalClearance, CheckNeighbors, DeflectMissiles list loops; FireEnergyBolt, StartVirusAttack. Switch default arms (375:3 etc.) are dead: EStateMsg has three values.
+
+rez2 (state arms, merged with the rez1 profiles; none marked, every one of the five still has an arm no console route reaches): Dead 627:1 (shield sfx) now covered; Dead 630:0 (live laser sfx) not: `kill` 60 frames after `fsm CuttingLaserAttack` found mLaserSfx empty. PathFind 443 covered (mHasPathDestination false), 445 (IsMagnitudeSafe false) not; Alert 384:1 (time <= mAlertDelay, delay is 0 unless Listen set it; `noise 0` then `fsm Alert` did not take it), 391:1, 393:1 and Strafe 468:1 (target null while in the Step body state: mTargetId is set before any state runs) not reached. Death 202:1 (HasState false) and 205:1 (state == kSS_InvalidState): `kill` always passes kSS_DeathRattle and a live actor always has a state, so only a direct call reaches them.
