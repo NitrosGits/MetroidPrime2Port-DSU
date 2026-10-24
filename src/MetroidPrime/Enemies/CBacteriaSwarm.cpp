@@ -731,12 +731,17 @@ void CBacteriaSwarm::PreRender(CStateManager& mgr) {
   SetPreRenderClipped(!active);
 }
 
+// @ fn_6_2CB4
 void CBacteriaSwarm::HardwareLight(const CStateManager& mgr, const CAABox& bounds) const {
+  // 0x2CC8-0x2D28: period 8, zero offset, max dynamic/area 4/4, remaining flags false.
   CActorLights lights(8, CVector3f::Zero(), 4, 4);
+  // 0x2D2C-0x2D4C: needs-relight mask 0x80 set, cast-shadows mask 0x40 cleared.
   lights.SetNeedsRelight(true);
   lights.SetCastShadows(false);
+  // 0x2D58-0x2D78: this actor's actual area; both builds use the caller's same bounds.
   lights.BuildAreaLightList(mgr, mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()), bounds);
   lights.BuildDynamicLightList(mgr, bounds);
+  // 0x2D88/0x2D90/0x2D9C: dynamic build, ActivateLights, then local destructor.
   lights.ActivateLights();
 }
 
@@ -1034,17 +1039,22 @@ void CBacteriaSwarm::Touch(CActor& actor, CStateManager& mgr) {
   }
 }
 
+// @ fn_6_163C
 CVector3f CBacteriaSwarm::FindClosestCell(const CVector3f& pos) const {
+  // 0x1674-0x1694: result=zero, best=__float_max; 0x16A0-0x16B0: x/y/z start at zero.
   float minDistance = FLT_MAX;
   CVector3f result = CVector3f::Zero();
   for (int x = 0; x < 5; ++x) {
     int rowIndex = x;
     for (int y = 0; y < 5; ++y, rowIndex += 5) {
       for (int z = 0; z < 5; ++z) {
+        // 0x16B4-0x16DC: non-null head at x+5*y+25*z; BoxForPosition margin=rodata 0.1.
         if (mPartitionedBoidLists[rowIndex + z * 25] != nullptr) {
           const CAABox bounds = BoxForPosition(x, y, z, 0.1f);
           const float distance = (bounds.GetCenterPoint() - pos).MagSquared();
+          // 0x171C-0x1764: squared distance, fcmpo/bge skip => strict < (unordered skips).
           if (distance < minDistance) {
+            // 0x1768-0x1780: update center and best together; equal candidates keep first.
             result = bounds.GetCenterPoint();
             minDistance = distance;
           }
@@ -1052,36 +1062,45 @@ CVector3f CBacteriaSwarm::FindClosestCell(const CVector3f& pos) const {
       }
     }
   }
+  // 0x1784-0x17B0: all three loop limits 5, strides 25/5; 0x17B4-0x17BC: return xyz.
   return result;
 }
 
+// @ fn_6_1448
 void CBacteriaSwarm::UpdateEffects(CStateManager& mgr, CAnimData& animData, int volume) {
+  // 0x1478-0x149C: passed count > 0 and static POI data pointer non-null.
   int count;
   const CSoundPOINode* nodes = animData.GetSoundPOIList(count);
   if (count > 0 && nodes != nullptr) {
     for (int i = 0; i < count; ++i) {
       const CSoundPOINode& node = nodes[i];
       const int character = node.GetCharacterIndex();
+      // 0x14B0-0x14D0: type 8 AND (character -1 OR anim character match).
       if (node.GetPoiType() == kPT_Sound &&
           (character == -1 || character == animData.GetCharacterIndex())) {
         const uint soundId = node.GetSoundId();
-        const ushort sfx = soundId;
+        const ushort sfx = soundId; // 0x14E0: clrlwi r31,r3,16, keep low 16 bits.
         const int area = GetCurrentAreaId().Value();
+        // 0x14DC/0x14E4: bit 31 (0x80000000) clear; set means skip this node only.
         if ((soundId & 0x80000000) == 0) {
           const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();
           const CVector3f pos = FindClosestCell(playerPos);
+          // 0x1524-0x1544/0x1550-0x156C: initialize each static once, retain first values.
           static float maxDistance = node.GetMaxDistance();
           static float falloff = node.GetFallOff();
+          // 0x157C-0x15B0: clamp volume to [0,127], flags=1, min volume=20.
           CAudioSys::C3DEmitterParmData params(maxDistance, falloff, 1,
                                                volume < 0 ? 0 : (volume > 127 ? 127 : volume), 20);
           params.mPos = pos;
           params.mDir = CVector3f::Zero();
           params.mSfxId = sfx;
+          // 0x15D4-0x15FC: nearest cell, zero direction, sfx; area, acoustics=true, loop=false.
           CSfxManager::AddEmitter(params, area, true, false);
         }
       }
     }
   }
+  // 0x1600-0x160C: advance one complete sound node, signed i<count loop.
 }
 
 // @ fn_6_13FC
