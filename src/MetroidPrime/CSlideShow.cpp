@@ -29,6 +29,12 @@
 #include "rstl/algorithm.hpp"
 #include "rstl/math.hpp"
 
+#ifdef TARGET_PC
+#include <stdio.h>
+
+#include "port_console.h"
+#endif
+
 // Unreferenced; only the pooled strings survive in the final binary.
 static const char* skSlideShowPrefix = "slideshow";
 static const char* const skGalleryPrefix = "Gallery";
@@ -323,6 +329,24 @@ CIOWin::EMessageReturn CSlideShow::OnMessage(const CArchitectureMessage& msg,
   if (msg.GetType() != kAM_TimerTick) {
     return kMR_Exit;
   }
+#ifdef TARGET_PC
+  // The slideshow owns the frame (no state manager update), so serve the console here like CMFGame.
+  if (mPortMgr != nullptr) {
+    PortConsole::IdleTick(*mPortMgr);
+  }
+  {
+    static int sLastPhase = -1;
+    static int sLastGallery = -2;
+    static int sLastSlide = -2;
+    if (sLastPhase != mPhase || sLastGallery != mGallery || sLastSlide != mSlide || mExit) {
+      sLastPhase = mPhase;
+      sLastGallery = mGallery;
+      sLastSlide = mSlide;
+      fprintf(stderr, "[slideshow] phase %d gallery %d slide %d%s\n", mPhase, mGallery, mSlide,
+              mExit ? " exit" : "");
+    }
+  }
+#endif
   if (mExit) {
     return kMR_RemoveIOWinAndExit;
   }

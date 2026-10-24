@@ -1282,9 +1282,16 @@ void CmdGallery(CStateManager&, const Args& args, std::string& out) {
       ++count;
     }
     CGameStateEnvVarManager& vars = gpGameState->SystemOptions().EnvVars();
-    vars.FindEnvironmentVariable("PercentScans")->Set(kPercent[count]);
-    vars.FindEnvironmentVariable("NormalModeCompleted")->Set((mask & 16) != 0 ? 1 : 0);
-    vars.FindEnvironmentVariable("HardModeCompleted")->Set((mask & 32) != 0 ? 1 : 0);
+    CEnvironmentVariable* percent = vars.FindEnvironmentVariable("PercentScans");
+    CEnvironmentVariable* normal = vars.FindEnvironmentVariable("NormalModeCompleted");
+    CEnvironmentVariable* hard = vars.FindEnvironmentVariable("HardModeCompleted");
+    if (percent == nullptr || normal == nullptr || hard == nullptr) {
+      Fail("gallery: PercentScans/NormalModeCompleted/HardModeCompleted env var missing");
+      return;
+    }
+    percent->Set(kPercent[count]);
+    normal->Set((mask & 16) != 0 ? 1 : 0);
+    hard->Set((mask & 32) != 0 ? 1 : 0);
   }
   char line[64];
   std::snprintf(line, sizeof(line), "gallery mask %u\n", CSlideShow::GetGalleriesUnlocked());
