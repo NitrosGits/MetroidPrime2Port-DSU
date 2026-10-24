@@ -665,3 +665,126 @@ Gates: host build 0 FAILED; `gen_files_cmake.py --check` rc 0; `review_decomp_di
 MARK); matching `configure.py && ninja` + forced `build/G2ME01/ok` re-check **87 files OK**. Evidence
 archived before the marker: `/tmp/opencode/reports/swb14-evidence/` (gcno, gcda, raw gcov JSON,
 `swb13_geom.log`, `binary.sha256`, `source.sha256`).
+## swb15: UpdateAllBoidMovement 7/7 lines, 6/6 branches measured - NOT marked
+
+Base `9794622f0`, branch `decomp/swb15`, two launches (the cap). The coverage numbers stand - the
+compiler counters do not depend on the fixture - but the run's **oracle accounting does not close**,
+so the marker was removed again (added in `a5eedafae`, removed in `0304657f7`); subsequent tooling-only corrections do not re-add it, and this
+body stays unmarked until the anomaly is explained.
+
+**Why this body needs its own area.** `UpdateAllBoidMovement` is the base-class default of a virtual
+and every shipped swarm class overrides it (CBacteriaSwarm, CMetareeSwarm, CIngBlobSwarm,
+CPlantScarabSwarm, CEmperorIngLightSwarm each have their own out-of-line body); CFlyerSwarm does not,
+so only a CFlyerSwarm reaches the base body - through Think's virtual call. Agon
+`42b935e4,01_sand_entrance` has four, naturally `mAnimated = 1` with 5 or 7 boids and 4
+model/advancement entries (`mask = 3`).
+
+**Run `b` (raw, as logged)**: 4325 body calls, `game rc=0`, `caught/reach-stub: 0`, normal exit,
+coverage 7/7 lines, 6/6 branches. Restores: 2880 `OK` + 1445 `NATURAL` = 4325.
+
+**Reconciliation of the oracle log** (`/tmp/opencode/swb15-reconcile/`, mechanical, from the raw
+`swb15_geom.log`): 4325 window opens, 4324 `MOVE-LOOP` closes (4323 `OK` + 1 `MISMATCH`) and 4325
+restores. Exactly one tag differs: **`swb15-2861-ph2` opened and restored but never closed**. The
+cause is visible in the raw order: two calls of the **same** swarm entered before the first one's
+finish fired -
+
+    swb15-2861-ph2 FORCED swarm=0x555558777ba0 ... mBoids.mCount 7->0   (open)
+    swb15-2862-ph0 FORCED swarm=0x555558777ba0 ... mBoids.mCount 0->0   (second open, same swarm)
+    RESTORE swb15-2861-ph2 OK ...            (closes the *global* window, i.e. 2862-ph0's)
+    MOVE-LOOP swb15-2862-ph0 OK calls=0 expected=0
+    RESTORE swb15-2862-ph0 OK ...            (window already consumed: no close)
+
+The earlier claim of **33** "open while open" events is unverified: the independent raw-order
+recount found one in run b (the pair above), not 33. The bad window `swb15-2819-ph1`
+logs `i=7 MISMATCH`, 8 calls for 7 boids; indices 3–6 were not printed, so a repeated
+`i=6` and attribution to a second window cannot be established from this log.
+The fixture had the structural defects the review names - a
+singleton `_st['window']`, a `FinishBreakpoint` that closes whatever window is global, no caller/frame
+ownership, no `out_of_scope`, no pending-window check at exit.
+
+**What the raw evidence does *not* resolve**: *why* two entries of the same body overlap. The nm table
+has exactly one symbol for the body (and one for `MoveBoid`), which rules out a duplicate from the
+symbol *match* but NOT several breakpoint locations at that one symbol (or a late/duplicated gdb
+finish); the log records no frame identity, so a late/duplicated gdb finish and a
+genuinely re-entrant call cannot be told apart offline. Per the review rule ("if raw evidence cannot
+uniquely resolve the anomaly, remove the marker") the marker is out.
+
+**Second offline correction (Sol, from `5ff64187a`, ZERO launches):** the previous
+"level and name" ownership rule was itself wrong. At UpdateAllBoidMovement entry
+the owner is level **0**; inside MoveBoid the very same caller is level **1**.
+`/tmp/opencode/swb15-independent-frame/` reproduces old accepted0/unattributed1.
+The previous mocks concealed this by giving the body level1 even at entry and
+creating a separate same-level caller rather than modelling a changing stack.
+
+The corrected `tools/cov/specs/swb15_updateall.py` retains each actual `gdb.Frame`
+and uses **GDB frame equality** against MoveBoid's **immediate** older frame, with
+validity/name checks and matching selected inferior number / thread global number.
+It does not substitute Python object identity, a raw stack-pointer/PC heuristic,
+`this`, name or depth for activation identity. Levels are diagnostic only. Fresh
+Python wrappers for the same activation may compare equal; recursive same-this
+activations remain distinct even when they have the same function name and each
+entered at level0. Missing/unreadable/invalid frames or equality errors, wrong
+context, zero owners and multiple owners reject attribution without incrementing
+the window's MoveBoid counters. An unreadable possible owner does not fall back to
+another candidate. Duplicate entry for the same real activation is refused before
+any write; later entries on another activation are not incorrectly rejected.
+
+Each record still owns its FinishBreakpoint and original pre-write values. Restore
+is armed before **attempting** mutation, including a write that changes memory and
+then raises. Write/readback failure rolls back immediately; both fields are always
+attempted and read independently even if the first operation fails. Failures remain
+failures even when an operation raised after its value landed. Unwind now restores
+the window's forced fields, not just its bookkeeping. Out-of-order finish fails and
+cancels/restores younger windows in LIFO order before the older snapshot, disables
+their finish breakpoints, and records them as cancelled/unwound. Later or duplicate
+callbacks do **not** replay stale snapshots or double-count closes. If bookkeeping
+order is ambiguous or the current restore context differs, the fixture does not
+guess or write through an uncertain owner: it records failure and poisons further
+forcing. A failed restore likewise poisons new writes; abnormal normal-return
+callbacks request a debugger stop. No restoration is claimed without both exact
+field readbacks. Absolute stored target expressions, not current argument registers,
+locate the original fields at return. Unrelated bitfield/storage bytes are preserved.
+
+Summary fails on ownership/argument/count errors, unwind, cancelled/out-of-order/
+late callbacks, refused writes, rollback/restore/readback failures, missing restore
+breakpoints, pending records, unbalanced window counters, or a no-window run. Pending
+summary accounting is idempotent (repeated summaries cannot multiply pending records).
+
+The new offline suite (`tools/cov/specs/swb15_updateall_selftest.py`) passes **33
+unittest cases**, including parameterized subcases. Its stack computes levels from
+the **current activation stack** on every read and yields new Frame wrappers from
+newest_frame/older. Memory is byte arrays at addresses **above 32 bits**; field
+expressions resolve their encoded target addresses, not `$rdi`. Tests assert accepted
+and rejected attribution, exact whole-memory bytes (including unrelated flag bits),
+and counters for all phases, recursive same-this and distinct owners, duplicate/
+ambiguous entries, invalid/unreadable frames/context/equality, thunk/wrong caller,
+unwind, out-of-order cancellation and late callback suppression, mutations raising
+after landing, silent write/readback failures, independent rollback attempts,
+poisoned-write refusal, missing return arm, pending/idempotent/empty/unbalanced
+summaries, and argument mismatch. Failed restoration tests assert the exact remaining
+non-original memory and FAIL counters, not a fabricated successful rollback.
+
+This is **offline tooling correction only, NOT runtime validation**. The two-game-
+launch cap remains exhausted; no game, build, smoke or new coverage run was made.
+The historical overlap-count claim, unmatched open and argument mismatch remain **unresolved**; the
+raw counters/readbacks are not rewritten, and fn_80_5024 stays **UNMARKED**. Offline
+gates: both Python files compile, the 33-case suite passes, manifest check and
+review_decomp_diff pass; final source/header diff versus `9794622f0` remains empty.
+Report/tests/diff: `/tmp/opencode/reports/swb15-sol-fix.md` and
+`/tmp/opencode/swb15-sol-*`. Prior evidence and configure log are preserved.
+Independent review: `/tmp/opencode/swb15-review-astra/` preserves the rerun of all 33
+tests, git-blob dynamic regression and recount scripts. The 15 archived hashes matched;
+the changing-stack regression rejects the baseline and accepts the correction with
+exact memory restoration. This models frame equality, not real GDB unwinder lifetime.
+
+The body's asm shape was checked independently of the fixture: `0x5044 lbz r0,0x4f0(r3)` +
+`0x504C extrwi. r0,r0,1,27` (mAnimated, mask 0x10), `0x5050 beq` to the return, `0x5054` the model
+count, `0x5060 subi` the mask, `0x5068-0x509C` the loop (`and`/`mulli 0x1c`/`lwz` items/`bl MoveBoid`/
+`cmplw`+`blt`). `asmcheck.py check SwarmBasics … fn_80_5024` needs a marker to map the body, so it was
+run against the marker commit `a5eedafae`: no findings, one `NOPOS` note (the header states no bit for
+`mAnimated`).
+
+Evidence frozen before the marker went in, and untouched by this correction:
+`/tmp/opencode/reports/swb15-evidence/` (gcno, gcda, raw gcov JSON, the module's asm, binary/source
+hashes, the raw fixture log, the run log, mock tests); the mechanical reconciliation and the hardened
+fixture's mock suite are in `/tmp/opencode/swb15-reconcile/`.
