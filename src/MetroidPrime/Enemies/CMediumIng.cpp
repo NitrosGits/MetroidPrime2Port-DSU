@@ -193,6 +193,7 @@ CMediumIngData::CMediumIngData(const CMediumIngData& other)
 , mMinMeleeAttackInterval(other.mMinMeleeAttackInterval)
 , mSafeZoneRangeSq(other.mSafeZoneRangeSq) {}
 
+// @ fn_41_A0C0
 CMediumIngTentacle::CMediumIngTentacle(TUniqueId uid, TAreaId areaId, const rstl::string& name,
                                        const CModelData& modelData, const CMediumIngData& data)
 : CActor(uid, name, CEntityInfo(areaId, rstl::vector< SConnection >(), false, kInvalidEditorId), 0,
@@ -217,6 +218,7 @@ CMediumIngTentacle::CMediumIngTentacle(TUniqueId uid, TAreaId areaId, const rstl
   SetDrawShadow(false);
 }
 
+// @ fn_41_85D8
 CMediumIng::CMediumIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                        const CTransform4f& xf, const CModelData& modelData,
                        const CActorParameters& actorParams, const CPatternedInfo& patternedInfo,
@@ -297,6 +299,7 @@ void CMediumIng::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_41_150
 CEntity* LoadMediumIng(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrMediumIng sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrMediumIng.inc"
@@ -670,6 +673,7 @@ struct SJumpRoute {
 
 // fn_41_6D08: the straight-line cost of walking to a jump point, jumping to its landing point and
 // walking on to the target.
+// @ fn_41_6D08
 static float JumpRouteEstimate(const CStateManager& mgr, const CVector3f& pos, TUniqueId jumpId,
                                const CVector3f& target) {
   const CScriptAiJumpPoint* jump =
@@ -687,6 +691,7 @@ static float JumpRouteEstimate(const CStateManager& mgr, const CVector3f& pos, T
 }
 
 // fn_41_6BFC: searches the two walks around a jump; the cost is the second walk's path.
+// @ fn_41_6BFC
 static SJumpRoute SearchJumpRoute(CPathFindSearch& search, const CStateManager& mgr,
                                   const CVector3f& pos, TUniqueId jumpId,
                                   const CVector3f& target) {
@@ -711,6 +716,7 @@ void CMediumIng::FaceTarget(CStateManager& mgr, float dt) {
   BodyController()->FaceDirection(mgr.GetPlayer(0)->GetTranslation() - GetTranslation(), dt);
 }
 
+// @ fn_41_4308
 void CMediumIng::ExtendTentacle(CStateManager& mgr, int index) {
   if (index < 0 || index >= mTentacleIds.size()) { // 0x4330, 0x433C
     return;
@@ -725,6 +731,7 @@ void CMediumIng::ExtendTentacle(CStateManager& mgr, int index) {
   static_cast< CMediumIngTentacle* >(entity)->Extend(mgr, mV90);
 }
 
+// @ fn_41_43E8
 void CMediumIng::RetractTentacles(CStateManager& mgr) {
   for (int i = 0; i < mTentacleIds.size(); ++i) {
     if (CEntity* entity = mgr.ObjectById(mTentacleIds[i])) { // 0x442C
@@ -733,6 +740,7 @@ void CMediumIng::RetractTentacles(CStateManager& mgr) {
   }
 }
 
+// @ fn_41_4470
 void CMediumIng::PositionTentacles(CStateManager& mgr) {
   for (int i = 0; i < mTentacleIds.size(); ++i) {
     CActor* tentacle = TCastToPtr< CActor >(mgr.ObjectById(mTentacleIds[i]));
@@ -748,6 +756,7 @@ void CMediumIng::PositionTentacles(CStateManager& mgr) {
   }
 }
 
+// @ fn_41_4598
 void CMediumIng::SetTentaclesActive(CStateManager& mgr, bool active) {
   mC3 = !active; // 0x45B4 cntlzw, 0x45C4 rlwimi 0x10
   for (int i = 0; i < mTentacleIds.size(); ++i) {
@@ -799,6 +808,7 @@ void CMediumIng::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_71BC
 void CMediumIng::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   if (msg != kStateMsg_Activate) {
@@ -816,6 +826,7 @@ void CMediumIng::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt
   }
 }
 
+// @ fn_41_70B4
 void CMediumIng::FollowApproachPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   if (msg != kStateMsg_Activate) {
@@ -833,6 +844,7 @@ void CMediumIng::FollowApproachPattern(CStateManager& mgr, EStateMsg msg, float 
   }
 }
 
+// @ fn_41_5878
 void CMediumIng::MistIn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -844,7 +856,8 @@ void CMediumIng::MistIn(CStateManager& mgr, EStateMsg msg, float dt) {
     break;
   case kStateMsg_Update: {
     float amount = mFCC + dt;
-    if (amount >= 1.f) { // 0x5924 fcmpo + bge, rodata_14
+    // 0x5924 fcmpo cr0,f1,f0; 0x5928 bge .L_00005930: unordered also takes the clamp.
+    if (!(amount < 1.f)) {
       amount = 1.f;
     }
     mFCC = amount;
@@ -882,6 +895,7 @@ void CMediumIng::MistIn(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_4B8C
 void CMediumIng::MistOut(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -892,7 +906,8 @@ void CMediumIng::MistOut(CStateManager& mgr, EStateMsg msg, float dt) {
       mC0 = true;                                  // 0x4C08
     }
     float amount = mFCC - dt;
-    if (0.f >= amount) { // 0x4C20 fcmpo rodata_40
+    // 0x4C20 fcmpo cr0,f0,f1; 0x4C24 bge .L_00004C2C: unordered also takes the clamp.
+    if (!(0.f < amount)) {
       amount = 0.f;
     }
     mFCC = amount; // 0x4C30
@@ -922,6 +937,7 @@ void CMediumIng::MistOut(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_3F3C
 void CMediumIng::ArmAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -993,6 +1009,7 @@ void CMediumIng::ArmAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_3AE4
 void CMediumIng::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1101,6 +1118,7 @@ void CMediumIng::MistAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_5728
 void CMediumIng::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:

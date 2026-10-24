@@ -1,5 +1,7 @@
 # MediumIng (module 41)
 
+Current: **100/100 behaviour bodies** (ming6, 2026-10-24); completion and evidence below.
+
 The Hunter Ing REL. The upstream `src/MetroidPrime/Enemies/CMediumIng.cpp` has the class, the
 loader, the ctors and empty stubs; the port's bodies are in
 `src/MetroidPrime/Enemies/PortCMediumIng.cpp` (the upstream stubs they replace sit under
@@ -153,3 +155,103 @@ to area 40, and mist states 1 and 4. Screenshots: `/tmp/opencode/mi3-shots/`.
 - Echo-zone vanish is retail behaviour: CScriptSafeZone::InhabitantIdle (CScriptSafeZone.cpp ~766-770, fn_66_1F80) calls DamageActor (~779-785,
   fn_66_1E50) on AI actors inside an active non-Normal zone. No port bug.
 
+## ming6 completion (2026-10-24)
+
+Base `ce667470d`, branch `decomp/ming6`: source-marker inventory **83 → 100/100**.
+Seventeen markers, no B/H reclassification. Production logic changes are only the
+two TARGET_PC alpha comparisons below. Getter `0` freshly matches100% objdiff and
+its native address oracle confirms `&mPathFindSearch`.
+
+### Retail clamp correction and regression
+
+- MistIn: `5924 fcmpo cr0,f1,f0` compares amount with1.0; `5928 bge 5930`
+  branches **to** the clamp. Unordered has LT clear, so NaN must clamp to1.
+  Use `!(amount < 1.f)`, not `amount >= 1.f`.
+- MistOut: `4C20 fcmpo cr0,f0,f1` compares0.0 with amount; `4C24 bge 4C2C`
+  branches **to** the clamp. NaN must clamp to0. Use `!(0.f < amount)`.
+- Both pre-fix quiet-NaN oracles failed in `nan-before2/forced.log`; after the
+  correction both PASS in the full final run. Finite alpha0/1/2 cases cover both
+  clamp directions. This is a branch-to-action case, not a branch-skipping-action
+  inversion. All changed logic is inside the existing TARGET_PC block.
+
+### Arm table (new markers only)
+
+| fn | body / fixtures | final lines / edges |
+|---|---|---|
+| 0 | GetSearchPath; exact matched-body exception plus pointer oracle | objdiff100% |
+| 150 | LoadMediumIng; shipped valid loads and `spawn MING prop 0xfeedbeef 42` (unknown property, no ANCS). Consumed-length oracles for valid and null-model loads PASS; **every generated `.inc` executable line hit**, including default skip. |18/19,17/19; two EH cleanup edges below |
+| 85D8 | Main ctor; two real actors, field oracles for mist defaults, flags, invalid ids, search flags30b and height5/radius2 |65/65,14/14 ALL-ARMS |
+| A0C0 | Tentacle ctor; eight real instances; field oracles for damage/extend/retract flags, times, length1 and copied attack time |19/19,9/9 ALL-ARMS |
+| 4308 | ExtendTentacle; indices-1/0/1/4, missing id, real even/odd tentacles |7/7,8/8 ALL-ARMS |
+| 43E8 | RetractTentacles; empty/nonempty list, missing/live id |5/5,4/4 ALL-ARMS |
+| 4470 | PositionTentacles; empty/nonempty list, missing/live id, real skeleton/locators |11/11,9/9 ALL-ARMS |
+| 4598 | SetTentaclesActive; on/off, empty list, missing/live id |6/6,4/4 ALL-ARMS |
+| 6D08 | JumpRouteEstimate; missing jump, missing landing actor, real jump/landing/player at the same location; exact zero/FLT_MAX oracles |9/9,4/4 ALL-ARMS |
+| 6BFC | SearchJumpRoute; missing jump, missing landing, first-search failure (no area), second-search failure (far destination), success with actual nav mesh |14/14,8/8 ALL-ARMS |
+| 70B4 /71BC | Both follow-pattern states; non-Activate, no connection, real waypoint before/behind actor through temporary matching script connection. In-position oracles PASS |each9/9,6/6 ALL-ARMS |
+| 5878 | MistIn; all three messages, spawn modes0/1/2, D0 on/off, command-ready/current-Generate/other body, both times and alpha clamps, NaN regression |34/34,15/16; default dead |
+| 4B8C | MistOut; all messages, times0/3, ready/not-ready, alpha clamp sides/NaN, empty handles and two **real AddLoop emitters**, both removed |28/28,11/12; default dead |
+| 5728 | Jump; all messages, invalid/valid jump id, in-position on/off |17/17,7/8; default dead |
+| 3F3C | ArmAttack; team-id bypass, admission denied/accepted, mist, command readiness/body, times, E0, timer, tentacle index0/5, missing tentacle, positive/negative length, all-retracted and D6 |50/50,33/34; default dead |
+| 3AE4 | MeleeAttack; team variants, mist/ready/body, time<0.5/<2/>2, counter0/4, timer below/above threshold, target outside/inside radius and real ApplyDamage |44/44,27/28; default dead |
+
+Switch defaults are dead under the FSM's Activate/Update/Deactivate contract,
+as for the earlier marked states. Loader's only remaining source block114 at
+line323 is in host exception cleanup: both zero edges114→115/117 have no block
+executions. Native cold disassembly shows RAII model/spline cleanup and
+`_Unwind_Resume`, not a skipped property or successful-load branch.
+
+### Run / fixture boundaries
+
+`BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py SECS=480
+tools/cov/force.sh tools/cov/specs/mediuming_ming6.py <out>
+3bfa3eff,02_temple_exploration_dark --con tools/drivers/mediuming_ming6.con
+--fast --frames 1300`.
+
+Final post-marker/fix GPU run explicitly **exited normally**,103/103 suite calls
+successful, all oracles PASS, zero failed sets/restores/calls/Python errors,
+zero caught/reach-stub. Four explicitly logged GDB StartAttack return stubs
+(deny/accept for each attack state) model the parent's team-admission input;
+they do **not** claim natural team-manager lifecycle coverage. Other fixtures
+call real helpers/nav/body-command/damage/audio paths. No native probes.
+
+State clocks: actual root and nested FSM2 clocks are saved, set, then restored
+per timed call; changing only the root misses a submachine's virtual GetTime.
+Earlier diagnostic fixture errors (integer `2f` spelling, bool-to-float oracle
+conversion) were corrected before the clean final run. Nav fixtures spawn a
+real AJMP/WAYP and modify only their input positions/landing id; original fields
+and the Ing's connection-vector metadata are restored after each call.
+
+Coverage-only `mediuming_ming6_keep_static.cmake` retains callable local jump/audio
+helpers; ordinary host and matching compiler options remain unchanged.
+
+### Static audit and gates
+
+Full retail listings for17 bodies and relevant anonymous helpers retained in
+`/tmp/opencode/reports/ming6-evidence/`. All34 asmcheck findings resolved:
+
+- Constructor initializer-list calls (path search, steering) are present; tool
+  scans only the body. Tentacle A294/A2EC are temporary entity-info/connection
+  vector destruction;8C08/8B5C are CMayaSpline/CCameraShakerData member copies.
+- Loader1124/103C are generated SLdrMediumIng ctor/dtor; DF8/F90 are spline/
+  container read/teardown glue; AB0 is optional-model copy (valid byte4c);
+  A40 is camera-shake teardown;9B8 is the matched100% MediumIngData dtor.
+  Export-name aliases map LoadActorParameters/LoadEditorTransform to native
+  LdrToActorParameters/LdrToTransform4f. Generated `.inc` reads account for all
+  Read/LoadTypedef and call/branch-count warnings; no reader case is omitted.
+- Const jump casts inline through TCastToPtr. PositionTentacles' string cleanup
+  belongs to its temporary locator name.
+- Follow-pattern6f0 mask80 stores are `mWaypointNavigation.SetInPosition(true)`;
+  its result was checked on both waypoint sides. Jump's inherited in-position
+  flag is34c mask80 (`57B0/57B4`); the tool has no alias position.
+- HasMist5C74 is the existing inlined helper, checked with both attack parents;
+ 53C0 is the13-float CMotionState copy after PredictLinearMotion, not a missing
+  gameplay function. Prior ming1 H classifications remain unchanged.
+- The two retail-diff NaN findings triggered the real fixes above; rechecking
+  both clamp bodies now reports **no findings**. Remaining six retail-diff call
+  aliases/glue findings are explained above; none unresolved.
+
+Host/coverage links0 FAILED; manifest rc0; upstream configure+ninja and shasum
+**87 files OK**. Non-PC strip-diff clean, whitespace clean. Review against
+`ce667470d`:17 MARK and2 DEL (the two replaced clamp conditions), no other tags.
+Only this changed family/callers' area was run, no unchanged-family sweep.

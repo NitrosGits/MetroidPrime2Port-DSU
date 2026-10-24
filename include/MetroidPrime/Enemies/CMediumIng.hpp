@@ -153,6 +153,7 @@ public:
 
   // CPatterned
   using CPatterned::GetSearchPath;
+  // @ fn_41_0
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   void SetupStateMachine(CStateManager& mgr) override;
 
