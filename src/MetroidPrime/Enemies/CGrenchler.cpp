@@ -1853,6 +1853,7 @@ void CGrenchler::ThinkBoneTracking(float dt, CStateManager& mgr) {
   mBoneTracking.Think(dt);
 }
 
+// @ fn_27_BB80
 void CGrenchler::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
   PreRenderBoneTracking(mgr);
