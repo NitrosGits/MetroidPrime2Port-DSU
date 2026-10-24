@@ -141,6 +141,7 @@ inline SLdrRezbitData::SLdrRezbitData()
 #endif
 }
 
+// @ fn_53_F64
 inline SLdrRezbitData::~SLdrRezbitData() {}
 
 inline void LoadTypedefRezbitData(SLdrRezbitData& sldrThis, CInputStream& input) {
