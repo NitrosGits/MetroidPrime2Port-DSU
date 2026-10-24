@@ -45,6 +45,8 @@
 @f1320 beam dark; shoot e00280089
 @f1360 beam power; obj e00280089
 @f1500 obj e00280089
+# hp fall: only bomb damage moves it (power/dark/light/missile resisted)
+@f1550 damage e00280089 5 0 bomb; obj e00280089
 @f1600 shoot e00280089
 @f1640 obj e00280089
 @f1700 touch e00280089 u0400
