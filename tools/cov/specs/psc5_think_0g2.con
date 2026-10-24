@@ -1,0 +1,13 @@
+# Torvus Bog 0g_swamp_hall layer 3: CPlantScarabSwarm e0c1e00b6, psc5 second launch.
+# The fixture (tools/cov/specs/psc5_think_slotfull.py) needs a live fight with all three attack slots
+# owned, so the player stands among the boids the whole run: no under-floor move, no Deactivate.
+# 1200 frames, fast.
+@f220 layer 3
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; fastmorph 1
+@f380 send e001e00b6 Activate
+@f420 tp -153.0 -66.0 37.0
+@f600 obj e001e00b6
+@f700 tp -151.0 -66.5 36.5
+@f900 obj e001e00b6
+@f1050 tp -150.0 -67.0 37.5
+@f1190 obj e001e00b6
