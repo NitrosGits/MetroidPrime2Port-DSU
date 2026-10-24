@@ -2,7 +2,7 @@
 # (they patrol on their own; Activate makes the body controller run its first Think, docs/GOTCHAS).
 # The steps follow tools/cov/specs/flyingpirate_sandfalls.con (the fp1 coverage driver: patrol,
 # spot, burst fire, dodge, knock-back, deaths). Checks are game updates (@f<n>; gameplay from
-# ~f240), not wall seconds; the family runs F=2400, last check f2250.
+# ~f240), not wall seconds; the family runs F=2800, last check f2550.
 @f300 layer 8
 @f560 god 1; give missile 50; give darkBeam 1; give lightBeam 1
 @f580 send u06de Activate; send u06cf Activate
@@ -20,3 +20,10 @@
 @f2200 objs flyingpirate
 @f2250 damage u06cf 1000; obj u06cf
 @f2350 objs flyingpirate
+@f2400 damage e000a012a 10
+@f2410 obj e000a012a
+@f2420 obj e000a012a
+@f2430 obj e000a012a
+@f2440 fsm e000a012a Dodge
+@f2450 kill e000a012a
+@f2550 objs flyingpirate

@@ -5,7 +5,7 @@
 # so their hp drops. Both commandos are activated and stay active (god mode keeps the player
 # alive); `obj` reads show their fsm state and target, `damage` lowers their hp.
 # Checks are game updates (@f<n>), not wall seconds. The family stays capped (NC): its area boots
-# quickly. F=4100, last check f4000.
+# quickly. F=4400, last check f4200.
 @f200 objs DarkCommando
 @f220 send u051a Activate; send u041c Activate
 @f240 place u051a player 10
@@ -25,3 +25,9 @@
 @f3000 obj u041c
 @f3500 obj u041c; obj u051a
 @f4000 objs DarkCommando
+@f4050 obj u051a
+@f4070 obj u051a
+@f4090 obj u051a
+@f4110 fsm u051a Lurk
+@f4130 send u051a Delete
+@f4200 objs DarkCommando

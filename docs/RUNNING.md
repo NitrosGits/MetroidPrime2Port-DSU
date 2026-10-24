@@ -222,7 +222,7 @@ console scripts in `tools/smoke/cmd_*.txt`; `--list` prints the family table. Re
 reach-stub, stand-in and gameplay seconds per family, failing when a family regressed.
 The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
-batch (~4.6 min, ing ~266 s), and so do the `NC` families (ingswarm, darktrooper, bacteriaswarm,
+batch (~4.6 min, ing ~266 s), and so do the `NC` families (emp1, ingswarm, darktrooper, bacteriaswarm,
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui, kral, pssm, stod,
 pbug, szone, rptl, chog, drkc, plac, plct, ming, snak, eyeb, kroc, atma, atmb, shrd, fsw, iss, ibs, mree, puff, rubk, cball, fobj, skyr, isg and spp): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console

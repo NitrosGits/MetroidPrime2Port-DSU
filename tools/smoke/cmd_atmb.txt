@@ -4,7 +4,7 @@
 # e0c03009f, e0c0300a2 and e0c0300a3; layer 3 holds them. The steps enable the layer, list them,
 # activate and place one, damage it so its hp drops, shoot it, and damage a second one.
 # Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC): its layer
-# loads after boot. F=2400, last check f2200.
+# loads after boot. F=2600, last check f2400.
 @f260 god 1; layer 3
 @f300 objs AtomicBeta
 @f320 send e0c030091 Activate; send e0c03009f Activate
@@ -16,3 +16,9 @@
 @f620 obj e0c03009f
 @f900 objs AtomicBeta
 @f2200 objs AtomicBeta
+@f2250 obj e0c030091
+@f2270 obj e0c030091
+@f2290 obj e0c030091
+@f2310 fsm e0c030091 Dead
+@f2330 kill e0c03009f
+@f2400 objs AtomicBeta
