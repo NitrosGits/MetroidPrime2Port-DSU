@@ -669,7 +669,7 @@ archived before the marker: `/tmp/opencode/reports/swb14-evidence/` (gcno, gcda,
 
 Base `9794622f0`, branch `decomp/swb15`, two launches (the cap). The coverage numbers stand - the
 compiler counters do not depend on the fixture - but the run's **oracle accounting does not close**,
-so the marker was removed again (`ae9f65e14` had it; the correction commit takes it out) and this
+so the marker was removed again (it was added in `a5eedafae`; the corrections `0304657f7` and this tooling commit take it out) and this
 body stays unmarked until the anomaly is explained.
 
 **Why this body needs its own area.** `UpdateAllBoidMovement` is the base-class default of a virtual
@@ -701,22 +701,29 @@ singleton `_st['window']`, a `FinishBreakpoint` that closes whatever window is g
 ownership, no `out_of_scope`, no pending-window check at exit.
 
 **What the raw evidence does *not* resolve**: *why* two entries of the same body overlap. The nm table
-has exactly one symbol for the body (and one for `MoveBoid`), so a duplicate breakpoint from the
-symbol match is ruled out; the log records no frame identity, so a late/duplicated gdb finish and a
+has exactly one symbol for the body (and one for `MoveBoid`), which rules out a duplicate from the
+symbol *match* but NOT several breakpoint locations at that one symbol (or a late/duplicated gdb
+finish); the log records no frame identity, so a late/duplicated gdb finish and a
 genuinely re-entrant call cannot be told apart offline. Per the review rule ("if raw evidence cannot
 uniquely resolve the anomaly, remove the marker") the marker is out.
 
-**Hardenened fixture** (`tools/cov/specs/swb15_updateall.py`, rewritten, **not runtime-tested**): one
-window record per body entry, keyed by the gdb frame, with its own restore/closing breakpoint bound to
-that record (no shared "current window"); duplicate entries for the same frame are refused and counted;
-the MoveBoid oracle attributes a hit only to the single open window whose `this` matches, and counts
-anything else (no owner, several owners, unreadable args) as `unattributed`; `out_of_scope` closes a
+**Hardenened fixture** (`tools/cov/specs/swb15_updateall.py`, rewritten, **not runtime-tested and
+therefore not evidence**): one window record per body entry, keyed by the gdb frame, with its own
+restore/closing breakpoint bound to that record (no shared "current window"); duplicate entries for the
+same frame are refused and counted; the MoveBoid oracle attributes a hit only to the single open window
+whose *immediate caller frame* (level and name) is the body frame that opened it - `this` alone is no
+longer sufficient - and counts anything else (no owner, several owners, unreadable or missing caller
+frame) as `unattributed`; `out_of_scope` closes a
 window that is discarded and counts it as `unwound`; a partial write is rolled back immediately and
 counted; a missing return breakpoint means no writes at all; out-of-order closes, pending windows at
 exit, restore mismatches and refusals all make the exit line report `status=FAIL` with per-reason
-counts. Mock suite (`/tmp/opencode/swb15-reconcile/mock/mock_suite.py`) covers a clean window,
-duplicate entry, non-caller traffic, nested windows for two callers, an unreturned window, an unwind, a
-partial write rolled back and a missing return breakpoint: all pass.
+counts. This hardening *targets* the mechanisms the reconciliation found; it does not prove the
+run's artefacts are gone (no run has exercised it), and it cannot establish the cause of the
+interleaving. The committed offline regression suite
+(`tools/cov/specs/swb15_updateall_selftest.py`, stub gdb over a modelled stack and swarm memory) checks
+the three forced phases with memory readback, a same-`this` wrong caller, a missing/unreadable caller
+frame, nested distinct owners, an out-of-order close, a failed rollback reported honestly, a missing
+return breakpoint and the exit status: 21 checks, all pass offline.
 
 The body's asm shape was checked independently of the fixture: `0x5044 lbz r0,0x4f0(r3)` +
 `0x504C extrwi. r0,r0,1,27` (mAnimated, mask 0x10), `0x5050 beq` to the return, `0x5054` the model

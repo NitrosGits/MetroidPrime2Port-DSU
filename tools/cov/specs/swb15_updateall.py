@@ -4,9 +4,10 @@
 # fixture, whose raw log could not account for all windows (see docs/module-analysis/SwarmBasics.md,
 # "swb15"): 4325 opens, 4324 closes, one tag (swb15-2861-ph2) opened and restored but never closed,
 # 33 opens that landed while another window was open, and one window (swb15-2819-ph1) that counted 8
-# MoveBoid calls for 7 boids with i=6 repeated. This version removes every mechanism that could
-# produce those artefacts; it has only been exercised by the mock suite in
-# /tmp/opencode/swb15-reconcile/mock/.
+# MoveBoid calls for 7 boids with i=6 repeated. This version targets those mechanisms (frame-owned
+# windows, caller-frame attribution, checked rollback, strict exit status) but has only been
+# exercised by the offline suite tools/cov/specs/swb15_updateall_selftest.py - it has NOT run under
+# gdb, so it proves nothing about the game. The cause of the interleaving in that run is unresolved.
 #
 #   BUILD=$PWD/build-port-cov tools/cov/force.sh tools/cov/specs/swb15_updateall.py <out> \
 #     42b935e4,01_sand_entrance --con tools/cov/specs/swarmbasics_sand.con --fast --frames 1200
@@ -40,6 +41,7 @@ _st = {
     'calls': 0, 'apply': 0, 'open': {}, 'order': [], 'opens': 0, 'closed': 0, 'unwound': 0,
     'pending': 0, 'dupEntry': 0, 'unattributed': 0, 'mvHits': 0, 'restoreFail': 0,
     'noRestore': 0, 'refused': 0, 'err': 0, 'sz': 0, 'adv': 0, 'status': [],
+    'rollbackFail': 0,
 }
 
 
@@ -102,9 +104,9 @@ class _Restore(gdb.FinishBreakpoint):
                 gdb.execute('set var ((CSwarmBasics*)%d)->mAnimated = %d'
                             % (w['this'], w['animated0']))
                 gdb.execute('set var ((%s*)%d)->mCount = %d'
-                            % (_VEC_CB, w['boidsVec'], w['count0']))
+                            % (_VEC_CB, w['vec'], w['count0']))
                 anim = _i(gdb, '((CSwarmBasics*)%d)->mAnimated' % w['this'])
-                cnt = _i(gdb, '((%s*)%d)->mCount' % (_VEC_CB, w['boidsVec']))
+                cnt = _i(gdb, '((%s*)%d)->mCount' % (_VEC_CB, w['vec']))
                 same = anim == w['animated0'] and cnt == w['count0']
                 if not same:
                     _st['restoreFail'] += 1
@@ -174,12 +176,19 @@ def body_fixture(g):
         _log('refused: target count %d above capacity %d' % (target_count, cap))
         return
     tag = 'swb15-%d-ph%d' % (st['calls'], phase)
-    win = {'tag': tag, 'this': this, 'mgr': mgr, 'frame': frame, 'vec': vec, 'items': items,
+    try:
+        flvl = frame.level() if frame is not None else None
+        fname = frame.name() if frame is not None else None
+    except Exception:
+        flvl, fname = None, None
+    win = {'tag': tag, 'this': this, 'mgr': mgr, 'frame': frame, 'flvl': flvl, 'fname': fname,
+           'vec': vec, 'items': items,
            'advItems': advItems, 'mask': nmodels - 1 if nmodels > 0 else 0, 'dt': dt,
            'expect': target_count if target_anim else 0, 'mv': 0, 'bad': 0, 'wrote': wrote,
            'count0': count, 'animated0': animated0, 'count': target_count,
            'animated': target_anim, 'closed': False, 'writes': []}
-    if any(w['this'] == this and w['frame'] == frame for w in st['open'].values()):
+    if any(w['this'] == this and w['flvl'] == flvl and w['fname'] == fname
+           for w in st['open'].values()):
         st['dupEntry'] += 1
         st['status'].append('dup-entry:' + tag)
         _log('DUPLICATE-ENTRY %s for swarm=0x%x on the same frame' % (tag, this))
@@ -201,22 +210,38 @@ def body_fixture(g):
             g.execute('set var ((%s*)%d)->mCount = %d' % (_VEC_CB, vec, target_count))
             win['writes'].append(('count', target_count))
         except Exception as e:
-            # a partial write must be undone here and now
+            # a partial write has to be undone here and now, and the rollback itself checked by
+            # reading the memory back - never claimed from a successful `execute`
+            rb_error = None
             try:
                 g.execute('set var ((CSwarmBasics*)%d)->mAnimated = %d' % (this, animated0))
                 g.execute('set var ((%s*)%d)->mCount = %d' % (_VEC_CB, vec, count))
+            except Exception as re_:
+                rb_error = re_
+            anim = cnt = None
+            try:
+                anim = _i(gdb, '((CSwarmBasics*)%d)->mAnimated' % this)
+                cnt = _i(gdb, '((%s*)%d)->mCount' % (_VEC_CB, vec))
             except Exception:
-                pass
+                anim = cnt = None
+            rolled = (anim == animated0 and cnt == count)
             st['err'] += 1
             st['status'].append('write-failed:' + tag)
-            _log('%s write failed after %d field(s): %s - rolled back' % (tag, len(win['writes']),
-                                                                         e))
+            if not rolled:
+                st['rollbackFail'] = st.get('rollbackFail', 0) + 1
+                st['status'].append('rollback-failed:' + tag)
+            _log('%s write failed after %d field(s): %s; rollback %s%s; readback anim=%s count=%s'
+                 ' (wanted %d/%d)%s'
+                 % (tag, len(win['writes']), e, 'OK' if rolled else 'FAILED',
+                    '' if rb_error is None else ' (rollback raised: %s)' % rb_error,
+                    anim, cnt, animated0, count,
+                    '' if rolled else ' - THE ORIGINAL STATE IS NOT RESTORED'))
             return
         st['apply'] += 1
-    _log('%s %s swarm=0x%x mAnimated %d->%d mBoids.mCount %d->%d (cap %d) models=%d adv=%d mask=%d'
-         ' dt=%.6f expectMoveBoid=%d'
+    _log('%s %s swarm=0x%x mAnimated %d->%d mBoids.mCount %d->%d (cap %d) models=%d adv=%d'
+         ' mask=%d dt=%.6f expectMoveBoid=%d owner_frame=(level %s, %s)'
          % (tag, 'FORCED' if wrote else 'NATURAL', this, animated0, target_anim, count,
-            target_count, cap, nmodels, nadv, win['mask'], dt, win['expect']))
+            target_count, cap, nmodels, nadv, win['mask'], dt, win['expect'], flvl, fname))
 
 
 def moveboid_oracle(g):
@@ -232,14 +257,31 @@ def moveboid_oracle(g):
         st['unattributed'] += 1
         st['status'].append('move-arg-unreadable')
         return
-    # ownership: the innermost open window for this caller; anything else is not folded into a window
-    mine = [w for w in st['order'] if w['this'] == this and not w['closed']]
+    # Ownership is by CALLER FRAME, not by `this`: MoveBoid's immediate caller must be the
+    # UpdateAllBoidMovement frame that opened the window.  A hit from another frame of the same
+    # swarm, an unreadable caller frame or a missing caller frame is rejected (fail closed) and
+    # counted, never folded into a window.
+    try:
+        top = g.newest_frame()
+        caller = top.older() if top is not None else None
+        clvl = caller.level() if caller is not None else None
+        cname = caller.name() if caller is not None else None
+    except Exception as e:
+        st['unattributed'] += 1
+        st['status'].append('caller-frame-unreadable')
+        if st['unattributed'] <= 5:
+            _log('MOVE-ARG UNATTRIBUTED this=0x%x boid=0x%x: caller frame unreadable (%s)'
+                 % (this, boid, e))
+        return
+    mine = [w for w in st['order']
+            if not w['closed'] and w['this'] == this and w['flvl'] is not None
+            and clvl == w['flvl'] and cname == w['fname']]
     if len(mine) != 1:
         st['unattributed'] += 1
-        st['status'].append('move-unattributed' if not mine else 'move-ambiguous')
+        st['status'].append('move-no-owner' if not mine else 'move-ambiguous')
         if st['unattributed'] <= 5:
-            _log('MOVE-ARG UNATTRIBUTED this=0x%x boid=0x%x open=%d (%s)'
-                 % (this, boid, len(mine), ','.join(w['tag'] for w in mine)))
+            _log('MOVE-ARG UNATTRIBUTED this=0x%x caller=(level %s, %s) boid=0x%x owners=%d (%s)'
+                 % (this, clvl, cname, boid, len(mine), ','.join(w['tag'] for w in mine)))
         return
     w = mine[0]
     i = w['mv']
@@ -251,10 +293,10 @@ def moveboid_oracle(g):
     if not ok:
         w['bad'] += 1
     if w['mv'] <= 3 or not ok:
-        _log('MOVE-ARG %s i=%d %s this=0x%x boid=0x%x (want 0x%x) delta=0x%x (want 0x%x) dt=%.6f'
-             ' (want %.6f)'
-             % (w['tag'], i, 'OK' if ok else 'MISMATCH', this, boid, want_boid, delta, want_delta,
-                dt, w['dt']))
+        _log('MOVE-ARG %s i=%d %s this=0x%x owner_frame=(level %s, %s) boid=0x%x (want 0x%x)'
+             ' delta=0x%x (want 0x%x) dt=%.6f (want %.6f)'
+             % (w['tag'], i, 'OK' if ok else 'MISMATCH', this, clvl, cname, boid, want_boid, delta,
+                want_delta, dt, w['dt']))
 
 
 def _summary(event=None):
@@ -268,14 +310,17 @@ def _summary(event=None):
         reasons[s.split(':', 1)[0]] = reasons.get(s.split(':', 1)[0], 0) + 1
     ok = (st['pending'] == 0 and st['dupEntry'] == 0 and st['unattributed'] == 0
           and st['restoreFail'] == 0 and st['noRestore'] == 0 and st['err'] == 0
-          and st['refused'] == 0 and not any(s.startswith(('order:', 'loop:', 'out-of-scope:',
-                                                           'restore:')) for s in st['status']))
+          and st['refused'] == 0 and st['rollbackFail'] == 0
+          and not any(s.startswith(('order:', 'loop:', 'out-of-scope:', 'restore:',
+                                    'write-failed:', 'rollback-failed:', 'caller-frame-unreadable',
+                                    'move-no-owner', 'move-ambiguous'))
+                      for s in st['status']))
     _log('SUMMARY exit: calls=%d opens=%d closed=%d unwound=%d pending=%d dupEntry=%d'
-         ' unattributed=%d moveBoidHits=%d restoreFail=%d noRestore=%d refused=%d err=%d'
-         ' status=%s reasons=%s'
+         ' unattributed=%d moveBoidHits=%d restoreFail=%d rollbackFail=%d noRestore=%d'
+         ' refused=%d err=%d status=%s reasons=%s'
          % (st['calls'], st['opens'], st['closed'], st['unwound'], st['pending'], st['dupEntry'],
-            st['unattributed'], st['mvHits'], st['restoreFail'], st['noRestore'], st['refused'],
-            st['err'], 'OK' if ok else 'FAIL', reasons or '{}'))
+            st['unattributed'], st['mvHits'], st['restoreFail'], st['rollbackFail'],
+            st['noRestore'], st['refused'], st['err'], 'OK' if ok else 'FAIL', reasons or '{}'))
 
 
 try:
