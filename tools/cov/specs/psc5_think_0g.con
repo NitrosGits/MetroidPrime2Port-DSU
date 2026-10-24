@@ -1,0 +1,20 @@
+# Torvus Bog 0g_swamp_hall layer 3: CPlantScarabSwarm e0c1e00b6 (uid in `obj` varies per boot).
+# psc5: god-mode player stands beside the swarm so real boids take attack slots (natural arms), then
+# three phases for the arms the plain fight leaves: (a) the swarm moved under the floor, so the boids'
+# tiny space-above box meets solid geometry (cpp:108's space test false); (b) back to the fight spot;
+# (c) Deactivate so a Think call runs with GetActive()==0 (cpp:86).  1200 frames, fast.
+@f220 layer 3
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; fastmorph 1
+@f380 send e001e00b6 Activate
+@f420 tp -153.0 -66.0 37.0
+@f600 obj e001e00b6
+@f640 tp -153.0 -70.5 37.0
+@f680 place e001e00b6 player 4
+@f800 obj e001e00b6
+@f900 tp -153.0 -66.0 37.0
+@f940 place e001e00b6 player 5
+@f1000 obj e001e00b6
+@f1060 send e001e00b6 Deactivate
+@f1120 obj e001e00b6
+@f1150 send e001e00b6 Activate
+@f1190 obj e001e00b6

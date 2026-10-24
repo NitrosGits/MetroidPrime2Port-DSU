@@ -1655,6 +1655,7 @@ struct SSeekerCandidateSorter {
   }
 };
 
+// @ fn_80_1978
 void CSwarmBasics::AssignSeekerBoids(CStateManager& mgr, const rstl::vector< uint >& taken,
                                      uint numNeeded, rstl::vector< uint >& out) {
   float maxDistSq = mgr.GetPlayer(0)->GetOrbitMaxTargetDistance();
