@@ -1,0 +1,241 @@
+# MediumIng ming5 driver: Dash / SafezoneReaction / MoveToSafeZone / FindSafeZoneRetreatPoint / Find*Actor / SetRetreatDestination / SetLeashTarget arms.
+# u0417 = the Ing, u0454 = the Ing next to the Echo zone, u0451 = the Echo safe zone (1105), u0452 its crystal.
+# New vars: ming.connrt / ming.conndg <uid> add a Retreat (RTRT) / DeGenerate (DGNR) connection (65535 = no such object, -1 clears).
+@f300 god 1; tp 208.5 -174 -46.5; face 180; send u0451 Activate; send u0452 Activate
+# --- Dash: total (dest - reflected) zero (0x50C4 false), then remaining zero with total nonzero (0x5110 false), then the normal arm
+@f400 place u0417 player 9; place u0417 player 9
+@f402 fsm u0417 Dash; var u0417 ming.destme 1
+@f403 var u0417 ming.destme 1
+@f404 var u0417 ming.inpos 1; statecall u0417 Dash 1 0.033
+@f405 obj u0417
+@f410 place u0417 player 9; place u0417 player 9
+@f412 fsm u0417 Dash; place u0417 player 25; place u0417 player 25; var u0417 ming.destme 1
+@f414 obj u0417
+@f420 place u0417 player 9; place u0417 player 9
+@f422 fsm u0417 Dash; var u0417 ming.destx 150000; var u0417 ming.desty 150000
+@f430 obj u0417
+@f440 fsm u0417 Idle
+# --- SafezoneReaction: mD1 clear (Generate 5) and set (Generate 6)
+@f450 fsm u0417 Idle; place u0417 player 9; var u0417 ming.d1 1; fsm u0417 SafezoneReaction
+@f452 var u0417 ming.d1 1
+@f455 var u0417 ming.d1 1
+@f470 obj u0417
+@f480 fsm u0417 Idle; place u0417 player 9; var u0417 ming.d1 0; fsm u0417 SafezoneReaction
+@f500 obj u0417
+@f520 fsm u0417 Idle; place u0417 player 9; var u0417 ming.d1 0; fsm u0417 SafezoneReaction
+@f540 obj u0417
+@f541 fsm u0417 MistAttack
+@f546 obj u0417
+@f560 fsm u0417 Idle
+# --- FindSafeZoneRetreatPoint / MoveToSafeZone: no zone, a zone id that is not a zone, then the active Echo zone (u0417 then u0454)
+@f570 var u0417 ming.safezone -1; fsm u0417 MoveToSafeZone
+@f580 obj u0417; fsm u0417 Idle
+@f585 var u0417 ming.safezone 1107; fsm u0417 MoveToSafeZone
+@f595 obj u0417; fsm u0417 Idle
+@f600 var u0417 ming.safezone 1105; fsm u0417 MoveToSafeZone
+@f620 obj u0417; fsm u0417 Idle
+@f630 var u0454 ming.safezone 1105; fsm u0454 MoveToSafeZone
+@f650 obj u0454; fsm u0454 Idle
+@f655 var u0417 ming.safezone 1105; pathfail u0417 on; fsm u0417 MoveToSafeZone
+@f670 obj u0417; fsm u0417 Idle; pathfail u0417 off
+# zone moved off the nav mesh: FindSafeZoneRetreatPoint not-found arm
+@f672 place u0451 5000 5000 5000
+@f673 var u0417 ming.safezone 1105; fsm u0417 MoveToSafeZone
+@f676 obj u0417; fsm u0417 Idle; place u0451 237.9 -194.7 -39.9
+# --- SetRetreatDestination / FindClosestRetreatActor: no connection, missing object, zone (active), zone + u0454 both orders, inactive zone
+@f680 var u0417 ming.connrt -1; codecall u0417 SetRetreatDestination
+@f681 var u0417 ming.connrt 65535; codecall u0417 SetRetreatDestination
+@f682 var u0417 ming.connrt -1; var u0417 ming.connrt 1105; codecall u0417 SetRetreatDestination
+@f683 var u0417 ming.connrt 1108; var u0417 ming.connrt 1108; codecall u0417 SetRetreatDestination
+@f684 var u0417 ming.connrt -1; var u0417 ming.connrt 1105; var u0417 ming.connrt 1108; codecall u0417 SetRetreatDestination
+@f685 var u0417 ming.connrt -1; var u0417 ming.connrt 1108; var u0417 ming.connrt 1105; codecall u0417 SetRetreatDestination
+@f686 send u0451 Deactivate
+@f688 codecall u0417 SetRetreatDestination
+@f689 send u0451 Activate; var u0417 ming.connrt -1; codecall u0417 SetRetreatDestination
+# --- SetLeashTarget / FindClosestDangerActor: none, missing object, zone, zone + u0454
+@f690 var u0417 ming.conndg -1; codecall u0417 SetLeashTarget
+@f691 var u0417 ming.conndg 65535; codecall u0417 SetLeashTarget
+@f692 var u0417 ming.conndg 1105; var u0417 ming.conndg 1108; codecall u0417 SetLeashTarget
+@f693 var u0417 ming.conndg -1; var u0417 ming.conndg 1108; var u0417 ming.conndg 1105; codecall u0417 SetLeashTarget
+@f694 var u0417 ming.conndg -1; codecall u0417 SetLeashTarget
+@f700 obj u0417
+# --- MistAttack: mist set with mD3/fb0 held clear (time arms, exit by time > 1.5), then no mist with mD3 forced (fb0 exit), then the else-if arm (bodystate + statecall)
+@f705 place u0417 player 6; var u0417 ming.mist 1; fsm u0417 MistAttack
+@f706 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f707 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f708 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f709 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f710 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f711 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f712 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f713 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f714 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f715 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f716 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f717 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f718 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f719 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f720 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f721 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f722 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f723 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f724 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f725 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f726 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f727 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f728 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f729 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f730 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f731 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f732 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f733 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f734 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f735 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f736 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f737 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f738 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f739 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f740 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f741 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f742 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f743 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f744 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f745 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f746 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f747 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f748 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f749 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f750 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f751 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f752 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f753 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f754 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f755 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f756 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f757 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f758 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f759 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f760 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f761 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f762 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f763 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f764 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f765 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f766 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f767 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f768 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f769 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f770 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f771 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f772 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f773 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f774 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f775 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f776 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f777 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f778 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f779 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f780 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f781 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f782 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f783 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f784 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f785 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f786 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f787 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f788 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f789 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f790 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f791 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f792 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f793 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f794 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f795 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f796 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f797 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f798 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f799 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f800 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f801 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f802 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f803 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f804 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f805 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f806 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f807 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f808 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f809 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f810 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f811 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f812 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f813 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f814 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f815 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f816 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f817 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f818 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f819 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f820 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f821 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f822 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f823 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f824 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f825 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f826 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f827 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f828 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f829 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f830 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f831 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f832 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f833 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f834 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f835 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f836 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f837 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f838 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f839 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f840 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f841 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f842 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f843 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f844 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f845 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f846 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f847 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f848 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f849 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f850 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f851 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f852 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f853 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f854 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f855 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f856 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f857 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f858 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f859 var u0417 ming.d3 0; var u0417 ming.fb0 0
+@f740 obj u0417
+@f800 obj u0417
+@f860 obj u0417
+@f862 fsm u0417 Idle
+@f865 place u0417 player 6; var u0417 ming.mist 0; fsm u0417 MistAttack
+@f868 var u0417 ming.d3 1
+@f871 var u0417 ming.d3 1
+@f874 var u0417 ming.d3 1
+@f877 var u0417 ming.d3 1
+@f880 var u0417 ming.d3 1
+@f883 var u0417 ming.d3 1
+@f886 var u0417 ming.d3 1
+@f889 var u0417 ming.d3 1
+@f892 var u0417 ming.d3 1
+@f895 var u0417 ming.d3 1
+@f898 var u0417 ming.d3 1
+@f901 var u0417 ming.d3 1
+@f904 var u0417 ming.d3 1
+@f907 var u0417 ming.d3 1
+@f915 obj u0417; fsm u0417 Idle
+# else-if false arm: body left LoopAttack while the animation state is Repeat/Over (forced: bodystate + statecall)
+@f920 place u0417 player 6; var u0417 ming.mist 0; fsm u0417 MistAttack
+@f925 bodystate u0417 3; statecall u0417 MistAttack 1 0.033
+@f927 bodystate u0417 3; statecall u0417 MistAttack 1 0.033; fsm u0417 Idle

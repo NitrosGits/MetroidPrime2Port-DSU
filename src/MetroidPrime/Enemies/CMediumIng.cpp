@@ -1122,6 +1122,7 @@ void CMediumIng::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_4FE8 (forced: fsm Dash, ming.destme/inpos; switch default dead)
 void CMediumIng::Dash(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1213,6 +1214,7 @@ void CMediumIng::WaitForLocomotion(CStateManager& mgr, EStateMsg msg, float dt) 
 // @ fn_41_5724
 void CMediumIng::Idle(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// @ fn_41_542C (forced: fsm SafezoneReaction, ming.d1 0/1; switch default dead)
 void CMediumIng::SafezoneReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1242,6 +1244,7 @@ void CMediumIng::SafezoneReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_5240 (forced: fsm MoveToSafeZone, ming.safezone, pathfail, place zone off mesh; switch default dead)
 void CMediumIng::MoveToSafeZone(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -1381,6 +1384,7 @@ void CMediumIng::SelectTarget(CStateManager& mgr, float dt) {
   mPathFindNavigation.SetFaceTarget(playerId); // 0x6BD4 sth 0x718
 }
 
+// @ fn_41_6880 (forced: ming.conndg; GetObjectById else arm dead: FindClosestConnectedActor only returns resolved CActors)
 void CMediumIng::SetLeashTarget(CStateManager& mgr, float dt) {
   const TUniqueId danger = FindClosestDangerActor(mgr, GetTranslation()); // 0x68D4
   if (danger != kInvalidUniqueId) {
@@ -1397,6 +1401,7 @@ void CMediumIng::SetLeashTarget(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_41_2564 (forced: ming.connrt)
 void CMediumIng::SetRetreatDestination(CStateManager& mgr, float dt) {
   const TUniqueId retreat = FindClosestRetreatActor(mgr, GetTranslation()); // 0x25A8
   if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(retreat))) { // 0x25D8
@@ -1466,6 +1471,7 @@ void CMediumIng::SetDashDestination(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_41_13E4
 bool CMediumIng::FindSafeZoneRetreatPoint(const CStateManager& mgr, CVector3f& outPoint) {
   const CScriptSafeZone* safeZone =
       TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(mSafeZoneId));
@@ -1510,11 +1516,13 @@ static TUniqueId FindClosestConnectedActor(const CEntity& self, const CStateMana
   return closest;
 }
 
+// @ fn_41_1BA8 (forced: ming.connrt)
 TUniqueId CMediumIng::FindClosestRetreatActor(const CStateManager& mgr,
                                               const CVector3f& pos) const {
   return FindClosestConnectedActor(*this, mgr, pos, kSS_Retreat); // 0x1BF0 'RTRT'
 }
 
+// @ fn_41_1CE8 (forced: ming.conndg)
 TUniqueId CMediumIng::FindClosestDangerActor(const CStateManager& mgr, const CVector3f& pos) const {
   return FindClosestConnectedActor(*this, mgr, pos, kSS_DeGenerate); // 0x1D30 'DGNR'
 }
