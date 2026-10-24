@@ -44,11 +44,14 @@ public:
                        float dt) override;
 
   // CAi
+  // @ fn_34_8
   bool IsListening() const override { return true; }
   bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
 
   // CPatterned
+  // @ fn_34_0
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
+  // @ fn_34_10
   float GetGravityConstant() const override { return 60.f; }
   void SetupStateMachine(CStateManager& mgr) override;
 
