@@ -1342,6 +1342,7 @@ void CRezbit::UpdateWobble(CStateManager& mgr) {
   mWobbleTransform = CTransform4f::Shear(0.f, xz, 0.f, yz, 0.f, 0.f);
 }
 
+// @ fn_53_3C68
 void CRezbit::UpdateShield(CStateManager& mgr, float dt) {
   if (!mShieldBroken) {
     if (mRezState == 0 && mAlert) {
