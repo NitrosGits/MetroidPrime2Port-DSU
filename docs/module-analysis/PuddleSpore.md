@@ -131,7 +131,7 @@ the original word was written back and read back, and the OUTER function returne
     forced call: restored ORIGINAL CWeaponMode word 0x0 at 0x55555819484c (read back 0x0; before 0xffff)
     call 1: returned true (forced=1 caller=CPuddleSpore::Touch state=0x1 type_in=0x0)
 
-Natural calls in the same runs (26 and 11) came from both real callers with states 1 (open) and 2, types
+Natural calls in the same runs (25 and 10; total calls 26 and 11) came from both real callers with states 1 (open) and 2, types
 0x0 (power), 0x1 (dark), 0x6 (missile), and their returns matched the arms (false = weak spot hit, true =
 skip). Only THIS spore is acted on (same-this check) and only the two real callers are inside the window;
 anything else is refused and logged (mock covers a same-this wrong-caller and a different-this rejection).
@@ -151,6 +151,13 @@ Evidence `/tmp/opencode/pud2_evidence`: `pud2_r1.gcda` 72282220..., `pud2_r2.gcd
 `pud2.matching.gcno` d0a1c50c..., `CPuddleSpore.source.cpp` f7dfc69d..., binary ae5d9b39...,
 `weaponHitsWeakSpot.disasm.txt`, both diag/fixture transcripts, `pud2_merged_raw.gcov.json` and the merged
 report.
+
+Independent review found `pud2_merged_raw.gcov.json` contains only run 1's 26 calls
+(6/6 lines, 7/10 edges), despite its name. It is not merged-profile evidence.
+Re-merging the two frozen gcda files with `gcov-tool merge` and the frozen matching
+gcno independently reproduces **6/6 lines, 8/10 edges**, missing 250:1 and 251:1.
+The regenerated profile is `/tmp/opencode/pud2-independent-review/merged/CPuddleSpore.cpp.gcov.json.gz`;
+the original mislabeled archive is preserved unchanged.
 
 ### Correction (offline, NOT run - 2026-10-24)
 
