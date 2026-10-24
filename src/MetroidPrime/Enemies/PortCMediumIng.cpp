@@ -828,7 +828,7 @@ bool CMediumIng::PortConsoleVar(CEntity& ent, const char* name, const int* value
     current = static_cast< int >(ing->field);                                                      \
     return true;                                                                                   \
   }
-  MING_F(mFB4, "fb4") MING_F(mFB8, "fb8") MING_F(mFBC, "fbc") MING_F(mFC0, "fc0")
+  MING_F(mFB0, "fb0") MING_F(mFB4, "fb4") MING_F(mFB8, "fb8") MING_F(mFBC, "fbc") MING_F(mFC0, "fc0")
   MING_F(mFC4, "fc4") MING_F(mFC8, "fc8") MING_F(mMistAmount, "mist")
 #undef MING_F
 #define MING_B(field, label)                                                                       \
@@ -842,7 +842,7 @@ bool CMediumIng::PortConsoleVar(CEntity& ent, const char* name, const int* value
   MING_B(mC0, "c0") MING_B(mC1, "c1") MING_B(mC2, "c2") MING_B(mC3, "c3") MING_B(mC4, "c4")
   MING_B(mC5, "c5") MING_B(mC6, "c6") MING_B(mC7, "c7") MING_B(mD0, "d0") MING_B(mD1, "d1")
   MING_B(mD2, "d2") MING_B(mD3, "d3") MING_B(mD4, "d4") MING_B(mD5, "d5") MING_B(mD6, "d6")
-  MING_B(mD7, "d7") MING_B(mE0, "e0") MING_B(mE1, "e1") MING_B(mE2, "e2")
+  MING_B(mInPosition, "inpos") MING_B(mD7, "d7") MING_B(mE0, "e0") MING_B(mE1, "e1") MING_B(mE2, "e2")
 #undef MING_B
   if (strcmp(n, "los") == 0) { // read-only: the line-of-sight tracker's last result
     current = ing->mLineOfSightTracker.HasLineOfSight() ? 1 : 0;
@@ -934,6 +934,32 @@ bool CMediumIng::PortConsoleVar(CEntity& ent, const char* name, const int* value
         n[4] == 'x' ? d.SetX(v) : n[4] == 'y' ? d.SetY(v) : d.SetZ(v);
       }
       current = static_cast< int >(n[4] == 'x' ? d.GetX() : n[4] == 'y' ? d.GetY() : d.GetZ());
+      return true;
+    }
+    // ming.connrt / ming.conndg <unique id> append a Retreat ('RTRT') / DeGenerate ('DGNR')
+    // connection to that object (the Find*Actor arms); an id >= 0xFFFF connects to an editor id no
+    // object has; -1 removes every connection of that state.
+    if (strcmp(n, "connrt") == 0 || strcmp(n, "conndg") == 0) {
+      const EScriptObjectState st = n[4] == 'r' ? kSS_Retreat : kSS_DeGenerate;
+      rstl::vector< SConnection >& list = ing->ConnectionList();
+      if (value != nullptr && *value < 0) {
+        for (size_t i = list.size(); i-- > 0;) {
+          if (list[i].state == st) {
+            list.erase(list.begin() + i);
+          }
+        }
+      } else if (value != nullptr) {
+        const CEntity* target =
+            *value >= 0xFFFF ? nullptr
+                             : vmgr->GetObjectById(TUniqueId(static_cast< ushort >(*value)));
+        list.push_back(SConnection(st, kSM_Follow,
+                                   target != nullptr ? target->GetEditorId() : TEditorId(0x00ABCDEF)));
+      }
+      int count = 0;
+      for (const SConnection& c : list) {
+        count += c.state == st ? 1 : 0;
+      }
+      current = count;
       return true;
     }
     if (strcmp(n, "destme") == 0) { // mDestPos = the Ing's own position

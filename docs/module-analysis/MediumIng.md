@@ -138,3 +138,18 @@ to area 40, and mist states 1 and 4. Screenshots: `/tmp/opencode/mi3-shots/`.
   null is returned: faithful retail quirk, no shared-code bug. True arm: player at world (-21.26,21.08,18.5), `place u0417 player 0`.
 - An Ing placed inside an Echo (InternalMessage0) active zone vanishes within ~5 frames; Echo-keep ValidateSafeZone is run with the player outside.
 - Arm too-close arm: needs IsInSafeZone (active zone, player inside) and the team id cleared (`ming.team 65535`) so CanStartAttack passes.
+
+## ming5
+
+- Driver `tools/cov/specs/mediuming_ming5.con` (spec `mediuming_ming2.py`, area 02_temple_exploration_dark, `--fast --frames 940`, `MP2_GODMODE=1`); the
+  SafezoneReaction d1=1 and d1=0 arms need separate runs (a second Generate never issues while the body stays in Generate), merge gcov dirs.
+- New vars (PortCMediumIng.cpp): `ming.connrt|conndg <uid>` adds a Retreat/DeGenerate Follow connection (uid >= 0xFFFF = nonexistent editor id,
+  -1 clears), `ming.inpos`, `ming.fb0`.
+- Marked, all live arms run (forced via fsm/statecall/place/var): MistAttack (37B0, 21/22), Dash (4FE8), SafezoneReaction (542C), MoveToSafeZone (5240),
+  SetRetreatDestination (2564), FindSafeZoneRetreatPoint (13E4), FindClosestRetreat/DangerActor (1BA8/1CE8), SetLeashTarget (6880).
+- Dead arms: switch `default` of MistAttack/Dash/SafezoneReaction/MoveToSafeZone (the FSM only sends Activate/Update/Deactivate);
+  SetLeashTarget GetObjectById-null else arm (FindClosestConnectedActor only returns ids it resolved to active CActors).
+- MoveToSafeZone FindSafeZoneRetreatPoint failure: `place u0451 5000 5000 5000` (zone off the nav mesh -> GetHeightOfPointAboveMesh kR_NoSourcePoint).
+- Echo-zone vanish is retail behaviour: CScriptSafeZone::InhabitantIdle (CScriptSafeZone.cpp ~766-770, fn_66_1F80) calls DamageActor (~779-785,
+  fn_66_1E50) on AI actors inside an active non-Normal zone. No port bug.
+
