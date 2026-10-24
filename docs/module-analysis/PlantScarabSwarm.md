@@ -471,3 +471,73 @@ Marker: **added** `// @ fn_49_C6C` (cpp:288). Evidence archived before that edit
 binary d22c4c0f...3f93, `psc7_r1_raw.gcov.json`, `psc7_r1_spawngrenades_edges.txt`, the fixture log and
 counters, and the report file. The psc6 read-only sample (`/tmp/opencode/psc6_evidence`) is kept as the
 natural-call observation; this pass supersedes its conclusions with the direct measurement.
+
+## Ninth pass (psc8, 2026-10-24, base 9c6e69cbd)
+
+Two launches used (the slice's cap): launch 1 died on a bug in my own fixture (a `%d` format with a
+string width raised a Python exception inside the breakpoint and aborted the inferior - logged in
+`/tmp/opencode/psc8_evidence/psc8_r1_diag_failed.log`); launch 2 is the evidence below. Fixture
+`tools/cov/specs/psc8_sldr_ctor.py` (spec + gdb side in one lane file), driver `psc6_grenade_0g.con`,
+`3dfd2249,0g_swamp_hall`, 1200 frames, fast, `[port] caught/reach-stub: 0`, inferior exited normally.
+
+**Where the ctor lives.** `SLdrPlantScarabSwarm::SLdrPlantScarabSwarm()` has no out-of-line symbol in the
+port build (only `__gcov0._ZN20SLdrPlantScarabSwarmC2Ev` and the destructor), so it is inlined into
+`LoadPlantScarabSwarm`. The oracle therefore breaks in that caller at `SLdrPlantScarabSwarm.inc:3`, whose
+first code address is `LoadPlantScarabSwarm+0x194` (`0xf4faf0+0x194 = 0xf4fc84`, from
+`objdump --dwarf=decodedline`), i.e. after every default store of the inline body (the last is the packed
+ambient colour at `0xf4fc75`) and before the first serialized property is read. The object address comes
+from the DWARF local `sldrThis` (resolved: `0x7fffffffc2f0`); the fallback is the caller's frame base -
+0x450, derived from the same disassembly (host `active` at 0xcc is stored at rbp-0x384; `visorFlags`, host
+0xa8+4, at rbp-0x3a4).
+
+**Value oracle (bit-exact, not just "entered").** 23 fields compared against the source's assignments -
+23 OK, 0 mismatches, one object (the only PSSM placement in 0g):
+
+    active=1; intoAttackAnimation/attackAnimation=0xffffffff;
+    maxAttackAngle=0x41f00000 (30.0f); intoAttackSpeed/attackSpeed/grenadeMass/grenadeLaunchSpeed=
+    0x3f800000 (1.0f); unknown_0xed086ce0=0x3f000000 (0.5f); grenadeNumBounces=3;
+    grenadeExplosionProximity=0x3f000000 (0.5f); the four grenade effects=0xffffffff;
+    grenadeBounceSound=0xffffffff, grenadeExplosionSound=0xffffffff (TARGET_PC overrides);
+    bounce/explosion falloffs=0x0 (0.0f), bounce/explosion max audible=0x42c80000 (100.0f);
+    actorInformation.lighting.ambientColor=0xffffffff (packed CColor(1,1,1,1));
+    actorInformation.visor.visorFlags=0xf.
+
+**Retail stores vs source** (`build/G2ME01/PlantScarabSwarm/asm/.../CPlantScarabSwarm.s`, fn_49_858 base
+r31; the host layout differs, so the mapping is by store identity, not by equal offsets):
+
+| asm store | retail offset | field | source line | expected -> observed |
+|---|---|---|---|---|
+| 0x86C/0x874/0x87C/0x884/0x898 `bl` | +0, +0x3c, +0xb4, +0xc4, +0x2d8 | the five nested struct ctors | 46-50 | constructed (their own bodies) |
+| 0x890, 0x894 `stw r0(-1)` | 0x2b4, 0x2b8 | intoAttackAnimation, attackAnimation | 57, 58 | -1 -> -1 |
+| 0x8A4..0x8C4 `stw r0(-1)` | 0x2ec, 0x2f0, 0x2f4, 0x2f8 | the four grenade effects (kInvalidAssetId) | 51-54 | -1 -> -1 |
+| 0x8C8 `stw r0(-1)` | 0x2fc | grenadeBounceSound | 79 (TARGET_PC) | -1 -> -1 |
+| 0x8CC `stw r0(-1)` | 0x308 | grenadeExplosionSound | 80 (TARGET_PC) | -1 -> -1 |
+| 0x8D0 `bl CColor` + 0x8E4 `stw` | 0x50 | lighting.ambientColor | 81 (TARGET_PC) | packed 0xffffffff -> same (one word: CColor is a packed `uint`) |
+| 0x8F4 `stw r0(0xf)` | 0xa0 | visor.visorFlags | 82 (TARGET_PC) | 0xf -> 0xf |
+| 0x904 `stb r0(1)` | 0xc0 | active | 56 | 1 -> 1 |
+| 0x91C `stfs f0` | 0x2bc | maxAttackAngle | 59 | 30.0f (rodata_4) -> 0x41f00000 |
+| 0x92C, 0x934, 0x93C, 0x940 `stfs f3` | 0x2c0, 0x2c4, 0x2c8, 0x2cc | intoAttackSpeed, attackSpeed, grenadeMass, grenadeLaunchSpeed | 60-63 | 1.0f (rodata_0) -> 0x3f800000 |
+| 0x944 `stfs f2` | 0x2d0 | unknown_0xed086ce0 | 64 | 0.5f (rodata_8) -> 0x3f000000 |
+| 0x948 `stw r0(3)` | 0x2d4 | grenadeNumBounces | 65 | 3 -> 3 |
+| 0x94C `stfs f2` | 0x2e8 | grenadeExplosionProximity | 66 | 0.5f -> 0x3f000000 |
+| 0x950, 0x958 `stfs f1` | 0x300, 0x30c | bounce/explosion falloff | 68, 71 | 0.0f (rodata_C) -> 0 |
+| 0x954, 0x95C `stfs f0` | 0x304, 0x310 | bounce/explosion max audible | 69, 72 | 100.0f (rodata_10) -> 0x42c80000 |
+
+So retail stores -1 where upstream wrote 0 for the two grenade sounds (0x2fc/0x308), 0xf at +0xa0 and the
+packed ambient at +0x50 - exactly the three TARGET_PC overrides - and every other default matches the
+source. No divergence left to fix.
+
+**Coverage of the inline body** (gcov JSON of this run, one instantiation, in CPlantScarabSwarm.cpp):
+`SLdrPlantScarabSwarm::SLdrPlantScarabSwarm()` lines 45-84, execution_count 1, **all lines executed**;
+17 blocks, 8 executed. The nine unexecuted blocks are the compiler's EH landing pads: the only branch
+edges in the body are `(1 fallthrough, 0 jump THROW)` on cpp:47, 48, 49, 50 (the nested struct ctors) and
+81 (the `CColor` temporary) - they need one of those constructors to throw, which none can. There is no
+runtime conditional in the body at all, and `tools/cov/gcov_report.py` excludes throw edges; the ctor's
+live arms are its 23 default stores, all covered and all corroborated by the value oracle. The
+`#ifdef TARGET_PC` alternative (lines 73-84) is compile-time; the PC side ran.
+
+Marker: **added** `// @ fn_49_858` above the inline ctor (header line 45). Evidence frozen before the
+marker and any rebuild in `/tmp/opencode/psc8_evidence`: `psc8_r2.gcda` aa636619...62c3 with matching
+`psc8_r2.matching.gcno` 67faa77e...12dd, run source copies of the .cpp and the .hpp
+(87187b462...2a72), binary bac9be36...046f, `psc8_r2_raw.gcov.json`, the oracle log (23 OK / 0 mismatch)
+and counters, plus the failed launch-1 log.
