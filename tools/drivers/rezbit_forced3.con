@@ -1,0 +1,95 @@
+# Rezbit rez4 forced leaf arms (spec rezbit_force2.py), 02_cliff_reactorcore layers 3+4.
+@f600 god 1
+@f1000 layer 3
+@f1300 layer 4
+@f1500 place e0005011b player 15
+@f1600 noise 0
+@f1603 noise 0
+@f1606 noise 0
+@f1609 noise 0
+@f1612 noise 0
+@f1615 noise 0
+@f1618 noise 0
+@f1621 noise 0
+@f1624 noise 0
+@f1627 noise 0
+@f1630 noise 0
+@f1633 noise 0
+@f1700 uevent e0005011b 17
+@f1704 uevent e0005011b 17
+@f1708 uevent e0005011b 17
+@f1712 uevent e0005011b 17
+@f1716 uevent e0005011b 17
+@f1720 uevent e0005011b 17
+@f1724 uevent e0005011b 17
+@f1728 uevent e0005011b 17
+@f1732 uevent e0005011b 17
+@f1736 uevent e0005011b 17
+@f1740 uevent e0005011b 17
+@f1744 uevent e0005011b 17
+@f1748 uevent e0005011b 17
+@f1752 uevent e0005011b 17
+@f1756 uevent e0005011b 17
+@f1760 uevent e0005011b 17
+@f1764 uevent e0005011b 17
+@f1768 uevent e0005011b 17
+@f1772 uevent e0005011b 17
+@f1776 uevent e0005011b 17
+@f1780 uevent e0005011b 17
+@f1784 uevent e0005011b 17
+@f1788 uevent e0005011b 17
+@f1792 uevent e0005011b 17
+@f1850 uevent e0005011b 33
+@f1851 uevent e0005011b 34
+@f1854 uevent e0005011b 33
+@f1855 uevent e0005011b 34
+@f1858 uevent e0005011b 33
+@f1859 uevent e0005011b 34
+@f1862 uevent e0005011b 33
+@f1863 uevent e0005011b 34
+@f1866 uevent e0005011b 33
+@f1867 uevent e0005011b 34
+@f1870 uevent e0005011b 33
+@f1871 uevent e0005011b 34
+@f1874 uevent e0005011b 33
+@f1875 uevent e0005011b 34
+@f1878 uevent e0005011b 33
+@f1879 uevent e0005011b 34
+@f1882 uevent e0005011b 33
+@f1883 uevent e0005011b 34
+@f1886 uevent e0005011b 33
+@f1887 uevent e0005011b 34
+@f2000 trigcall e0005011b ShouldVirusAttack
+@f2002 trigcall e0005011b ShouldVirusAttack
+@f2004 trigcall e0005011b ShouldVirusAttack
+@f2006 trigcall e0005011b ShouldVirusAttack
+@f2008 trigcall e0005011b ShouldVirusAttack
+@f2010 trigcall e0005011b ShouldVirusAttack
+@f2012 trigcall e0005011b ShouldVirusAttack
+@f2014 trigcall e0005011b ShouldVirusAttack
+@f2016 trigcall e0005011b ShouldVirusAttack
+@f2018 trigcall e0005011b ShouldVirusAttack
+@f2020 trigcall e0005011b ShouldVirusAttack
+@f2022 trigcall e0005011b ShouldVirusAttack
+@f2100 send e0005011b Deactivate
+@f2110 send e0005011b Activate
+@f2120 send e0005011b Deactivate
+@f2130 send e0005011b Activate
+@f2200 fsm e0005011b EnergyBoltAttack
+@f2600 fsm e0005011b Idle
+@f2700 fsm e0005011b LaserAttack
+@f3200 fsm e0005011b Idle
+@f3300 fsm e0005011b Patrol
+@f3900 fsm e0005011b Idle
+@f4000 codecall e0005011b SetDeRezzedState 1
+@f4100 shoot e0005011b missile
+@f4160 shoot e0005011b missile
+@f4220 shoot e0005011b missile
+@f4280 shoot e0005011b missile
+@f4340 shoot e0005011b missile
+@f4400 shoot e0005011b missile
+@f4460 shoot e0005011b missile
+@f4520 shoot e0005011b missile
+@f4580 shoot e0005011b missile
+@f4640 shoot e0005011b missile
+@f5000 obj e0005011b

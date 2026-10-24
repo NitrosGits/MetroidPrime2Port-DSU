@@ -180,6 +180,7 @@ void CRezbit::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_53_6C04
 bool CRezbit::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) {
   bool heard = false;
   if (mAlive) {
@@ -1137,6 +1138,7 @@ void CRezbit::StartVirusAttack(CStateManager& mgr, const rstl::string& locator) 
   }
 }
 
+// @ fn_53_2660
 void CRezbit::FireEnergyBolt(CStateManager& mgr, float dt) {
   const CEntity* target = mgr.GetObjectById(mTargetId);
 #ifdef TARGET_PC
