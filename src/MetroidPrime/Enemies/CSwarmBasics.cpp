@@ -188,6 +188,7 @@ static CModelData GetModelDataForAnimRes(const CAnimRes& animRes) {
   return animRes.GetId() != kInvalidAssetId ? CModelData(animRes) : CModelData::CModelDataNull();
 }
 
+// @ fn_80_8FE0
 CSwarmBasics::CSwarmBasics(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                            const CVector3f& boundingBoxExtent, const CTransform4f& xf,
                            const CAnimRes& animRes, CActorParameters actorParameters,
@@ -1006,6 +1007,7 @@ CColor CSwarmBasics::SoftwareLight(const CStateManager& mgr, const CAABox& bound
   return result;
 }
 
+// @ fn_80_4640
 void CSwarmBasics::PreRender(CStateManager& mgr) {
   bool active = false;
 #ifdef TARGET_PC
@@ -1039,6 +1041,7 @@ void CSwarmBasics::PreRender(CStateManager& mgr) {
 // @ fn_80_4278
 bool CSwarmBasics::CanRenderUnsorted(const CStateManager& mgr) const { return true; }
 
+// @ fn_80_4210
 void CSwarmBasics::CachePose(CModelData& modelData,
                              SwarmRenderHelpers::CSwarmSkinnedModelState& state) const {
 #ifdef TARGET_PC
@@ -1109,6 +1112,7 @@ void CSwarmBasics::PortDescribe(char* buf, int size) const {
 }
 #endif
 
+// @ fn_80_4128
 void CSwarmBasics::RenderBoid(CBoid* boid) const {
 #ifdef TARGET_PC
   // No display list means the skinned model has not arrived: drawing anyway put an unresolved

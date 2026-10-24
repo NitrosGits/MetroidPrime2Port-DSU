@@ -132,9 +132,11 @@ public:
                                       const rstl::reserved_vector< CBoid*, 50 >& nearList);
   virtual void KillBoid(CBoid& boid, CStateManager& mgr, const CWeaponMode& weapon);
   // Guessed names; these are virtual in Echoes, unlike Prime's swarm queries.
+  // @ fn_80_0
   virtual bool GetLockOnLocationValid(int index) const {
     return index > -1 && index < mBoids.size() && mBoids[index].mActive;
   }
+  // @ fn_80_3C
   virtual CVector3f GetLockOnLocation(int index) const { return mBoids[index].GetTranslation(); }
   virtual void FreezeBoids(const CVector3f& position, float radius);
   virtual TUniqueId GetSeekerTargetLockedOn() const;
