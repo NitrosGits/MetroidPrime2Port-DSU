@@ -86,3 +86,14 @@ rez2 (state arms, merged with the rez1 profiles; none marked, every one of the f
 rez3 (forced arms, 2026-10-24; spec `tools/cov/specs/rezbit_force.py`, driver `tools/drivers/rezbit_forced2.con`, run via `tools/cov/force.sh ... --con tools/drivers/rezbit_forced2.con --fast --frames 6300` with `COV_GDB_SCRIPT=tools/cov/force_ret.py`, merged with the rez1/rez2 profiles). Marked, ALL-ARMS (gcov arms hit / total): Death 5/5, PathFind 10/10, Dead 6/6, SelectStrafeDirection 6/6, SetTargetDest 10/10, RaiseShields 8/8, ShouldBecomeDeRezzed 8/8, ShouldStrafe 10/10, ShouldLaserAttack 26/26, ShouldEnergyBoltAttack 24/24, Alert 13/14, Strafe 19/20 (the two missing arms are the switch-default arms 376:3 and 454:3, dead since EStateMsg has three values). asmcheck findings on these bodies are only "bitfield position unstated" and calls to named helpers (LowerShields, UpdateSeparation, JoinTeam) and inlined string dtors: read against the asm, no divergence.
 Forced arms (gdb writes at body entry, restored at return; all unreachable or rare through the console): Death no-state-machine (HasState forced 0) and the 205 arm (ecx = invalid id); Alert delay / target invalid / target = self; PathFind no path destination with invalid or self target; Strafe rez1 state and invalid target; Dead live laser sfx; trigger arms (team manager grants/refuses, cinematic camera, shield actor, distance min/max, attack selection) set by writes to the member or by the callee return (FORCE_INNER).
 Not marked: ShouldVirusAttack (17/22; untaken 842:0, 843:1, 844:1, 847:1, 848:0): forcing mTargetId to mPlayers[0]'s id never made the CPlayer cast at 841 succeed (1 of 425), so the rez-state, morph-ball and distance arms stay unseen. Unresolved; also the other fixed helpers and ctor/dtors as above.
+
+## rez4 (2026-10-24)
+
+Marked `Listen` (6C04, asm-checked: alive bit 0x420, type==0, mAlert 0xd70, 0.04*sqrt(dist^2) at 0xc3c) and
+`FireEnergyBolt` (2660). Both gcov ALL-ARMS via `tools/cov/specs/rezbit_force2.py` + `tools/drivers/rezbit_forced3.con`
+(run in two short halves; hot Render/Think breakpoints and global `CCharAnimTime::operator!=` stall the game, ~5 s/frame, no gcda on kill).
+Left unmarked, arm still untaken: Think 295 (inline IsFrozen), AcceptScriptMsg 324 (inline additive id), DoUserAnimEvent 264,
+Render 237/243/246 (needs real deflected missiles), BecomeRezzed/BecomeDeRezzed default arms (dead, rez3 precedent),
+ShouldVirusAttack 866-871, StartVirusAttack 1112, UpdateLaser 1187, SetupLaserTargets 1231, UpdatePatrolMovement 1245/1247,
+CheckVerticalClearance, DeflectMissiles, UpdateSeparation 1015, BreakShield, LowerShields, UpdateShield 1368, JoinTeam 895
+(need callee/member forcing).
