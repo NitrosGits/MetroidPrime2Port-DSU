@@ -1,0 +1,13 @@
+# 0e_temple_hive_hall (layers 3 4) for splinter_splin2.py: the five cable Splinters (the first load forced
+# into a Mega with mStateMachine2 and mParticle), their acid sacs popped (Deactivate -> PopSac, the sac
+# deletes itself), then every Splinter deleted (DeleteObjectRequest -> ~CSplinter D0).
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f302 layer 3; layer 4
+@f305 send u0604 Activate; send u0602 Activate; send u048d Activate; send u048a Activate; send u0487 Activate
+@f310 tp 92 -345 -105
+@f330 send u0604 Alert; send u0602 Alert; send u048d Alert; send u048a Alert; send u0487 Alert
+@f340 objs Splinter; objs SplinterAcidSac
+@f400 send u0602 Deactivate; send u0604 Deactivate; send u048d Deactivate
+@f500 objs Splinter; objs SplinterAcidSac
+@f600 send u0604 Delete; send u0602 Delete; send u048d Delete; send u048a Delete; send u0487 Delete
+@f700 objs Splinter; objs SplinterAcidSac

@@ -164,4 +164,27 @@ Gotchas: a CALLS trigger that fires during area load hangs the run (the dark ala
 `(void*(*)(unsigned long))` cast and the convenience variable set before the first write. objdiff of the bodies: 88-99.6% (AttackPointIsLegal 88.5, ctor 88.3,
 DoUserAnimEvent 90.7, PathFind 91.4); the instruction multisets differ only by stack slots, fmadds / fadds+fmuls, rodata labels and REL-local inline names.
 Header rows marked at objdiff 100%: GetSearchPath 0, ~SLdrSplinter B84, SSpitData dtor B1E4 / operator= B7DC, DeliverCommand BF74 / C040 / C15C.
-Left unmarked: ~CSplinter ABA0 (99.8%), SSurfaceAlignment dtor AF50 (99.7%), SSpitData copy ctor B9DC (99.9%), ~CSplinterAcidSac CCA8 (99.7%), `__sinit` C268.
+Left unmarked: ~CSplinter ABA0 (99.8%), SSurfaceAlignment dtor AF50 (99.7%), SSpitData copy ctor B9DC (99.9%), `__sinit` C268 (CCA8: splin2 below).
+
+## splin2 (base 8125b144d, 2026-10-25)
+
+gdb spec `tools/cov/specs/splinter_splin2.py` + `.con` (temple hive hall, five splinters/sacs, Delete at f600),
+launches 2/2 (run 1 died on absolute breakpoints in the PIE binary; run 2 used `main`-relative ones). Executed binary
+sha256 375df665..., spec f4d28f57, con 901817c1 (committed unchanged), frozen with the run 2 output in
+`/tmp/opencode/splin2-frozen/` (`run2-out/`). Ownership: guarded physical gdb frame + (inferior, thread) + root.
+The objdiff residuals are relocation names, plus AF50 `li r4,0` vs `-1` (the same behaviour).
+
+| fn | result | evidence / missing arm |
+|---|---|---|
+| ~CSplinterAcidSac CCA8 | marked | 4 owned D0 chains (ClearGraveyard), each mRelToken, mDamageVulnerability, CActor base, then delete(root) in order; the body has no branch |
+| SSpitData copy B9DC | unmarked | 30/30 fields source==copy (forced Mega load, readbacks restored); the engaged mVisorEffect arm (0xBA30/0xBA3C, CToken copy + Lock) never ran: visor_valid 0 in the shipped load, no dead-arm proof |
+| ~CSplinter ABA0 | unmarked | 5 D0 chains in order (forced chain 4: mSpit+mParticle; natural: mStateMachine2; mSac; CPatterned members; CAi; delete). Missing: the mAlignment cache vector arms 0xAC44-0xAC90 (mCache 0 in every chain), and the D2 path (flag <= 0, 0xACB0); the executed classifier rejected each chain |
+| SSurfaceAlignment dtor AF50 | unmarked | entered in every chain, but the `beq 0xAF6C` engaged arm (AFA4 + Free) never ran |
+
+Executed-classifier failure (each splinter chain, the summary says FAIL): one CToken dtor per chain with an offset outside
+the object (+0x1e80, +0x1ef0, -0x1c3e50, -0x1d1230). The evidence shows it belongs to the object: its inline chain is
+`TLockedToken<CScannableObjectInfo>::~TLockedToken | single_ptr<..>::~single_ptr | CPatterned::~CPatterned | CSplinter::~CSplinter`
+in the owned frame, between the token +0x4f8 and the mDamageVulnerability events. The next event frees the same address
+(chain 8: token 0x5555583d1e30, then delete 0x5555583d1e30, both from the single_ptr). So it is the heap pointee of
+CPatterned::mIngScanInfo, not an unrelated call. The spec checks only in-object offsets (0..0xa38), so this
+reclassification is offline only and does not mark ABA0.
