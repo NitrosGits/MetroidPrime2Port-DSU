@@ -1682,6 +1682,7 @@ void CBlogg::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_3B1C
 void CBlogg::FindAttackPositions(CStateManager& mgr, const CVector3f& playerPosition,
                                  const CVector3f& bloggPosition, const CVector3f& direction,
                                  float distance) {
