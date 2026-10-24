@@ -279,3 +279,28 @@ GrapplePull 24A8 (95%): msg 3 default (statecall 3), CanBeNormalized false (4163
 (needs a moving player or `$P` writes). Dead B1F4 (99.7%): 15 arms (guardian / ing-possessed / dying-state arms). UpdateEffects C2EC: 12 arms.
 IssueDeathBodyCommand 6358 (85%): 11 arms and not matching; AcceptScriptMsg FD2C (99.4%): ~48 arms. CGrenchler ctor 11580: the 60x/14 arms are
 member-init EH edges; 539:1/2 and 639:1/8 still to check. Dtors / __sinit rows not touched.
+
+## gren7 lane (base 7941a0ddf, 2026-10-24)
+
+Spec `tools/cov/specs/grenchler_force7.py` (force_ret CALLS + spec-local gdb hooks; run with `COV_GDB_SCRIPT=tools/cov/force_ret.py`, driver
+`grenchler_gren6c.con`, 01_swamp_entrance), merged with the natural + forced drivers of earlier slices.
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| UpdateBeamTrace 32C4 | 35/35 minus 2 static-init guard EH edges (`static const CMaterialFilter` x2, arm 3/4 = the init-throws edge, dead) | forced (CALLS): trace state 1 on entry; `CVector3f::CanBeNormalized` stub lists [0,1,1] (0x33B0 beam target on the horn), [1,0,1] (0x3634), [1,1,0] (0x364C); hook `$g7_mode 1` writes hitId = version-63 id after the loop rays (0x37C8 `beq`: no actor); `$g7_mode 2` hitId = this + GetVulnerability rax high half = 3 (0x385C `cmpwi 3`: immune -> state 3) |
+| GrapplePull 24A8 | 28/28 | forced (CALLS): msg 3 default; CanBeNormalized stub 0 (no pull); mLastHornPosition := player (moved away) with mBackwardInput 0 / 0.5; mLastHornPosition far with mBackwardInput 0.5; PullPlayer stubbed |
+
+Asm: UpdateBeamTrace matches (objdiff 99.9%); GrapplePull (95%): only regalloc/scheduling, an extra pair of stack stores and the const vs non-const
+`GetPlayerTargetPosition` symbol (same body); x90c_80 = mTrackPlayer (0x25FC). No behaviour differences.
+
+| IssueDeathBodyCommand 6358 | 20/20 | forced (CALLS, grenchler_force7.py): mSubmerged 1 (0x637C `cmplwi 1`: NextState 0xC, locomotion 9); mPlayDeathAnims 0 (0x63D0 bit 0x8); `CBodyController::HasBodyState` stub lists (0x63D8 state 0xE Hurled, 0x64D0 state 0 Fall); mBodyType 3 (0x63F0 `cmpwi 3` flyer -> inline CBCHurledCmd, id 0x10); `IsIngPossessed` stub (0x64E4); mPendingMassiveDeath (0x6504 bit 0x8) with `CheckConnectedObject` stub 0xFFFF / 1 (0x652C); mWaterId 459 + z -5000 (0x6554 `fcmpo; bge` skip: severity 6). The CommandMgr is Reset after each call (a delivered Hurled command crashed CBSHurled::Start: the Grenchler has no hurled animation) |
+
+IssueDeathBodyCommand objdiff (85%) is the compiler inlining `CBCHurledCmd` / `DeliverCmd`: the retail stores (cmd id 0x10 at 0x22C, -direction at 0x230-0x238, zero vector 0x23C-0x244, flag byte 0x248) are the same fields the port's ctor + `mHurled = cmd` write; the remaining diffs are vtable symbol names and stack offsets. No TARGET_PC change needed.
+
+| Dead B1F4 | 40/40 | forced (CALLS, grenchler_force7.py): entrance room: Activate not submerged (IsDeeplySubmerged 0, CPatterned::Dead stubbed) and Activate with `IsDeeplySubmerged` stubbed 1 and the surface-ring / splash generators nulled (0xB264/0xB290 `cmplwi 0`), mElectricSfx.mID set (RemoveEmitter), Update submerged + surfaced + timer past the fade time (MassiveDeath stubbed) and sinking 20 s (mWaterId 459, z -5000) before and after the fade time; guardian room (`grenchler_gren7g.con`, call at the first PreThink with a collision manager): Update with the player morphed (mMorphBallState 1) with / without a collision manager, and not morphed; `CPatterned::Dead` stubbed there (a living guardian crashes it) |
+
+Dead objdiff 99.2%: the only instruction difference is `fadds f0, f0(-3.3), f1` (0xB574) vs the port's `waterHeight - 3.3f` (bit-identical: a + (-b) == a - b); `xcc8 & 1` = mSpinSeed & 1, x90c_20 = mIsGrappleGuardian.
+
+| UpdateEffects C2EC | 87/87 | forced (CALLS, `grenchler_force7e.py`, guardian room, driver `grenchler_gren7e.con`: `gren.swoosh 3` builds the swoosh / beam-particle generators, the call runs at the first PreThink that sees them): splash / ring generators nulled; `IsWadingInWater` stubbed with dt 0 (0xC4xx `fcmpo dt, 0`); beam projectile id with no object / an inactive entity; mSoundHandle.mID 5 / 0; mTraceState 2 / 3 with mCurrentAction 0 (swoosh target = mHitPosition); `CanBeNormalized` stub 0 (particle step); mFrozen 1 (StopElectricBeam); guardian with a live electric sound handle, with tail gone and mAlive 0, and with the eye glow generator nulled. Do not run `gren.swoosh` on the non-guardian entrance Grenchlers: CElementGen ctor segfaults (no swoosh asset) |
+
+UpdateEffects objdiff 96%: scheduling / rodata hoisting only (checked the tail: `li r4,0` vs `mr r4,r31` is regalloc).

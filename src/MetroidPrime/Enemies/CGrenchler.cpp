@@ -1603,6 +1603,7 @@ bool CGrenchler::IsWadingInWater(CStateManager& mgr) {
 // @ fn_27_D10C
 void CGrenchler::FluidFXThink(EFluidState state, CScriptWater& water, CStateManager& mgr) {}
 
+// @ fn_27_C2EC
 void CGrenchler::UpdateEffects(float dt, CStateManager& mgr) {
   const float waterHeight = GetWaterSurfaceHeight(mgr);
   if (mEffectD.mWaterSplash.mGen.get() != nullptr) {
@@ -1954,6 +1955,7 @@ void CGrenchler::SetupStateMachineHelper(CStateManager& mgr) {
   mStateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_27_B1F4
 void CGrenchler::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     UnmarkPathRegion(mgr);
@@ -3176,6 +3178,7 @@ void CGrenchler::TurnToPlayer(CStateManager& mgr, float dt, float turnSpeed) {
   RotateToPoint(mgr.GetPlayer(0)->GetTranslation(), dt, turnSpeed);
 }
 
+// @ fn_27_6358
 void CGrenchler::IssueDeathBodyCommand(CStateManager& mgr, const CVector3f& direction) {
   if (mSubmerged == true) {
     BodyController()->SetLocomotionType(pas::kLT_Internal9);
@@ -3920,6 +3923,7 @@ void CGrenchler::GrappleLoop(CStateManager& mgr, EStateMsg msg, float dt) {
   BodyController()->CommandMgr().ClearLocomotionCmds();
 }
 
+// @ fn_27_32C4
 void CGrenchler::UpdateBeamTrace(CStateManager& mgr) {
   static const CMaterialFilter skSolidFilter = CMaterialFilter::MakeIncludeExclude(
       CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor));
@@ -4123,6 +4127,7 @@ void CGrenchler::PullPlayer(float dt, CStateManager& mgr, const CVector3f& targe
   }
 }
 
+// @ fn_27_24A8
 void CGrenchler::GrapplePull(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(kGA_GrapplePull, msg);
   BodyController()->SetLocomotionType(pas::kLT_Internal12);
