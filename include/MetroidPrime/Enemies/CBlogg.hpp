@@ -28,6 +28,7 @@ public:
                           const CDamageVulnerability& otherVulnerability, bool flag);
 
   // CNonUniformVulnerability
+  // @ fn_7_17A8
   ~CBloggBodyVulnerability() override {}
   const CDamageVulnerability* GetDamageVulnerability(const CDamageVulnerability* defaultVuln,
                                                      const CVector3f& position,
