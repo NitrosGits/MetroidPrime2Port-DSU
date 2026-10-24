@@ -36,6 +36,9 @@ public:
              const CActorParameters& actorParams);
 
   // CEntity
+  // 0x34-0x54: destroy collision manager, waypoint vector, then CPatterned.
+  // Null-this/member-address guards are MWCC scaffolding, not valid C++ call paths.
+  // @ fn_77_0
   ~CStoneToad() override {}
   void PreThink(float dt, CStateManager& mgr) override;
   void Think(float dt, CStateManager& mgr) override;

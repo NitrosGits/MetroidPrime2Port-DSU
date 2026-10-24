@@ -118,12 +118,14 @@ void CStoneToad::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
-// fn_77_22F4 (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_22F4
 void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
+  // 0x2320-0x2338: snapshot active (entity byte 0x20, mask 0x80) and sender.
   const bool wasActive = GetActive();
   const TUniqueId senderId = msg.GetSenderId();
   switch (msg.GetMessage()) {
   case kSM_AreaLoaded: {
+    // 0x2404-0x2498: reserve 8, collect Approach connections resolving to waypoints.
     mWaypoints.reserve(8);
     rstl::vector< SConnection >::const_iterator it = GetConnectionList().begin();
     for (; it != GetConnectionList().end(); ++it) {
@@ -138,6 +140,7 @@ void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   }
   case kSM_Create: {
+    // 0x24A0-0x24C4: body active mask 0x40; crouch (0), Activate(-1) if inactive.
     if (!BodyController()->GetIsActive()) {
       BodyController()->SetLocomotionType(pas::kLT_Crouch);
       BodyController()->Activate(mgr, pas::kAS_Invalid);
@@ -145,6 +148,7 @@ void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
 
     {
       rstl::vector< CJointCollisionDescription > joints;
+      // 0x24D8-0x2508: model, animation and spatial-primitive validity guards.
       if (HasAnimation() && GetAnimationData()->GetSpatialPrimitive()) {
         const CSpatialPrimitive* primitive = **GetAnimationData()->GetSpatialPrimitive();
         const rstl::vector< CSpatialPrimitive::SSphere >& spheres = primitive->GetSpheres();
@@ -154,6 +158,7 @@ void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
           const CSpatialPrimitive::SSphere& sphere = spheres[i];
           const CSegId segId = sphere.mFirstSegment;
           const CSphere& bounds = sphere.mSphere;
+          // 0x2544-0x2600: sphere segment/center/radius, per-index name, mass 0.001.
           const CJointCollisionDescription desc = CJointCollisionDescription::SphereCollision(
               segId, bounds.GetCenter(), bounds.GetRadius(),
               rstl::string_l("sphere") + CStringExtras::CreateFromInteger(i), 0.001f);
@@ -162,12 +167,15 @@ void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
 
         mCollisionActorManager = rs_new CCollisionActorManager(
             mgr, GetUniqueId(), GetCurrentAreaId(), joints, GetActive());
+        // 0x2678-0x26EC: 1ull << each retail material enum, not the enum itself.
         mCollisionActorManager->AddMaterialList(
             mgr, CMaterialList(kMT_CameraPassthrough, kMT_Immovable));
         for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
           const TUniqueId id =
               mCollisionActorManager->GetCollisionDescFromIndex(i).GetCollisionActorId();
+          // 0x271C-0x2724: skip a missing collision actor, retain the loop tail.
           if (CCollisionActor* colAct = static_cast< CCollisionActor* >(mgr.ObjectById(id))) {
+            // 0x2728-0x27B0: add sphere/AIPassthrough/SolidCharacter, remove Orbit/Target.
             colAct->AddMaterial(spheres[i].x8_);
             colAct->MaterialList().Add(kMT_AIPassthrough);
             colAct->MaterialList().Add(kMT_SolidCharacter);
@@ -177,12 +185,14 @@ void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
             const u64 ownExclude = GetMaterialFilter().GetExcludeList().GetValue();
             const u64 actorInclude = colAct->GetMaterialFilter().GetIncludeList().GetValue();
             const u64 actorExclude = colAct->GetMaterialFilter().GetExcludeList().GetValue();
+            // 0x27B4-0x2824: union includes/excludes; exclude Character (bit 33).
             colAct->SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
                 CMaterialList(ownInclude | actorInclude),
                 CMaterialList(ownExclude | (u64(1) << kMT_Character) | actorExclude)));
             colAct->SetResponseType(
                 GetCollisionResponseType(CVector3f::Zero(), CVector3f::Zero(),
                                          CWeaponMode(kWT_None, false, false, false), 0));
+            // 0x2880-0x2920: copy own health and vulnerability to each collision actor.
             const CHealthInfo health = *GetHealthInfo();
             colAct->SetDamageVulnerability(*GetDamageVulnerability());
             *colAct->HealthInfo() = health;
@@ -190,31 +200,37 @@ void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
         }
       }
     }
+    // 0x2948-0x2958: snapshot transform and set lock-on segment 1.
     mInitialTransform = GetTransform();
     mLockOnTarget = CSegId(1);
     break;
   }
   case kSM_AIUpdateDisabled:
+    // 0x2960-0x2970: null guard; physics inactive (0).
     if (mCollisionActorManager.get() != nullptr) {
       mCollisionActorManager->SetPhysicsActive(mgr, false);
     }
     break;
   case kSM_Delete:
+    // 0x2978-0x298C: Destroy deliberately falls through to SetActive(false).
     mCollisionActorManager->Destroy(mgr);
     // Fallthrough
   case kSM_Deactivate:
     mCollisionActorManager->SetActive(mgr, false);
     break;
   case kSM_Increment:
+    // 0x2994-0x29D0: set 0x860 mask 0x80, send Attack, provoker=0.
     mProvoked = true;
     SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, kSM_None);
     mProvoker = kP_SafeZone;
     break;
   case kSM_Decrement:
+    // 0x29D8-0x29E4: set 0x860 mask 0x40.
     mReturnRequested = true;
     break;
   case kSM_Damage:
   case kSM_ResistedDamage: {
+    // 0x29EC-0x2A20: collision-actor sender redirects to its last touched object.
     TUniqueId hitterId = senderId;
     if (CCollisionActor* colAct = TCastToPtr< CCollisionActor >(mgr.ObjectById(senderId))) {
       hitterId = colAct->GetLastTouchedObject();
@@ -223,12 +239,14 @@ void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
         TCastToConstPtr< CGameProjectile >(mgr.GetObjectById(hitterId));
     const CBomb* bomb = TCastToConstPtr< CBomb >(mgr.GetObjectById(hitterId));
     const CPowerBomb* powerBomb = TCastToConstPtr< CPowerBomb >(mgr.GetObjectById(hitterId));
+    // 0x2A24-0x2AF8: projectile, bomb, power bomb; short-circuit WeaponHurts tests.
     if ((projectile != nullptr && GetDamageVulnerability()->WeaponHurts(
                                       projectile->GetCurrentDamageInfo().GetWeaponMode())) ||
         (bomb != nullptr &&
          GetDamageVulnerability()->WeaponHurts(bomb->GetCurrentDamageInfo().GetWeaponMode())) ||
         (powerBomb != nullptr && GetDamageVulnerability()->WeaponHurts(
-                                     powerBomb->GetCurrentDamageInfo().GetWeaponMode()))) {
+                                      powerBomb->GetCurrentDamageInfo().GetWeaponMode()))) {
+      // 0x2AFC-0x2B48: set mask 0x80, clear 0x40, provoker=1, send Attack.
       mProvoked = true;
       mReturnRequested = false;
       mProvoker = kP_Weapon;
@@ -241,6 +259,7 @@ void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   }
 
+  // 0x2B4C-0x2B88: unconditional base call; synchronize only changed active + manager.
   CPatterned::AcceptScriptMsg(mgr, msg);
   if (wasActive != GetActive() && mCollisionActorManager.get() != nullptr) {
     mCollisionActorManager->SetActive(mgr, GetActive());
@@ -533,6 +552,9 @@ CVector3f CStoneToad::GetMoveDirection(EMoveType type) const {
 }
 
 static inline void ApproachWeight(float& weight, float target) {
+  // 0xD3C-0xDBC (up), 0xDF8-0xE78 (down), 0xEC8-0xF48 (left),
+  // 0xF84-0x1000 (right): target > 0, then target > weight; step 0.025,
+  // clamp rising to target and falling to max(target, weight-step), or max(0, weight-step).
   if (target > 0.f) {
     if (target > weight) {
       weight = CMath::Min(weight + 0.025f, target);
@@ -546,13 +568,15 @@ static inline void ApproachWeight(float& weight, float target) {
   }
 }
 
-// fn_77_B48 (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_B48
 void CStoneToad::UpdateLookAt(CStateManager& mgr) {
+  // 0xB7C-0xC48: local player aim minus scaled Eye locator, normalized.
   const CTransform4f toLocal = GetTransform().GetQuickInverse();
   const CVector3f eyePosition = GetScaledLocatorTransform(rstl::string_l("Eye")).GetTranslation();
   const CVector3f aimPosition = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
   const CVector3f targetPosition = toLocal * aimPosition;
   const CVector3f direction = (targetPosition - eyePosition).AsNormalized();
+  // 0xC74-0xCC0: rodata_C=57.295776, rodata_10=60; clamp angle then divide by 60.
   const float angle =
       CMath::Min(60.f, static_cast< float >(fabs(
                            57.295776f * CVector3f::GetAngleDiff(CVector3f::Forward(), direction))));
@@ -561,6 +585,7 @@ void CStoneToad::UpdateLookAt(CStateManager& mgr) {
                              CVector3f::Dot(CVector3f::Left(), direction));
   const CVector2f look = lookOffset.AsNormalized();
 
+  // 0xD24-0xD2C: ordered >= 0 (cror eq,gt,eq); no NaN rewrite.
   if (look.GetX() >= 0.f) {
     ApproachWeight(mLookUpWeight, scale * CMath::AbsF(look.GetX()));
     ApproachWeight(mLookDownWeight, 0.f);
@@ -569,6 +594,7 @@ void CStoneToad::UpdateLookAt(CStateManager& mgr) {
     ApproachWeight(mLookUpWeight, 0.f);
   }
 
+  // 0xEB0-0xEB8: same ordered >= 0 for the left/right axis.
   if (look.GetY() >= 0.f) {
     ApproachWeight(mLookLeftWeight, scale * CMath::AbsF(look.GetY()));
     ApproachWeight(mLookRightWeight, 0.f);
@@ -586,11 +612,12 @@ EWeaponCollisionResponseTypes CStoneToad::GetCollisionResponseType(const CVector
   return kWCR_EnemyShielded;
 }
 
-// fn_77_4C8 (unmarked: see docs/module-analysis/StoneToad.md)
+// @ fn_77_4C8
 CEntity* LoadStoneToad(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrStoneToad sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrStoneToad.inc"
 
+  // 0x604-0x618: invalid static model, animated=true; 0x640-0x684: absent returns null.
   rstl::optional_object< CModelData > modelData(
       LdrToModelData(sldrThis.editorProperties.transform.scale, kInvalidAssetId,
                      sldrThis.patterned.animationInformation, true));
@@ -598,6 +625,7 @@ CEntity* LoadStoneToad(CStateManager& mgr, CInputStream& input, CEntityInfo& inf
     return nullptr;
   }
 
+  // 0x688-0x718: allocate host sizeof(CStoneToad), convert all fields, then construct.
   return rs_new CStoneToad(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                            LdrToEntityInfo(info, sldrThis.editorProperties),
                            LdrToTransform4f(sldrThis.editorProperties), *modelData,
