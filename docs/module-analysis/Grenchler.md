@@ -198,3 +198,20 @@ Driver `tools/cov/specs/grenchler_gren6.con` (guardian area, frames 1500, `--fas
 | LaunchToJumpTarget 96E0 | 2/2 | forced (gren.launched, gren.fncall 3) |
 
 New vars (`PortConsoleVar`): gren.lasthit, guardian, x2c, launched, flash, turn, fncall.
+
+## gren2 (visor effects, 2026-10-24)
+
+Driver `grenchler_gren6.con` extended (@f700-@f750). Asm of 7848/7A38 read line by line (strings at
+rodata_284+0x562/0x581, optional flags 0xd8c/0xef0, asset id `addis/cmplwi 0xffff`, ctor args). Dead arms:
+the `__nw` null test (`mr. r29,r3; beq`) never fires (rs_new does not return null), which accounts for the last
+3/5 (2981) and 2/4 (2997) arms.
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| CreateVisorEffect 7848 | 8/9 + dead | gren.fncall 7 live, 8 asset invalid, 9 token unset |
+| CreateDamageVisorEffect 7A38 | 7/8 + dead | gren.fncall 10 live, 11 token unset |
+
+Not marked: CreateGrappleHitVisorEffect 7BA4 (fncall 12/13; the `magnitude > 23` skip arm was not reached, the
+tp to 60+ units away did not take), and every other candidate: their remaining arms need forced states
+(SpawnTail/DestroyTail ing-possessed arms, PullPlayer player state, GetManeuverTarget, FindJumpPoint, etc.).
+New fncall cases 7-13.

@@ -2956,6 +2956,7 @@ void CGrenchler::CreateGrappleHitVisorEffect(CStateManager& mgr) {
   }
 }
 
+// @ fn_27_7A38
 void CGrenchler::CreateDamageVisorEffect(CStateManager& mgr) {
   const float nearClip = CHUDBillboardEffect::GetNearClipDistance(mgr, 0);
   const CVector3f scale = CHUDBillboardEffect::GetScaleForPOV(mgr);
@@ -2968,6 +2969,7 @@ void CGrenchler::CreateDamageVisorEffect(CStateManager& mgr) {
   }
 }
 
+// @ fn_27_7848
 void CGrenchler::CreateVisorEffect(CStateManager& mgr) {
   if (mEffectB.mVisorEffectAssetId != kInvalidAssetId) {
     RemoveVisorEffect(mgr);
@@ -4856,6 +4858,43 @@ bool CGrenchler::PortConsoleVar(CEntity& ent, const char* name, const int* value
         gren->mEffectA.mExplosionAssetId = kInvalidAssetId;
         gren->SpawnBeamHitEffect(*mgr);
         gren->mEffectA.mExplosionAssetId = saved;
+        break;
+      }
+      case 7:
+        gren->CreateVisorEffect(*mgr);
+        break;
+      case 8: { // CreateVisorEffect with the asset id invalid (retail 7848 outer beq)
+        const uint saved = gren->mEffectB.mVisorEffectAssetId;
+        gren->mEffectB.mVisorEffectAssetId = kInvalidAssetId;
+        gren->CreateVisorEffect(*mgr);
+        gren->mEffectB.mVisorEffectAssetId = saved;
+        break;
+      }
+      case 9: { // CreateVisorEffect with the effect token unset (retail 7848 lbz 0xd8c)
+        rstl::optional_object< TToken< CGenDescription > > saved = gren->mEffectB.mVisorEffect;
+        gren->mEffectB.mVisorEffect.clear();
+        gren->CreateVisorEffect(*mgr);
+        gren->mEffectB.mVisorEffect = saved;
+        break;
+      }
+      case 10:
+        gren->CreateDamageVisorEffect(*mgr);
+        break;
+      case 11: { // retail 7A38 lbz 0xef0 == 0
+        rstl::optional_object< TToken< CGenDescription > > saved = gren->mDamageEffect.mEffect;
+        gren->mDamageEffect.mEffect.clear();
+        gren->CreateDamageVisorEffect(*mgr);
+        gren->mDamageEffect.mEffect = saved;
+        break;
+      }
+      case 12:
+        gren->CreateGrappleHitVisorEffect(*mgr);
+        break;
+      case 13: { // grapple-effect token unset
+        rstl::optional_object< TToken< CGenDescription > > saved = gren->mGrappleEffect.mEffect;
+        gren->mGrappleEffect.mEffect.clear();
+        gren->CreateGrappleHitVisorEffect(*mgr);
+        gren->mGrappleEffect.mEffect = saved;
         break;
       }
       }

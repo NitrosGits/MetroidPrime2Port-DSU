@@ -16,3 +16,11 @@
 @f670 var u052e gren.guardian 0; var u052e gren.lasthit 0; var u052e gren.fncall 1; var u052e gren.lasthit 1; var u052e gren.fncall 1; var u052e gren.fncall 2; var u052e gren.turn 0; var u052e gren.fncall 1
 @f680 var u052e gren.guardian 1; var u052e gren.lasthit 0; var u052e gren.fncall 1; var u052e gren.lasthit 1; var u052e gren.fncall 1
 @f690 var u052e gren.turn 1; var u052e gren.guardian 0; var u052e gren.lasthit 0; var u052e gren.fncall 1; var u052e gren.guardian 1; var u052e gren.fncall 1; var u052e gren.lasthit 1; var u052e gren.fncall 1
+# gren2: visor-effect trio, live and null-token arms (fncall 7-13); face 0 keeps the player looking at the Grenchler
+@f700 var u052e gren.fncall 7; var u052e gren.fncall 8; var u052e gren.fncall 9
+@f710 var u052e gren.fncall 10; var u052e gren.fncall 11
+@f720 var u052e gren.fncall 12; var u052e gren.fncall 13; tp -168 25 -28; face 0; var u052e gren.fncall 12; var u052e gren.fncall 13
+@f730 face 180; var u052e gren.fncall 12; face 0; tp -168 80 -28; var u052e gren.fncall 12; tp -168 25 -28
+@f740 tp -168 90 -28
+@f745 var u052e gren.fncall 12
+@f750 tp -168 25 -28
