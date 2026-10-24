@@ -1,0 +1,23 @@
+# 02_temple_exploration area 10: wake the three Splinters (u055b/u055c/u057c) and let them fight a
+# god-mode player, then hurt and kill them (dead state, sac explode).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/splinter.py <out> 3bfa3eff,02_temple_exploration --con <this> --fast --frames 3200
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f305 send u055b Activate; send u055c Activate; send u057c Activate
+@f310 tp 205 -215 -40
+@f330 send u055b Alert; send u055c Alert; send u057c Alert
+@f1200 obj u055b; obj u057c
+@f1800 damage u055b 2; damage u055c 2
+@f2000 damage u055b 2 kb
+@f2300 damage u055b 10; damage u055c 10 missile
+@f2600 damage u057c 10 missile
+@f3100 objs Splinter
+# spl6: AI hints for IsAttackBlocked / FindHideHint (8 attack-block hints in a ring around the fight, 3 hide hints: active, inactive)
+@f315 spawn AIHT d 3 prop 0xb3127b71 24 prop 0x78c507eb 100.0; spawn AIHT d 3 prop 0xb3127b71 24 prop 0x78c507eb 100.0; spawn AIHT d 3 prop 0xb3127b71 24 prop 0x78c507eb 100.0; spawn AIHT d 3 prop 0xb3127b71 24 prop 0x78c507eb 100.0; spawn AIHT d 3 prop 0xb3127b71 24 prop 0x78c507eb 100.0; spawn AIHT d 3 prop 0xb3127b71 24 prop 0x78c507eb 100.0; spawn AIHT d 3 prop 0xb3127b71 24 prop 0x78c507eb 100.0; spawn AIHT d 3 prop 0xb3127b71 24 prop 0x78c507eb 100.0
+@f316 place u05c6 210.0 -215.0 -40.0; place u05c7 208.5 -211.5 -40.0; place u05c8 205.0 -210.0 -40.0; place u05c9 201.5 -211.5 -40.0; place u05ca 200.0 -215.0 -40.0; place u05cb 201.5 -218.5 -40.0; place u05cc 205.0 -220.0 -40.0; place u05cd 208.5 -218.5 -40.0
+@f317 spawn AIHT d 4 prop 0xb3127b71 25 prop 0x78c507eb 100.0; spawn AIHT d 5 prop 0xb3127b71 25 prop 0x78c507eb 100.0 inactive; spawn AIHT d 6 prop 0xb3127b71 25 prop 0x78c507eb 100.0
+@f319 spawn AIHT d 7 prop 0xb3127b71 25 prop 0x78c507eb 100.0; spawn AIHT d 8 prop 0xb3127b71 25 prop 0x78c507eb 100.0; spawn AIHT d 9 prop 0xb3127b71 25 prop 0x78c507eb 100.0
+# messages: Launching twice (phase forced 2 / 0 by the spec), OffGround, AreaLoaded (team id invalid + sac on cable forced), Alert from another object (the swarm cast answers), Create, Deactivate
+@f900 send u055b Launching; send u055b Launching; send u055b OffGround
+@f905 send u055b Alert from u055c; send u055c AreaLoaded; send u057c AreaLoaded from u055c; send u055b Create
+@f2900 send u057c Deactivate
+

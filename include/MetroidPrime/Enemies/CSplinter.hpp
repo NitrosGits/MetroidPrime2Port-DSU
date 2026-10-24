@@ -103,6 +103,8 @@ public:
   };
 
   // Guessed names; the mega splinter's spit attack.
+  // @ fn_74_B1E4 (implicit dtor, objdiff 100%)
+  // @ fn_74_B7DC (implicit operator=, objdiff 100%)
   struct SSpitData {
     SSpitData(float f1, CAssetId projectile, float f2, const CDamageInfo& damage,
               CAssetId visorEffect);
@@ -154,6 +156,7 @@ public:
   // CPatterned
   void MassiveDeath(CStateManager& mgr) override;
   CProjectileInfo* ProjectileInfo() override;
+  // @ fn_74_0 (objdiff 100%)
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   CDamageInfo GetContactDamage() const override;
   void SetupStateMachine(CStateManager& mgr) override;

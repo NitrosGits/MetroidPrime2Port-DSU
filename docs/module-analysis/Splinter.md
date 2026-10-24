@@ -141,3 +141,27 @@ exception in `stop()` leaves the inferior call stopped and the run never exits (
 
 Asm comparison found no mismatch (constants 6, -1, 0.3, 10000, 0, 2, 0.5, 1, 2.5, 1.4, 0.8, 7.5, 15; NaN
 branches ble/bge/bgt as in the source).
+
+## spl6 lane (base 0769c0be7, 2026-10-24)
+
+Spec `tools/cov/specs/splinter_spl6.py` + `splinter_spl6.con` (header lists the env switches and the runs; force_ret CALLS / FORCE_RET, no committed probes).
+Natural runs (`splinter_all.sh`) first in `gcov_report.py` (a force run listed first loses arms in `gcov-tool merge`). Arm table (merged natural + forced):
+
+| body | arms | how the unreached arms were taken |
+|---|---|---|
+| LoadSplinter 118 | 15/15 | forced: no animation set on one load (null return), stateMachine2 := stateMachine on another |
+| DoUserAnimEvent 1600 | 15/15 | forced: Mega Splinter (isMegaSplinter written at load, LaunchProjectile stubbed), event type 0/12/37/38/39/1 cycled |
+| ExplodeSac 44F8 | 17/17 | forced: pART := gibParticles, direct calls (holding / grabbed player / bogus id / effect invalid) |
+| CanEvade 4A88 | 49/49 | forced: direct calls (all directions, 1000 units from the team centre, direction 7, IsIngPossessed / PointIsInHurtfulSafeZone stubs, mIsDarkWorld := 1) |
+| AttackPointIsLegal 579C, IsAttackBlocked 5B3C, FindHideHint 5C70, PathFind 71C0 | all | forced: direct calls with AI hints spawned by the con (type 24 ring, type 25), GetInUse / PathExists / FindJump / IsAttackBlocked / IsMega stubs, splinter moved 1000 units or area id +1 |
+| Think 6E64 | 30/30 | forced: Mega Think with IsIngPossessed / IsBeingSnatched stubs and mIngPossessionBlend |
+| AcceptScriptMsg 9F74 | 50/50 | forced: Launching (phase 2 / 0), AreaLoaded (team id invalid + sac on cable), swarm cast hook, direct Delete / Deactivate / Create / Damage / AreaLoaded |
+| HasClearPathTo 5E6C | 3/4 | dead arm: the static `filter` init guard's `__cxa_guard_acquire` returning 0 (another thread initialising; single game thread; retail has a plain flag byte) |
+| ctor B280 | 25/31 | dead arms: the six branches on the closing brace are exception-unwind cleanup edges ("never executed" calls to the member destructors; the build has no throwing path) |
+
+Gotchas: a CALLS trigger that fires during area load hangs the run (the dark alamo area, 5 splinters, with a count trigger); a hint moved to an unloaded area crashes PreRender
+(`hint <id> area n` only for a loaded area); Launching must start from the splinter's own position or the splinter leaves the world; `calloc`/`malloc` calls need the
+`(void*(*)(unsigned long))` cast and the convenience variable set before the first write. objdiff of the bodies: 88-99.6% (AttackPointIsLegal 88.5, ctor 88.3,
+DoUserAnimEvent 90.7, PathFind 91.4); the instruction multisets differ only by stack slots, fmadds / fadds+fmuls, rodata labels and REL-local inline names.
+Header rows marked at objdiff 100%: GetSearchPath 0, ~SLdrSplinter B84, SSpitData dtor B1E4 / operator= B7DC, DeliverCommand BF74 / C040 / C15C.
+Left unmarked: ~CSplinter ABA0 (99.8%), SSurfaceAlignment dtor AF50 (99.7%), SSpitData copy ctor B9DC (99.9%), ~CSplinterAcidSac CCA8 (99.7%), `__sinit` C268.
