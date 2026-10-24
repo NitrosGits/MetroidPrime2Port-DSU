@@ -33,6 +33,10 @@ CHECK_SIZEOF(CSafeZoneFog, 0x20)
 // Scaffold; evidence in Echoes research/CScriptSafeZone-CScriptTriggerEllipsoid-G2ME01.md.
 class CScriptSafeZone : public CScriptTriggerEllipsoid {
 public:
+#ifdef TARGET_PC
+  // Host: the console's `var <id> sz.<name> [value]` (coverage fixtures, see CScriptSafeZone.cpp).
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
+#endif
   // Guessed names.
   enum EZoneType {
     kZT_Normal,

@@ -549,6 +549,7 @@ SSafeZoneCrystalModels::SSafeZoneCrystalModels(const CModelData& normal,
                                                const CModelData& hurtful, const CModelData& echo)
 : mNormal(normal), mEntangled(entangled), mHurtful(hurtful), mEcho(echo) {}
 
+// @ fn_66_5730
 CEntity* LoadSafeZoneCrystal(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSafeZoneCrystal sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrSafeZoneCrystal.inc"

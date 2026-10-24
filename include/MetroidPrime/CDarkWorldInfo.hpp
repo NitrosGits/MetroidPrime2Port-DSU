@@ -10,7 +10,10 @@ class CModel;
 class CTexture;
 
 // Guessed name. Shared dark-world volume parameters copied into transitions.
+// @ fn_66_B00 (implicit copy ctor, objdiff 100%)
+// @ fn_66_D80 (implicit dtor, objdiff 100%)
 struct CDarkWorldInfo {
+  // @ fn_66_51A8 (objdiff 98.6%: regalloc; ran for every zone, both LoadOptionalTexture arms)
   CDarkWorldInfo(ushort sfx0, ushort sfx1, ushort sfx2, ushort sfx3, ushort sfx4, float xc,
                  CAssetId spotTexture, float x20, const CVector2f& scroll1,
                  const CVector2f& scroll2, const CVector2f& texScale1, const CVector2f& texScale2,
@@ -35,6 +38,7 @@ struct CDarkWorldInfo {
   , mAdditiveColor(additiveColor) {}
 
   // Guessed name.
+  // @ fn_66_5400 (objdiff 100%)
   static rstl::optional_object< TLockedToken< CTexture > > LoadOptionalTexture(CAssetId id) {
     if (id == kInvalidAssetId) {
       return rstl::optional_object< TLockedToken< CTexture > >();
