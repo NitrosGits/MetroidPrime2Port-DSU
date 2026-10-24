@@ -22,6 +22,32 @@ All 82 retail functions pair with upstream (77 in CPillBug.s, 5 in REL_Setup).
 | FindReturnWaypoint 2B2C | retail discards one chain step result (kept: retail quirk) |
 | GetCurrentConstraint 2AEC | no callers in retail (0%) |
 
+## Arms after pbug1 (2026-10-24, base 6b31b2c76)
+
+Second pass over the 10 behaviour bodies pb1 left unmarked (31 of the 41 B rows were marked at that base;
+the pb1 "open arms" list above is superseded for the bodies marked since). Runs: pb1's three drivers on the
+new base (`pbug_c1` 0b_sand_hall, `pbug_c2` 0d_sand_hall, `pbug_c4` 06_cliff_spiderballguardian) plus one
+forced run on 0b_sand_hall with `tools/cov/specs/pbug_force.py` (`pbug_f1`):
+
+    python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/pbug_{c1,c2,c4,f1}/gcov --module PillBug
+
+| function | arms | evidence / dead edge |
+|---|---|---|
+| BD8 Pause | 10/11 -> dead | `forced (pbug_force.py: mAnimSubState = 2)` so 0xD28's switch reads its no-case edge (0xD34 bge); 763:3/4 dead: EStateMsg has three values |
+| 2210 PatrolImpl | 23/26 -> dead | 486:3/4 dead (msg switch); 515:1/2 dead: mPlanarConstraint is 1 or 2 in every shipped spawn; 533:1/2 dead by writer: mDestObj only ever holds a path or return waypoint id (CPillBug.cpp:499-500, 534, 579, 583, 623, 724, 727) |
+| 1A58 ReturnToPath | 12/18 | 570:3/4 dead (msg switch), 578:1/2 (empty mPath) and 595:1/2 (planar 0) dead by data; 576:1/2 inline guard; 586:0/2 UpdateWPDestination never returned true (5190 Updates, the bug never reached its return waypoint); 605:1/2 the up-dot <= 0.5 arm (the bug always climbed) |
+| 274C CloseToPath | 10/14 | 456:0/2 (!mPathLoops: all 15 paths loop), 464:0/2 (!to \|\| !from) and 471:0/2 (close_enough) dead by data; 478:0/2 open: RaySphereIntersection never hit in 19381 iterations (the sphere is centred on the wandering bug) |
+| 1768 Fall | 7/10 | 629:3/4 dead (msg switch); 650:1/2: the body was never in kAS_LoopReaction on Fall's Update; 649:1/2 an inline guard on a line with no source condition (the 549/622/642/690/692 class) |
+| 2FE4 HasInnerPathLoop | 9/14 | 310:1/4 and 310:3/4: no walk ends on an invalid id (every chain loops); 315/328:1/2 no non-waypoint in a chain; 322:1/2 (current == loopStart, a two-waypoint cycle) no shipped path has one: 13 calls, all returned false at 0x3090 |
+| 130 LoadPillBug | 11/12 | 807:1/2: every shipped model loads (LdrToModelData never fails) |
+| AA4 / A1C SLdrPillBug ctor and dtor | - | inline in `include/MetroidPrime/ScriptLoader/SLdrPillBug.hpp`, so the port has no standalone body to mark; the ctor's three retail defaults are pb1's fix (0xAE8/0xAF4, 0xB04-0xB18, 0xB1C/0xB28) |
+| 402C __sinit | - | compiler-generated static initialisation, no source body |
+
+No retail divergence in this pass: Pause 0xBD8-0xF34, PatrolImpl 0x2210-0x274C, HasInnerPathLoop
+0x2FE4-0x3134, CloseToPath 0x274C-0x2930, Fall 0x1768-0x1A58 and LoadPillBug 0x130-0x6D4 match the asm line
+by line (the asmcheck BIT/CALL findings are the header's bitfield accessors and inline template copies, as
+pb1 recorded).
+
 ## Shipped data (disc scan)
 
 Spawns: Agon 05_portalpuzzle L2, 0b_sand_hall, 0d_sand_hall, Sanctuary 06_cliff_spiderballguardian L8.
