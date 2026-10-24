@@ -35,6 +35,7 @@ struct SLdrAIMannedTurretData {
   CAssetId telegraphEffect;              // 0x8f68ac21
 };
 
+// @ fn_1_A88
 inline SLdrAIMannedTurretData::SLdrAIMannedTurretData()
 : weaponDamage()
 , weaponEffect(kInvalidAssetId)
@@ -57,8 +58,10 @@ inline SLdrAIMannedTurretData::SLdrAIMannedTurretData()
   attackLeashTimer = 2.0f;
 }
 
+// @ fn_1_A18
 inline SLdrAIMannedTurretData::~SLdrAIMannedTurretData() {}
 
+// @ fn_1_6D8
 inline void LoadTypedefAIMannedTurretData(SLdrAIMannedTurretData& sldrThis, CInputStream& input) {
   const int propertyCount = input.ReadUint16();
   for (int i = 0; i < propertyCount; ++i) {
