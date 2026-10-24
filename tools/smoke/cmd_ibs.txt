@@ -13,4 +13,3 @@
 @f440 send u044c Delete
 @f480 objs IngBlobSwarm
 @f2300 objs IngBlobSwarm
-@f420 damage u044c 1; obj u044c

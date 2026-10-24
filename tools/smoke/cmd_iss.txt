@@ -29,4 +29,3 @@
 @f2085 place e000e018b player 0.5
 @f2300 objs Snatch
 @f2800 objs Snatch
-@f2025 obj e000e018b

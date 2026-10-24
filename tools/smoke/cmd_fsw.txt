@@ -20,4 +20,3 @@
 @f820 objs FlyerSwarm
 @f900 objs FlyerSwarm
 @f2200 objs FlyerSwarm
-@f430 damage e000400af 5; obj e000400af

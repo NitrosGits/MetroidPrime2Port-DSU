@@ -38,4 +38,3 @@
 @f2210 place e000e018b player 1
 @f2300 objs Snatch
 @f2350 objs Snatch; status
-@f1760 obj e000e018b
