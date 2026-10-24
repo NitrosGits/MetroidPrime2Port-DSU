@@ -88,3 +88,26 @@ normally (gcov written):
 | 11C0 BoidCollidedCallback, 1144 BoidCollidedWithPlayerCallback | 0 lines | never called in the driven fight; the callbacks come from CSwarmBasics on a boid collision |
 
 No marker this pass: the closest body, PreRenderBoid, is one arm short.
+
+## Third pass (psc2, 2026-10-24, base a0e2a87c0)
+
+Tried the targeted forces the psc1 table asked for, in three forced runs. All three died without a clean
+exit (no gcov), so the spec is back at its psc1 state. What each attempt did and why it was not kept:
+
+- PreRenderBoid 0x218 `if (*drawMask & (1 << mSharedAttackBit))`: set the shared bit instead of clearing
+  the attack-model bit, and without the `!` that skips the restore (so the mask cannot stay dirty). The
+  run still died.
+- RenderBoid 0x242: marking the drawn boid attacking with `mAttackSlot = -1`, plus a variant writing
+  every entry of `$this->mBoids.mItems[0..15]`. The drawn boid then renders the *shared* attack model
+  (`*mSharedAttackState`); the driven placements have no shared attack model, so this dereferences null -
+  the likely crash, and why the psc1 run with period 40 lived while these do not.
+- ApplySteeringBehaviors 0x256 with period 1: the boid is the second argument (`$rdx`), not `$rsi` (that
+  is the CStateManager&); an mAttacking boid still takes the same shared-model path.
+- Think's attack-slot tests: `mAttackerCount = 0` (line 90's false arm) is safe; the `attackers >=
+  mAttackerCount` arm needs a live boid marked mActive/mAttacking (index 0 of mBoids), which feeds the
+  same shared-model path.
+
+Conclusion for the next pass: PlantScarabSwarm's remaining arms are all behind the shared attack model,
+which none of the three shipped placements carries. Forcing the boids into the attack state crashes
+unless a shared attack model exists, so the arms need a placement whose data has it, or a stub that
+provides one - not a boid flag write.
