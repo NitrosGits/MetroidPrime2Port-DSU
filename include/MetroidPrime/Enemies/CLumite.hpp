@@ -54,6 +54,7 @@ public:
 
   // CPatterned
   CProjectileInfo* ProjectileInfo() override;
+  // @ fn_39_12A8 (0xC): `lis; lfs rodata_28 = 0.0f; blr`
   float GetGravityConstant() const override { return 0.f; }
 
   // CLumite

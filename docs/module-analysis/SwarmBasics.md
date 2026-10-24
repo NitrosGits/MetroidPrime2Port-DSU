@@ -73,3 +73,20 @@ GetBoundingBox (inlined in retail), CALL to unmarked helpers (fn_80_6AC0, 7440, 
   Touch, KillBoid, Render, PreRender, CachePose, GetLockOnIndex, UpdateLockOnBlend, QueueDeathMessage/FlushDeathMessages
   (the >10 death queue), the particle bodies (null-generator arm), ctor/dtor, CreateBoid, MoveToWayPoint.
 - Next: a Sunburst/seeker driver, a door walk-out for the occlusion arms, a BacteriaSwarm area.
+
+## lum3 baseline (2026-10-24): nothing marked, 21 bodies left
+
+Five swarm runs (`tools/cov/specs/swarmbasics_{entrance,sand,swamp,cliff,hive}.con`, `swarmbasics.py`, coverage build, 3000 frames
+each, caught/reach-stub 0) merged: 93 functions, 72 with branches, 11 with every arm taken. The 21 unmarked behaviour bodies all
+have untaken arms (lines hit / branches taken): ctor 90/90 34/44, CreateBoid 33/36 7/10, UpdateBoid 46/85 17/44, Think 82/88 60/80,
+UpdateAllBoidMovement 7/7 4/6, HardwareLight 0/8, PreRender 16/18 9/17, CachePose 7/12 2/6, PreRenderBoid 8/8 5/8, RenderBoid 5/6 3/6,
+DrawBoidSkinnedModel 8/10 3/6, Render 48/53 39/56, Touch 48/72 49/93, FindBestLockOnIndex 21/21 13/14, AssignSeekerBoids 25/26 23/28,
+FindClosestCell 0/12, UpdateEffects 25/26 24/34, UpdateSeekerTargets 41/46 40/47 (GetLockOnLocation[Valid] and
+GetModelDataForAnimRes are not rows of the gcov report: header / free inline). What each family needs: frozen boids (`FreezeBoids`,
+`mFreezeTimer` > 0: PreRenderBoid, RenderBoid, DrawBoidSkinnedModel, CachePose, Render), a non-animated swarm (`mAnimated` 0:
+UpdateAllBoidMovement, Render; the BacteriaSwarm area), the model-not-ready TARGET_PC guards (CachePose, RenderBoid, PreRenderBoid),
+the occluded-area arms (Think), the Sunburst light-combo arms (Touch, UpdateBoid), seeker lock (UpdateSeekerTargets, AssignSeekerBoids,
+FindBestLockOnIndex 1630: a boid exactly at the camera). The gdb call/force approach of `docs/module-analysis/Lumite.md` (lum2/lum3:
+`tools/cov/specs/lumite_lum2_calls.py`, the `CbnForce` caller-line force and `tools/cov/branch_lines.py` for per-edge counts) applies; the
+natural drivers need a frozen-boid source (Ice/Plasma on a CHomingBlob swarm) and a door walk-out. This module needs its own
+chunking: Touch (93 branches) and UpdateBoid (85 lines) alone are a slice each.

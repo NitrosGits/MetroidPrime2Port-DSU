@@ -122,3 +122,26 @@ Not marked, with the reason:
   TrySunlightHop 1151:0/2 (dead: FindSafeZone already required `(zone - position).CanBeNormalized()` on the same vector) and 1168:0/2;
   BuildHopCandidates 1298:3/4 (`!zone->GetActive()` is dead: FindSafeZone returns only active zones; the hurtful arm was not reached);
   Dead 1333:2/4; LoadLumite 1348/1353/1357 (null model, sounds -1: shipped-data scan not done); ctor 179:0/2, 179:1/2 (cleanup edges).
+
+## lum3 (2026-10-24): 5 more markers
+
+Evidence: gcov of 8 runs on one coverage build (same battery as lum2: `LUM2=1 lumite_natural.py` forced runs in 0j / sandfalls L5 /
+0a / 0q L2 / casualpirates_dark L3, state cycling 0a, 0a FORCE_DEAD, 0j FORCE_DEAD) plus one 0j run with the new `cbn` step.
+New forces (`tools/cov/specs/lumite_lum2_calls.py`, `lumite_lum2_cbn.gdb`):
+
+| arm | forced (how) |
+|---|---|
+| LoadLumite: no model, sound -1 x2 | stack slots written at the instructions after the `LdrToModelData` call (`cmpb $0,-N(%rbp)` slot) and at the two `mov -N(%rbp),%rXXd` sound loads (first load of the run; the model arm drops that Lumite); breakpoints sit at `LoadLumite+offset` (PIE) |
+| TrySunlightHop 1158 / 1175 (`!toZone.CanBeNormalized()`, `!normal.CanBeNormalized()`) | `CVector3f::CanBeNormalized` forced false for the call made from that source line (CbnForce: the caller frame's line) |
+| SelectHopTarget 1129 / 1141 (degenerate cross product: loop entered; left with no random; redrawn direction degenerate) | same, from the `while` and the inner `if` lines, `mRandomAvailable` 0 for the exit arm |
+| Hop 1030 (flight-time clamp both ways) | `mHop.mStartTime` = elapsed + 10 and elapsed - 100, `mAbort` 0, anim state Ready, Update |
+| GetGravityConstant (header inline, not in gcov) | `call $t->GetGravityConstant()` printed 0.000000 at a live Lumite |
+
+Marked (5): LoadLumite 190 (all 16 arms), SelectHopTarget 15F4 (28/28), TrySunlightHop 1AA0 (8/8), Hop 262C (38/38),
+GetGravityConstant 12A8. asmcheck: only weak-copy / inlined-helper calls and hop-plan bit names it cannot resolve
+(x950: 0x01 aborted, 0x04 landed, 0x08 finished, 0x10 launched; x951 0x80 sunlight hop). No source change.
+Not marked: ChooseHop (the `static const CMaterialFilter` guard edge 1230:3/4 is compiler-generated; 1238:1/2, the previous
+chosen hint that is no hint, was also not reached), BuildHopCandidates 1306:3/6, 4/6 (`!zone->GetActive()` is dead because
+FindSafeZone returns only active zones; the IsHurtful-true arm was not reached although `IsHurtful` was forced true),
+Dead 1341:2/4 (the compiler's speculative devirtualisation of `GetCurrentState()->IsDead()`: it compares the vtable slot with the
+exe's `CBodyState::IsDead`, and every REL-module vtable holds the module's own copy, so the inlined-base edge never runs).

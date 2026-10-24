@@ -10,4 +10,5 @@ SPEC = [
     ('5D50 AcceptScriptMsg', 'CLumite::AcceptScriptMsg(', [], 'max=4000'),
     ('3E4C FacingHint', 'CLumite::FacingHint(', [], 'ret max=2000'),
     ('2244 BuildHopCandidates', 'CLumite::BuildHopCandidates(', [], ''),
+    ('12A8 GetGravityConstant', 'CLumite::GetGravityConstant(', [], 'max=100'),
 ]
