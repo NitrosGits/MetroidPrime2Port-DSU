@@ -162,10 +162,102 @@ and shasum: **87 files OK**. TARGET_PC strip-diff clean (comments excluded),
 `git diff --check` clean. No wider family sweep: only changed bodies and their
 callers' area were run, per lane brief.
 
-### Remaining eight
+### gb6 remaining eight (completed in gt2 below)
 
 `4B0` LoadGunTurretBase, `1E14` LaunchProjectile, `3130` FindTarget,
 `5C3C` PlayerInRange, `6518` base constructor, `76D8` base static tables,
 `7B98` LoadGunTurretTop, `9AA4` top static tables. Full retail listings are
 retained as `asm-<offset>.txt`. Static initializers match 100% but are not marked
 in this checkpoint; the other six still require targeted arm verification.
+
+## gt2 completion (2026-10-24)
+
+Base `4ff52d8e9`: **81 → 89/89 behaviour bodies**. Eight marker comments;
+no native executable-code or layout change. Fresh objdiff verifies `76D8`
+(`__sinit_CGunTurretBase_cpp`, including both dispatch tables and pan vectors)
+and `9AA4` (`__sinit_CGunTurretTop_cpp`, both dispatch tables) at **100%**.
+Markers sit above the owning static-table declarations. Exact symbol/unit/offset
+bindings: `/tmp/opencode/reports/gt2-evidence/matched-bindings.json`.
+
+### Six runtime bodies / arm evidence
+
+Post-marker coverage run: GPU, `42b935e4,0i_sand_hall`, 1300 frames, explicit
+normal inferior exit, **36/36 fixture calls successful**, all return/default/
+consumed-length oracles PASS, zero caught/reach-stub/Python/set/restore/call errors.
+Driver `tools/drivers/gt2_gunturret.con`; spec `tools/cov/specs/gt2_gunturret.py`
+with `force_ret.py`. The gb6 coverage-only inline-retention configuration is retained.
+
+| fn | forced / natural cases | final gcov |
+|---|---|---|
+| 4B0 / 7B98 | Natural valid placements; console `spawn GNTB/GNTT prop 0xfeedbeef 42` omits ANCS and supplies an unknown property. Real model-null returns; all generated `.inc` executable lines hit, including unknown-property skip. Consumed-length oracles: 2499-byte base / 2124-byte top placements and both 86-byte synthetic records consumed exactly. | 21/21 lines,11/11 edges;13/13 lines,10/10 edges, both ALL-ARMS |
+| 6518 | Real constructor inputs: optional PART `11592cde` (validated in shipped MiscData.pak) and invalid asset; raise inputs3.5 /20 exercise the scaled0.35 and capped1.0 outcomes. Natural PAS match `{100,4}` and explicitly forced no-match `{0,0}` at the PAS query return. Both ctor field oracles verify effect validity, alert/occluded bits, invalid top id and raise scaling/capping; no-match leaves additive animation0. | 124/124 lines,70/74 edges; four host EH cleanup edges excluded below |
+| 3130 | Alert/occlusion/top guards; zero/one/two players, unrestricted/same/different teams, near/far/min range, gun-hit override, optional non-player search on/off. Forced mixed neighbor lists contain stale invalid id, real player, own top, other base/top, and live/dead real CSpankWeed; empty lists, repeated equal-score candidates and closer/farther non-player candidates. Return pointer assertions cover null, player and non-player results. | 45/45 lines,47/48 edges; one host guard edge excluded below |
+| 5C3C | Missing top, zero players, same/different/unrestricted team, player range/height success/failure; optional non-player search disabled/enabled; same mixed lists, dead/live actor, non-player distance and height acceptance/rejection. Bool return assertions for every case. | 29/29 lines,37/38 edges; one host guard edge excluded below |
+| 1E14 | Missing top; token uncached/unlocked, uncached/locked/unloaded, uncached/locked/loaded (asserts cache populated); cached success; real projectile quota denial by eight balanced IncrCount/DecrCount calls. Natural firing covers both random-sign choices. | 22/23 lines,14/14 edges ALL-ARMS; one EH-only source line excluded below |
+
+The non-player fixture is a real inactive `CSpankWeed`, spawned using the live
+base's ANCS; the spec discovers its current uid dynamically. Neighbor lists are
+explicitly forced inputs after the real BuildNearList call, not claimed natural
+proximity. Member writes are restored by force_ret. Coordinates use CActor's
+cached `mPosition` (not merely `mTransform`); earlier diagnostic run2 expectations
+exposed that fixture mistake, corrected before the clean final runs.
+
+### Untaken host-only edges: proof, not an ALL-ARMS claim
+
+- Constructor source lines91 and184: four zero-count edges are inside cold
+  exception-unwind cleanup. Raw gcov source blocks73 and82 have no executions;
+  native cold disassembly shows token/member destruction followed by
+  `_Unwind_Resume`, reached only from EH landing pads. They are not retail
+  constructor branches. Both live optional arms and both PAS comparison arms ran.
+- PlayerInRange line373 / FindTarget line919: the single missing edge is the
+  false result from `__cxa_guard_acquire` after the initial guard-byte test was
+  false. These two local filters are initialized/read solely on the game thread;
+  their initializer is plain material-list/filter construction, with no callback
+  or re-entry into either turret function. No other writer exists. Both first
+  initialization and later guard-byte bypass paths ran; the acquire-false path
+  would require a second concurrent initializer or re-entry, absent here and in
+  retail's byte-guard initialization. Do not force guard ABI state to manufacture it.
+- LaunchProjectile line1092: cold failed-construction cleanup (sized `operator
+  delete`, then `_Unwind_Resume`), not a missing firing statement. Native allocation
+  is throwing/non-null, so retail's allocation-null path is not a live host arm;
+  no artificial OOM was induced.
+
+Raw gcno/gcda and gcov JSON, exclusion block ids, run logs and native disassembly
+are retained under `/tmp/opencode/reports/gt2-evidence/` (`raw-coverage/`,
+`coverage-exclusions.txt`, `native-*.txt`, `run-final/`).
+
+### Static audit / quality pass
+
+All `asmcheck-final.txt` findings (25 base +8 top) and seven `retail-diff-final.txt`
+findings resolved; no proposed algorithm change:
+
+- NOPOS/BIT for alert/occluded: first/second bools after guest9b4 box are9cc masks
+  80/40; `6C60` sets80 and `6C6C` clears40; FindTarget `3178/3188` tests these same
+  fields. Source uses their names; the tool lacks these bit-position aliases.
+- XSTORE xfc03_: its guest offset is8c8, stored at `6A78`; the tool treats the
+  property-hash-based name as an offset. No missing store.
+- Anonymous helper CALLs `736C` projectile-info copy, `718C` vulnerability copy,
+  `6FCC` CPASAnimParmData ctor, `21B8` impact ParticleEffect, `271C` impact dtor,
+  `FFC` optional-model copy each independently bind to **100%** objdiff functions
+  (same bindings JSON). Native headers provide those implicit/template operations.
+- Constructor ImmuneVulnerability is the source's existing spelling
+  `ImmuneVulnerabilty`; CCollidableAABox's inline constructor calls the reported
+  CCollisionPrimitive base constructor. No missing call.
+- Runtime const top casts inline through the exact TCastToPtr function
+  (`include/MetroidPrime/TCastTo.hpp:15`). GetObj is inside TCachedToken::TryCache
+  (`TToken.hpp:44`); all four retail cache guard states explicitly tested.
+- Loader Read/LoadTypedef calls, condition/call-count warnings arise because the
+  analyzer does not expand generated `.inc` readers. Both generated readers have
+  every executable line run, including the skip-default path.
+- Constructor branch-count warning similarly omits initializer-list/template
+  bodies; the live optional and PAS branches ran, with the EH exceptions above.
+- Constants0.017453292 are `CRelAngle::FromDegrees`'s float `M_PIF/180.f`
+  (`CRelAngle.hpp:33`);3.1415927 is `M_PIF` in target scoring. Retail target
+  range-square / pi, strict score comparisons, team checks and candidate exclusions
+  agree with the current source. No NaN rewrite, mask or constant changed.
+
+Gates: host/coverage links0 FAILED, manifest check rc0, upstream configure/build
+and shasum **87 files OK**, comment-stripped production diff identical to base
+for PC and non-PC, diff whitespace clean. Review against `4ff52d8e9` reports
+eight MARK only: two exact-matched implicit static initializers plus the six
+runtime bodies above. No wider unchanged-family smoke sweep, per lane brief.

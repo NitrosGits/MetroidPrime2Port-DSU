@@ -36,6 +36,7 @@
 // Guessed name; an empty debug-draw stub in the DOL.
 void DebugDrawAABox(const CAABox& box, float r, float g, float b, float a);
 
+// @ fn_28_6518
 CGunTurretBase::CGunTurretBase(
     TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
     const CModelData& modelData, const CPatternedInfo& patternedInfo,
@@ -235,6 +236,7 @@ void CGunTurretBase::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) 
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_28_76D8 (static initialization: implicit; objdiff 100%)
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"ShouldPatrol",
      static_cast< CPatterned::StateMachine::TriggerFunc >(&CGunTurretBase::ShouldPatrol)},
@@ -350,6 +352,7 @@ bool CGunTurretBase::ShouldPan(CStateManager&, const CTriggerData&) const {
   return mStateMachine->GetTime() > 0.25f;
 }
 
+// @ fn_28_5C3C
 bool CGunTurretBase::PlayerInRange(CStateManager& mgr, float range) const {
   const CVector3f pos = GetTranslation();
   const float rangeSq = range * range;
@@ -884,6 +887,7 @@ void CGunTurretBase::UpdateGunOrientation(CStateManager& mgr, CSegId seg, bool a
   AnimationData()->BuildPose(jointData);
 }
 
+// @ fn_28_3130
 CActor* CGunTurretBase::FindTarget(CStateManager& mgr) {
   float bestScore = 3.4028235e38f;
   CActor* target = nullptr;
@@ -1051,6 +1055,7 @@ bool CGunTurretBase::InRange(const CActor& actor, float range) const {
   return (actor.GetTranslation() - GetTranslation()).MagSquared() < range * range;
 }
 
+// @ fn_28_1E14
 void CGunTurretBase::LaunchProjectile(CStateManager& mgr) {
   const CGunTurretTop* top = TCastToConstPtr< CGunTurretTop >(mgr.GetObjectById(mTopId));
   if (!top) {
@@ -1239,6 +1244,7 @@ static void x13C0_SoundDefaults(SLdrGunTurretBase& sldr) {
   sldr.poleSparksSound = -1;                // 0x00001424 (guest 0xe4, port 0xf0)
 }
 #endif
+// @ fn_28_4B0
 CEntity* LoadGunTurretBase(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrGunTurretBase sldrThis;
 #ifdef TARGET_PC
