@@ -733,6 +733,7 @@ float CGrenchler::GetFacingAngleDiff(const CTransform4f& xf) const {
   return CVector3f::GetAngleDiff(otherForward.AsNormalized(), forward.AsNormalized());
 }
 
+// @ fn_27_FD2C
 void CGrenchler::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Activate:
@@ -4858,6 +4859,120 @@ bool CGrenchler::PortConsoleVar(CEntity& ent, const char* name, const int* value
   // 6 cost above maxCost (a Grenchler in the water triples maxCost: the waypoint is 3D+20 behind); 7 two jump points, second dearer; 8 second cheaper; 9 inactive jump point;
   // 10 other area; 11 no connection; 12 connection to a non-waypoint; 13 waypoint submerged, player
   // not; 14 everything submerged; 15 player submerged only.
+  // gren8 (AcceptScriptMsg FD2C): pokes for the members a message arm reads, `var <id> gren.<name> <v>`; each answers
+  // the old value. gren.curaction sets mCurrentAction (12 landing, 8 grapple, 17 ...), gren.fadeactive mFadeActive,
+  // gren.tailtime 1 stamps mTailDestroyedTime now / 0 long ago, gren.alive mAlive, gren.landed bit mask (1 mLanded,
+  // 2 x1c_5_), gren.team 0 no team manager id / 2 a valid one (this Grenchler's id), gren.cm 0 detaches the collision manager (kept
+  // aside) / 1 puts it back, gren.tailflag sets mTailDestroyed raw, gren.fitems 1 sets mHasHealthBar and mIsGrappleGuardian for the Activate arm (restore 0).
+  if (strncmp(name, "gren.", 5) == 0 && (strcmp(name, "gren.curaction") == 0 || strcmp(name, "gren.fadeactive") == 0 ||
+                                           strcmp(name, "gren.tailtime") == 0 || strcmp(name, "gren.alive") == 0 ||
+                                           strcmp(name, "gren.landed") == 0 || strcmp(name, "gren.team") == 0 ||
+                                           strcmp(name, "gren.cm") == 0 || strcmp(name, "gren.healthbar") == 0 ||
+                                           strcmp(name, "gren.tailflag") == 0 || strcmp(name, "gren.damagewait") == 0)) {
+    static CCollisionActorManager* sAsideCm = nullptr;
+    current = 0;
+    if (strcmp(name, "gren.curaction") == 0) {
+      current = static_cast< int >(gren->mCurrentAction);
+      if (value != nullptr) {
+        gren->mCurrentAction = static_cast< EAction >(*value);
+      }
+    } else if (strcmp(name, "gren.fadeactive") == 0) {
+      current = gren->mFadeActive;
+      if (value != nullptr) {
+        gren->mFadeActive = static_cast< uchar >(*value);
+      }
+    } else if (strcmp(name, "gren.tailtime") == 0) {
+      if (value != nullptr) {
+        gren->mTailDestroyedTime = *value != 0 ? gren->mElapsedTime : -1000.f;
+      }
+    } else if (strcmp(name, "gren.alive") == 0) {
+      current = gren->mAlive ? 1 : 0;
+      if (value != nullptr) {
+        gren->mAlive = *value != 0;
+      }
+    } else if (strcmp(name, "gren.landed") == 0) {
+      current = (gren->mReflectInfo.mLanded ? 1 : 0) | (gren->mReflectInfo.x1c_5_ ? 2 : 0);
+      if (value != nullptr) {
+        gren->mReflectInfo.mLanded = (*value & 1) != 0;
+        gren->mReflectInfo.x1c_5_ = (*value & 2) != 0;
+      }
+    } else if (strcmp(name, "gren.team") == 0) {
+      current = gren->mTeamAiMgrId == kInvalidUniqueId ? 0 : 1;
+      if (value != nullptr && *value == 0) {
+        gren->mTeamAiMgrId = kInvalidUniqueId;
+      } else if (value != nullptr && *value == 2) {
+        gren->mTeamAiMgrId = gren->GetUniqueId(); // any valid id: AreaLoaded keeps it
+      }
+    } else if (strcmp(name, "gren.cm") == 0) {
+      current = gren->mCollisionManager.get() != nullptr ? 1 : 0;
+      if (value != nullptr && *value == 0 && gren->mCollisionManager.get() != nullptr) {
+        sAsideCm = gren->mCollisionManager.get();
+        gren->mCollisionManager.release();
+      } else if (value != nullptr && *value != 0 && sAsideCm != nullptr) {
+        gren->mCollisionManager = sAsideCm;
+        sAsideCm = nullptr;
+      }
+    } else if (strcmp(name, "gren.damagewait") == 0) {
+      // mCurDamageRemTime := value / 10 s (HitObject damages the player only once it is <= 0)
+      current = static_cast< int >(gren->mCurDamageRemTime * 10.f);
+      if (value != nullptr) {
+        gren->mCurDamageRemTime = static_cast< float >(*value) / 10.f;
+      }
+    } else if (strcmp(name, "gren.tailflag") == 0) {
+      // mTailDestroyed itself (0 intact / 1 destroyed), without DestroyTail's side effects
+      current = gren->mTailDestroyed;
+      if (value != nullptr) {
+        gren->mTailDestroyed = *value;
+      }
+    } else if (strcmp(name, "gren.healthbar") == 0) {
+      current = gren->mHasHealthBar ? 1 : 0;
+      if (value != nullptr) {
+        gren->mHasHealthBar = *value != 0;
+      }
+    }
+    return true;
+  }
+  // gren8: `gren.sendmsg <m*100 + a*10 + w>` delivers Damage (m 1), ResistedDamage (m 2) or HitObject (m 3) to this
+  // Grenchler from its collision actor index a (0 body, 5/6 crystals, see skCollisionActors), after setting that
+  // actor's last-touched object by a ReflectedDamage message from: w 0 nothing, 1 a live weapon this Grenchler owns
+  // (its electric beam projectile), 2 a live weapon the player owns, 3 the player itself. Answers -1 when the
+  // weapon or actor does not exist, else 0.
+  if (strcmp(name, "gren.sendmsg") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    current = -1;
+    if (value != nullptr && mgr != nullptr && gren->mCollisionManager.get() != nullptr) {
+      const int m = *value / 100, a = (*value / 10) % 10, w = *value % 10;
+      const TUniqueId actorId =
+          gren->mCollisionManager->GetCollisionDescFromIndex(static_cast< uint >(a)).GetCollisionActorId();
+      TUniqueId touched = kInvalidUniqueId;
+      bool found = w == 0;
+      if (w == 3) {
+        touched = mgr->GetPlayer(0)->GetUniqueId();
+        found = true;
+      } else if (w == 1 || w == 2) {
+        CObjectList& all = mgr->ObjectListById(kOL_All);
+        for (int i = all.GetFirstObjectIndex(); i != -1 && !found; i = all.GetNextObjectIndex(i)) {
+          if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(all[i])) {
+            const bool playerOwned = weapon->GetOwnerId() == mgr->GetPlayer(0)->GetUniqueId();
+            if ((w == 2) == playerOwned && weapon->GetOwnerId() != kInvalidUniqueId &&
+                (w == 2 || weapon->GetOwnerId() == gren->GetUniqueId())) {
+              touched = weapon->GetUniqueId();
+              found = true;
+            }
+          }
+        }
+      }
+      if (found && mgr->GetObjectById(actorId) != nullptr) {
+        if (touched != kInvalidUniqueId) {
+          mgr->DeliverScriptMsg(CScriptMsg(touched, actorId, kSM_ReflectedDamage));
+        }
+        mgr->DeliverScriptMsg(CScriptMsg(actorId, gren->GetUniqueId(),
+                                         m == 1 ? kSM_Damage : m == 2 ? kSM_ResistedDamage : kSM_HitObject));
+        current = 0;
+      }
+    }
+    return true;
+  }
   if (strcmp(name, "gren.fap") == 0 || strcmp(name, "gren.jt") == 0) {
     CStateManager* mgr = PortConsole::VarManager();
     current = -1;

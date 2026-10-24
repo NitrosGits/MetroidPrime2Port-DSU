@@ -1,0 +1,10 @@
+# gren8: AcceptScriptMsg FD2C, the non-guardian arms (01_swamp_entrance layers 4+8, u05c4). --frames 700, --fast.
+@f300 layer 4
+@f340 layer 8
+@f400 god 1
+@f440 send u05c4 Activate
+@f450 var u05c4 gren.startbeam 1
+@f510 var u05c4 gren.tailtime 1; var u05c4 gren.sendmsg 103; var u05c4 gren.tailtime 0; var u05c4 gren.tailhp 0; var u05c4 gren.sendmsg 103; var u05c4 gren.sendmsg 101; var u05c4 gren.sendmsg 100
+@f512 var u05c4 gren.tailhp 100000; var u05c4 gren.sendmsg 101; var u05c4 gren.sendmsg 103
+@f514 var u05c4 gren.tailhp 0; var u05c4 gren.sendmsg 303; var u05c4 gren.sendmsg 203
+@f520 status

@@ -304,3 +304,20 @@ Dead objdiff 99.2%: the only instruction difference is `fadds f0, f0(-3.3), f1` 
 | UpdateEffects C2EC | 87/87 | forced (CALLS, `grenchler_force7e.py`, guardian room, driver `grenchler_gren7e.con`: `gren.swoosh 3` builds the swoosh / beam-particle generators, the call runs at the first PreThink that sees them): splash / ring generators nulled; `IsWadingInWater` stubbed with dt 0 (0xC4xx `fcmpo dt, 0`); beam projectile id with no object / an inactive entity; mSoundHandle.mID 5 / 0; mTraceState 2 / 3 with mCurrentAction 0 (swoosh target = mHitPosition); `CanBeNormalized` stub 0 (particle step); mFrozen 1 (StopElectricBeam); guardian with a live electric sound handle, with tail gone and mAlive 0, and with the eye glow generator nulled. Do not run `gren.swoosh` on the non-guardian entrance Grenchlers: CElementGen ctor segfaults (no swoosh asset) |
 
 UpdateEffects objdiff 96%: scheduling / rodata hoisting only (checked the tail: `li r4,0` vs `mr r4,r31` is regalloc).
+
+## gren8 lane (base c5169d189, 2026-10-24)
+
+New `PortConsoleVar` pokes (TARGET_PC): `gren.sendmsg <m*100 + a*10 + w>` (Damage 1 / ResistedDamage 2 / HitObject 3 from collision actor index a, last-touched
+object set through a ReflectedDamage message from w: 0 none, 1 a live weapon this Grenchler owns (its electric beam projectile), 2 a live player weapon (`shoot` first,
+send a tick later), 3 the player), `gren.curaction`, `gren.fadeactive`, `gren.tailtime`, `gren.tailflag` (raw mTailDestroyed), `gren.alive`, `gren.landed`, `gren.team`
+(0 none / 2 valid), `gren.cm` (0 detach / 1 reattach the collision manager), `gren.healthbar`, `gren.damagewait`. Plain messages go through `send <id> <Msg>`.
+Drivers `grenchler_gren8.con` (08_swamp_grappleguardian_dark, guardian u052e) and `grenchler_gren8e.con` (01_swamp_entrance, non-guardian u05c4), 700 frames, merged
+with the natural drivers (rebuild first: older gcda do not match).
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| AcceptScriptMsg FD2C | 118/118 | forced (send / gren.sendmsg + pokes): Deactivate, AIUpdateDisabled, InternalMessage0 (alive/active and not), with the collision manager detached (0x10010-region `cmplwi 0`); AreaLoaded with a team id / inactive; ResistedDamage on a crystal (index 5) with a beam-projectile weapon, with the player as last touched (no weapon), flash timer / action 8 / crystal state 0 / 4 / damage over the threshold; Damage: inLanded (action 12, landed bits), fadeactive, non-guardian recent tail break, guardian with tail gone and action 17 / not 17 (0x10 `mTailDestroyed == 1 && action != 17`), weapon owned by another entity (owner != player -> base call, 0x1033C `bne .L_000107B8`), player weapon / no weapon, tail intact with tailhp 0 / 100000 (DestroyTail) and tail destroyed; HitObject as guardian / not, alive / dead, tail intact / destroyed, actions 14 / 3 / 17 |
+
+Asm: OffGround guardian returns without the base call (0xFFFC-0x1000C `b .L_000107C8`, past the `bl CPatterned::AcceptScriptMsg` at 0x107C4); the Damage `break` on a foreign
+weapon owner lands on the base call (0x1033C -> 0x107B8), skipping `SetHP(10000)`; x90c_08/x90c_40 at 0x1079C-0x107B4 are mReturnToPatrol := true / mAlerted := false
+(InternalMessage0), x90c_20 mIsGrappleGuardian. objdiff 99.4%: no behaviour difference.
