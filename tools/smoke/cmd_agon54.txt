@@ -1,11 +1,15 @@
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2400, last check f2250.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2500, last check f2250.
 @f1120 status
 @f1690 objs spacepirate
 @f1900 send e00360030 Activate
 @f1950 damage e00360030 10
 @f1970 obj e00360030
+# hp fall: bomb damage reduces hp (60 -> 50)
 @f2050 fsm e00360030 TargetPatrol
+@f2060 damage e00360030 10 bomb
 @f2070 obj e00360030
+# kill: real death then removal
+@f2100 kill e00360030
 @f2150 send e00360030 Delete
 @f2170 objs spacepirate
 @f2250 status

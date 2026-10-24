@@ -155,7 +155,7 @@ declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark" [swamp2]="3dfd2249,04_sw
                [isg]="1baa96c2,06_cliff_spiderballguardian"
                [ingp]="42b935e4,06_sand_alamofront_dark" )
 declare -A F=( [swamp1]=2400 [swamp2]=2400 [sandboss]=2400 [sandworm]=2400 [boostg]=2200
-               [boostg_fsm]=2000 [digig]=2200 [cmdpirate]=2200 [emp1]=2000 [spacepirate]=2400
+               [boostg_fsm]=2000 [digig]=2200 [cmdpirate]=2200 [emp1]=2000 [spacepirate]=2450
                [ing]=16000 [ep]=6000 [plain]=2000 [emp3]=2600 [turret]=2400 [agon54]=2500
                [darksamus]=4000 [splitter]=2400 [grenchler]=2500 [grenguard]=2500
                [flyingpirate]=2400 [mediuming]=2400 [metroid]=2600 [sporb]=2600 [blogg]=2400
