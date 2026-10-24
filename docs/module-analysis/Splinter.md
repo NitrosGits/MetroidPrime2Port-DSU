@@ -107,3 +107,13 @@ Not marked, with reason:
   need a really morphed player; 9/10 arms).
 - RunAndHide/FindHideHint, FacingPlayerExactly, SetUnhideTime, ReachedMBall, ProjectileInfo,
   MegaSplinterSpit (no Mega splinter), CSplinterAcidSac::HealthInfo/GetDamageVulnerability: never reached.
+
+## spl4 (2026-10-24)
+
+Marked from natural gcov (every arm ran, checked against asm; asmcheck BIT/NOPOS findings are the nested
+`mJump` bitfield and `mIsWorker` not resolved by name, masks verified by hand): ApplyJumpVelocity A67C
+(mIsHighJump = 0x40), UpdatePitchBend 9D88 (0x934 bit 0x04 = mIsWorker), Jump 9014 (0x9bc: 0x80 mLanded,
+0x10 mHasTarget, 0x08 mJumping, 0x01 mHasLineOfSight).
+Left unmarked (arms not run): FallFromCocoon 78BC, JumpToPoint 8A7C, IsNearWall 9344, ScoreJump 96C8,
+FindJumpPoints 99BC (ScoreJump never passes its >6 return), ApplyLaunchVelocity A7C8 (needs a found jump
+point), ApplyAmbushVelocity A928 (Mega+Ing-possessed arm; not dead). These need forced runs.
