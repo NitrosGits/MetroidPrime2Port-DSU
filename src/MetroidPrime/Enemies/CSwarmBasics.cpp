@@ -1130,6 +1130,7 @@ void CSwarmBasics::RenderBoid(CBoid* boid) const {
   }
 }
 
+// @ fn_80_4038
 void CSwarmBasics::DrawBoidSkinnedModel(
     const CBoid* boid, const SwarmRenderHelpers::CSwarmSkinnedModelState& state) const {
   CColor color = boid->mAmbientLighting;
