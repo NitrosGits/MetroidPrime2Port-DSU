@@ -1009,6 +1009,7 @@ bool CRezbit::CanStrafe(CStateManager& mgr, float distance, const CVector3f& dir
   return false;
 }
 
+// @ fn_53_1C40
 void CRezbit::UpdateSeparation(CStateManager& mgr) {
   const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
