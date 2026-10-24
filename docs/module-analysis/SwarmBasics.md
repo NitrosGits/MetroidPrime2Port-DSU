@@ -665,3 +665,42 @@ Gates: host build 0 FAILED; `gen_files_cmake.py --check` rc 0; `review_decomp_di
 MARK); matching `configure.py && ninja` + forced `build/G2ME01/ok` re-check **87 files OK**. Evidence
 archived before the marker: `/tmp/opencode/reports/swb14-evidence/` (gcno, gcda, raw gcov JSON,
 `swb13_geom.log`, `binary.sha256`, `source.sha256`).
+## swb15: UpdateAllBoidMovement 7/7 lines, 6/6 branches (ALL-ARMS) - marked
+
+Base `9794622f0`, branch `decomp/swb15`. Two launches of the two allowed (run `a` is diagnostic
+only: its MoveBoid oracle used `sizeof(CVector3f)` as the `mAdvancementDeltas` stride).
+
+**Why this body needs its own area.** `UpdateAllBoidMovement` is the base-class default of a virtual,
+and every shipped swarm class overrides it (CBacteriaSwarm, CMetareeSwarm, CIngBlobSwarm,
+CPlantScarabSwarm, CEmperorIngLightSwarm each have their own out-of-line body). **CFlyerSwarm does
+not**, so only a CFlyerSwarm reaches the base body - through Think's virtual call. Agon
+`42b935e4,01_sand_entrance` has four (u041d, u04ff, u05c4, u05c6), and they are naturally
+`mAnimated = 1` with 5 or 7 boids and `mModelDatas`/`mAdvancementDeltas` of 4 (so `mask = 3`).
+
+**Fixture** (`tools/cov/specs/swb15_updateall.py`, its own file; the shared seeker spec is untouched):
+one phase per call of the real body, each write restored at the body's return with raw readback -
+ph0 `mAnimated = 0` (the early-return side, which the shipped data never takes), ph1 `mAnimated = 1`
+with its boids (the loop), ph2 `mAnimated = 1` with `mBoids.mCount` lowered to 0 inside the existing
+allocation (the zero-boid side). A second entry is a **MoveBoid oracle**: while a window is open it
+checks every call the body makes - `this`/`mgr`, the boid pointer `== &mBoids[i]`, the delta pointer
+`== &mAdvancementDeltas[i & mask]` (stride `sizeof(CAdvancementDeltas) = 0x1C`, as the asm's
+`0x5070 mulli` shows, and `GetOffsetDelta()` is that struct's first member), and `dt` - and it compares
+the call count with the expectation. `MoveBoid` itself is never replaced or skipped.
+
+Run `b`: `42b935e4,01_sand_entrance`, `swarmbasics_sand.con`, `--fast`, 1200 frames, `game rc=0`,
+`caught/reach-stub: 0`, normal inferior exit, 4325 body calls, 2880 forced and 1445 natural windows,
+**7/7 lines, 6/6 branches, ALL-ARMS**. Restores: **2880 OK**, 1445 natural (nothing written), **0**
+mismatch/failed. MoveBoid oracle: 4323 windows OK; **one** window (`swb15-2819-ph1`) reported one extra
+call with `i = 6`'s boid pointer and 6's delta (8 calls for 7 boids) - logged, not hidden; every other
+window matched exactly. Simulation (`mock-tests/`): phases, guards (no models / count above capacity
+refused), restore-originals readback, argument mismatch detection and the summary line all pass.
+
+`asmcheck.py check SwarmBasics … fn_80_5024` (all tags): no findings; one `NOPOS` note that the header
+does not state `mAnimated`'s bit (the asm is `0x5044 lbz r0,0x4f0(r3)` + `0x504C extrwi. r0,r0,1,27`,
+i.e. mask 0x10, then `0x5050 beq` to the return). Marked `// @ fn_80_5024`
+(`src/MetroidPrime/Enemies/CSwarmBasics.cpp:881`; the run's line numbers are the pre-marker ones).
+
+Gates: host build 0 FAILED; `gen_files_cmake.py --check` rc 0; `review_decomp_diff.sh 9794622f0` (one
+MARK); matching `configure.py && ninja` + forced `build/G2ME01/ok` re-check **87 files OK**. Evidence
+frozen before the marker: `/tmp/opencode/reports/swb15-evidence/` (gcno, gcda, raw gcov JSON, the
+module's asm, `binary.sha256`, `source.sha256`, the fixture log, the run log, `mock-tests/`).
