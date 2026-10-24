@@ -1575,6 +1575,7 @@ void CBlogg::SpitBall(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_38C4
 void CBlogg::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
