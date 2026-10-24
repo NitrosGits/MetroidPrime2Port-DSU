@@ -22,31 +22,35 @@ All 82 retail functions pair with upstream (77 in CPillBug.s, 5 in REL_Setup).
 | FindReturnWaypoint 2B2C | retail discards one chain step result (kept: retail quirk) |
 | GetCurrentConstraint 2AEC | no callers in retail (0%) |
 
-## Arms after pbug1 (2026-10-24, base 6b31b2c76)
+## Arms after pbug2 (2026-10-24, decomp/pbug1 + pbug2)
 
-Second pass over the 10 behaviour bodies pb1 left unmarked (31 of the 41 B rows were marked at that base;
-the pb1 "open arms" list above is superseded for the bodies marked since). Runs: pb1's three drivers on the
-new base (`pbug_c1` 0b_sand_hall, `pbug_c2` 0d_sand_hall, `pbug_c4` 06_cliff_spiderballguardian) plus one
-forced run on 0b_sand_hall with `tools/cov/specs/pbug_force.py` (`pbug_f1`):
+pbug2 forced the data/state arms instead of arguing them away. Two specs, because forcing the path
+walk changes the path BuildPath builds and keeps the bug out of Wander/Fall/ReturnToPath:
 
-    python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/pbug_{c1,c2,c4,f1}/gcov --module PillBug
+- `tools/cov/specs/pbug_force.py` (state machine): Pause substate, PatrolImpl planar/mDestObj,
+  ReturnToPath advance radius + mDestPos + planar + empty path, CloseToPath geometry/mPathLoops/path
+  ids, Fall body state + upside-down transform, and a `loc:` write of the RaySphere test's `mag`.
+- `tools/cov/specs/pbug_force2.py` (path + loader): the HasInnerPathLoop local writes and the
+  LoadPillBug modelData write.
 
-| function | arms | evidence / dead edge |
+Every write is one call (the member is put back at the next entry). Runs, all fast, merged in
+`gcov_report.py build-port-cov /tmp/opencode/pbug2_*/gcov --module PillBug`: sandhall and cliff areas.
+
+| function | arms | how each arm was reached |
 |---|---|---|
-| BD8 Pause | 10/11 -> dead | `forced (pbug_force.py: mAnimSubState = 2)` so 0xD28's switch reads its no-case edge (0xD34 bge); 763:3/4 dead: EStateMsg has three values |
-| 2210 PatrolImpl | 23/26 -> dead | 486:3/4 dead (msg switch); 515:1/2 dead: mPlanarConstraint is 1 or 2 in every shipped spawn; 533:1/2 dead by writer: mDestObj only ever holds a path or return waypoint id (CPillBug.cpp:499-500, 534, 579, 583, 623, 724, 727) |
-| 1A58 ReturnToPath | 12/18 | 570:3/4 dead (msg switch), 578:1/2 (empty mPath) and 595:1/2 (planar 0) dead by data; 576:1/2 inline guard; 586:0/2 UpdateWPDestination never returned true (5190 Updates, the bug never reached its return waypoint); 605:1/2 the up-dot <= 0.5 arm (the bug always climbed) |
-| 274C CloseToPath | 10/14 | 456:0/2 (!mPathLoops: all 15 paths loop), 464:0/2 (!to \|\| !from) and 471:0/2 (close_enough) dead by data; 478:0/2 open: RaySphereIntersection never hit in 19381 iterations (the sphere is centred on the wandering bug) |
-| 1768 Fall | 7/10 | 629:3/4 dead (msg switch); 650:1/2: the body was never in kAS_LoopReaction on Fall's Update; 649:1/2 an inline guard on a line with no source condition (the 549/622/642/690/692 class) |
-| 2FE4 HasInnerPathLoop | 9/14 | 310:1/4 and 310:3/4: no walk ends on an invalid id (every chain loops); 315/328:1/2 no non-waypoint in a chain; 322:1/2 (current == loopStart, a two-waypoint cycle) no shipped path has one: 13 calls, all returned false at 0x3090 |
-| 130 LoadPillBug | 11/12 | 807:1/2: every shipped model loads (LdrToModelData never fails) |
-| AA4 / A1C SLdrPillBug ctor and dtor | - | inline in `include/MetroidPrime/ScriptLoader/SLdrPillBug.hpp`, so the port has no standalone body to mark; the ctor's three retail defaults are pb1's fix (0xAE8/0xAF4, 0xB04-0xB18, 0xB1C/0xB28) |
-| 402C __sinit | - | compiler-generated static initialisation, no source body |
+| 2210 PatrolImpl | 25/26 -> marked | natural: Activate/Update/Deactivate, the position-history block; `forced`: mPlanarConstraint = 0 on one call (0x2494 beq skips the arrival command), mDestObj = the bug's own id on another (0x26B4's cast fails at 0x26BC). 487:3/4 dead: EStateMsg's three-value switch |
+| BD8 Pause | 10/11 -> marked | natural: substate 0->1 and the step command; `forced`: mAnimSubState = 2 on one Update (0xE58's value, the switch's no-case edge 0xD34). 765:3/4 dead (msg switch) |
+| 1A58 ReturnToPath | 17/18 -> marked | natural: both updates and the planar-1/2 command blocks; `forced`: mAdvanceWpRadius 1e6 (UpdateWPDestination returns true, SetConstraint at 587), mDestPos behind the bug (up dot <= 0.5 at 605), mPlanarConstraint 0 then 2 (596/606), mPath.mCount 0 on an Activate (the `!mPath.empty()` false arm at 579). 571:3/4 dead (msg switch) |
+| 1768 Fall | 9/10 -> marked | natural: the drop, the LoopReaction command; `forced`: mBodyStateInfo.mState = kAS_LoopReaction on one Update (650's false arm) and the transform's up column set to -Z on an Activate (Dot < -0.998 at 637, which rotates the bug). 630:3/4 dead (msg switch) |
+| 274C CloseToPath | 13/14 | `forced`: mPathLoops false (457), an invalid mPath[0] (464's null cast), two equal entries (471). 478:0/2 open: RaySphereIntersection's true arm never ran in 53010 calls; the bug was put on its destination waypoint through mTransform (m03/m13/m23) with mColSphere.mSphere.mRadius 0.5, and the test's `mag` was written through `loc:CPillBug.cpp:478` - T stays >= mag or the writes do not reach the transform the test reads |
+| 2FE4 HasInnerPathLoop | 11/14 | `forced` (`waypoint = 0` at 315 and 328): the non-waypoint chain arms. 310:1/4, 310:3/4 (the walk leaving on an invalid id) and 322:1/2 (current == loopStart) need writes to `current`/`anchor`/`loopStart`, and at the coverage build's -O2 those locals are in registers: gdb says "value has been optimized out" / "not an lvalue" |
+| 130 LoadPillBug | 11/12 | 809:1/2 open: `set var modelData.m_valid = 0` at loc:809 is accepted by gdb but the arm stays untaken (the local is not the optional the branch reads at -O2) |
+| AA4 / A1C SLdrPillBug ctor and dtor | - | inline in `include/MetroidPrime/ScriptLoader/SLdrPillBug.hpp`: no standalone body to mark; the ctor's retail defaults are pb1's fix |
+| 402C __sinit | - | compiler-generated, no source body |
 
-No retail divergence in this pass: Pause 0xBD8-0xF34, PatrolImpl 0x2210-0x274C, HasInnerPathLoop
-0x2FE4-0x3134, CloseToPath 0x274C-0x2930, Fall 0x1768-0x1A58 and LoadPillBug 0x130-0x6D4 match the asm line
-by line (the asmcheck BIT/CALL findings are the header's bitfield accessors and inline template copies, as
-pb1 recorded).
+No retail divergence in either pass: Pause 0xBD8-0xF34, PatrolImpl 0x2210-0x274C, HasInnerPathLoop
+0x2FE4-0x3134, CloseToPath 0x274C-0x2930, Fall 0x1768-0x1A58, ReturnToPath 0x1A58-0x2014 and
+LoadPillBug 0x130-0x6D4 match the asm line by line.
 
 ## Shipped data (disc scan)
 
