@@ -39,6 +39,7 @@
 #endif
 #include "rstl/algorithm.hpp"
 
+// @ fn_69_7124 (compiler-generated static initializer for this translation unit)
 static EMaterialTypes ApplyDamageSolidMaterial = kMT_Solid;
 static EMaterialTypes SolidMaterial = kMT_Solid;
 static EMaterialTypes PlayerMaterial = kMT_Player;
@@ -591,6 +592,7 @@ void CShrieker::FaceTarget(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_69_1C2C
 void CShrieker::DeflectMissiles(CStateManager& mgr) {
   const CVector3f center = GetAimPosition(mgr, 0.f) + mData.mMissileDeflectionOffset;
   const CMaterialFilter filter =
@@ -833,6 +835,7 @@ void CShrieker::FadeAlpha(CStateManager& mgr, bool fadeIn, bool immediate) {
   }
 }
 
+// @ fn_69_5554
 void CShrieker::ReactToDamage(CStateManager& mgr, TUniqueId senderId) {
   if (mBuried) {
     const float health = GetHealthInfo()->GetHP();

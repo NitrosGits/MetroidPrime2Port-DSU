@@ -27,6 +27,7 @@
 
 #include <math.h>
 
+// @ fn_81_5028 (compiler-generated static initializer for this translation unit)
 static EMaterialTypes SolidMaterial = kMT_Solid;
 
 static const CDamageVulnerability::TWeaponVulnerability skPowerBombVulnerability =

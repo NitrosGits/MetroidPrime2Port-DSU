@@ -67,6 +67,7 @@ void CScriptGuiSlider::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   }
 }
 
+// @ fn_60_95FC
 void CScriptGuiSlider::Think(float dt, CStateManager& mgr) {
   CScriptGuiWidget::Think(dt, mgr);
   if (!GetActive()) {

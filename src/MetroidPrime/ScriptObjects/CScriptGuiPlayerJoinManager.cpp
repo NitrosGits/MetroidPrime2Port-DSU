@@ -82,6 +82,7 @@ void CScriptGuiPlayerJoinManager::AcceptScriptMsg(CStateManager& mgr, const CScr
   }
 }
 
+// @ fn_60_4B8
 void CScriptGuiPlayerJoinManager::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
