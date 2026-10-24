@@ -245,7 +245,7 @@ void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
         (bomb != nullptr &&
          GetDamageVulnerability()->WeaponHurts(bomb->GetCurrentDamageInfo().GetWeaponMode())) ||
         (powerBomb != nullptr && GetDamageVulnerability()->WeaponHurts(
-                                      powerBomb->GetCurrentDamageInfo().GetWeaponMode()))) {
+                                     powerBomb->GetCurrentDamageInfo().GetWeaponMode()))) {
       // 0x2AFC-0x2B48: set mask 0x80, clear 0x40, provoker=1, send Attack.
       mProvoked = true;
       mReturnRequested = false;
