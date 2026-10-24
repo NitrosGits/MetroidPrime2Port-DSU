@@ -84,7 +84,18 @@
 @f4325 shoot u051f 
 @f4440 beam light
 @f4445 shoot u051f 
-@f4500 kill u051f
-@f4540 objs SpaceJumpGuardian
-@f4580 objs SpaceJumpGuardian
-@f5000 objs SpaceJumpGuardian
+@f4565 shoot u051f charged
+@f4620 obj u051f
+@f4680 beam dark
+@f4685 shoot u051f missile
+@f4805 shoot u051f 
+@f4920 beam light
+@f4925 shoot u051f 
+@f4980 obj u051f
+@f5045 shoot u051f charged
+@f5160 beam dark
+@f5165 shoot u051f missile
+@f5300 obj u051f
+@f5400 kill u051f
+@f5450 obj u051f
+@f5900 obj u051f
