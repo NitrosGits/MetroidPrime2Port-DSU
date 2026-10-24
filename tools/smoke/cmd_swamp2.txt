@@ -1,13 +1,10 @@
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2000, last check f1850.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2400, last check f2140.
 @f780 objs swampboss
-@f940 layer 6
-@f1260 objs swampboss
-@f1420 obj u05bb
-@f1850 objs swampboss
 
-@f1900 damage u06d9 100
-@f1920 obj u06d9
-@f1980 obj u06d9
-@f2040 objs swampboss
-@f2100 obj u06d9
-@f2180 objs swampboss
+@f940 layer 6
+
+@f1900 send u06d9 Activate
+@f1920 damage u06d9 100
+@f1940 obj u06d9
+@f2100 kill u06d9
+@f2120 objs swampboss
