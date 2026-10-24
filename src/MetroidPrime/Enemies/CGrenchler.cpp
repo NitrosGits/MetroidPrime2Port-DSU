@@ -1239,6 +1239,7 @@ CPFArea* CGrenchler::GetPathArea(CStateManager& mgr) const {
   return mgr.GetWorld()->GetAreaAlways(areaId).GetPostConstructed()->mPathArea;
 }
 
+// @ fn_27_E390
 void CGrenchler::MarkPathRegion(CStateManager& mgr) {
   const rstl::reserved_vector< CVector3f, 16 >& waypoints = mPathFindSearch.GetWaypoints();
   if (waypoints.size() != 0) {
