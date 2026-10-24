@@ -248,6 +248,45 @@ class Tests(unittest.TestCase):
         self.assertTrue(w.stop())
         self.assertEqual(len(self.mem.writes), before)
 
+    def apply_window(self, name):
+        """apply() against the fake memory: pointer slot at 40 holds a 'natural' emitter, scratch at 64"""
+        mem = self.mem
+        mem.num = self.ctx[0]
+        mem.raw[40:48] = (0x7777).to_bytes(8, 'little')
+        m = self.m
+        m.state['scratch'] = 64
+        m.ev = lambda e: 40 if e.startswith('&') else 0
+        m.iv = lambda e: int.from_bytes(mem.raw[40:48], 'little')
+        m.zone_expr = lambda this, member: member
+        m.write_float = m.write_int = m.write_bit = lambda *a, **k: None
+        m.read_bit = lambda *a: 0
+        self.gdb.lookup_type = lambda n: None
+        self.gdb.selected_inferior = lambda: mem
+        w = m.Window(0x1000, 0x2000, (name, self.case(name)), tuple(self.ctx), Frame(self.stack, self.stack[0]),
+                     m.Snapshot([('mEchoEmitter.mPtr', 40, 8), ('scratch page', 64, 16)], mem),
+                     dict(uid=5, trans=TR, xform=XF, light_id=0x123))
+        return w
+
+    def test_natural_emitter_hidden_then_restored(self):
+        w = self.apply_window('dark-grow')            # emit=0: the natural pointer is nulled
+        w.apply()
+        self.assertEqual(bytes(self.mem.raw[40:48]), bytes(8))
+        w.restore()
+        self.assertEqual(int.from_bytes(self.mem.raw[40:48], 'little'), 0x7777)
+        self.assertEqual(bytes(self.mem.raw[64:80]), self.original[64:80])
+
+    def test_natural_emitter_replaced_by_fake_page(self):
+        w = self.apply_window('emitter-live')        # emit=1: the pointer is the scratch page
+        self.m.iv = lambda e: int.from_bytes(self.mem.raw[40:48], 'little')
+        w.apply()
+        self.assertEqual(int.from_bytes(self.mem.raw[40:48], 'little'), 64)
+        w.restore()
+        self.assertEqual(int.from_bytes(self.mem.raw[40:48], 'little'), 0x7777)
+
+    def test_every_case_has_no_emitter_guard(self):
+        src = open(Path(__file__).with_name('sz2_think.py')).read()
+        self.assertNotIn("state['skipped_emitter'] += 1\n                return False", src)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -342,6 +342,10 @@ class Window(gdb.FinishBreakpoint):
                 ptr = int(ev('&' + zone_expr(T, 'mEchoEmitter.mPtr')))
                 mem.write_memory(ptr, page.to_bytes(8, 'little'))
                 check(iv(zone_expr(T, 'mEchoEmitter.mPtr')) == page, 'forced readback emitter')
+            else:
+                ptr = int(ev('&' + zone_expr(T, 'mEchoEmitter.mPtr')))
+                mem.write_memory(ptr, bytes(8))  # natural zones all own an emitter: hide it for this window
+                check(iv(zone_expr(T, 'mEchoEmitter.mPtr')) == 0, 'forced readback no emitter')
         except Exception:
             self.restore()
             raise
@@ -464,8 +468,8 @@ class Entry(gdb.Breakpoint):
                 state['skipped_nonempty'] += 1
                 return False
             if iv(zone_expr(this, 'mEchoEmitter.mPtr')) != 0:
-                state['skipped_emitter'] += 1  # a natural emitter is never touched
-                return False
+                state['skipped_emitter'] += 1  # counted only: the natural emitter is never written, the
+                # pointer is replaced (fake page or null) for the window and restored from the snapshot
             state['eligible'] += 1
             if state['eligible'] % SPACING != 1:
                 return False
