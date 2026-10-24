@@ -228,6 +228,7 @@ void CRezbit::AddToRenderer(const CStateManager& mgr) const { CPatterned::AddToR
 // @ fn_53_6DF8
 void CRezbit::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_53_6E18
 void CRezbit::Render(const CStateManager& mgr) const {
   const CTransform4f savedTransform = GetTransform();
   CTransform4f& transform = const_cast< CTransform4f& >(GetTransform());
@@ -250,6 +251,7 @@ void CRezbit::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_53_6FC4
 void CRezbit::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                               float dt) {
   bool handled = false;
@@ -286,6 +288,7 @@ void CRezbit::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUs
   }
 }
 
+// @ fn_53_718C
 void CRezbit::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     CPatterned::Think(dt, mgr);
@@ -299,6 +302,7 @@ void CRezbit::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_53_7240
 void CRezbit::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId sender = msg.GetSenderId();
   const EScriptObjectMessage message = msg.GetMessage();
@@ -856,6 +860,7 @@ bool CRezbit::ShouldEnergyBoltAttack(CStateManager& mgr, const CTriggerData& dat
   return false;
 }
 
+// @ fn_53_6548
 bool CRezbit::ShouldVirusAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (mVirusTimer <= 0.f && !mgr.GetCameraManager(0)->IsInCinematicCamera()) {
     if (mTeamAiMgrId == kInvalidUniqueId ||
@@ -889,6 +894,7 @@ void CRezbit::QuitTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_53_1370
 void CRezbit::JoinTeam(CStateManager& mgr) {
   if (mTeamAiMgrId == kInvalidUniqueId) {
     mTeamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
@@ -907,6 +913,7 @@ void CRezbit::JoinTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_53_141C
 void CRezbit::CheckVerticalClearance(CStateManager& mgr,
                                      rstl::reserved_vector< bool, 4 >& available) {
   const CVector3f position = GetTranslation();
@@ -1009,6 +1016,7 @@ bool CRezbit::CanStrafe(CStateManager& mgr, float distance, const CVector3f& dir
   return false;
 }
 
+// @ fn_53_1C40
 void CRezbit::UpdateSeparation(CStateManager& mgr) {
   const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
@@ -1033,6 +1041,7 @@ void CRezbit::UpdateDeflectSfx(float dt) {
   }
 }
 
+// @ fn_53_1E48
 void CRezbit::DeflectMissiles(CStateManager& mgr) {
   const CVector3f center = GetAimPosition(mgr, 0.f);
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile));
@@ -1108,6 +1117,7 @@ void CRezbit::DeflectMissiles(CStateManager& mgr) {
   }
 }
 
+// @ fn_53_2414
 void CRezbit::StartVirusAttack(CStateManager& mgr, const rstl::string& locator) {
   if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetId))) {
     if (player->GetSpawnedMorphballState() != CPlayer::kMS_Morphed &&
@@ -1185,6 +1195,7 @@ void CRezbit::DeleteLaser(CStateManager& mgr) {
   }
 }
 
+// @ fn_53_2E88
 void CRezbit::UpdateLaser(CStateManager& mgr, float dt) {
   if (CPlasmaProjectile* laser = static_cast< CPlasmaProjectile* >(mgr.ObjectById(mLaserId))) {
     const float t = mLaserElapsed / mLaserDuration;
@@ -1222,6 +1233,7 @@ void CRezbit::SpawnLaser(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_53_332C
 bool CRezbit::SetupLaserTargets(CStateManager& mgr) {
   if (const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mTargetId))) {
     const CVector3f startAim = target->GetAimPosition(mgr, 0.f);
@@ -1240,6 +1252,7 @@ bool CRezbit::SetupLaserTargets(CStateManager& mgr) {
   return false;
 }
 
+// @ fn_53_3538
 void CRezbit::UpdatePatrolMovement() {
   CVector3f move = BodyController()->CommandMgr().GetMoveVector();
   BodyController()->CommandMgr().ClearLocomotionCmds();
@@ -1263,6 +1276,7 @@ void CRezbit::UpdatePatrolMovement() {
   }
 }
 
+// @ fn_53_3704
 void CRezbit::BreakShield(CStateManager& mgr) {
   if (!mShieldBroken) {
     mShieldBroken = true;
@@ -1280,19 +1294,34 @@ void CRezbit::BreakShield(CStateManager& mgr) {
             CColor::White(), -1);
         if (explosion) {
           mgr.AddObject(explosion);
+#ifdef TARGET_PC
+          // 0x3790 lbz r0,0xc00 / 0x3794 beq 0x3928 (effect invalid) and 0x38BC cmplwi r28,0 /
+          // 0x38C0 beq 0x3928 (no explosion): the explode sound (0x3900) and the shield emitter
+          // removal (0x3904-0x3920) sit inside the valid-effect block; without an effect only
+          // SetActive(false) (0x3928) runs.
+          PlayCustomSound(GetTranslation(), GetTransform().GetForward(), mData.sound_ShieldExplode,
+                          false);
+          if (mShieldSfx) {
+            CSfxManager::RemoveEmitter(mShieldSfx);
+            mShieldSfx = CSfxHandle();
+          }
+#endif
         }
       }
+#ifndef TARGET_PC
       PlayCustomSound(GetTranslation(), GetTransform().GetForward(), mData.sound_ShieldExplode,
                       false);
       if (mShieldSfx) {
         CSfxManager::RemoveEmitter(mShieldSfx);
         mShieldSfx = CSfxHandle();
       }
+#endif
       shield->SetActive(false);
     }
   }
 }
 
+// @ fn_53_3A48
 void CRezbit::LowerShields(CStateManager& mgr) {
   if (mShieldBroken) {
     return;
@@ -1327,6 +1356,7 @@ void CRezbit::UpdateWobble(CStateManager& mgr) {
   mWobbleTransform = CTransform4f::Shear(0.f, xz, 0.f, yz, 0.f, 0.f);
 }
 
+// @ fn_53_3C68
 void CRezbit::UpdateShield(CStateManager& mgr, float dt) {
   if (!mShieldBroken) {
     if (mRezState == 0 && mAlert) {

@@ -1,0 +1,128 @@
+# Rezbit rez5, big bodies: tools/cov/specs/rezbit_force3.py (REZ5_GROUPS=think,queues) arms gdb queues at the first live
+# Think, then the commands below drive them: send (AcceptScriptMsg), uevent (DoUserAnimEvent / StartVirusAttack),
+# trigcall (ShouldVirusAttack), shoot + obj (obj is the trigger of the DeflectMissiles direct calls).
+@f300 god 1
+@f310 layer 3
+@f450 layer 4
+@f520 place e0005011b player 15
+@f1000 send e0005011b Activate
+@f1002 send e0005011b Activate
+@f1004 send e0005011b Activate
+@f1006 send e0005011b Activate
+@f1008 send e0005011b Activate
+@f1010 send e0005011b Deactivate
+@f1012 send e0005011b Activate
+@f1014 send e0005011b Deactivate
+@f1016 send e0005011b Activate
+@f1018 send e0005011b Deactivate
+@f1020 send e0005011b Activate
+@f1022 send e0005011b Alert
+@f1024 send e0005011b Damage
+@f1026 send e0005011b ResistedDamage
+@f1028 send e0005011b AreaLoaded
+@f1060 uevent e0005011b 33
+@f1062 uevent e0005011b 33
+@f1064 uevent e0005011b 33
+@f1066 uevent e0005011b 33
+@f1068 uevent e0005011b 33
+@f1070 uevent e0005011b 33
+@f1072 uevent e0005011b 33
+@f1074 uevent e0005011b 33
+@f1076 uevent e0005011b 34
+@f1078 uevent e0005011b 34
+@f1080 uevent e0005011b 99
+@f1082 uevent e0005011b 17
+@f1084 uevent e0005011b 17
+@f1086 uevent e0005011b 17
+@f1088 uevent e0005011b 17
+@f1090 uevent e0005011b 17
+@f1092 uevent e0005011b 17
+@f1094 uevent e0005011b 17
+@f1096 uevent e0005011b 17
+@f1098 uevent e0005011b 17
+@f1100 uevent e0005011b 17
+@f1102 uevent e0005011b 17
+@f1104 uevent e0005011b 17
+@f1106 uevent e0005011b 17
+@f1108 uevent e0005011b 17
+@f1160 trigcall e0005011b ShouldVirusAttack
+@f1161 trigcall e0005011b ShouldVirusAttack
+@f1162 trigcall e0005011b ShouldVirusAttack
+@f1163 trigcall e0005011b ShouldVirusAttack
+@f1164 trigcall e0005011b ShouldVirusAttack
+@f1165 trigcall e0005011b ShouldVirusAttack
+@f1166 trigcall e0005011b ShouldVirusAttack
+@f1167 trigcall e0005011b ShouldVirusAttack
+@f1168 trigcall e0005011b ShouldVirusAttack
+@f1169 trigcall e0005011b ShouldVirusAttack
+@f1170 trigcall e0005011b ShouldVirusAttack
+@f1171 trigcall e0005011b ShouldVirusAttack
+@f1172 trigcall e0005011b ShouldVirusAttack
+@f1173 trigcall e0005011b ShouldVirusAttack
+@f1174 trigcall e0005011b ShouldVirusAttack
+@f1175 trigcall e0005011b ShouldVirusAttack
+@f1176 trigcall e0005011b ShouldVirusAttack
+@f1177 trigcall e0005011b ShouldVirusAttack
+@f1178 trigcall e0005011b ShouldVirusAttack
+@f1179 trigcall e0005011b ShouldVirusAttack
+@f1180 trigcall e0005011b ShouldVirusAttack
+@f1181 trigcall e0005011b ShouldVirusAttack
+@f1182 trigcall e0005011b ShouldVirusAttack
+@f1183 trigcall e0005011b ShouldVirusAttack
+@f1184 trigcall e0005011b ShouldVirusAttack
+@f1185 trigcall e0005011b ShouldVirusAttack
+@f1186 trigcall e0005011b ShouldVirusAttack
+@f1187 trigcall e0005011b ShouldVirusAttack
+@f1188 trigcall e0005011b ShouldVirusAttack
+@f1189 trigcall e0005011b ShouldVirusAttack
+@f1190 trigcall e0005011b ShouldVirusAttack
+@f1191 trigcall e0005011b ShouldVirusAttack
+@f1192 trigcall e0005011b ShouldVirusAttack
+@f1193 trigcall e0005011b ShouldVirusAttack
+@f1194 trigcall e0005011b ShouldVirusAttack
+@f1195 trigcall e0005011b ShouldVirusAttack
+@f1196 trigcall e0005011b ShouldVirusAttack
+@f1197 trigcall e0005011b ShouldVirusAttack
+@f1198 trigcall e0005011b ShouldVirusAttack
+@f1199 trigcall e0005011b ShouldVirusAttack
+@f1200 trigcall e0005011b ShouldVirusAttack
+@f1201 trigcall e0005011b ShouldVirusAttack
+@f1202 trigcall e0005011b ShouldVirusAttack
+@f1203 trigcall e0005011b ShouldVirusAttack
+@f1204 trigcall e0005011b ShouldVirusAttack
+@f1205 trigcall e0005011b ShouldVirusAttack
+@f1206 trigcall e0005011b ShouldVirusAttack
+@f1207 trigcall e0005011b ShouldVirusAttack
+@f1208 trigcall e0005011b ShouldVirusAttack
+@f1209 trigcall e0005011b ShouldVirusAttack
+@f1210 trigcall e0005011b ShouldVirusAttack
+@f1211 trigcall e0005011b ShouldVirusAttack
+@f1212 trigcall e0005011b ShouldVirusAttack
+@f1213 trigcall e0005011b ShouldVirusAttack
+@f1214 trigcall e0005011b ShouldVirusAttack
+@f1215 trigcall e0005011b ShouldVirusAttack
+@f1216 trigcall e0005011b ShouldVirusAttack
+@f1217 trigcall e0005011b ShouldVirusAttack
+@f1218 trigcall e0005011b ShouldVirusAttack
+@f1219 trigcall e0005011b ShouldVirusAttack
+@f1220 trigcall e0005011b ShouldVirusAttack
+@f1221 trigcall e0005011b ShouldVirusAttack
+@f1222 trigcall e0005011b ShouldVirusAttack
+@f1223 trigcall e0005011b ShouldVirusAttack
+@f1224 trigcall e0005011b ShouldVirusAttack
+@f1225 trigcall e0005011b ShouldVirusAttack
+@f1226 trigcall e0005011b ShouldVirusAttack
+@f1227 trigcall e0005011b ShouldVirusAttack
+@f1228 trigcall e0005011b ShouldVirusAttack
+@f1229 trigcall e0005011b ShouldVirusAttack
+@f1250 covdump
+@f1300 give missile 50
+@f1310 place e0005011b player 6; shoot e0005011b missile; shoot e0005011b missile; shoot e0005011b missile; shoot e0005011b missile; shoot e0005011b missile; shoot e0005011b missile; obj e0005011b
+@f1340 shoot e0005011b missile
+@f1343 obj e0005011b
+@f1380 shoot e0005011b; shoot e0005011b charged; obj e0005011b
+@f1500 obj e0005011b
+@f1750 send e0005011b Delete
+@f1760 send e00050065 Delete
+@f1850 covdump
+@f1851 objs rezbit

@@ -97,3 +97,33 @@ Render 237/243/246 (needs real deflected missiles), BecomeRezzed/BecomeDeRezzed 
 ShouldVirusAttack 866-871, StartVirusAttack 1112, UpdateLaser 1187, SetupLaserTargets 1231, UpdatePatrolMovement 1245/1247,
 CheckVerticalClearance, DeflectMissiles, UpdateSeparation 1015, BreakShield, LowerShields, UpdateShield 1368, JoinTeam 895
 (need callee/member forcing).
+
+## rez5 (2026-10-24)
+
+Marked, each checked against the asm (`asmcheck annotate Rezbit 0x<off> --all-ins`, `check` findings are tool limits: inline
+bitfields, unported REL-local copies, vcall GetAimPosition): UpdateShield 3C68, LowerShields 3A48, BreakShield 3704,
+UpdateSeparation 1C40, CheckVerticalClearance 141C, UpdatePatrolMovement 3538, SetupLaserTargets 332C, UpdateLaser 2E88,
+JoinTeam 1370, Think 718C, AcceptScriptMsg 7240, DoUserAnimEvent 6FC4, Render 6E18, ShouldVirusAttack 6548,
+StartVirusAttack 2414, DeflectMissiles 1E48.
+
+Fix (TARGET_PC, asm 0x3790-0x3928): BreakShield plays the explode sound and removes the shield emitter only inside the
+valid-effect, explosion-allocated block; upstream did both unconditionally.
+
+Runs: `tools/cov/specs/rezbit_force3.py`, gdb is the driver. `REZ5_GROUPS=shield,misc` + `tools/drivers/rezbit_forced4.con` (1800
+frames): at the 300th live Think the direct calls UpdateShield/LowerShields/BreakShield/UpdateSeparation/JoinTeam/
+CheckVerticalClearance/UpdatePatrolMovement/SetupLaserTargets/SpawnLaser+UpdateLaser (`FindBestStepDirection`, `GetAssociatedTeamId` answers
+forced by Gate-like FinishBreakpoints). `REZ5_GROUPS=think,queues` + `tools/drivers/rezbit_forced5.con` (1950 frames): Think direct calls;
+queues (a phase per call, writes restored at the return, callee answers via Gates enabled only inside the phase) on
+AcceptScriptMsg / DoUserAnimEvent / StartVirusAttack / ShouldVirusAttack / Render; the `obj` console command is the trigger of
+`DeflectMissiles` direct calls with real missiles (`shoot ... missile` x6 in one tick). Each section ends in `PortCoverageFlush()`, `covdump` in the driver.
+Wall time about a minute per run. Run: `COV_GDB_SCRIPT=<spec> BUILD=build-port-cov SECS=600 MP2_CONSOLE_WAIT=120 timeout 700 tools/cov/force.sh <spec> <out> 1baa96c2,02_cliff_reactorcore --con <driver> --fast --frames N` (env REZ5_GROUPS).
+
+| fn | arms | evidence |
+|---|---|---|
+| UpdateSeparation | 9/10 | dead arm `other == nullptr`: CListeningAiList::IsQualified (GameObjectLists.cpp:28-33) only lists entities that cast to CPatterned |
+| Render | 9/10 | dead arm `0 > ratio` of Clamp(0, ratio, 1): ratio = Magnitude()/radius, radius > 0 by the guard |
+| DeflectMissiles | 34/36 | two compiler edges on the `type == Power && HasAttrib` line, all four source outcomes ran |
+| the other 13 | all | forced (direct call / queue) |
+
+Gotchas (cost an hour each): a gdb `condition` on a Breakpoint subclass with `stop()` is ignored, test inside `stop()`; a gdb.Value of a memory lvalue is lazy, convert with int()/float() before the write you want to restore; `$al` is the x86 register (name scratch variables `$actl`); `send <rezbit> Create` crashes in CBSFall::Start (host, the natural spawn covers that arm).
+Not marked (not in this slice): CRezbit ctor/dtors, LoadRezbit (1447 modelData null arm), SLdrRezbitData, __sinit.
