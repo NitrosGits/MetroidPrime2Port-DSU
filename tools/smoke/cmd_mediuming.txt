@@ -5,9 +5,13 @@
 # u0454 is killed the same way. Direct `damage` does not get through the hunter ing's mist
 # vulnerability (retail's table too), so that kill is the console `kill`, which zeroes the health
 # and runs Death as ApplyDamage does. Checks are game updates (@f<n>; gameplay from ~f240), not
-# wall seconds; the family runs F=2400, last check f2250.
+# wall seconds; the family runs F=2450, last check f2250.
 @f300 god 1; tp 208.5 -174 -46.5; face 180
 @f310 objs mediuming; obj u0417
+@f400 damage u0417 10
+@f420 obj u0417
+@f450 fsm u0417 Jump
+@f470 obj u0417
 @f500 shoot u0417 charged
 @f540 shoot u0417 charged
 @f580 shoot u0417 charged

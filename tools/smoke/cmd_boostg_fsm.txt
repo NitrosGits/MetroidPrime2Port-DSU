@@ -1,5 +1,10 @@
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2000, last check f1850.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2050, last check f1850.
 @f880 objs boostball
 @f1080 layer 5
-@f1400 objs boostball
+@f1200 objs boostball
+@f1400 obj u052b
+@f1500 fsm e001c016e Patrol
+@f1520 obj e001c016e
+@f1600 kill e001c016e
+@f1700 objs boostball
 @f1850 objs boostball
