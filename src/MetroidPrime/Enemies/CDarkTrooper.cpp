@@ -527,6 +527,7 @@ void CDarkTrooper::EndMissileAttack() {
   BodyController()->CommandMgr().DeliverAdditiveTargetVector(CVector3f::Zero());
 }
 
+// @ fn_12_3AFC
 void CDarkTrooper::ApplyMeleeDamage(CStateManager& mgr) {
   if (InRange(mgr, 0.f, mMeleeAttack.mMaxRange)) {
     mgr.ApplyDamage(
@@ -892,6 +893,7 @@ bool CDarkTrooper::FacingPlayer(CStateManager& mgr, const CTriggerData&) const {
                                  CVector2f(toTarget.GetX(), toTarget.GetY())) < 0.6981317f;
 }
 
+// @ fn_12_200C
 bool CDarkTrooper::InRange(CStateManager& mgr, float minRange, float maxRange) const {
   const float distanceSquared = (GetTargetPosition(mgr) - GetTranslation()).MagSquared();
   return distanceSquared > minRange * minRange && distanceSquared < maxRange * maxRange;
@@ -1015,6 +1017,7 @@ bool CDarkTrooper::CanMeleeAttack(CStateManager&, const CTriggerData&) const {
   return mMeleeAttack.mNextAttackTime < mElapsedTime;
 }
 
+// @ fn_12_1800
 bool CDarkTrooper::CanSmallShotAttack(CStateManager&, const CTriggerData&) const {
 #ifdef TARGET_PC
   // fn_12_1800 0x1814-0x1820: fcmpo cooldown,0 / ble proceeds when !(cooldown > 0), so NaN passes.
