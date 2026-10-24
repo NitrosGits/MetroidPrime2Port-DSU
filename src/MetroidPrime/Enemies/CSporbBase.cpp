@@ -90,6 +90,12 @@ public:
   CTendrilGen(const TToken< CGenDescription >& description)
   : CElementGen(description, kMOT_Normal, kOSF_One), mBounds(CAABox::MakeMaxInvertedBox()) {}
 
+#ifdef TARGET_PC
+  // 0x26D4-0x26E8: derived vtable, CElementGen destruction, optional deleting-ABI free.
+  // @ fn_76_26A8
+  ~CTendrilGen() override {}
+#endif
+
   rstl::optional_object< CAABox > GetBounds() override { return mBounds; }
 
   CAABox mBounds; // Guessed name
@@ -101,6 +107,7 @@ rstl::optional_object< CAABox > CSporbBase::GetTouchBounds() const { return GetB
 // @ fn_76_D510
 CSporbBase::~CSporbBase() {}
 
+// @ fn_76_C130
 CSporbBase::CSporbBase(
     const TUniqueId& uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
     const CModelData& modelData, const CPatternedInfo& patternedInfo,
@@ -2164,6 +2171,7 @@ void CSporbBase::ClearTendrilParticles() {
   }
 }
 
+// @ fn_76_2858
 CEntity* LoadSporbBase(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSporbBase sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrSporbBase.inc"

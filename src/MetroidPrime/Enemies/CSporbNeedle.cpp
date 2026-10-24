@@ -399,6 +399,7 @@ rstl::optional_object< CAABox > CSporbNeedle::GetTouchBounds() const {
   return GetCollisionPrimitive()->CalculateAABox(GetPrimitiveTransform());
 }
 
+// @ fn_76_FE64
 CEntity* LoadSporbNeedle(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSporbNeedle sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrSporbNeedle.inc"

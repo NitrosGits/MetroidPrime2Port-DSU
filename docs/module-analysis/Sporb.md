@@ -861,3 +861,143 @@ F910 constructs six consecutive vectors, F87C destroys those six, and FA90 frees
 They are the existing `rstl::vector<CAssetId>` and `CCECharacterInfo::CParticleResData`
 implementations, not missing callees (all four full listings saved). Final review has
 16 MARK lines, all justified in the two audit/coverage tables, with no other findings.
+
+## sporb7: final loaders, base constructor and tendril destruction (2026-10-24)
+
+Base46622f3d1; six new markers, **167 → 173/173 behaviour bodies**. Full instruction
+listings (`asmcheck.py annotate Sporb 0x<off> --all-ins`), static checks, raw gcov JSON,
+profiles and run logs: `/tmp/opencode/reports/sporb7-evidence/`. No new behaviour mismatch
+found. The only non-marker C++ addition makes the already-implicit CTendrilGen destructor
+explicit under TARGET_PC, so its verified body can carry a marker; semantics are unchanged.
+
+### Full block audit
+
+| retail blocks | correspondence |
+|---|---|
+| Base2858–3150 | SLdrSporbBase defaults39D8; unsigned16 property count, hash/size loop, all55 cases in SLdrSporbBase.inc, unknown ReadBytes(nullptr,size). Each case's destination matches its struct member; see complete source-slot table below. The unused35557a83 property is read/stored at8A0 but deliberately is not passed to C130. |
+| 3154–3210 | LdrToModelData(scale,FFFFFFFF,animation,true), optional copy674; empty optional returnsnull after member cleanup. The duplicate empty-optional cleanup test is dead after the already-taken invalid test. |
+| 3214–3478 | Guardian byte8D8 nonzero reserves4 ownership-transfer elements; each of the four stage structs948/974/9A0/9CC converts and copies through37C4, transfers ownership, and destroys the now-nonowning temporary. Ordinary bases retain an empty vector. Nullable retail new/placement-new checks are host throwing-new/non-null storage ABI, not extra successful paths. |
+| 347C–3760 | Native-size allocation; all C130 inputs audited below, including byte shot counts and ushort sounds. Construct patterned/damage/actor/xf/entity temporaries; invoke C130; destroy patterned, stages3820, optional model and loader members; return actor. |
+| NeedleFE64–10114 | SLdrSporbNeedle102CC; all14 property cases, count loop/default skip. Model1F0==FFFFFFFF returnsnull with member cleanup10118–10150. |
+| 10154–102C8 | Native-size allocation, static model(model1F0,scale164), invalid owner uid, actor/damage/xf/entity conversions, exact argument mapping below, invoke114D4; destroy temporary model and loader members. |
+| ProjectileDE60–DFF4 | Editor/patterned/actor default ctors; two assetsFFFFFFFF at6F8/6FC, resistance2 at488, white ambient694, visor flags15 at6E4. Five property cases and unknown skip. |
+| DFF8–E178 | Model(scale428,FFFFFFFF,animation610,true); optional-valid check; empty returnsnull. Native-size actor allocation, exact common arguments plus spit6F8/escape6FC; invokeF494; patterned/model/loader cleanup. |
+| Top3B8–4EC | Editor/patterned/actor defaults; resistance2 at480, white ambient68C, visor flags15 at6DC. Three property cases and unknown skip. |
+| 4F0–670 | Model(scale420,FFFFFFFF,animation608,true); optional-valid check/empty return. Native-size allocation, common arguments below; invoke2204, patterned/model/loader cleanup. |
+| BaseC130–C2A4 | CPatterned(AI47,uid,name,flavor0,info,xf,model,patterned,movement1,collider1,body5,actor). Save floating/stack inputs before the base call. |
+| C2A8–C550 | Invalid top/projectile/target ids; five anim ids0; patterned detection/max/min at+C/1C/18; scalar1, leans0, interpolation0.1. AI weapon11, charged/combo/instant-kill bits0; spit/grab damage and radius-damage copies, radius/knockback0, soundsFFFF, no-immunity/apply-radius0. Flail damage/radius-damage0, no-immunity1/apply-radius0. Shot timer/time-between-shots=minShotsTime; attack timer=minAttackTime; byte counts min/max, fired0; ready1, all other shot/grab flags0. |
+| C554–C66C | Invalid sfx/editor ids; timeSinceDetection=base leash time; shot angle/aim offset; zero particle count; out/in speed and accelerations from their respective args. Retract/aim vectors0, quaternionidentity; holdDuration0.05, attach/min/max/grab times, spit force; idle state4, attacktype-1, alerted1, remaining grab timers/flags0. |
+| C66C–C76C | Invalid tendril asset givesnull desc/null gen; valid gets PART token via pool slotC, caches object, creates CTendrilGen3C50. Allocation and temporary-token cleanup follow normal host ownership semantics. |
+| C770–C824 | Eleven sounds in argument order; firing/topHit0, attach/projectile positions0, top blend1, saved leans0; saved vulnerability copies ImmuneVulnerabilty throughD24C; guardian byte, projectile-info(asset,damage). |
+| C828–C998 | Height/fuse/sound/emitter/start/end/wait args; stage0, maxTimerScale=guardian?argument:1, timerScale1, attacks/counts0; stage-vector ownership copyD138; four emitters(handle0,invaliduid), zero bomb aim/grabber pos; prediction/spread args; generateType2; +A74 active80 set, aimLocked40/timerScaleMaxed20 clear; lock projectile-info token. Placement checks on addresses of four embedded emitters cannot be null for a live object. |
+| C99C–CCEC | Five real FindBestAnimation calls: additive-reaction18 with enums5/6/4/7, then additive-flinch17 with eight NoParameter values (existing PC correction). Each score must be strictly >FLT_EPSILON to replace its zero animation id; NaN preserves zero. |
+| CCEC–CD50 | Shadowfalse; minGrabRange<minAttack clamps upward, maxGrabRange>maxAttack clamps downward, then maxGrabRange>30 clamps30. Plain PPC bge/ble skips unordered, matching the original strict C++ comparisons. Reserve32 waypoint uids; SetStage0. |
+| CD54–CEAC | Generate-stateC/enum7 user event8(DamageOn); count0 skips; positive count converts to float, flailDamage/count stored only to damage (+840), not radius-damage. CPatterned::GetNumUserEventsForAnimation returns0 or a nonnegative real event count; signed/unsigned conversion differs only outside that live domain. |
+| Tendril26A8–2704 | Nullable retail destructor wrapper; derived vtable, CElementGen dtor with deletionflag0, then free only if signed-short deletionflag>0. Host D2 is the nondeleting variant; D0 is deleting. Host destructor bodies require nonnull this; null deletion is guarded by C++ delete in the owning caller (also exercised by the absent-tendril replay), not a legal null-this destructor call. |
+
+### Loader constructor arguments: source slots, not guessed names
+
+All stack offsets in this table are relative to each **loader's** frame; common arguments
+are listed too. C130's incoming stack starts after its0x570 frame, which independently
+confirms every outgoing stack argument.
+
+| loader / destination | retail source → C++ argument |
+|---|---|
+| Base r3–r10,3508–353C | allocatedactor; uidAC; name57C; LdrToEntityInfo(info,57C); xf108; model278; patterned2C8; actor1C8. |
+| Base f1–f8,368C–36A8 | 874=minAttackTime;878=maxAttackTime;87C=minShotTime;880=maxShotTime;88C=shotAngle;8A4=outAcceleration;8A8=inAcceleration;8AC=initialOutSpeed. |
+| Base stack08/0C/10 | low-byte884=minShots; low-byte888=maxShots; pointer890=aimOffset. |
+| Base stack14/18/1C/20/24/28 | 8B0=initialInSpeed;8B4=attachTime;8B8=minGrabTime;8BC=maxGrabTime;8C0=spitForce;89C=tendrilAsset. |
+| Base stack2C..54,356C–35EC | low16 of91C,920,924,928,92C,930,934,938,93C,940,944 respectively: fire,flight,hitPlayer,hitWorld,retract,retractMissed,morphSpit,explosion,escape,needleTelegraph,grabberTelegraph. |
+| Base stack58/5C/60/64/68/6C/70/74 | 8C4=spitDamage;8C8=grabDamage;8CC=flailDamage;8D4=maxGrabRange;8D0=minGrabRange;byte8D8=guardian;8DC=bombAsset;pointerEC=converted bombDamage. |
+| Base stack78/7C/80/84/88/8C/90/94 | 8F0=height;8F4=fuse;low16 904=bombSound;908=emitterMaxDistance;90C=distanceComp;8F8=startDamage;8FC=endDamage;pointerDC=stages. |
+| Base stack98/9C/A0/A4 | 910=maxTimerScale;914=predictionTimeScale;918=aimSpread;900=damageWait. |
+| Needle r3–r10,101F4–10224 | allocatedactor; uid2C; name13C; converted info; xf60; staticmodel90; actorDC; invalid owner30. |
+| Needle stack08/0C,10204/10220 | 214=explosionEffect;210=trailEffect (**not reversed**). |
+| Needle stack10/14/18/1C/20/24 | low16 of218/21C/220/224/228=launch/flight/hitPlayer/collision/explosion sounds; pointer44=converted damage. |
+| Needle f1/f2/f3,10268–10270 | 1F4=initialSpeed;1F8=mass;20C=fuse. |
+| Projectile r3–r10,E0EC–E114 | allocatedactor; uid14; name400; converted info; xf1C; modelFC; patterned14C; actor4C. stack08=6F8 spitAsset, stack0C=6FC escapeAsset. |
+| Top r3–r10,5E4–604 | allocatedactor; uid0C; name3F8; converted info; xf14; modelF4; patterned144; actor44. No additional arguments. |
+
+### Reproducible arm evidence
+
+`tools/cov/specs/sporb_load_ctor_arms.py` captures the four natural shipped property streams
+and replays them through real CInputStream/loader/constructor/destructor bodies. Every
+valid replay appends a three-byte unknown property (real default ReadBytes arm). The four
+invalid-model fixtures contain only that unknown property, so validation naturally returns
+null without leaking a cleared live optional. Original nested data, all55/14/5/3 known
+property cases, and full loops execute. No production probes or callee stubs.
+
+Three base replays build guardian stages (the shipped boolean alone is forced true);
+the third additionally forces the tendril asset invalid. First real tendril is destroyed
+through D2 then its storage freed, second through D0; pointers are detached before base
+teardown. Native malloc/free buffers, stream and copied-info storage are released. The
+borrowed info copy's connections vector is emptied before use, avoiding expired storage.
+
+Constructor tests preserve all real callee executions. At return from its five animation
+lookups only the score is forced; the original valid id is preserved. At its derived
+SetDrawShadow call four range inputs are forced. At the real event-count return count0/2
+is forced. Completion asserts five animation ids, both range results, guardian timer
+scale and flail damage, then restores natural gameplay values. No scratch variable uses
+an x86-register name. Exact destructor addresses use nm+PIE bias: GDB's DWARF lookup of
+the D0/D2 mangled aliases otherwise selects the wrong variant.
+
+| case | score for all five | minGrab,maxGrab,minAttack,maxAttack | expected min,max | DamageOn count |
+|---|---|---|---|---|
+| 0 | 1 | 1,40,5,50 | 5,30 | 2 |
+| 1 | 0 | 10,40,5,20 | 10,20 | 0 |
+| 2 | FLT_EPSILON | NaN,NaN,5,20 | NaN,NaN | 2 |
+| 3 | NaN | 1,40,NaN,NaN | 1,30 | 0 |
+
+| body | combined gcov lines / nonthrow edges | proof |
+|---|---|---|
+| C130 | 162/162,116/118 | Every live arm above; remaining two edges at line211 are cleanup block106→107/109, downstream only of throwing constructor edges4→105/5→105/6→104. Both are excluded by the exception-cleanup policy, not untested retail behaviour. |
+| 2858 | 32/32,24/24 | valid/invalid model; ordinary/guardian; all four real stage constructions and cleanup. |
+| FE64 / DE60 / 3B8 | each11/11,10/10 | real construction, invalid-model return, all cleanup. |
+| 26A8 | D0 and D2 each1/1,0/0 | Both complete real destructor variants; explicit D0/D2 breakpoint hits in final-dtor run. |
+| Base/Needle/Projectile/Top .inc | 164/164,153/153;46/46,39/39;19/19,18/18;13/13,14/14 | Raw header/include JSON, including all switch/default/loop edges; all ALL-ARMS. |
+
+Reproduce cases0..3, waiting for a slot before each:
+
+```sh
+tools/games_running.sh --wait
+SPORB7_CASE=<0..3> BUILD=$PWD/build-port-cov \
+  COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py SECS=300 \
+  tools/cov/force.sh tools/cov/specs/sporb_load_ctor_arms.py <out> \
+  3dfd2249,0e_swamp_hall --con tools/drivers/sporb4_hall.con --fast --frames 1000
+```
+
+Final0..3 and final-dtor each exit normally at1000 frames, ten calls and50 PASS assertions,
+zero force/Python errors and caught/reach-stub0: **250 PASS total**. Final-dtor reruns case0
+with the explicit D0 call; earlier final runs cover the compiler-inlined deleting variant.
+Development harness failures are not counted as evidence. No unchanged families or
+whole-module smoke repeated. Raw Sporb-only aggregation avoids an unrelated stale
+WallCrawlerSwarm gcno stamp warning from the all-module gcov-report scan.
+
+### Static findings and gates
+
+asmcheck's in-class destructor MISSING is parser scope, manually audited26A8 above.
+C130 BIT findings806/822/83E(80/40/20) are the three inline CWeaponMode(false,false,false)
+initializers. 81E/83A(80/40 clear),856(80 set/40 clear) are CDamageInfo's noImmunity and
+applyRadiusDamage bits. A74(80 set/40+20 clear) maps directly to active/aimLocked/timerScaleMaxed.
+Those last three NOPOS fields are documented by the full C974–C994 sequence above.
+CALL aliases:3C50 is the already-marked in-class CTendrilGen ctor; D24C is vulnerability
+copy; ImmuneVulnerability is the existing differently-spelled ImmuneVulnerabilty getter;
+CProjectileInfo is a member initializer; D138 is the ownership-transfer vector copy;
+NoParameter is CPASAnimParmData's default arguments; CEEC is its full eight-parm ctor;
+D6DC is waypoint-vector reserve. No missing behaviour.
+
+Loader CALL/BRANCH/CALLS findings are textual parser limits: the complete property loops
+are in their .inc files; their default constructors are member initialization.39D8/102CC
+are already-verified loader-data ctors;674 is optional-model copy;D928 is stage-vector
+reserve;37C4 is stage-data memberwise copy;3820 is stage-vector destruction. Free calls
+are ownership-transfer temporary cleanup. Default color ctor is the white ambient default
+in the corresponding loader header. Full helper listings are retained with the evidence.
+
+Direct ninja host/coverage links rc0,0 FAILED; manifest check rc0. Matching configure+ninja
+rc0, All77.98% fuzzy/54.39% matched, Game94.14%/63.29%; explicit dtk shasum **87 files OK**.
+All four upstream source strip-diffs CLEAN after removing markers and selecting non-PC
+paths; no shared headers/tooling changed. Review46622f3d1: six MARK lines, no other findings.
+retail_diff checks all five out-of-class bodies and reports only four Base-loader aliases
+(39D8, stage-property loader, D928,37C4), all mapped above; its in-class destructor parser
+limitation is covered by the manual audit. Final raw destructor counters: D2 five calls,
+both blocks executed; D0 fifteen calls, all three blocks executed.
