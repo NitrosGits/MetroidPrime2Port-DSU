@@ -190,3 +190,81 @@ coverage. Two causes, both to fix before this recipe is retried:
 
 Neither `CreateBoid`'s three arms nor `UpdateAllBoidMovement`/`UpdateBoid` were re-measured, so no
 marker was added in swb3.
+
+## swb4: the recipes retried with both fixes
+
+`tools/cov/specs/swarmbasics_force4.py` (force_ret.py) fixes swb3's two defects: every FORCE_RET
+lvalue is a `$this` member, so the restore at the call's return writes the same object (no
+argument-register lvalue, which was what stuck `mLaunched`), and the hardware-light path is forced on
+one Render call in 600. Runs: swamp_hall and cliff_hall, **1200 frames, timeout 700**, both exit
+normally (`RC=0`, `caught/reach-stub: 0`), no failed or missing-symbol writes.
+
+**Marked: 76F4 CreateBoid - 36/36 lines, 10/10 branches (ALL-ARMS).** The waypoint stubs
+(`GetWaypointForState`/`NextWaypoint` -> 0xffff) take 437/440 and the rewritten triangle takes 446.
+
+Measured now, still open:
+
+| fn | now | why |
+|---|---|---|
+| 6104 UpdateBoid | 48/85, 17/44 | the `$this` writes took 589/597 but the launched path (604-641) and the no-surface/stuck arms (633-641, 655) need boid-field writes, which FORCE_RET cannot restore safely through a register; use force.py (persistent, one `skip`) or `$this->mBoids[<index>]` (the vector's element, resolved through $this) |
+| 5024 UpdateAllBoidMovement | 0/7 | **the body never runs even with `mAnimated` forced**: it has an out-of-line symbol (objdiff 99.5%) but no caller in the module - retail calls it from Think's tail, and Think does not reach line 867 in these runs (Think 82/88: 851/853/856/857, the outlier loop, are untaken). Next: find what returns before Think's tail (the occlusion block and the outlier loop) |
+| 4538 HardwareLight | 0/8 | Render 45/53 still leaves 1217/1218/1222/1223 untaken, so the forced `mEnableLighting`/`mUseSoftwareLight` did not reach the HardwareLight call; the locals are read at Render's entry, so a `loc:` write (with `$this` captured at the entry) is the next attempt |
+| 3B34 Render | 45/53, 37/56 | as above, plus the light-combo arms |
+
+## swb5: the three next steps measured
+
+`tools/cov/specs/swarmbasics_force5.py` (force.sh) writes, all through `$this`: Think's outlier list
+forged to `&mBoids.mItems[0]` (the vector's element array is `mItems`, not `mBegin`), boid 0's
+`mLaunched` from the 1000th UpdateBoid on, and Render's light flags plus a forged outlier list on one
+call in 590. Six runs (swamp_hall, cliff_hall, 1200 frames, timeout 700), every one exits normally
+(`RC=0`, `caught/reach-stub: 0`, 0 failed writes).
+
+| fn | before -> now | what the runs showed |
+|---|---|---|
+| 6104 UpdateBoid | 48/85, 17/44 -> **72/85, 27/44** | the `mItems[0].mLaunched` force works (the launched path 604-641 ran). Left: 590/592/598/599 (the lifetime and safe-zone arms: `mLifeTime` is a swarm member, so those need `$this->mLifeTime` on a frame where a boid is also launched), 617/618 (the `mRemainingLaunchNotOnSurfaceFrames` arm), 634-642 (the no-surface/stuck arms) |
+| 5024 UpdateAllBoidMovement | 0/7, 0/6 | unchanged: **the body cannot be measured here - it has an out-of-line symbol (objdiff 99.5%) but gcov never attributes a hit to it, so GCC inlines it into Think and the standalone copy is dead.** Marking it needs the inlined-line evidence (the same route the SLdr struct ctor used) or a build where it is not inlined |
+| 3B34 Render / 4538 HardwareLight | 36/53, 31/56 / 0/8 | unchanged: the outlier-loop light arms (1216-1226) still never run. The forced list at Think's entry is wiped by `UpdatePartition()` (which clears `mOutlierBoidList` later in the same body), and the write at Render's entry did not take either: `Render` reads `mOutlierBoidList` at 1215 but the loop stays untaken, so the write is being overwritten or the breakpoint's `$this` differs - check with a `forced.log` counter per hit before the next attempt |
+
+## swb6: UpdateBoid to 35/44, and a Render anomaly
+
+`tools/cov/specs/swarmbasics_force6.py` (force.sh) writes a six-phase cycle at UpdateBoid's entry
+(through `$this->mBoids.mItems[0]`: mLaunched, mFramesNotOnSurface 30, the remaining-launch frames;
+and through `$this`: mLifeTime 1/0, mVulnerableToSafeZone), captures `$this` at Think's entry and
+forges the outlier list at `loc:CSwarmBasics.cpp:824` (the line after `UpdatePartition()`), plus a
+Render probe (no writes) that logs the lighting flags and the outlier list per hit. Two runs
+(swamp_hall, cliff_hall, 1200 f, timeout 700), both exit normally with 0 failed writes.
+
+- **6104 UpdateBoid: 72/85, 27/44 -> 76/85, 35/44.** Left: 599 (the safe-zone hit itself:
+  `PointIsInSafeZone` returns false in these areas - stub it with force_ret), 613:3/4, 617:1/2, 635,
+  636, 642 (the launched no-surface arm and `mHasLoopedSound`), 653/656/657 (the non-launched tail).
+- **3B34 Render: 0/53 in these runs** (it was 36/53 in swb5) and the Render probe never fired: the
+  body was not entered at all, although PreRender ran (13/18). The forged outlier list persists
+  between frames (force.py does not restore), so the first thing to check next time is whether the
+  forged list - or the `mItems[0].mNext = 0` write, which also truncates whatever partition list that
+  boid was in - changes the render path. Re-run the swb5 spec (no loc: write) to confirm Render comes
+  back before blaming the light flags.
+- 4538 HardwareLight: still 0/8, unreachable while Render does not run.
+- 5024 UpdateAllBoidMovement: inlined into Think (no gcov hits), as swb5 recorded.
+
+## swb7: UpdateBoid to 85/85 lines, 41/44 branches
+
+`tools/cov/specs/swarmbasics_force7.py` (force_ret.py): a twelve-phase cycle at UpdateBoid's entry,
+every lvalue `$this`-relative (`$this->mBoids.mItems[0]` for mLaunched, mVelocity, mLifeTime,
+mFramesNotOnSurface, mRemainingLaunchNotOnSurfaceFrames, mHasLoopedSound; `$this` for mLifeTime,
+mVulnerableToSafeZone, mBoidRadius), plus a FORCE_INNER stub of
+`CSafeZoneManager::PointIsInSafeZone` returning 1 (the 599 hit, KillBoid and return). No loc:
+breakpoints and no `mNext` writes - the two things that stopped Render in swb6. Eight runs over four
+passes (swamp_hall, cliff_hall, 1200 f, timeout 700), every one `RC=0`, 0 caught/reach-stub, 0 failed
+writes.
+
+Progression: 76/85 35/44 -> 81/85 38/44 -> 85/85 40/44 -> **85/85 41/44**.
+
+Still untaken, with what is known about each:
+
+| arm | note |
+|---|---|
+| 613:3/4 | the launched `while (distance >= 0.f && !found)` fourth edge. Big and tiny boid radii both tried (mBoidRadius 1000 / 0.001 with velocities -20/-40/-400); the missing side is probably `found` true at the loop test, which needs a surface found while `distance` stays >= 0 - a boid placed just above a floor at a small radius |
+| 656:1/2, 657:1/2 | the falling (`!launched && mFramesNotOnSurface < 30`) path: `plane.GetHeight` and `distance <= mBoidRadius * mSurfaceProbeScale`. mBoidRadius 1000 / 0.001 did not turn them; the next attempt should write the boid's translation onto the floor (`mItems[0].mTransform` + the player's position) instead of the radius |
+
+The marker stays off (41/44) - the body is one arm from complete and the spec is ready for the last
+step.

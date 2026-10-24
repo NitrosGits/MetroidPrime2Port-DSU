@@ -32,11 +32,13 @@ public:
                        float dt) override;
 
   // CPatterned
+  // @ fn_81_0
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   void SetupStateMachine(CStateManager& mgr) override;
 
   // CAi
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;
+  // @ fn_81_8
   bool IsListening() const override { return true; }
 
   // States

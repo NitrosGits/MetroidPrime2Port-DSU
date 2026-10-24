@@ -1,5 +1,43 @@
 # Shrieker REL (module 69): analysis notes
 
+Current: **67/67 behaviour bodies** (gui1 completion below; historical counts
+describe earlier surveys).
+
+## gui1 completion (base c4b67e741, 2026-10-24)
+
+Five new markers, no executable changes. Direct fixture
+`tools/cov/specs/gui1_shrieker.py`, driver `tools/drivers/gui1_shrieker.con`,
+coverage-only inline retention `gui1_keep_inline.cmake`. Greatbridge,900 frames.
+
+| body | evidence / forced arms |
+|---|---|
+| 1C2C DeflectMissiles | **44/44 lines,32/32 edges**. Real CGameProjectile constructed with its native constructor from the Shrieker's loaded weapon-description token, real default CDamageInfo with damage10, real CImpactVisorEffect::None, allocated uid and AddObject registration. Near-list hook supplies empty / invalid id / real player / constructed projectile. Power without combo, Power+0x80 combo, other beam, missile outside/inside radius; collinear and noncollinear previous positions. Count/min-homing-distance and unchanged/changed orientation oracles PASS. Existing-id sound suppression runs; IsPlaying explicitly stubbed true for timer0.1/0.75 sound suppression/stop branches, not claimed natural audio playback. |
+| 5554 ReactToDamage | **31/31 lines,32/34 reported edges**. Constructed live weapon types0..15, combo off/on, hostile priority0.25 and1, buried/not, positive/zero/negative health delta, nonweapon/missing sender. Exact expected HP/trigger oracles PASS. Patrol/ReturnToStart/Buried name-query returns forced at the actual virtual target; valid/missing weapons and owner-target oracles PASS. Two residual edges are solely block34's EH cleanup decision after a throwing temporary-string operation: all normal branch destinations hit, block34 has no non-exception ingress. Raw gcov JSON retained; not claimed ALL-ARMS. |
+| 1170 SLdr ctor | Standalone native malloc/ctor/oracle/dtor/free; all local scalar/damage/vector defaults checked, plus corrected editor3, knockback resistance2, echo-emitter true, white ambient, visor15, sound-1. Full executable header coverage. Retail store audit retains shr1 corrections below; no matching percentage claimed for this report's unpaired fn symbol. |
+| 10D0 SLdr dtor | Standalone real lifetime and natural loaders. Native member destruction; retail member/base/delete chain audited. No synthetic vtable or destructor implementation. |
+| 7124 static initialization | Actual startup plus native oracles for **every state/trigger name and resolved PMF target**, tolerance(1,1,0.1), both locator strings. Retail7124..7168 initializes tolerance;716C..71D8 constructs 64-bit include Solid(59)/exclude Player(32),CollisionActor(47),type3, matching skUnusedFilter (optimized out on host; static proof, not runtime claim). Remaining initializer stores assemble the state/trigger PMF tables and construct/register both strings. Native compiler may constant-initialize/reorder these; no callable retail initializer body is fabricated. |
+
+Final post-marker run **62/62 calls**, normal inferior exit, zero failed calls,
+writes/restores, Python errors, caught/reach-stub or console errors. Constructed
+projectile is removed through DeleteObjectRequest; temporary metadata and strings
+freed. No console firing needed. An early diagnostic accidentally resolved the
+unused default CImpactVisorEffect reach stub; final uses native None and has0
+reach-stubs. State-name hook binds the object's actual vtable target, not the
+first identically named local template copy.
+
+Static audit: both named behaviour bodies match the source expressions in the
+retail annotations. Deflection weapon/attrib tests and cross-product guard are
+unchanged. React switch default scale1 and the two string tests unchanged.
+retail_diff has the known marker/body-binding bug (labels both bodies Render);
+2154 is the reserved-vector/find H copy and57C0 string== H copy, not new missing
+behaviour.7124 is compiler-generated, hence no parsed port function. Full asm
+annotations retained rather than treating these parser outputs as correctness.
+
+Gates: host and coverage links0 FAILED; manifest rc0; matching checksum **87
+files OK**; executable source unchanged after stripping markers, including
+non-PC paths; whitespace clean. Review base c4b67e741 adds5 MARK to GUI's6.
+No unchanged-family sweep. Evidence `/tmp/opencode/reports/gui1-evidence/`.
+
 The module's code is upstream's `src/MetroidPrime/Enemies/CShrieker.cpp` (CShrieker) plus the
 `SLdrShrieker.hpp` loader. The port's fixes are `TARGET_PC` blocks in those two files. Retail asm:
 `build/G2ME01/Shrieker/asm/MetroidPrime/Enemies/CShrieker.s`. Per-function table:

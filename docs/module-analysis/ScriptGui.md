@@ -1,5 +1,43 @@
 # ScriptGui REL (module 60): audit of the upstream body
 
+Current: **80/80 behaviour bodies** (gui1 completion below). Historical survey
+counts below describe the original runs, not the current inventory.
+
+## gui1 completion (base c4b67e741, 2026-10-24)
+
+Six markers only; no executable fixes. Fixtures:
+`tools/cov/specs/gui1_force.py`, `gui1_slideshow.py`, drivers
+`tools/drivers/gui1.con`, `gui1_slideshow.con`.
+
+| body | final post-marker native coverage / oracle |
+|---|---|
+| 4B8 PlayerJoinManager::Think | **38/38 lines,42/42 edges**. Direct calls on the real join manager, all five join states, A/Y/B/Start/no button, all controller slots, present/disconnected paths, back with/without joined players and Start with/without enough players. Transition field oracles PASS. Input and state writes restored per call. |
+| 4544 FrontEndScreen::Think | **25/25,22/22**. Natural open/load/reset plus forced completion results Normal/RemoveIOWin/RemoveIOWinAndExit/Exit, busy/ready and failed paths. PumpLoad result forced only for controlled completion calls; CloseSaveGameScreen suppressed in repeated failure cases to retain the real screen. Final Exit runs the **actual delete**, asserts mgr save pointer null and mGameStarted true, exercising existing PC lifetime early return. Outgoing connections removed for this one call to avoid starting a game without a selected world; no freed field restored. |
+| 2B78 UpdateSaveSlots | **51/51,63/63**. Constructed POD GameFileStateInfo metadata, GetGameData returns0/1/2/3 valid fixture slots; normal/hard, light/dark world names, missing-name fallback, unlocked/locked normal completion. No card file writes; native text/switch logic runs. Name-return null forced in the fallback case. |
+| 4714 CollectWidgets | **182/199,153/153 non-EH edges**. Real FrontEnd graph; repeat collection resets counts of non-owning/trivial vectors, then restores counts. Coin/DeathMatch previous results with one player and differing invert/rumble values; field oracle verifies the existing PC menu-swap fix. Temporary typed PowerBombDamage/None connection to a **real CScriptSound** covers reserve/push/volume loop, then original graph restored and temporary allocation freed. Remaining uncovered compiler cleanup lines are exception-only vector unwind code, not normal branches. |
+| CEC ShowSlideShow | **7/7,1/1**. Existing environment-variable values forced PercentScans100, NormalModeCompleted1, HardModeCompleted1; native GetGalleriesUnlocked returns63 and native list build creates6 galleries/141 slides. Actual draw hits and B closes the modal; normal exit. No mask-return override, empty-gallery guard, or claim that all141 slides were displayed. |
+| 95FC Slider::Think | **46/47,35/36**. Real brightness slider, analog left/right, dpad left/right, idle, clamps, no request, target changes, save-screen absent/ready/busy, real sound allocation followed by a second moving tick (existing-handle path) and stop. Only missing callback invocation is **writer-dead**: mCallback default-constructs null; repository-wide search finds no calls to SetEventCallback and no assignments to mCallback. Its unused setter is the only non-constructor writer; no fake callback bridge/method pointer introduced. |
+
+Final queue **72/72 successful calls**, field oracles PASS; both final runs exit
+normally with zero caught/reach-stub, failed calls/writes/restores or console
+errors. A diagnostic Exit run originally followed Arrived into an unselected
+game world; the final isolated-connection fixture avoids that invalid setup.
+
+Static audit retains the original retail comparisons described below. Additional
+retail_diff findings resolved: D74 is CArchitectureQueue::Push H copy,5EB0 the
+SSaveSlot reserved_vector::push_back H copy, KillSaveGameInterface the retail
+name of DeleteSaveGameScreen. Slider's eight PPC float comparisons include
+inlined ALALeft/ALARight sign extraction (9678/9694/96CC/96E8), not eight source
+conditions; remaining comparisons are the two input-positive checks and the
+inline min/max clamps. Hardware/final input axes are finite, bounded inputs;
+no NaN-driven native change is justified. Existing Think PC return is separately
+native-tested above, not justified by upstream's100% match alone.
+
+Gates: host/coverage links0 FAILED; manifest rc0; matching configure+ninja and
+checksum **87 files OK**; source with marker comments removed identical to base
+on both PC/non-PC paths; whitespace clean. Review base c4b67e741:6 MARK.
+No unchanged-family sweep. Evidence `/tmp/opencode/reports/gui1-evidence/`.
+
 Lane gui1 audited this module on 2026-10-23.
 
 - **Body:** upstream's `src/MetroidPrime/ScriptObjects/CScriptGui{Menu,PlayerJoinManager,Screen,Slider,Widget}.cpp` and `ScriptGuiRel.cpp` (script types GWIG, GMNU, GSLD, GSCR, GPJN). The port builds them with the two fixes below.

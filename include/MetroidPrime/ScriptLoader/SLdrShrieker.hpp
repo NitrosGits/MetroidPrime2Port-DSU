@@ -45,6 +45,7 @@ struct SLdrShrieker {
   float visibilityChangeTime;                  // 0x3d689edd
 };
 
+// @ fn_69_1170
 inline SLdrShrieker::SLdrShrieker()
 : editorProperties()
 , patterned()
@@ -104,6 +105,7 @@ inline SLdrShrieker::SLdrShrieker()
 #endif
 }
 
+// @ fn_69_10D0
 inline SLdrShrieker::~SLdrShrieker() {}
 
 #endif
