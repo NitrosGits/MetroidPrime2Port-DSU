@@ -263,3 +263,19 @@ gdb arm `tools/cov/specs/grenchler_force6.py` (force_ret CALLS: GetInUse stubbed
 Asm checked line by line: Frustrated is vtable +0x1A8 (0xA54 vtable word 106 = fn_27_2084); xa24 bit 0x40 = mStartedSubmerged (0x4B04 rlwimi
 6,25,25), 0x20 = mTargetValid (0x4D9C rlwimi 5,26,26); x6f0 0x80 = CWaypointNavigation::mInPosition (0x4394); object list 0x838 = index 5
 kOL_AiWaypoint; cost compares `blt / bgt / bge` skip = `cost < 0 || cost > maxCost`, `cost < best` (NaN lands the same). No behaviour differences.
+
+LoadGrenchler 0168 (20/20, forced (gdb loc:) in `tools/cov/specs/grenchler_force6b.py`, driver `grenchler_gren6c.con`): the `.inc` property switch is
+covered by the natural loads; the three arms no shipped Grenchler takes are written into the loader's locals: tailDestroyedSound == -1 (0xC58 cmpwi -1),
+tailHitSound == -1 (0xC70 cmpwi -1), and the optional model's m_valid cleared at the compare after `LdrToModelData` (0xBE4 `lbz 0x2e0; cmplwi 0` -> 0xC24
+`li r3,0`, no Grenchler). The loader's `__nw` null test (0xC4C `mr.; beq`) is the usual dead arm.
+Fix (TARGET_PC): the tailWhenUnderwaterDark ctor argument is `tailWhenUnderwater.initial_anim` (0xCB8 `lwz r26,0xa08(r1)` is stored at 0xD84 -> 0x20(r1)
+and 0xDB0 -> 0x38(r1); 0xa28 = tailWhenUnderwater_Dark.initial_anim is never read). All other 55 stack-argument sources match the port's own matching build.
+
+Not marked, arms still untaken (union of every gren drivers + gren6b, build with markers on; line:arm of the gcno lines):
+UpdateBeamTrace 32C4 (99.9% objdiff): 3934:0 (direction not normalisable), 3939:1 + 3958:1 (mTraceState 1/2/3 on entry), 3971:1/3974:1 (vertical beam),
+3990:1 (hitId with no actor), 3995:0 (immune vulnerability: needs an immune dynamic solid in the beam). Plan: force_ret CALLS with a
+`CVector3f::CanBeNormalized(` stub list [0,1,1] / [1,0,1] / [1,1,0] and mTraceState writes; hitId arms need FORCE_INNER on `RayDynamicIntersection` writing `hitId`.
+GrapplePull 24A8 (95%): msg 3 default (statecall 3), CanBeNormalized false (4163), `distance > lastDistance` (4168) with GetBackwardInput > 0.1 (4169/4175)
+(needs a moving player or `$P` writes). Dead B1F4 (99.7%): 15 arms (guardian / ing-possessed / dying-state arms). UpdateEffects C2EC: 12 arms.
+IssueDeathBodyCommand 6358 (85%): 11 arms and not matching; AcceptScriptMsg FD2C (99.4%): ~48 arms. CGrenchler ctor 11580: the 60x/14 arms are
+member-init EH edges; 539:1/2 and 639:1/8 still to check. Dtors / __sinit rows not touched.
