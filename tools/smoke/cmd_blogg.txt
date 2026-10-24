@@ -40,10 +40,10 @@
 @f2100 damage e0028009a 400 0 light
 @f2250 damage e002800df 400 0 missile; obj e002800df
 @f2350 objs blogg; status
-@f2400 damage u05e9 10
-@f2410 obj u05e9
-@f2420 obj u05e9
-@f2430 obj u05e9
-@f2440 fsm u05e9 Taunt
-@f2450 kill u05e9
+@f2400 damage e00280249 10
+@f2410 obj e00280249
+@f2420 obj e00280249
+@f2430 obj e00280249
+@f2440 fsm e00280249 Taunt
+@f2450 kill e00280249
 @f2550 objs blogg
