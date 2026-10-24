@@ -3920,6 +3920,7 @@ void CGrenchler::GrappleLoop(CStateManager& mgr, EStateMsg msg, float dt) {
   BodyController()->CommandMgr().ClearLocomotionCmds();
 }
 
+// @ fn_27_32C4
 void CGrenchler::UpdateBeamTrace(CStateManager& mgr) {
   static const CMaterialFilter skSolidFilter = CMaterialFilter::MakeIncludeExclude(
       CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor));
@@ -4123,6 +4124,7 @@ void CGrenchler::PullPlayer(float dt, CStateManager& mgr, const CVector3f& targe
   }
 }
 
+// @ fn_27_24A8
 void CGrenchler::GrapplePull(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(kGA_GrapplePull, msg);
   BodyController()->SetLocomotionType(pas::kLT_Internal12);

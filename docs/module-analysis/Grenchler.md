@@ -279,3 +279,16 @@ GrapplePull 24A8 (95%): msg 3 default (statecall 3), CanBeNormalized false (4163
 (needs a moving player or `$P` writes). Dead B1F4 (99.7%): 15 arms (guardian / ing-possessed / dying-state arms). UpdateEffects C2EC: 12 arms.
 IssueDeathBodyCommand 6358 (85%): 11 arms and not matching; AcceptScriptMsg FD2C (99.4%): ~48 arms. CGrenchler ctor 11580: the 60x/14 arms are
 member-init EH edges; 539:1/2 and 639:1/8 still to check. Dtors / __sinit rows not touched.
+
+## gren7 lane (base 7941a0ddf, 2026-10-24)
+
+Spec `tools/cov/specs/grenchler_force7.py` (force_ret CALLS + spec-local gdb hooks; run with `COV_GDB_SCRIPT=tools/cov/force_ret.py`, driver
+`grenchler_gren6c.con`, 01_swamp_entrance), merged with the natural + forced drivers of earlier slices.
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| UpdateBeamTrace 32C4 | 35/35 minus 2 static-init guard EH edges (`static const CMaterialFilter` x2, arm 3/4 = the init-throws edge, dead) | forced (CALLS): trace state 1 on entry; `CVector3f::CanBeNormalized` stub lists [0,1,1] (0x33B0 beam target on the horn), [1,0,1] (0x3634), [1,1,0] (0x364C); hook `$g7_mode 1` writes hitId = version-63 id after the loop rays (0x37C8 `beq`: no actor); `$g7_mode 2` hitId = this + GetVulnerability rax high half = 3 (0x385C `cmpwi 3`: immune -> state 3) |
+| GrapplePull 24A8 | 28/28 | forced (CALLS): msg 3 default; CanBeNormalized stub 0 (no pull); mLastHornPosition := player (moved away) with mBackwardInput 0 / 0.5; mLastHornPosition far with mBackwardInput 0.5; PullPlayer stubbed |
+
+Asm: UpdateBeamTrace matches (objdiff 99.9%); GrapplePull (95%): only regalloc/scheduling, an extra pair of stack stores and the const vs non-const
+`GetPlayerTargetPosition` symbol (same body); x90c_80 = mTrackPlayer (0x25FC). No behaviour differences.
