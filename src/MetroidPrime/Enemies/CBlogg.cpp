@@ -1368,6 +1368,7 @@ void CBlogg::MoveToPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_65F4
 void CBlogg::GrabBall(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
