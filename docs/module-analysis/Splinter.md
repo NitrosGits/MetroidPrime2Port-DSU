@@ -188,3 +188,11 @@ in the owned frame, between the token +0x4f8 and the mDamageVulnerability events
 (chain 8: token 0x5555583d1e30, then delete 0x5555583d1e30, both from the single_ptr). So it is the heap pointee of
 CPatterned::mIngScanInfo, not an unrelated call. The spec checks only in-object offsets (0..0xa38), so this
 reclassification is offline only and does not mark ABA0.
+
+B9DC visor arm (offline, `tools/scan_splinter_props.py`, 2026-10-25): the engaged-mVisorEffect copy (0xBA30/0xBA3C)
+is live. Of the 61 SPTR placements in all paks, exactly one is Mega: Metroid2.pak 07_temple_mothlordsanctuary
+layer 2, eid 0x080200ff (the Alpha Splinter), spit 0x0e7759cd, visor 0x31e4c76e (a PART present on the disc). The
+other 60 have mega 0 and an invalid visor. Path: SLdrSplinter.inc case 0x496f191b, then
+CSplinter.cpp:2690 (LoadSplinter passes megaSplinterSpitVisorEffect), then :304-305 (`mSpit = SSpitData(...)` copies into the
+disengaged optional, the copy that run 2 hit inline), then :217 (an id != invalid gives an engaged token). B9DC stays unmarked:
+to exercise the arm, load that room's layer 2 (the run 2 force kept visor invalid).
