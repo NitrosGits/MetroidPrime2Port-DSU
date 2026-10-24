@@ -1,5 +1,41 @@
 # Tryclops REL (module 81): analysis notes
 
+Current: **59/59 behaviour bodies** (gui1 completion below; counts in the
+historical survey are not the current marker inventory).
+
+## gui1 completion (base c4b67e741, 2026-10-24)
+
+The actual remaining-marker inventory has three rows, all branchless and
+**100% in fresh upstream objdiff**: GetSearchPath0, IsListening8, and static
+initializer5028. No missing gameplay algorithm or new executable fix.
+
+- `GetSearchPath`: actual native virtual call on a live Cyclops; return pointer
+  equals the address of its mPathFindSearch member. Retail0..8 adds the member
+  offset and returns. Marker in header above the inline definition.
+- `IsListening`: actual native virtual call returns true; retail8..10 returns1.
+- `__sinit_CTryclops_cpp`: compiler-generated initialization, not a fake callable
+  function. Retail5028..5124 constructs Normal(1,effect0,ignoreRadius0) PowerBomb
+  weapon5 override;5128..5130 sets bomb offset(0,0,-0.3); remaining stores bind
+  the12 triggers and18 states. Native oracle verifies the override fields, bomb
+  offset, mouth locator and **every name/resolved PMF target** in both tables.
+  Root locator pointer is optimized out on host; source constant Skeleton_Root
+  verified statically (not claimed runtime coverage). Native method-pointer
+  representation differs from retail's three-word member pointers, as expected.
+
+Fixture `tools/cov/specs/gui1_tryclops.py` with driver
+`tools/drivers/gui1_tryclops.con`, force_ret, coverage build, Sanctuary
+`1baa96c2,42c85ad9`,800 frames. Final **1/1 call**, all getter/static oracles
+PASS, explicit normal inferior exit, zero Python/fixture/runtime/console errors,
+caught or reach-stub. No getter retention flag is needed (virtual functions
+already have addressable bodies). Static initializer evidence includes fresh
+exact100% match rather than demanding a separate runtime function with its
+retail spelling.
+
+Gates: host/coverage links0 FAILED; manifest rc0; upstream configure+ninja and
+checksum **87 files OK**; source minus markers identical to base PC/non-PC;
+whitespace clean. Review against c4b67e741:3 further MARK,14 total for gui1.
+No unchanged-family sweep. Evidence `/tmp/opencode/reports/gui1-evidence/`.
+
 The module's code is upstream's `src/MetroidPrime/Enemies/CTryclops.cpp` (CTryclops) plus the
 `SLdrTryclops` loader. Retail asm: `build/G2ME01/Tryclops/asm/MetroidPrime/Enemies/CTryclops.s`.
 Per-function table: `Tryclops_functions.tsv`. In game: the Sanctuary Fortress Cyclops, which sucks
