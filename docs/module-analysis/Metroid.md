@@ -108,3 +108,35 @@ Never ran: Leash, CanBeIngPossessed, all of CBabyMetroid (no spawn known).
 
 Marked by met2: SwarmRemove, WallHang, GetGrowthStage, AttachToTarget, PreDamageSpacePirate,
 DetachFromTarget, SetPatrolDest, SelectTarget, GetOrigin (Metroid 33/167 marked).
+
+
+## Coverage (met3)
+
+Profile: the 9 met2 natural runs plus forced.con, forced2.con and patrol.con (12 runs, `build-port-cov`, `--module Metroid`).
+
+| function | result |
+|---|---|
+| `fn_40_34D4` PreventWorldCollisions | ALL-ARMS (16/16 branches), marked. |
+
+Not marked (untaken lines, source lines of CMetroid.cpp):
+
+| function | untaken |
+|---|---|
+| IsSuckingEnergy | 280:2/4 (frozen while sucking; needs an entangled metroid mid-suck) |
+| IsPirateValidTarget | 286:1/4 (null healthInfo, dead) |
+| IsPlayerInFluid | 293:1/2,296:1/2 (fluid id invalid / water cast fail) |
+| IsTargetGettingSucked | 309:2/4,312:0/2 |
+| CanStartAttack | 338:1/2,339:1/2,340:1/2,342:1/4,343:0/2,344:0/2,348:0/4,348:2/4 |
+| FindNearestTarget | 780:1/6,780:4/6,781:0/2,790:0/2 |
+| UpdateAttackTarget | 813:1/2,815:0/2,817:0/2,817:1/2,821:1/2,822:0/2 |
+| RestoreSolidCollision | 974:0/2 (mag == 0) |
+| ComputeMorphingPlayerSuckUpPos | 1075:1/4,1075:3/4 |
+| ComputeSuckPiratePosRot | 1089:1/2 (actor null) |
+| Attack | 1175:3/4,1207:4/6,1208:0/2,1226:1/2 |
+| ShouldReleaseFromTarget | 1243:0/2,1248:1/4,1248:3/4,1249:1/2,1250:2/4,1251:0/2,1254:0/2,1256:0/2 |
+| TelegraphAttack | 1277:3/4,1286:2/3,1296:1/2,1300:1/2,1301:1/2,1302:1/2,1304:1/2,1324:0/2 |
+| SetupExitFaceHugDirection | 1396:1/2 (mAttackState == 3) |
+| SuckEnergyFromTarget | 1455:1/2,1456:1/2,1467:1/2,1468:1/2,1469:1/2,1473:0/2,1499:0/2 |
+| ComputeSuckPlayerPosRot | 1521-1524 (mostly throw edges), 1549-1554 Unmorphing case |
+
+These need player state (fluid, screw attack, hurtful safe zone, death, unmorph while latched) or pirate-target kills; not yet driven or forced.

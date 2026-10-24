@@ -52,7 +52,7 @@ offset	fn	size	class	name	slice	what	marker
 0304C	fn_40_304C	C4	B	DisableSolidCollision	met1	upstream body (CMetroid)	yes
 03110	fn_40_3110	388	B	RestoreSolidCollision	-	upstream body (CMetroid)	no
 03498	fn_40_3498	3C	H	~reserved_vector	-	rstl weak copy	no
-034D4	fn_40_34D4	1F0	B	PreventWorldCollisions	-	upstream body (CMetroid)	no
+034D4	fn_40_34D4	1F0	B	PreventWorldCollisions	-	upstream body (CMetroid)	yes
 036C4	fn_40_36C4	3F8	B	SetupExitFaceHugDirection	-	upstream body (CMetroid)	no
 03ABC	fn_40_3ABC	5C	H	CRayCastResult	-	CRayCastResult weak copy	no
 03B18	fn_40_3B18	2B4	B	DetachFromTarget	met2	upstream body (CMetroid)	yes

@@ -937,6 +937,7 @@ CVector3f CMetroid::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
   return result;
 }
 
+// @ fn_40_34D4
 void CMetroid::PreventWorldCollisions(float dt, CStateManager& mgr) {
   const float size = 2.f * mCollisionPrimitive.GetSphere().GetRadius();
   if (IsSuckingEnergy()) {
