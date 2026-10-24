@@ -1515,6 +1515,7 @@ CVector3f CSporbBase::GetLocatorPosition() const {
   return connectXf.GetTranslation();
 }
 
+// @ fn_76_6ABC
 void CSporbBase::UpdateShooting(float dt, CStateManager& mgr) {
   if (mShooting && mShotTimer >= mTimeBetweenShots) {
     CSporbTop* top = TCastToPtr< CSporbTop >(mgr.ObjectById(mTopId));
@@ -1535,8 +1536,15 @@ void CSporbBase::UpdateShooting(float dt, CStateManager& mgr) {
                                              (mMaxTimeBetweenAttacks - mMinTimeBetweenAttacks) *
                                                  mgr.Random()->Float());
         mShotsFired = 0;
+#ifdef TARGET_PC
+        // 0x6C14 subtracts the byte bounds as signed; 0x6C30 psq_st f31,0x18(r1),1,qr2
+        // saturates the spread to u8. Bounds and Random()->Float() limit it to [-255,255].
+        const float spread = static_cast< float >(mMaxShots - mMinShots) * mgr.Random()->Float();
+        mShotsInBurst = mMinShots + CCast::ToUint8(rstl::max_val(0.f, spread));
+#else
         mShotsInBurst = mMinShots + CCast::ToUint8(static_cast< float >(mMaxShots - mMinShots) *
                                                    mgr.Random()->Float());
+#endif
         mShooting = false;
         x88c_ = true;
         x85c_ = 0.f;
@@ -1617,13 +1625,20 @@ CVector3f CSporbBase::GetTopHeadPosition(CStateManager& mgr) {
   return GetTranslation();
 }
 
+// @ fn_76_6390
 void CSporbBase::UpdateAim(CStateManager& mgr) {
   const CTransform4f inverse = GetTransform().GetQuickInverse();
   const CVector3f aimTarget = mAimTarget;
   const CVector3f localAim = inverse * aimTarget;
   const CVector3f direction = localAim.AsNormalized();
   const float angle = GetAimAngle(mgr);
+#ifdef TARGET_PC
+  // 0x6458/0x645C: fcmpo 120,absDegrees; bge selects absDegrees, including unordered.
+  // rodata FC = 57.295776, 100 = 120. The unordered scale must decay all four leans.
+  const float scale = rstl::min_val(CMath::AbsF(57.295776f * angle), 120.f) / 120.f;
+#else
   const float scale = rstl::min_val(120.f, CMath::AbsF(57.295776f * angle)) / 120.f;
+#endif
   const CVector3f flat(direction.GetX(), direction.GetY(), 0.f);
   const CVector2f lean =
       CVector2f(CVector3f::Dot(CVector3f::Forward(), flat), CVector3f::Dot(CVector3f::Left(), flat))

@@ -267,3 +267,115 @@ execute. Natural below means normal execution after the stated driver/capture se
   no ASM lines (upstream file, so the explicit all-tag check above is the applicable one).
 - Optional UpdateShooting / UpdateAim remain unmarked in this slice. No whole-module sweep
   or unrelated-family runs; no shared-code changes or temporary production probes.
+
+## sporb4: UpdateShooting fn_76_6ABC / UpdateAim fn_76_6390 (2026-10-24)
+
+**Both marked.** Complete retail block audits (0x6ABC–0x6F6C and 0x6390–0x6820).
+Two TARGET_PC corrections: saturate a negative burst-size spread before the host u8 cast;
+preserve an unordered angle in UpdateAim's scale clamp. The older UpdateAim survey above
+missed the latter operand-order difference. Non-PC source remains identical, except markers.
+
+### Shooting block audit
+
+| retail block | verified behaviour |
+|---|---|
+| 0x6ABC–0x6B0C | Prologue; shooting byte at 0x887 must be set. 0x6B04 `fcmpo timer,interval`, 0x6B08 `cror eq,gt,eq`, 0x6B0C `bne`: ordered **>=**, so NaN in either timer skips firing. Every skip reaches 0x6F38, not the epilogue. |
+| 0x6B10–0x6B5C | Both child lookups and checked casts run; top must exist, and projectile must exist unless guardian byte 0x9ac is set. |
+| 0x6B60–0x6B8C | Shooting=true; top state=5 (Fire), optional projectile state=8 (Fire); shot timer=rodata C4=0. |
+| 0x6B90–0x6BC8 | Interval = timerScale*(min+(max-min)*Random.Float); byte shot count increment at 0x6BB8 wraps before unsigned comparison to burst count. Below count skips only the burst-reset block. |
+| 0x6BCC–0x6C58 | Same interpolation for attack interval, shot count=0. 0x6C14 `subf r0,r6,r4` is signed maxShots-minShots; 0x6C1C `xoris 0x8000` plus rodata 108=4503601774854144 converts it to float. 0x6C30 `psq_st f31,0x18(r1),1,qr2` saturates/truncates the random spread to u8, then adds minShots and stores a byte. Shooting=false, x88c=true, x85c=0. The PC lower clamp restores that saturation for reversed bounds. |
+| 0x6C5C–0x6CCC | Compute top head and world locator even for guardian/no-spawner. Guardian skips needle generation. 0x6CC0/0x6CC4 `clrlwi ...,6` masks both editor ids to 26 bits; `TEditorId::operator!=` does the same. |
+| 0x6CD0–0x6D38 | GenerateScriptObject; null entity skips only needle setup/sound. Otherwise look-at transform, locator translation, retain initial velocity magnitude. |
+| 0x6D3C–0x6DFC | Two Next()%2 tests: even selects +1, odd -1. Each variance uses a separate Float; multiply by rodata 110=0.017453292 for radians. |
+| 0x6E00–0x6E74 | Build RotateZ(yaw), RotateX(pitch), multiply **X*Z**, then set velocity to spread*(speed*look-forward). |
+| 0x6E78–0x6F08 | ProcessSoundEvent via vtable 0x78; sound at 0x892, C0=1, C8=0.1, F8=1000, C4=0, zero channel/segment/flags, priority=20, volume=127, camera distance, top-head location, next area, mgr, true. |
+| 0x6F0C–0x6F6C | Send Attack (`lis 0x4154; addi 0x544b` = 0x4154544b), invalid unique id, None=-1; common timer += dt at 0x6F38–0x6F40; epilogue. |
+
+The spread is always finite and in [-255,255]: both bounds are bytes, and CRandom16::Float
+is a 16-bit integer times 1.52590222E-5, in [0,1]. No upper clamp or NaN policy is needed here.
+For normal ordered bounds the sum is <=maxShots; for reversed bounds it is minShots.
+
+### Aim block audit and all 17 clamp selections
+
+| retail block | verified behaviour |
+|---|---|
+| 0x6390–0x6438 | Prologue, quick inverse of actor transform, transform copied aim target, normalize 3D direction, GetAimAngle. |
+| 0x643C–0x6484 | rodata FC=57.295776 converts angle to degrees; fabs; rodata 100=120. 0x6458 `fcmpo f3,f0` compares **120,absDegrees**, 0x645C `bge` selects absDegrees, including unordered. Correct PC form is `min_val(absDegrees,120)/120`, not reversed arguments. |
+| 0x6488–0x64F0 | Flatten normalized direction to z=0; dot Forward and Left, normalize 2D result. 0x64E8/0x64EC/0x64F0 requires ordered forward component>=0; unordered enters back half. |
+| 0x64F4–0x6654 | Forward half (through 0x65AC) / back half: scale*abs(component); target>0 gates smoothing, else decay; always decay opposite lean. Stores at 0x7ec/0x7f0. Exact clamps below. |
+| 0x6658–0x667C | Finish forward decay; 0x6674/0x6678/0x667C requires ordered left component>=0; unordered enters right half. |
+| 0x6680–0x67F0 | Left half (through 0x6738) / right half as above; stores at 0x7f4/0x7f8. |
+| 0x67F4–0x6820 | Epilogue, no extra updates. |
+
+Let `t` be the desired positive lean, `o` the old lean, and `d`=rodata 104=0.025.
+Each table entry is the fcmpo offset (the following instruction is the branch).
+
+| direction | t>0 / t>o gates (`ble` skips) | rising clamp | falling clamp | zero-target decay | opposite decay |
+|---|---|---|---|---|---|
+| forward | 0x6500 / 0x650C | 0x6520 | 0x6540 | 0x656C | 0x6598 |
+| back | 0x65BC / 0x65C8 | 0x65DC | 0x65FC | 0x6628 | 0x6654 |
+| left | 0x668C / 0x6698 | 0x66AC | 0x66CC | 0x66F8 | 0x6724 |
+| right | 0x6748 / 0x6754 | 0x6768 | 0x6788 | 0x67B4 | 0x67E0 |
+
+- Rising: compare `o+d,t`; `bge` selects t, else o+d. Upstream `min_val(o+d,t)`
+  reverses the comparison but is equivalent on every reachable input: t>0 and t>o have
+  already rejected unordered t/o; t is bounded by 1, so o+d cannot become NaN.
+- Falling: compare `t,o-d`; `bge` selects t (also unordered), else o-d. The existing
+  `max_val(t,o-d)` is exact, including a NaN previous lean snapping to finite t.
+- Both decays: compare `0,o-d`; `bge` selects zero (also unordered), else o-d.
+  Existing `max_val(0,o-d)` is exact. An unordered angle makes every t unordered and
+  all four leans decay; an unordered direction likewise takes the nonpositive-target paths.
+- The scale clamp plus these 16 clamps account for asmcheck's 17 extra conditions.
+  Signed-zero selection cannot differ in a rising clamp, where t>0.
+
+### Reproducible coverage and branch evidence
+
+Final source: UpdateShooting **51/51 lines, 26/26 gcov edges**; UpdateAim **38/38 lines,
+28/28 edges**, both **ALL-ARMS**. Template clamp edges are additionally checked by the
+explicit below/above-target, decay, and NaN output assertions, rather than inferred from
+the enclosing function's gcov total. **68/68 scenarios and assertions passed**, no forcing
+or restore errors. One 1800-frame run, normal exit, caught/reach-stub=0; all driver commands OK.
+
+```sh
+tools/games_running.sh --wait
+BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py SECS=300 tools/cov/force.sh \
+  tools/cov/specs/sporb_shoot_aim_arms.py /tmp/opencode/sporb4-final-arms \
+  3dfd2249,0e_swamp_hall --con tools/drivers/sporb4_hall.con --fast --frames 1800
+python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/sporb4-final-arms/gcov \
+  --module Sporb --fn fn_76_6ABC --fn fn_76_6390
+```
+
+All numbered cases below are **forced (`force_ret.py`, sporb_shoot_aim_arms.py)**. Each call
+restores its inputs and both children's state; emitted needles remain real game objects.
+Aim cases override only GetAimAngle's return while executing the real inverse, vector
+normalizations, sign gates, clamps and stores. Natural hall updates run between driver steps.
+
+| branch family | evidence |
+|---|---|
+| Shooting disabled / timer below / above / equal; unordered timer or interval | #0/#1, natural fire, #58; #2/#3 assert no fire and common timer tail |
+| Top absent/present; projectile absent/present; guardian exception | #4/#5/#6 and natural hall children; #6 asserts guardian-without-projectile fires |
+| Burst complete/incomplete and byte wrap | #9 and ordinary shots; #10 count=255 wraps before comparison |
+| Spread negative/zero/positive | #11 reversed 4/2 bounds yields 4; #9 equal bounds yields 2; #59 bounds 2/10, seed=1 (third RNG=10113) yields 3 |
+| Guardian / masked invalid spawner / generation null / needle | #6/#7/#8/#12–19 plus natural hall fire |
+| Pitch and yaw parity | Eight controlled RNG seeds #12–19 plus natural needles; gcov both outcomes for each |
+| Aim quadrants, both signs and both smoothing directions | #20–47: all quadrants, old lean 0/.7/.71/1/NaN; rising unclamped/clamped, falling clamped/unclamped/NaN |
+| Zero/unordered angle and active/opposite decay | #25–26/#32–33/#39–40/#46–47 decay from .5; #60–67 repeat all quadrants at zero angle with old .01/NaN, assert zero |
+| Axes/zero components, angle below/over clamp | #48–55: all four axes, 60/240 degrees, old .5/0 |
+| Negative angle; unordered direction | #56 uses -60 degrees; #57 NaN target x, all leans decay |
+
+### Gates and follow-up
+
+- Host and coverage links: **0 FAILED**. Manifest `gen_files_cmake.py --check`: **rc 0**.
+  TARGET_PC strip-diff vs e62dbcda8: **CLEAN**, ignoring markers. Configure+ninja plus
+  explicit dtk hash check: **87 files OK**; All 77.98% fuzzy / 54.39% matched,
+  Game Code 94.14% / 63.29%.
+- Explicit all-tag asmcheck: one BRANCH finding for UpdateAim (27 asm conditions vs 10
+  syntactic C++ conditions); the 17 template clamps audited above explain the difference.
+  UpdateShooting: no findings. `retail_diff` (both ids): **no findings**.
+- `review_decomp_diff.sh e62dbcda8`: two MARK lines, justified by the full audits and final
+  ALL-ARMS run; no ASM lines (upstream file, checked explicitly above).
+- Shared follow-up: `include/Kyoto/Basics/CCast.hpp:72` does not emulate the retail u8
+  saturation. The already-marked ResetShotTimers (`CSporbBase.cpp:1596`) also calls it on
+  a signed bound difference; retail 0x69F4 is the same `psq_st ...,1,qr2`. That caller and
+  shared conversion remain outside this two-function slice; neither is needed for the
+  local UpdateShooting correction. No other functions marked or unrelated runs performed.

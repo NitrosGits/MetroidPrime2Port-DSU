@@ -1,0 +1,11 @@
+# Ordinary (unmorphed) Sporb shooting in 0e_swamp_hall; force_ret scenarios run at first Fire.
+@f300 god 1
+@f305 tp 10.2 -55.2 42.5
+@f340 send u048e Alert; fsm u048e WakeUp
+@f400 fsm u048e Attack
+@f404 fsm u048e Fire
+@f900 fsm u048e Attack
+@f904 fsm u048e Fire
+@f1400 fsm u048e Attack
+@f1404 fsm u048e Fire
+@f1700 obj u048e; status
