@@ -111,3 +111,9 @@ placements: `tools/scan_darktrooper_props.py` (firesMissiles=1 only hive01 L6 e0
   - PreRenderAllViewports fn_12_2F80, 4/4: primed and not primed, both `forced (darktrooper_dtr11_rend.gdb)`.
   - GetScannableObjectInfo fn_12_549C, 10/10: dead, inactive, transitioning (state != 3), transitioning in state 3, plain, no scan info: all `forced (darktrooper_dtr11_rend.gdb)`. Bit positions: mAlive x420_40, mActive x20_80, mTransitioning xa9c_40 (asmcheck NOPOS/BIT note: the field comment gives no position).
 - Not marked: GetSearchPath fn_12_0 (`addi r3, r3, 0x7c0` getter; the retail offset of mPathFindSearch is not checked against the header), LoadDarkTrooper 12C (1161:1/2, the null-model return, not forced), ctor 5A48 (untaken 154:7-8/9, 155:2/3, 161:1/2, 166:0/2, 167: sleeper-animation, no-scan-info and flotsam arms; 178 are exception-cleanup edges), dtor 5520 (180 cleanup edges), DeliverCommand instances (1199:0/2, 1202:1/2). These need their own slice.
+
+## dtr12
+
+- Ragdoll crash (dtr11 render/scan force run): force-script artifact, not a port bug. gdb convenience vars `$al/$si/$dl/...` write real x86 registers; scripts renamed to `$v...` (726587f29). Natural run and a no-breakpoint control never crash.
+- fn_12_0 GetSearchPath marked: asm `addi r3,r3,0x7c0; blr`; 0x7c0 = CHECK_SIZEOF(CPatterned) = offset of first CDarkTrooper member mPathFindSearch.
+- Not done (still unmarked): LoadDarkTrooper null-model arm, ctor 5A48 sleeper/no-scan/flotsam arms, dtor 5520, DeliverCommand instances 1199/1202.
