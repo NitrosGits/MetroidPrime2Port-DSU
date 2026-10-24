@@ -386,10 +386,12 @@ CActor* CSplinter::FindGrabbed(CStateManager& mgr) const {
   return TCastToPtr< CActor >(mgr.ObjectById(mSac.mGrabbedId));
 }
 
+// @ fn_74_334C
 bool CSplinter::IsGrabbingPlayer(CStateManager& mgr) const {
   return mSac.mGrabbedId != kInvalidUniqueId && mSac.mGrabbedId == mgr.GetPlayer(0)->GetUniqueId();
 }
 
+// @ fn_74_1FE8
 void CSplinter::DetachMorphBall(CStateManager& mgr) {
   CPlayer* player = mgr.GetPlayer(0);
   if (player->GetAttachedActorId() == GetUniqueId()) {
@@ -844,6 +846,7 @@ void CSplinter::ExplodeSac(CStateManager& mgr) {
   }
 }
 
+// @ fn_74_2BCC
 void CSplinter::Rise(CStateManager& mgr, EStateMsg msg, float dt) {
   if (HasUnpoppedSac(mgr)) {
     if (msg == kStateMsg_Activate) {

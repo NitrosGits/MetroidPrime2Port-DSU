@@ -57,7 +57,7 @@ offset	fn	size	class	name	slice	what	marker
 01EF0	fn_74_1EF0	68	H	fn_74_1EF0	-	unnamed (weak copy / template instance)	no
 01F58	fn_74_1F58	54	H	fn_74_1F58	-	unnamed (weak copy / template instance)	no
 01FAC	fn_74_1FAC	3C	B	CSplinter::SSacData::~SSacData	splin1	upstream body (CSplinter)	yes
-01FE8	fn_74_1FE8	6C	B	CSplinter::DetachMorphBall	-	upstream body (CSplinter)	no
+01FE8	fn_74_1FE8	6C	B	CSplinter::DetachMorphBall	spl2	upstream body (CSplinter)	yes
 02054	fn_74_2054	80	B	CSplinter::AttachMorphBall	-	upstream body (CSplinter)	yes
 020D4	fn_74_20D4	84	B	CSplinter::Retreat	-	upstream body (CSplinter)	yes
 02158	fn_74_2158	54	B	CSplinter::GrabMBall	-	upstream body (CSplinter)	yes
@@ -81,7 +81,7 @@ offset	fn	size	class	name	slice	what	marker
 0298C	fn_74_298C	90	B	CSplinter::DropAndExplode	-	upstream body (CSplinter)	yes
 02A1C	fn_74_2A1C	64	B	CSplinter::Drop	splin1	upstream body (CSplinter)	yes
 02A80	fn_74_2A80	14C	B	CSplinter::KillSelf	-	upstream body (CSplinter)	yes
-02BCC	fn_74_2BCC	1CC	B	CSplinter::Rise	-	upstream body (CSplinter)	no
+02BCC	fn_74_2BCC	1CC	B	CSplinter::Rise	spl2	upstream body (CSplinter)	yes
 02D98	fn_74_2D98	A4	B	CSplinter::GrabSac	-	upstream body (CSplinter)	no
 02E3C	fn_74_2E3C	1B4	B	CSplinter::Descend	-	upstream body (CSplinter)	no
 02FF0	fn_74_2FF0	5C	H	CRayCastResult::CRayCastResult	-	weak copy / template instance	no
@@ -91,7 +91,7 @@ offset	fn	size	class	name	slice	what	marker
 03298	fn_74_3298	24	B	CSplinter::ReachedTop	-	upstream body (CSplinter)	yes
 032BC	fn_74_32BC	1C	B	CSplinter::GrabbedIt	-	upstream body (CSplinter)	yes
 032D8	fn_74_32D8	74	B	CSplinter::ReachedSac	-	upstream body (CSplinter)	no
-0334C	fn_74_334C	30	B	CSplinter::IsGrabbingPlayer	-	upstream body (CSplinter)	no
+0334C	fn_74_334C	30	B	CSplinter::IsGrabbingPlayer	spl2	upstream body (CSplinter)	yes
 0337C	fn_74_337C	4C	B	CSplinter::GetGrabbed	-	upstream body (CSplinter)	no
 033C8	fn_74_33C8	50	B	CSplinter::FindGrabbed	-	upstream body (CSplinter)	no
 03418	fn_74_3418	4C	B	CSplinter::SacPresent	-	upstream body (CSplinter)	no
