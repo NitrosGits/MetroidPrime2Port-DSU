@@ -228,6 +228,7 @@ void CRezbit::AddToRenderer(const CStateManager& mgr) const { CPatterned::AddToR
 // @ fn_53_6DF8
 void CRezbit::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_53_6E18
 void CRezbit::Render(const CStateManager& mgr) const {
   const CTransform4f savedTransform = GetTransform();
   CTransform4f& transform = const_cast< CTransform4f& >(GetTransform());
