@@ -677,6 +677,7 @@ bool CBlogg::IsChargeOver(CStateManager& mgr, const CTriggerData& data) const {
   return mChargeOver != 0;
 }
 
+// @ fn_7_5E80
 bool CBlogg::CanMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (mMeleePursuitEnded || mChargeOver) {
     return false;
