@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """Mocked-gdb regression test for tools/cov/specs/db3_sldr_dtor.py - no game boot, no gdb.
 
-The success criterion is a strict consecutive ordered four-member chain (retail order), with the same
-root, inferior, thread and frame context inside the chain, frame bounds re-read per member, and no chain
-left pending.  This suite drives the real fixture code with a fake gdb:
+An invocation is owned by guarded frame equality (the LoadDestructibleBarrier frame, gdb Frame
+equality, plus inferior/thread, root and rsp/rbp), NOT by pc or frame level: the pc advances between the
+four member calls.  Success is exactly the ordered four members inside one owned frame.  OFFLINE ONLY:
+this suite drives the real fixture code with a fake gdb whose frames carry an id and a validity flag.
 
-  complete chain        one ordered four-member chain                                       -> OK
-  reused root, twice    two complete chains at the same root                                -> OK, completed=2
-  interleaved partial   chain A (2 members) then chain B with all four: union covers 4       -> FAIL
-  changed context       the third member arrives with another loader pc                     -> FAIL
-  out of order          members 0, then 2                                                   -> FAIL
-  duplicate             member 0 twice                                                      -> FAIL
-  pending at exit       only three members of the chain                                     -> FAIL
-  outside frame         one member's root above the loader rbp                              -> FAIL
-  wrong caller          the frame above the inlined dtor is not LoadDestructibleBarrier      -> FAIL
-  foreign member call   an inlined frame that is not this dtor: not attributed              -> FAIL(no chain)
-  no install            breakpoint creation fails                                           -> FAIL
+  complete, changing pcs   one chain, pcs/levels change every member                             -> OK
+  two invocations         two chains in one frame id (different pcs), then another frame         -> OK, 3
+  different frame         third member's loader frame has another id                              -> FAIL
+  stale frame             the frame object goes invalid mid-chain                                 -> FAIL
+  interleaved             chain A partial (other frame), chain B full: union covers 4             -> FAIL
+  recursive               a member 0 of a nested frame starts while the outer chain pends         -> FAIL
+  wrong thread / inferior third member on another thread or inferior                              -> FAIL
+  different root / bounds same frame, other root or rsp/rbp                                       -> FAIL
+  out of order, duplicate, incomplete, pending at exit, outside frame, wrong caller, foreign
+  member call, no install                                                                         -> FAIL
 
     python3 tools/cov/specs/db3_sldr_dtor_selftest.py
 """
@@ -47,6 +47,10 @@ class FakeGdb(types.ModuleType):
         self.loader_pc, self.inline_pc = loader_pc, inline_pc
         self.inferior, self.thread = inferior, thread
         self.member_this = ROOT
+        self.frame_id = ('loader', RBP)
+        self.level = 0
+        self.valid = True
+        self.frames = []
         self.exited = []
         outer = self
 
@@ -85,9 +89,10 @@ class FakeGdb(types.ModuleType):
     def newest_frame(self):
         outer = self
 
-        class _F:
-            def __init__(self, name, pc, older=None):
+        class _F:  # equality is by frame id across calls, like gdb's frame_id
+            def __init__(self, name, pc, level, fid, older=None, valid=True):
                 self._name, self._pc, self._older = name, pc, older
+                self._level, self.fid, self.valid = level, fid, valid
 
             def name(self):
                 return self._name
@@ -95,15 +100,31 @@ class FakeGdb(types.ModuleType):
             def pc(self):
                 return self._pc
 
+            def level(self):
+                return self._level
+
             def older(self):
                 return self._older
+
+            def is_valid(self):
+                return self.valid
+
+            def __eq__(self, other):
+                return hasattr(other, 'fid') and self.fid == other.fid
+
+            def __hash__(self):
+                return hash(self.fid)
 
             def read_register(self, reg):
                 return outer.rsp if reg == 'rsp' else outer.rbp
 
-        loader = _F(outer.loader, outer.loader_pc)
-        inline = _F(outer.inline, outer.inline_pc, loader)
-        return _F('member', outer.inline_pc, inline)
+        loader = _F(outer.loader, outer.loader_pc, outer.level + 2, outer.frame_id,
+                    valid=outer.valid)
+        inline = _F(outer.inline, outer.inline_pc, outer.level + 1, ('inline', outer.frame_id),
+                    loader)
+        frame = _F('member', outer.inline_pc, outer.level, ('member', outer.inline_pc), inline)
+        outer.frames.append(loader)
+        return frame
 
     def parse_and_eval(self, expr):
         if expr.strip() == '$rdi':
@@ -155,44 +176,134 @@ def main():
     binary = tmp / 'metroid_prime2_port'
     binary.write_bytes(b'stand-in binary for the db3 mocked-gdb test\n')
 
+    def adv(g, n=1):
+        g.loader_pc += 0x10 * n
+        g.inline_pc += 0x10 * n
+
+    def advancing_chain(g, root=ROOT, indices=range(len(MEM))):
+        for i in indices:
+            adv(g)
+            g.level = i % 3          # the member frame depth changes too
+            member(g, i, root)
+
     out = tmp / 'complete'
     g = FakeGdb(str(binary))
     ns = load(g, str(out))
-    chain(g)
+    advancing_chain(g)
     ns['summarize']()
     l = line(out)
-    scenario('complete chain', 'status=OK' in l and 'completed_chains=1' in l
-             and 'pending=None' in l, l)
+    scenario('complete, changing pcs', 'status=OK' in l and 'completed_chains=1' in l
+             and 'pending=None' in l and len({f.pc() for f in g.frames}) == 4, l)
 
     out = tmp / 'reused'
     g = FakeGdb(str(binary))
     ns = load(g, str(out))
-    chain(g)
-    chain(g, root=ROOT)          # same root and same frame context, a second loader invocation
+    advancing_chain(g)
+    advancing_chain(g)           # a second invocation reusing the same frame id and root
+    g.frame_id = ('loader', RBP - 0x2000)
+    g.rsp, g.rbp = RSP - 0x2000, RBP - 0x2000
+    advancing_chain(g, root=g.rbp - 0x670)   # a third, in another frame
     ns['summarize']()
     l = line(out)
-    scenario('reused root, twice', 'status=OK' in l and 'completed_chains=2' in l, l)
+    scenario('three invocations', 'status=OK' in l and 'completed_chains=3' in l, l)
+
+    out = tmp / 'diffframe'
+    g = FakeGdb(str(binary))
+    ns = load(g, str(out))
+    advancing_chain(g, indices=(0, 1))
+    g.frame_id = ('loader', RBP + 0x500)
+    advancing_chain(g, indices=(2, 3))
+    ns['summarize']()
+    l = line(out)
+    scenario('different frame', 'status=FAIL' in l and 'different frame' in l
+             and 'completed_chains=0' in l, l)
+
+    out = tmp / 'stale'
+    g = FakeGdb(str(binary))
+    ns = load(g, str(out))
+    advancing_chain(g, indices=(0, 1))
+    first = g.frames[0]
+    first.valid = False          # the frame that owns the pending chain went stale
+    advancing_chain(g, indices=(2, 3))
+    ns['summarize']()
+    l = line(out)
+    scenario('stale frame', 'status=FAIL' in l and 'stale or invalid frame' in l
+             and 'completed_chains=0' in l, l)
+
+    out = tmp / 'invalidnow'
+    g = FakeGdb(str(binary))
+    ns = load(g, str(out))
+    advancing_chain(g, indices=(0, 1))
+    g.valid = False              # the current loader frame is invalid
+    advancing_chain(g, indices=(2, 3))
+    ns['summarize']()
+    l = line(out)
+    scenario('invalid current frame', 'status=FAIL' in l and 'stale or invalid frame' in l, l)
 
     out = tmp / 'interleaved'
     g = FakeGdb(str(binary))
     ns = load(g, str(out))
-    member(g, 0, ROOT)
-    member(g, 1, ROOT)
-    chain(g, root=ROOT - 0x40)   # another chain, its union covers all four
+    advancing_chain(g, indices=(0, 1))
+    g.frame_id = ('loader', RBP + 0x500)
+    advancing_chain(g)           # another frame's full chain; the union covers all four
     ns['summarize']()
     l = line(out)
-    scenario('interleaved partial', 'status=FAIL' in l and 'changed context' in l, l)
+    scenario('interleaved', 'status=FAIL' in l and 'different frame' in l, l)
 
-    out = tmp / 'context'
+    out = tmp / 'recursive'
     g = FakeGdb(str(binary))
     ns = load(g, str(out))
-    member(g, 0)
-    member(g, 1)
-    g.loader_pc = 0xdeabcd0      # the third member reports another call site
-    member(g, 2)
+    advancing_chain(g, indices=(0, 1))
+    g.frame_id = ('loader', RBP - 0x3000)     # nested activation starts while the outer chain pends
+    g.rsp, g.rbp = RSP - 0x3000, RBP - 0x3000
+    advancing_chain(g, root=g.rbp - 0x670)
+    g.frame_id, g.rsp, g.rbp = ('loader', RBP), RSP, RBP
+    advancing_chain(g, indices=(2, 3))        # the outer chain resumes: already dropped
     ns['summarize']()
     l = line(out)
-    scenario('changed context', 'status=FAIL' in l and 'changed context' in l, l)
+    scenario('recursive', 'status=FAIL' in l and 'different frame' in l, l)
+
+    for what, setter in (('thread', lambda g: setattr(g, 'thread', 2)),
+                         ('inferior', lambda g: setattr(g, 'inferior', 2))):
+        out = tmp / ('wrong' + what)
+        g = FakeGdb(str(binary))
+        ns = load(g, str(out))
+        advancing_chain(g, indices=(0, 1))
+        setter(g)
+        advancing_chain(g, indices=(2, 3))
+        ns['summarize']()
+        l = line(out)
+        scenario('wrong ' + what, 'status=FAIL' in l and 'different inferior/thread' in l
+                 and 'completed_chains=0' in l, l)
+
+    out = tmp / 'diffroot'
+    g = FakeGdb(str(binary))
+    ns = load(g, str(out))
+    advancing_chain(g, indices=(0, 1))
+    advancing_chain(g, root=ROOT - 0x40, indices=(2, 3))
+    ns['summarize']()
+    l = line(out)
+    scenario('different root', 'status=FAIL' in l and 'different root' in l, l)
+
+    out = tmp / 'diffbounds'
+    g = FakeGdb(str(binary))
+    ns = load(g, str(out))
+    advancing_chain(g, indices=(0, 1))
+    g.rsp -= 0x20
+    advancing_chain(g, indices=(2, 3))
+    ns['summarize']()
+    l = line(out)
+    scenario('different bounds', 'status=FAIL' in l and 'different frame bounds' in l, l)
+
+    out = tmp / 'incomplete'
+    g = FakeGdb(str(binary))
+    ns = load(g, str(out))
+    advancing_chain(g)
+    advancing_chain(g, indices=(0, 1))    # a second invocation that stops after two members
+    ns['summarize']()
+    l = line(out)
+    scenario('incomplete second chain', 'status=FAIL' in l and 'still pending at exit' in l
+             and 'completed_chains=1' in l, l)
 
     out = tmp / 'order'
     g = FakeGdb(str(binary))
@@ -215,7 +326,7 @@ def main():
     out = tmp / 'pending'
     g = FakeGdb(str(binary))
     ns = load(g, str(out))
-    chain(g, indices=(0, 1, 2))
+    advancing_chain(g, indices=(0, 1, 2))
     ns['summarize']()
     l = line(out)
     scenario('pending at exit', 'status=FAIL' in l and 'still pending at exit' in l

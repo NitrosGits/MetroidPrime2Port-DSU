@@ -21,15 +21,21 @@
 # so the four member dtors run with gdb showing an inlined `SLdrDestructibleBarrier::~SLdrDestructibleBarrier`
 # frame whose caller is LoadDestructibleBarrier; the out-of-line copy never ran.
 #
-# EVIDENCE ACCOUNTING (strict, offline revision - NOT run on any boot; the boot ran the earlier version,
-# archived as db3_sldr_dtor.executed.py): the success criterion is a **strict consecutive ordered chain**
-# of the four member destructors, not the union of members seen per root.  Within one chain the root
-# (member `this` minus the member offset), the inferior, the thread and the frame context (loader/inlined
-# pc pair) must be identical, the members must arrive in the retail order with no duplicate and no gap,
-# the loader frame bounds are re-read and logged on EVERY member, and the chain must complete.  A changed
-# context, an unreadable frame/register/context, a duplicate, an out-of-order member or a chain still
-# pending at exit is a failure.  The per-root member aggregate is kept only as a diagnostic named
-# `root_groups`; it is never a success criterion.
+# EVIDENCE ACCOUNTING (strict, OFFLINE ONLY - NEVER EXECUTED on any boot; the boot ran an earlier
+# version, archived unchanged as db3_sldr_dtor.executed.py, whose summary address-merged the three raw
+# member quadruples into "invocations=1" and therefore proves no per-invocation completeness).  This
+# revision owns an invocation by GUARDED FRAME EQUALITY: the physical LoadDestructibleBarrier frame that
+# holds the inlined destructor, compared with gdb Frame equality (frame id = stack address + function,
+# stable while the pc advances), plus the (inferior, thread) pair, the loader rsp/rbp and the root
+# (member this minus member offset).  The pc of the loader/inlined frames and the frame LEVEL are NOT
+# identity: the pc advances between the four member-destructor calls of one invocation, and levels can
+# shift.  A member whose frame is a different frame, is invalid/stale, or has another thread/inferior,
+# root, rsp or rbp than the pending chain refuses and drops that chain (a member with index 0 then starts
+# a new pending chain; recursion is the same case).  Per-invocation completeness = exactly the ordered
+# four member calls inside one owned frame, no duplicate, gap or foreign member, and none pending at exit.
+# A new chain can only start with member 0, so back-to-back invocations that reuse one frame id are
+# separate completed chains.  The per-root aggregate is a diagnostic named `root_groups`, never a
+# success criterion.
 #
 #   BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/specs/db3_sldr_dtor.py tools/cov/force.sh \
 #     tools/cov/specs/db3_sldr_dtor.py /tmp/opencode/db3_rN 42b935e4,08_sand_casualpirates \
@@ -171,35 +177,39 @@ class MemberBp(gdb.Breakpoint):
                     % (self.label, loader_name, LOADER))
             return
         root = member_this - self.offset
-        key = (root, inferior, thread, loader_pc, inline_pc)
+        try:
+            level = loader.level()
+        except Exception:
+            level = None
+        # owned frame: the loader frame object itself; pcs/levels are logged, never compared
+        owner = {'frame': loader, 'ctx': (inferior, thread), 'root': root, 'rsp': rsp, 'rbp': rbp}
         in_bounds = rsp <= root <= rbp
         state['root_groups'][root] = state['root_groups'].get(root, 0) + 1
         if not in_bounds:
             problem('%s: root 0x%x is not inside the loader frame [%s,%s]'
                     % (self.label, root, fmt(rsp), fmt(rbp)))
-        log('member %d %s: member this=0x%x root=0x%x inferior=%d thread=%d loader_pc=%s '
-            'inline_pc=%s rsp=%s rbp=%s in_bounds=%s'
-            % (self.index, self.label, member_this, root, inferior, thread, fmt(loader_pc),
-               fmt(inline_pc), fmt(rsp), fmt(rbp), in_bounds))
+        log('member %d %s: member this=0x%x root=0x%x inferior=%d thread=%d loader_level=%s '
+            'loader_pc=%s inline_pc=%s rsp=%s rbp=%s in_bounds=%s'
+            % (self.index, self.label, member_this, root, inferior, thread, level,
+               fmt(loader_pc), fmt(inline_pc), fmt(rsp), fmt(rbp), in_bounds))
         pending = state['pending']
         if pending is None:
             if self.index != 0:
                 problem('chain start out of order: first member was %s (index %d)'
                         % (self.label, self.index))
                 return
-            state['pending'] = {'key': key, 'root': root, 'members': [self.label], 'next': 1,
-                                'bounds': [in_bounds]}
+            state['pending'] = dict(owner, members=[self.label], next=1, bounds=[in_bounds])
             log('chain %d started at root 0x%x with %s'
                 % (len(state['completed']) + 1, root, self.label))
             return
-        if key != pending['key']:
-            problem('chain %d changed context before completing: root 0x%x/members %s vs new %s '
-                    '(root 0x%x)' % (len(state['completed']) + 1, pending['root'],
-                                     pending['members'], self.label, root))
+        why = owner_mismatch(pending, owner)
+        if why:
+            problem('chain %d refused (%s): pending root 0x%x/members %s vs new %s (root 0x%x)'
+                    % (len(state['completed']) + 1, why, pending['root'], pending['members'],
+                       self.label, root))
             state['pending'] = None
             if self.index == 0:
-                state['pending'] = {'key': key, 'root': root, 'members': [self.label], 'next': 1,
-                                    'bounds': [in_bounds]}
+                state['pending'] = dict(owner, members=[self.label], next=1, bounds=[in_bounds])
             return
         if self.index != pending['next']:
             problem('chain %d: %s arrived at position %d, expected index %d (duplicate or '
@@ -216,6 +226,25 @@ class MemberBp(gdb.Breakpoint):
             log('chain %d COMPLETE at root 0x%x: %s'
                 % (len(state['completed']), pending['root'], pending['members']))
             state['pending'] = None
+
+
+def owner_mismatch(pending, owner):
+    """None when `owner` is the pending chain's guarded frame, else the reason it is not."""
+    old, new = pending['frame'], owner['frame']
+    try:
+        if not (old.is_valid() and new.is_valid()):
+            return 'stale or invalid frame'
+        if not old == new:
+            return 'different frame'
+    except Exception:
+        return 'frame comparison failed'
+    if pending['ctx'] != owner['ctx']:
+        return 'different inferior/thread'
+    if pending['root'] != owner['root']:
+        return 'different root'
+    if (pending['rsp'], pending['rbp']) != (owner['rsp'], owner['rbp']):
+        return 'different frame bounds'
+    return None
 
 
 def summarize():
@@ -279,7 +308,7 @@ try:
     for i, (label, sym, off) in enumerate(MEMBERS):
         MemberBp(label, sym, off, i)
     state['installed'] = 1
-    log('db3: fixture installed (binary %s, strict ordered chain over %d members, out-of-line %s '
+    log('db3: fixture installed (binary %s, frame-owned ordered chain over %d members, out-of-line %s '
         'informational)' % ((_sha or '?')[:12], len(MEMBERS), DTOR[:40]))
 except Exception as e:
     problem('breakpoint install failed: %r' % e)

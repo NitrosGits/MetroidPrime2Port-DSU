@@ -114,9 +114,10 @@ Smoke family proposal `dbar`: area 42b935e4,08_sand_casualpirates, `tools/driver
 
 **Boots: 2 of 2 used (r1, r2); no launch remains.** r1 ran an earlier fixture whose out-of-line-entry
 probe never fired while the member calls already showed the inlined dtor frame; that run's executed
-fixture was **not archived**, so r1 is log-only evidence (`/tmp/opencode/db3_r1`). r2 is the accepted run.
-**The binary is not frozen**: the evidence records binary `da8ea578...`, the later rebuilt coverage binary
-is `a61ff0db...`; only the recorded hash identifies the measured build.
+fixture was **not archived**, so r1 is log-only evidence (`/tmp/opencode/db3_r1`). r2 is the run whose
+gcda/log back the marker. **The binary is not frozen and was not archived**: the evidence records binary
+`da8ea578...`, the later rebuilt coverage binary is `a61ff0db...`; only the recorded hash identifies the
+measured build. The gcno cwd is the port coverage build (`build-port-cov`), not the upstream matching build.
 
 Retail fn_13_BA0 (`__dt__23SLdrDestructibleBarrierFv`, weak, `CScriptDestructibleBarrier.s:855-890`):
 0xBB8 `mr. r30,r3` / 0xBBC `beq` **null-this guard**; then the four member destructors **in this order** -
@@ -135,18 +136,25 @@ dtors run with an inlined `SLdrDestructibleBarrier::~SLdrDestructibleBarrier` fr
 `LoadDestructibleBarrier`; the out-of-line 0xde1b20 copy never ran. gcov: header line 97, blocks 5/5,
 `execution_count 3`.
 
-**Qualified accounting.** The raw r2 log shows exactly **three ordered member quadruples** in the order
-above, each under the inlined-dtor -> loader frames. The *executed* fixture's summary grouped member
-calls by root and printed `invocations=1` (the loader frame is reused across the spawns), so it does
+**Qualified accounting.** The raw r2 log (`db3_r2_diag.log`, 12 member-dtor lines) shows **three ordered
+member quadruples**, all at root `0x7fffffffbb90` (the loader's stack slot is reused by each spawn), each
+under the inlined-dtor -> loader frames. The *executed* fixture (`db3_sldr_dtor.executed.py`, archived
+unchanged) merged members by root address and printed `invocations=1`; that summary was wrong and does
 **not** prove per-invocation completeness, and its `in_frame` flag was cached from the first member with
-no `rsp`/`rbp` logged. The strict-chain fixture now in the tree is an **offline revision that has not
-run** (the executed version is archived unchanged as `/tmp/opencode/db3_evidence/db3_sldr_dtor.executed.py`):
-it requires a consecutive, ordered four-member chain with identical root/inferior/thread/frame context,
-re-reads and logs the loader frame bounds on **every** member, fails on a changed context, duplicate,
-out-of-order or pending chain, and keeps the per-root aggregate only as a diagnostic named `root_groups`.
-12 mocked-gdb scenarios pass (complete chain, reused same root twice, interleaved partial chain whose
-union covers four members, changed context, out-of-order, duplicate, pending at exit, outside frame,
-wrong caller, foreign member call, no invocation, no install).
+no `rsp`/`rbp` logged. What the executed run does show: gcov `execution_count 3`, blocks 5/5, and three
+ordered quadruples read off the raw log by hand.
+
+The fixture now in the tree (`db3_sldr_dtor.py`) is an **offline revision, never executed**. It owns an
+invocation by **guarded frame equality** - the LoadDestructibleBarrier frame compared with gdb Frame
+equality (frame id, stable while the pc advances), plus inferior/thread, root and loader rsp/rbp; the
+pcs and the frame level are logged but are not identity (they change between the four member calls). A
+member in a different, stale or invalid frame, another thread/inferior, root or bounds refuses the chain;
+per-invocation completeness is exactly the ordered four members in one owned frame, no duplicate, gap or
+foreign member, none pending at exit. `tools/cov/specs/db3_sldr_dtor_selftest.py` (19 mocked-gdb
+scenarios, offline only) covers one chain with changing pcs/levels, three invocations (frame id reused,
+then another frame), different/stale/invalid/interleaved/recursive frames, wrong thread/inferior,
+different root/bounds, incomplete, out-of-order, duplicate, pending, outside-frame, wrong caller,
+foreign call, no install. Passing the selftest says nothing about the game.
 
 Live paths: the member chain ran on every invocation; the retail null-this and delete-flag arms are
 unreachable for this object (single caller-owned stack lifetime, non-null `lea`, never deleted, no
