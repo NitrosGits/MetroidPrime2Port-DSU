@@ -492,6 +492,7 @@ void CRezbit::Strafe(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_5C90
 void CRezbit::BecomeRezzed(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
