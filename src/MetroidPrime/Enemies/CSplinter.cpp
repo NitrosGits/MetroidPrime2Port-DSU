@@ -229,6 +229,7 @@ CSplinter::SSpitData::SSpitData(float f1, CAssetId projectile, float f2, const C
   mProjectileInfo.Token().Lock();
 }
 
+// @ fn_74_B280
 CSplinter::CSplinter(TUniqueId uid, const rstl::string& name, CEntityInfo& info,
                      const CTransform4f& xf, const CModelData& modelData,
                      const CPatternedInfo& patternedInfo, CAssetId stateMachine2, float f1,
@@ -509,6 +510,7 @@ bool CSplinter::HasValidJumpTarget(CStateManager& mgr, const CTriggerData& data)
   return mJump.mHasValidTarget;
 }
 
+// @ fn_74_1600
 void CSplinter::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                                 float dt) {
   switch (type) {
@@ -852,6 +854,7 @@ void CSplinter::KillSelf(CStateManager& mgr) {
   ExplodeSac(mgr);
 }
 
+// @ fn_74_44F8
 void CSplinter::ExplodeSac(CStateManager& mgr) {
   if (mSac.mHoldingSac == true && mSac.mGrabbedId != kInvalidUniqueId &&
       mParticle.mEffect.valid() == true) {
@@ -1250,6 +1253,9 @@ void CSplinter::RecoverCollision(CStateManager& mgr) {
                                     0.f);
 }
 
+// @ fn_74_BF74 (DeliverCommand<CBCTauntCmd>, objdiff 100%)
+// @ fn_74_C040 (DeliverCommand<CBCStepCmd>, objdiff 100%)
+// @ fn_74_C15C (DeliverCommand<CBCMeleeAttackCmd>, objdiff 100%)
 template < typename T >
 void CSplinter::DeliverCommand(EStateMsg msg, pas::EAnimationState state, const T& cmd) {
   switch (msg) {
@@ -1324,6 +1330,7 @@ void CSplinter::AddEvadeCheck(const CVector3f& start, const CVector3f& end, bool
   mEvadeChecks.push_back(check);
 }
 
+// @ fn_74_4A88
 bool CSplinter::CanEvade(CStateManager& mgr, EEvadeDirection direction) {
   float forwardY = GetTransform().Get11();
   float forwardX = GetTransform().Get01();
@@ -1576,6 +1583,7 @@ void CSplinter::TurnToPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_74_5B3C
 bool CSplinter::IsAttackBlocked(CStateManager& mgr) const {
   CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
@@ -1592,6 +1600,7 @@ bool CSplinter::IsAttackBlocked(CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_74_5C70
 CScriptAIHint* CSplinter::FindHideHint(CStateManager& mgr) const {
   CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
   CScriptAIHint* result = nullptr;
@@ -1620,6 +1629,7 @@ CScriptAIHint* CSplinter::FindHideHint(CStateManager& mgr) const {
   return result;
 }
 
+// @ fn_74_5E6C
 bool CSplinter::HasClearPathTo(CStateManager& mgr, const CVector3f& point) const {
   static CMaterialFilter filter =
       CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_AIBlock));
@@ -1630,6 +1640,7 @@ bool CSplinter::HasClearPathTo(CStateManager& mgr, const CVector3f& point) const
                                                   filter);
 }
 
+// @ fn_74_579C
 bool CSplinter::AttackPointIsLegal(CStateManager& mgr, const CTriggerData& data) const {
   if (mgr.GetPlayer(0)->GetCurrentAreaId() != GetCurrentAreaId()) {
     return false;
@@ -2075,6 +2086,7 @@ void CSplinter::InitPathArea(CStateManager& mgr) {
       mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea);
 }
 
+// @ fn_74_71C0
 void CSplinter::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   mUnknown8d8 = 0.f;
   switch (msg) {
@@ -2265,6 +2277,7 @@ void CSplinter::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_74_6E64
 void CSplinter::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -2483,6 +2496,7 @@ void CSplinter::ApplyAmbushVelocity(bool playerMorphed) {
   mJump.mIsHighJump = true;
 }
 
+// @ fn_74_9F74
 void CSplinter::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Create:
@@ -2643,6 +2657,7 @@ void CSplinter::Render(const CStateManager& mgr) const {
 // @ fn_74_AB98
 bool CSplinter::IsMega() const { return mSpit; }
 
+// @ fn_74_118
 CEntity* LoadSplinter(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSplinter sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrSplinter.inc"

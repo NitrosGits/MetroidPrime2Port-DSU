@@ -84,6 +84,7 @@ inline SLdrSplinter::SLdrSplinter()
 #endif
 }
 
+// @ fn_74_B84 (objdiff 100%)
 inline SLdrSplinter::~SLdrSplinter() {}
 
 #endif
