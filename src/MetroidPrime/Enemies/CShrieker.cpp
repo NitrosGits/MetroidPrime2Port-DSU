@@ -138,6 +138,7 @@ CShriekerData::CShriekerData(
 , mDodgePercentage(dodgePercentage)
 , mVisibilityChangeTime(visibilityChangeTime) {}
 
+// @ fn_69_62C0
 CShrieker::CShrieker(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      const CTransform4f& xf, const CModelData& modelData,
                      const CPatternedInfo& patternedInfo, const CActorParameters& actorParams,
@@ -211,6 +212,7 @@ void CShrieker::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_69_51E0
 void CShrieker::Think(float dt, CStateManager& mgr) {
   for (int i = 0; i < 2; ++i) {
     if (CElementGen* gen = mEffectGens[i].get()) {
@@ -410,6 +412,7 @@ void CShrieker::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, E
   }
 }
 
+// @ fn_69_4DA8
 void CShrieker::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   bool callBase = !mBuried;
   mKnockBackController.EnableAnimReaction(CKnockBackMgr::kAR_Hurled, !mAlive);
@@ -557,6 +560,7 @@ bool CShrieker::GetHeightAboveMesh(float& height) const {
   return false;
 }
 
+// @ fn_69_1AA4
 void CShrieker::FaceTarget(CStateManager& mgr, float dt) {
   if (const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId))) {
     CVector3f direction = target->GetTranslation() - GetTranslation();
@@ -740,6 +744,7 @@ void CShrieker::ApplyMeleeDamage(CStateManager& mgr) {
   }
 }
 
+// @ fn_69_3024
 bool CShrieker::IsFacingTarget(CStateManager& mgr) const {
   if (const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId))) {
     const CTransform4f lctr = GetLctrTransform(mRootSegId);
@@ -1149,6 +1154,7 @@ bool CShrieker::LeavePatrol(CStateManager& mgr, const CTriggerData& data) const 
   return mTargetId != kInvalidUniqueId || CPatterned::InDetectionRange(mgr, data);
 }
 
+// @ fn_69_317C
 bool CShrieker::CloseToStart(CStateManager&, const CTriggerData&) const {
   const CVector3f delta = mStartPosition - GetTranslation();
   bool result = false;
@@ -1186,6 +1192,7 @@ bool CShrieker::ShouldFire(CStateManager& mgr, const CTriggerData&) const {
   return result;
 }
 
+// @ fn_69_2D64
 bool CShrieker::ShouldMelee(CStateManager& mgr, const CTriggerData&) const {
   bool result = false;
   const CTeamAiRole* role = CScriptTeamAiMgr::GetTeamAiRole(mgr, mTeamAiMgrId, GetUniqueId());
@@ -1242,6 +1249,7 @@ bool CShrieker::ShouldDodge(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_69_2A50
 bool CShrieker::InMaxRange(CStateManager& mgr, const CTriggerData&) const {
   if (const CActor* target = TCastToPtr< CActor >(mgr.ObjectById(mTargetId))) {
     const CVector3f delta = target->GetTranslation() - GetTranslation();
@@ -1275,6 +1283,7 @@ void CShrieker::DeliverCommand(EStateMsg msg, pas::EAnimationState state, const 
   }
 }
 
+// @ fn_69_154
 CEntity* LoadShrieker(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrShrieker sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrShrieker.inc"

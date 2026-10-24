@@ -86,3 +86,27 @@ UpdateTargetPosition, FindTarget, InMaxRange, ShouldDodge (ray hits nothing), Sh
 ShouldMelee, PathShagged, PlayerLeashReached, LeavePatrol, CloseToStart, PathFind, ReactToDamage
 (weapon-type arms), the CShrieker ctor, LoadShrieker. Uncovered: SetTeamMemberTarget,
 GetTranslationCopy, PlayerLeavesProximity.
+
+## gren9 lane (base ed440706f, 2026-10-24)
+
+Direct-call forcing (force_ret CALLS, `tools/cov/specs/shrieker_force9.py`, driver `shrieker_force9.con`, greatbridge, 700 frames, run with
+`COV_GDB_SCRIPT=tools/cov/force_ret.py`; hook `$g9_h 1` makes GetHeightAboveMesh report 2.0) and loader-local writes (`shrieker_force9b.py`, force.py `loc:`), merged with
+`tools/drivers/shrieker_greatbridge.con` + `shrieker_forced.con` natural/forced runs (cov build; rebuild first, older gcda do not match).
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| IsFacingTarget 3024 | 2/2 | forced (mTargetId := invalid) |
+| InMaxRange 2A50 | 6/6 | forced (no target; mChasing 0/1 natural) |
+| FaceTarget 1AA4 | 14/14 | forced (no target / target = self: zero direction / player with GetHeightAboveMesh stubbed 0, 1, or 2.0 and mChasing 0/1) |
+| ShouldMelee 2D64 | 14/14 | forced (GetTeamAiRole stub null / Initial / other, StartAttack stub 0/1, team id invalid / valid, mMeleeRangeSquared 0 / 1e9, no target, timer) |
+| CloseToStart 317C | 10/10 | forced (mStartPosition moved 1000 in x / y / z / not) |
+| Think 51E0 | 20/20 | forced (mBuried 1, mShriekTriggered 0, scripted proximity / alert 0/0, 1/0, 1/1) |
+| KnockBack 4DA8 | 14/14 | forced (mAlive 0, mDeathKnockBackStarted 1; CPatterned::KnockBack stubbed) |
+| LoadShrieker 154 | 15/17 | forced (model data invalid; the 2 untaken arms are the unwind edge of the `LdrToDamageVulnerability` temporary on the `CShriekerData` call) |
+| CShrieker ctor 62C0 | 36/37 | forced (pART / meleeEffect invalid at the loader; the 1 untaken arm is the `mEffectDescs(2, ...)` vector allocation edge) |
+
+Also marked: GetSearchPath 0 / IsListening 8 (header, 100%, `return`s), the implicit CShriekerData copy ctor 6D08 (header, 100%). The asmcheck tool does not find the
+fn_69 markers of these bodies (`MISSING ... no C++ definition cites it`): its marker-to-body pairing fails on this file, the markers sit directly above each definition.
+Left unmarked, with their untaken arms: FindTarget 4970 (the `distance < bestDistance` compare inside the one-player loop, 3 arms: dead with a single player), ShouldDodge 2B20 (1 arm: a
+non-empty near list), ApplyMeleeDamage 24F4 (a non-actor in the near list), DeflectMissiles 1C2C (6), DoUserAnimEvent 333C (2), PathFind 465C (3), Render 5024 (3),
+ReactToDamage 5554 (14), AcceptScriptMsg 5988 (~15), ApplySeparation 146C (4).
