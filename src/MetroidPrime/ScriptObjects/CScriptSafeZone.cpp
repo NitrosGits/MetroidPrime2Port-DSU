@@ -1,4 +1,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptSafeZone.hpp"
+#ifdef TARGET_PC
+#include "port_console.h"
+#endif
 
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/CRandom16.hpp"
@@ -573,6 +576,7 @@ void CScriptSafeZone::SpawnImpactEffect(const CVector3f& position, float scale) 
 
 // Guessed name. Ray against a Z-aligned cylinder; the entry point is skipped when the ray starts
 // inside the circle.
+// @ fn_66_2F58
 static bool RayCylinderIntersection(const CVector3f& center, const CVector3f& start,
                                     const CVector3f& dir, float& t, CVector3f& hit, float radius,
                                     float halfHeight, float maxDist) {
@@ -615,6 +619,63 @@ static bool RayCylinderIntersection(const CVector3f& center, const CVector3f& st
   return false;
 }
 
+#ifdef TARGET_PC
+// Host: `var <id> sz.cyl <n>` runs RayCylinderIntersection (static, and no shipped zone is a cylinder) on one of eleven hand-made rays through a cylinder
+// of radius 2, half height 2 at the origin: 1 moving away from outside, 2 missing the circle, 3 entering (hit at t0), 4 above the cylinder, 5 beyond maxDist,
+// 6 from inside (leaves at t1), 7 from inside with the exit beyond maxDist, 8 maxDist 0 (unbounded), 9 inside the circle but above, 10 below it,
+// 11 from inside with maxDist 0. The answer is
+// 1000 * hit + 10 * t (whole units).
+bool CScriptSafeZone::PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current) {
+  CScriptSafeZone* zone = dynamic_cast< CScriptSafeZone* >(&ent);
+  if (zone == nullptr) {
+    return false;
+  }
+  // `var <id> sz.obst 1`: ModifyObstruction (delta 0, so nothing changes) with the area's path area taken away for the call (an area without a nav mesh).
+  if (strcmp(name, "sz.obst") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    current = -1;
+    if (value != nullptr && *value == 1 && mgr != nullptr) {
+      CGameArea::CPostConstructed* post = mgr->World()->Area(zone->GetCurrentAreaId())->GetPostConstructed();
+      CPFArea* saved = post->mPathArea;
+      post->mPathArea = nullptr;
+      zone->ModifyObstruction(*mgr, 0, zone->mZoneType);
+      post->mPathArea = saved;
+      current = 0;
+    }
+    return true;
+  }
+  if (strcmp(name, "sz.cyl") != 0) {
+    return false;
+  }
+  current = -1;
+  if (value == nullptr) {
+    return true;
+  }
+  static const struct {
+    float start[3];
+    float dir[3];
+    float maxDist;
+  } kRays[] = {{{10.f, 0.f, 0.f}, {1.f, 0.f, 0.f}, 100.f},  {{10.f, 5.f, 0.f}, {-1.f, 0.f, 0.f}, 100.f},
+               {{-10.f, 0.f, 0.f}, {1.f, 0.f, 0.f}, 100.f}, {{-10.f, 0.f, 10.f}, {1.f, 0.f, 0.f}, 100.f},
+               {{-10.f, 0.f, 0.f}, {1.f, 0.f, 0.f}, 5.f},   {{0.f, 0.f, 0.f}, {1.f, 0.f, 0.f}, 100.f},
+               {{0.f, 0.f, 0.f}, {1.f, 0.f, 0.f}, 1.f},     {{-10.f, 0.f, 0.f}, {1.f, 0.f, 0.f}, 0.f},
+               {{0.f, 0.f, 10.f}, {1.f, 0.f, 0.f}, 100.f},   {{-10.f, 0.f, -10.f}, {1.f, 0.f, 0.f}, 100.f},
+               {{0.f, 0.f, 0.f}, {1.f, 0.f, 0.f}, 0.f}};
+  if (*value < 1 || *value > 11) {
+    return true;
+  }
+  const auto& ray = kRays[*value - 1];
+  float t = 0.f;
+  CVector3f hit = CVector3f::Zero();
+  const bool result =
+      RayCylinderIntersection(CVector3f::Zero(), CVector3f(ray.start[0], ray.start[1], ray.start[2]),
+                              CVector3f(ray.dir[0], ray.dir[1], ray.dir[2]), t, hit, 2.f, 2.f, ray.maxDist);
+  current = (result ? 1000 : 0) + static_cast< int >(t * 10.f);
+  return true;
+}
+#endif
+
+// @ fn_66_2D14
 void CScriptSafeZone::HandleProjectile(CActor& actor, CStateManager& mgr) {
   if (CGameProjectile* proj = TCastToPtr< CGameProjectile >(actor)) {
     if (rstl::find< rstl::list< TUniqueId >::const_iterator >(
@@ -657,6 +718,7 @@ void CScriptSafeZone::InhabitantExited(CActor& actor, CStateManager& mgr) {
   UpdatePlayerInside(actor, false, mgr);
 }
 
+// @ fn_66_28A0
 void CScriptSafeZone::UpdatePlayerInside(CActor& actor, bool inside, CStateManager& mgr) {
   if (TCastToPtr< CGameCamera >(actor) &&
       TCastToPtr< CGameCamera >(actor)->GetCameraManager(mgr).GetCurrentCameraId(true) ==
@@ -691,6 +753,7 @@ bool CScriptSafeZone::ShouldSendScriptMsgs(CActor& actor, CStateManager& mgr) co
   return TCastToPtr< CPlayer >(actor) != nullptr;
 }
 
+// @ fn_66_2474
 void CScriptSafeZone::RenderDarkVisorSpot(const CStateManager& mgr) const {
   if (mCurrentInfo->x10_) {
     (*mCurrentInfo->x10_)->Load(GX_TEXMAP0, CTexture::kCM_Repeat);
@@ -727,6 +790,7 @@ void CScriptSafeZone::RenderDarkVisorSpot(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_66_2008
 void CScriptSafeZone::ApplyRenderEffect(CStateManager& mgr) {
   bool inside = HasInhabitant(
       mgr.CameraManager(mgr.MaskUIdNumPlayers(mgr.mCurrentRenderPlayer->GetUniqueId()))
@@ -810,6 +874,7 @@ void CScriptSafeZone::UpdateObstruction(CStateManager& mgr, bool enable) {
   }
 }
 
+// @ fn_66_1C3C
 void CScriptSafeZone::ModifyObstruction(CStateManager& mgr, int delta, int type) {
   const float radiusSq = mObstructionRadius * mObstructionRadius;
   const bool obstruction = type != 0;
@@ -939,4 +1004,10 @@ extern "C" void RELMain() { SetRelLoaderFunctionToLoader(); }
 
 // @ fn_66_2C
 extern "C" void RELExit() { SetSSafeZone_FuncPtrs(nullptr); }
+#endif
+
+#ifdef TARGET_PC
+namespace {
+const bool sSafeZoneConsoleVars = PortConsole::RegisterVar(&CScriptSafeZone::PortConsoleVar);
+} // namespace
 #endif

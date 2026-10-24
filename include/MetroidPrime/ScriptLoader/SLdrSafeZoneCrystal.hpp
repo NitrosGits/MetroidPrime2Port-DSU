@@ -84,6 +84,7 @@ inline SLdrSafeZoneCrystal::SLdrSafeZoneCrystal()
 #endif
 }
 
+// @ fn_66_6408 (objdiff 100%)
 inline SLdrSafeZoneCrystal::~SLdrSafeZoneCrystal() {}
 
 #endif

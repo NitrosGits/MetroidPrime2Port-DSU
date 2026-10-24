@@ -1,0 +1,39 @@
+# 02_sand_sandfalls_dark area 25, second pass: dark visor on the spots, scans, shots from outside
+# the zones (impact effect, ray tests), power shots on an expanded crystal (refresh effect).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/safezone.py <out> 42b935e4,02_sand_sandfalls_dark --con <this> --fast --frames 2000
+@f300 god 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give chargeBeam 1; give unlimitedBeamAmmo 1; give darkVisor 1; give scanVisor 1
+@f310 tp -82.3 -62.0 6.0; aim 180 -5
+@f320 visor dark
+@f400 visor combat; beam light
+@f410 shoot u0473 25; shoot u0473 charged 25
+@f440 shoot u0473 25 dir 0 0 -1; shoot u04b1 25 dir 1 0 0
+@f470 beam power
+@f480 shoot u0473 25; shoot u0473 3
+@f500 shoot u0473 25; shoot u04d3 25
+@f520 beam light
+@f530 shoot u04d3; shoot u04d3 charged
+@f560 beam power
+@f570 shoot u04d3; shoot u04d3 30
+@f600 obj u04d3; obj u04d4
+@f620 scan u0473 6
+@f700 scan u04d3 6
+@f800 scan u04d3 6 200
+@f1050 scaninfo u0473; scaninfo u04d3; scaninfo u04bf
+@f1060 tp -120.6 -86.5 -11.0; visor dark
+@f1100 send u04d4 Activate
+@f1160 tp -141.1 -85.9 -10.3; aim 90 -5
+@f1200 visor combat; beam annihilator
+@f1210 shoot u04d3 30; shoot u0473 30
+@f1300 send u0473 InternalMessage0; send u0473 InternalMessage2
+@f1330 beam power
+@f1340 shoot u0473 30
+@f1400 send u0474 Decrement; send u0474 Decrement
+@f1420 tp -82.3 -75.0 5.1
+@f1500 send u0474 Increment; send u0474 Increment; send u0474 Increment
+@f1600 objs Patterned
+@f1700 tp -82.3 -62.0 6.0
+@f1900 objs SafeZone
+# sz1: RayCylinderIntersection through sz.cyl
+@f2000 var u0474 sz.cyl 1; var u0474 sz.cyl 2; var u0474 sz.cyl 3; var u0474 sz.cyl 4; var u0474 sz.cyl 5
+@f2010 var u0474 sz.cyl 6; var u0474 sz.cyl 7; var u0474 sz.cyl 8; var u0474 sz.cyl 9; var u0474 sz.cyl 10; var u0474 sz.cyl 11
+@f2020 var u0474 sz.obst 1

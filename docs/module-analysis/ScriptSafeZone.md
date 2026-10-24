@@ -67,3 +67,24 @@ Render, ModifyObstruction, LoadSafeZone, the crystal ctor, Touch, SetState, Upda
 UpdateStateTimer, UpdateRefreshEffect, UpdateEffectsVisibility, UpdateEffect,
 GetScannableObjectInfo, LoadSafeZoneCrystal. Never reached: RayCylinderIntersection (no
 cylinder zones in these areas), SpawnRefreshEffect.
+
+## sz1 lane, second pass (base 2c825a4f5, 2026-10-24)
+
+New TARGET_PC fixtures (`CScriptSafeZone::PortConsoleVar`): `var <zone> sz.cyl <1-11>` runs RayCylinderIntersection (static, inlined into HandleProjectile; no shipped zone is a cylinder) on eleven hand-made rays
+(answer 1000 * hit + 10 * t), `var <zone> sz.obst 1` runs ModifyObstruction (delta 0) with the area's path area removed for the call.
+Specs (all `42b935e4,02_sand_sandfalls_dark`; rebuild and rerun the three natural drivers first, older gcda do not match):
+`safezone_force1.py` (force.py `loc:`: valid dark-visor spot texture on every zone, one model of the first four crystals invalid), `safezone_force2.py` + `safezone_force2.con`
+(force_ret FORCE_RET on natural calls + a gdb hook for the spot texture, `TCastToPtr<CCinematicCamera>` and the `$sz_c` flag; `COV_ROOT=$PWD COV_GDB_SCRIPT=tools/cov/force_ret.py`).
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| ApplyRenderEffect 2008 | 34/34 | forced (flash timer / inside alpha +-1e6: the alpha clamps; mMobile 0/1) |
+| RenderDarkVisorSpot 2474 | 6/6 | forced (spot texture written at load; the view matrix moved onto the zone: `toSpot` zero) |
+| HandleProjectile 2D14 | 16/16 | forced (mShape := 1 cylinder / 7 unknown on natural shots) |
+| RayCylinderIntersection 2F58 | 22/22 | forced (`sz.cyl 1-11`, and HandleProjectile's cylinder arm) |
+| UpdatePlayerInside 28A0 | 10/10 | forced (mIgnoreCinematicCamera 0/1; `TCastToPtr<CCinematicCamera>` answering its argument for the call) |
+| ModifyObstruction 1C3C | 12/12 | forced (`sz.obst 1`: no path area) |
+| LoadSafeZoneCrystal 5730 | 18/18 | forced (each of the four crystal models invalid on successive crystals) |
+
+Header / loader rows marked without a run (objdiff 100%, user rule): ~SLdrSafeZoneAttributes 14A0, LoadTypedefSafeZoneAttributes 181C, ~SLdrSafeZoneFog 143C, LoadTypedefSafeZoneFog 16A4, ~SLdrSafeZone F40,
+~SLdrSafeZoneCrystal 6408, CDarkWorldInfo copy ctor B00 / dtor D80 / LoadOptionalTexture 5400, and the CDarkWorldInfo ctor 51A8 (98.6%, regalloc). Not marked: the `__sinit` row 8B18 (82%).

@@ -77,8 +77,10 @@ inline SLdrSafeZoneAttributes::SLdrSafeZoneAttributes()
 #endif
 }
 
+// @ fn_66_14A0 (objdiff 100%)
 inline SLdrSafeZoneAttributes::~SLdrSafeZoneAttributes() {}
 
+// @ fn_66_181C (objdiff 100%: the property switch ran in every zone load)
 inline void LoadTypedefSafeZoneAttributes(SLdrSafeZoneAttributes& sldrThis, CInputStream& input) {
   const int propertyCount = input.ReadUint16();
   for (int i = 0; i < propertyCount; ++i) {
@@ -195,8 +197,10 @@ inline SLdrSafeZoneFog::SLdrSafeZoneFog() : color(CColor::Green()), nearFarPlane
   colorRate = 0.0f;
 }
 
+// @ fn_66_143C (objdiff 100%)
 inline SLdrSafeZoneFog::~SLdrSafeZoneFog() {}
 
+// @ fn_66_16A4 (objdiff 100%)
 inline void LoadTypedefSafeZoneFog(SLdrSafeZoneFog& sldrThis, CInputStream& input) {
   const int propertyCount = input.ReadUint16();
   for (int i = 0; i < propertyCount; ++i) {
@@ -357,6 +361,7 @@ inline SLdrSafeZone::SLdrSafeZone()
   fogLeaving.distanceRate.y = 5000.0f;
 }
 
+// @ fn_66_F40 (objdiff 100%)
 inline SLdrSafeZone::~SLdrSafeZone() {}
 
 #endif
