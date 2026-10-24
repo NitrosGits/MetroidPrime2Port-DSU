@@ -229,3 +229,11 @@ Probes: `gren.fncall 14-24`, `gren.mhint`, `gren.jp` (tools/cov/specs/grenchler_
 | FindJumpPoint | fn_27_E634 | open: 1211:1 (PathExists fail, +10000) never taken even with far target |
 | SEffectA/SEffectD ctors | 127FC/11FCC | open: invalid-asset arms (445,450,455; 500-501) |
 | CanBeShot/GetSearchPath/SConeVulnerability ctor | 94/0/13A94 | asm-matched statically, no hpp gcov evidence |
+
+## gren4 evidence (branch decomp/gren4b)
+
+Forced runs: `tools/cov/specs/grenchler_force4.py` + `grenchler_gren4_ent.con` (merged g4n+g4a+g4f gcov).
+- MarkPathRegion E390: null region, same region, flags != 0 forced via CALLS scenarios; ALL-ARMS.
+- FindJumpPoint E634: PathExists forced to 0 (FORCE_INNER, period 1); failure arm taken.
+- SEffectA 127FC / SEffectD 11FCC: invalid-asset arms forced; remaining uncovered arms are null-new/throw edges (dead).
+- CanBeShot 94 / GetSearchPath 0 / SConeVulnerability ctor 13A94: header lines, branch-free. gcov: GetSearchPath ~9000 hits, ctor 2-3 hits, CanBeShot never called (`return true;`, asm read).

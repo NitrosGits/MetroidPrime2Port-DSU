@@ -431,6 +431,7 @@ CGrenchler::SGrappleEffect::SGrappleEffect(CAssetId id)
                                       gpSimplePool->GetObj(SObjectTag('PART', id)))
                                 : rstl::optional_object< TToken< CGenDescription > >()) {}
 
+// @ fn_27_127FC
 CGrenchler::SEffectA::SEffectA(CAssetId surfaceRings, CAssetId electric, CAssetId beam,
                                CAssetId hitFx, CAssetId eyeGlow)
 : x0_(surfaceRings)
@@ -496,6 +497,7 @@ CGrenchler::SDamageEffect::SDamageEffect(const CDamageInfo& damage, CAssetId eff
 CGrenchler::SVectorTriple::SVectorTriple()
 : mEye(CVector3f::Zero()), mHorn(CVector3f::Zero()), mHead(CVector3f::Zero()) {}
 
+// @ fn_27_11FCC
 CGrenchler::SEffectD::SEffectD(CAssetId effect)
 : mWaterSplash(effect != kInvalidAssetId
                    ? rs_new CElementGen(gpSimplePool->GetObj(SObjectTag('PART', effect)),
@@ -1180,6 +1182,7 @@ void CGrenchler::MoveToTarget(CStateManager& mgr, float dt, const CVector3f& tar
   MarkPathRegion(mgr);
 }
 
+// @ fn_27_E634
 CScriptAiJumpPoint* CGrenchler::FindJumpPoint(CStateManager& mgr, const CVector3f& target,
                                               TUniqueId exclude) {
   CScriptAiJumpPoint* best = nullptr;
@@ -1239,6 +1242,7 @@ CPFArea* CGrenchler::GetPathArea(CStateManager& mgr) const {
   return mgr.GetWorld()->GetAreaAlways(areaId).GetPostConstructed()->mPathArea;
 }
 
+// @ fn_27_E390
 void CGrenchler::MarkPathRegion(CStateManager& mgr) {
   const rstl::reserved_vector< CVector3f, 16 >& waypoints = mPathFindSearch.GetWaypoints();
   if (waypoints.size() != 0) {
