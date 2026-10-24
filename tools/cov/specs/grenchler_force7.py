@@ -124,3 +124,26 @@ _ID_SC = [
 _RESET = ([], '$this->mBodyController.mPtr->mCmdMgr.Reset()', [])
 CALLS.append(('IssueDeathBodyCommand direct calls', 'CGrenchler::PreRender(', '((CGrenchler*)$rdi)->mIsGrappleGuardian == 0',
              [x for sc in _ID_SC for x in (sc, _RESET)], 'IssueDeathBodyCommand: submerged, no death anims, hurled flyer, knock-down with/without X-damage link, ing-possessed, below the surface'))
+
+# ---- Dead B1F4: direct calls. Entrance room (non-guardian Grenchler) and guardian room (08_swamp_grappleguardian_dark).
+_DEAD = lambda msg: '$this->Dead(*$mgr, %d, 0.016f)' % msg
+_DEEP1 = ('CGrenchler::IsDeeplySubmerged(CStateManager&) const', 1)
+_NOMASS = ('CPatterned::MassiveDeath(', 0)           # MassiveDeath would remove the actor: stubbed
+_SURFACE = [('*(unsigned short*)&$this->mWaterId', '459'), ('$this->mTransform.m23', '-5000.0')]
+CALLS.append(('Dead direct calls entrance', 'CGrenchler::PreRender(', '((CGrenchler*)$rdi)->mIsGrappleGuardian == 0', [
+    # Activate, deeply submerged, no surface-ring / splash generators (retail 0xB264 / 0xB290 `cmplwi 0`)
+    ([('$this->mEffectA.mSurfaceRing.mGen.mItem', '0'), ('$this->mEffectD.mWaterSplash.mGen.mItem', '0')], _DEAD(0), [_DEEP1]),
+    # Activate with a live electric sound handle: RemoveEmitter
+    ([('$this->mElectricSfx.mID', '7')], _DEAD(0), [_DEEP1]),
+    # Update, submerged, already surfaced and faded: MassiveDeath
+    ([('$this->mSubmerged', '1'), ('$this->mSurfaced', '1'), ('$this->mDeathFadeTimer', '1000.0')], _DEAD(1), [_NOMASS]),
+    # Update, submerged, sinking for 20 s and faded: MassiveDeath
+    ([('$this->mSubmerged', '1'), ('$this->mSurfaced', '0'), ('$this->mSinkTime', '20.0'), ('$this->mDeathFadeTimer', '1000.0')] + _SURFACE,
+     _DEAD(1), [_NOMASS]),
+], 'Dead: Activate without generators, with an electric sound, Update fading out surfaced / sinking'))
+CALLS.append(('Dead direct calls guardian', 'CGrenchler::PreThink(',
+          '((CGrenchler*)$rdi)->mIsGrappleGuardian == 1 && ((CGrenchler*)$rdi)->mCollisionManager.mPtr != 0', [
+    ([('$P->mMorphBallState', '1')], _DEAD(1), [('CPatterned::Dead(', 0)]),                                                   # guardian, player morphed: collision manager off
+    ([('$P->mMorphBallState', '1'), ('$this->mCollisionManager.mPtr', '0')], _DEAD(1), [('CPatterned::Dead(', 0)]),           # ... without a collision manager
+    ([('$P->mMorphBallState', '0')], _DEAD(1), [('CPatterned::Dead(', 0)]),                                                   # not morphed
+], 'Dead Update as the guardian: morphed player with / without a collision manager'))

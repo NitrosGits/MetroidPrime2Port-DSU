@@ -1954,6 +1954,7 @@ void CGrenchler::SetupStateMachineHelper(CStateManager& mgr) {
   mStateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_27_B1F4
 void CGrenchler::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     UnmarkPathRegion(mgr);
