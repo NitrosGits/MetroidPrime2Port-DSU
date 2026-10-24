@@ -304,3 +304,35 @@ Dead objdiff 99.2%: the only instruction difference is `fadds f0, f0(-3.3), f1` 
 | UpdateEffects C2EC | 87/87 | forced (CALLS, `grenchler_force7e.py`, guardian room, driver `grenchler_gren7e.con`: `gren.swoosh 3` builds the swoosh / beam-particle generators, the call runs at the first PreThink that sees them): splash / ring generators nulled; `IsWadingInWater` stubbed with dt 0 (0xC4xx `fcmpo dt, 0`); beam projectile id with no object / an inactive entity; mSoundHandle.mID 5 / 0; mTraceState 2 / 3 with mCurrentAction 0 (swoosh target = mHitPosition); `CanBeNormalized` stub 0 (particle step); mFrozen 1 (StopElectricBeam); guardian with a live electric sound handle, with tail gone and mAlive 0, and with the eye glow generator nulled. Do not run `gren.swoosh` on the non-guardian entrance Grenchlers: CElementGen ctor segfaults (no swoosh asset) |
 
 UpdateEffects objdiff 96%: scheduling / rodata hoisting only (checked the tail: `li r4,0` vs `mr r4,r31` is regalloc).
+
+## gren8 lane (base c5169d189, 2026-10-24)
+
+New `PortConsoleVar` pokes (TARGET_PC): `gren.sendmsg <m*100 + a*10 + w>` (Damage 1 / ResistedDamage 2 / HitObject 3 from collision actor index a, last-touched
+object set through a ReflectedDamage message from w: 0 none, 1 a live weapon this Grenchler owns (its electric beam projectile), 2 a live player weapon (`shoot` first,
+send a tick later), 3 the player), `gren.curaction`, `gren.fadeactive`, `gren.tailtime`, `gren.tailflag` (raw mTailDestroyed), `gren.alive`, `gren.landed`, `gren.team`
+(0 none / 2 valid), `gren.cm` (0 detach / 1 reattach the collision manager), `gren.healthbar`, `gren.damagewait`. Plain messages go through `send <id> <Msg>`.
+Drivers `grenchler_gren8.con` (08_swamp_grappleguardian_dark, guardian u052e) and `grenchler_gren8e.con` (01_swamp_entrance, non-guardian u05c4), 700 frames, merged
+with the natural drivers (rebuild first: older gcda do not match).
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| AcceptScriptMsg FD2C | 118/118 | forced (send / gren.sendmsg + pokes): Deactivate, AIUpdateDisabled, InternalMessage0 (alive/active and not), with the collision manager detached (0x10010-region `cmplwi 0`); AreaLoaded with a team id / inactive; ResistedDamage on a crystal (index 5) with a beam-projectile weapon, with the player as last touched (no weapon), flash timer / action 8 / crystal state 0 / 4 / damage over the threshold; Damage: inLanded (action 12, landed bits), fadeactive, non-guardian recent tail break, guardian with tail gone and action 17 / not 17 (0x10 `mTailDestroyed == 1 && action != 17`), weapon owned by another entity (owner != player -> base call, 0x1033C `bne .L_000107B8`), player weapon / no weapon, tail intact with tailhp 0 / 100000 (DestroyTail) and tail destroyed; HitObject as guardian / not, alive / dead, tail intact / destroyed, actions 14 / 3 / 17 |
+
+Asm: OffGround guardian returns without the base call (0xFFFC-0x1000C `b .L_000107C8`, past the `bl CPatterned::AcceptScriptMsg` at 0x107C4); the Damage `break` on a foreign
+weapon owner lands on the base call (0x1033C -> 0x107B8), skipping `SetHP(10000)`; x90c_08/x90c_40 at 0x1079C-0x107B4 are mReturnToPatrol := true / mAlerted := false
+(InternalMessage0), x90c_20 mIsGrappleGuardian. objdiff 99.4%: no behaviour difference.
+
+| CGrenchler ctor 11580 | 54/68 + 14 EH | forced (gdb `loc:` writes into LoadGrenchler's locals, `grenchler_force8.py`, entrance loads 1-3): tailDestroyedHealth -5 (`mTailHealth < 0`), 1e9 (`> HP`, clamped: the only line the natural runs missed), ingPossessionData.isAnEncounter 1 (`0x11 + 0x200` pathfinding flags), shallowWaterRing invalid (SEffectD arm). The last 14 arms are all on the closing brace (line 660): the compiler's member-initialiser unwind edges, never taken without a throw (EH policy). objdiff 89%: the optional token assignment (retail `optional_object::operator=`, upstream constructs in place, gren1 survey) and scheduling; the ctor's bitfield inits (x90c .80 mTrackPlayer, .40 mAlerted, .20 mIsGrappleGuardian, .10 mHasHealthBar, .08 mReturnToPatrol, .04 mScanned, .02 mUsingJumpPoint) match the asm clears/assigns at 0x1180C-0x11854 |
+
+Implicit dtors certified by objdiff (header markers, no run: user's 100% rule): ~SLdrGrenchler 12B0, ~SOwnedParticle 11F50, ~SDamageEffect 12168, ~SEffectB 125B8,
+~SGrappleEffect 12CE0, ~SBeamAttack 13090, ~SReflectInfo 134A4 (all 100%), ~SConeVulnerability 13C10 (99.1%: vtable symbol names only). Not certified: ~SEffectA 1138C
+(87.8%) and ~SEffectC 11494 (93.2%): retail's `addic. r0, r30, off; beq` member-presence checks sit at different member offsets than the port's (0x1c/0x10 vs 0x3c/0x4) and one member
+is destroyed with flag 0 where the port passes -1: not read through yet; SLdrGrenchler ctor 13C8 (58.5%); ~CGrenchlerTail 14F00; the two __sinit rows (static initialisers: scheduling only,
+`skAimOffset` stores, but the host runs its own static init order).
+
+### `gren.swoosh` segfault on the entrance Grenchlers: invalid fixture, not a port bug
+
+`CreateGrappleBeam` (6FD0, objdiff 100%) builds `CElementGen(gpSimplePool->GetObj('PART', mSwooshAssetId))` with no guard in retail either. `grenchler_force8b.py` logs the loader's locals:
+the three entrance Grenchlers (isGrappleGuardian 0) have grappleSwoosh = grappleBeamPart = 0xFFFFFFFF (kInvalidAssetId), the two guardian-room ones (isGrappleGuardian 1) 0x1C19C598 / 0x281FE23E.
+The null token's description dereference (`mLoadedGenDesc->mDFLG`, fault address 0x298) is the crash; retail's callers (the guardian's grapple states, CanGrapple false everywhere else) never build the beam for a
+Grenchler without the asset. `gren.swoosh` / `gren.startbeam` belong to the guardian room.

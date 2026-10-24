@@ -1,0 +1,34 @@
+# gren8: AcceptScriptMsg FD2C. 08_swamp_grappleguardian_dark layer 3, guardian u052e (700 hp) and u04fa (non-guardian).
+# gren.sendmsg <m*100 + collision actor inde*10 + weapon kind> delivers Damage (1) / ResistedDamage (2) / HitObject (3)
+# from that collision actor; gren.* pokes set the members an arm reads (see PortConsoleVar). Run: --frames 1100, --fast.
+@f300 layer 3
+@f400 god 1; give morphBall 1
+@f440 send u052e Activate; send u04fa Activate
+@f450 var u052e gren.startbeam 1; var u052e gren.scanned 1
+# plain messages
+@f470 send u052e AIUpdateDisabled; send u052e Deactivate; send u052e InternalMessage0; send u052e Activate
+@f472 var u052e gren.cm 0; send u052e Deactivate; send u052e AIUpdateDisabled; var u052e gren.cm 1; send u052e Activate
+@f474 send u052e InternalMessage0; var u04fa gren.alive 0; send u04fa InternalMessage0; var u04fa gren.alive 1
+@f476 var u052e gren.team 2; send u052e AreaLoaded; send u052e Deactivate; send u052e AreaLoaded; send u052e Activate
+@f478 var u052e gren.healthbar 0; send u052e Activate; var u052e gren.healthbar 1; send u052e Alert
+# ResistedDamage on the crystal (inde 5): weapon kind 1 = this Grenchler's beam projectile
+@f480 var u052e gren.flash 0; var u052e gren.curaction 8; var u052e gren.sendmsg 251
+@f482 var u052e gren.flash 0; var u052e gren.curaction 3; var u052e gren.crystal 0; var u052e gren.crystaldmg 0; var u052e gren.sendmsg 251
+@f484 var u052e gren.flash 0; var u052e gren.curaction 3; var u052e gren.crystal 0; var u052e gren.crystaldmg 1000000; var u052e gren.sendmsg 251
+@f486 var u052e gren.flash 1000; var u052e gren.curaction 3; var u052e gren.crystal 0; var u052e gren.sendmsg 251
+@f488 var u052e gren.flash 0; var u052e gren.curaction 3; var u052e gren.crystal 4; var u052e gren.sendmsg 251
+@f490 var u052e gren.curaction 3; var u052e gren.flash 0; var u052e gren.crystal 4; var u052e gren.sendmsg 253; var u052e gren.sendmsg 250; var u052e gren.sendmsg 200; var u052e gren.alive 0; var u052e gren.sendmsg 251; var u052e gren.alive 1
+# Damage on the body (inde 0), guardian, tail intact
+@f500 var u052e gren.curaction 3; var u052e gren.landed 0; var u052e gren.fadeactive 0; var u052e gren.tailflag 0; var u052e gren.tailhp 0; var u052e gren.sendmsg 103; var u052e gren.sendmsg 101
+@f501 shoot u05bd missile
+@f502 var u052e gren.curaction 12; var u052e gren.landed 0; var u052e gren.sendmsg 100; var u052e gren.landed 1; var u052e gren.sendmsg 100; var u052e gren.landed 2; var u052e gren.sendmsg 100; var u052e gren.landed 0
+@f503 var u052e gren.curaction 3; var u052e gren.landed 0; var u052e gren.fadeactive 0; var u052e gren.tailflag 0; var u052e gren.tailhp 0; var u052e gren.sendmsg 102; var u052e gren.sendmsg 103; var u052e gren.tailhp 100000; var u052e gren.tailflag 0; var u052e gren.sendmsg 102; var u052e gren.tailflag 0; var u052e gren.sendmsg 103; var u052e gren.curaction 17; var u052e gren.tailflag 1; var u052e gren.sendmsg 102; var u052e gren.sendmsg 103; var u052e gren.curaction 3; var u052e gren.tailhp 0
+@f504 var u052e gren.tailflag 0; var u052e gren.fadeactive 1; var u052e gren.curaction 3; var u052e gren.sendmsg 100; var u052e gren.fadeactive 0
+@f505 var u052e gren.tailflag 0; var u052e gren.curaction 3; var u052e gren.damagewait 0; var u052e gren.sendmsg 303
+@f506 var u052e gren.tailflag 1; var u052e gren.curaction 3; var u052e gren.damagewait 0; var u052e gren.sendmsg 303
+@f507 var u052e gren.curaction 3; var u052e gren.damagewait 0; var u052e gren.alive 0; var u052e gren.sendmsg 303; var u052e gren.alive 1
+@f508 var u052e gren.curaction 14; var u052e gren.damagewait 0; var u052e gren.sendmsg 303; var u052e gren.curaction 17; var u052e gren.sendmsg 103; var u052e gren.sendmsg 100
+@f510 var u052e gren.tailflag 1; var u052e gren.curaction 3; var u052e gren.sendmsg 103; var u052e gren.sendmsg 100
+@f511 var u052e gren.alive 0; var u052e gren.sendmsg 100; var u052e gren.alive 1; var u052e gren.sendmsg 150
+# guardian tail-destroying hits, then tail gone
+@f560 status
