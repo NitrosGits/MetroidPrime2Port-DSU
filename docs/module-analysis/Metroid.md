@@ -140,3 +140,26 @@ Not marked (untaken lines, source lines of CMetroid.cpp):
 | ComputeSuckPlayerPosRot | 1521-1524 (mostly throw edges), 1549-1554 Unmorphing case |
 
 These need player state (fluid, screw attack, hurtful safe zone, death, unmorph while latched) or pirate-target kills; not yet driven or forced.
+
+
+## Coverage (met4)
+
+Profile: the met3 natural runs (a, b, c = 3 runs) merged with one forced run
+(`tools/cov/specs/metroid_force6.py` + `.con`, area `42b935e4,08_sand_casualpirates`, `--frames 1200`).
+The forced run hooks `CMetroid::Think` once a CSpacePirate (`$pir`) and a CScriptActor (`$sa`) were seen,
+then calls the three functions directly (`force_ret.py` CALLS: `CallBp`, 30 scenarios, all "call ok"),
+writing the CMetroid / CPlayer / pirate fields for the call and restoring them after it. Stubbed results:
+`IsPirateValidTarget`, `CSafeZoneManager::IsObjectInHurtfulSafeZone`, `CSpacePirate::GetHealthInfo` (null).
+
+| function | result |
+|---|---|
+| `fn_40_1080` UpdateAttackTarget | ALL-ARMS (12/12 lines, 12/12 branches), marked. Target gone / self / not a pirate-or-player / attached player / invalid pirate: forced (direct call, MT written, IsPirateValidTarget stubbed). |
+| `fn_40_2EC8` ShouldReleaseFromTarget | ALL-ARMS (16/16, 22/22), marked. Frozen, energy, fluid, ball state 4, hurtful safe zone (stub), dead metroid, pirate drained/dead/alive, gone target: forced (direct call, fields written). |
+| `fn_40_2864` SuckEnergyFromTarget | ALL-ARMS (57/57, 34/34), marked. States 0/1/3 natural; state 2 with the player (spawned/transition/static timer variants), a script actor, a pirate, a gone target, and a pirate with `GetHealthInfo` stubbed to null (the `GetHealthInfo() != nullptr` false arm): forced. |
+
+Notes: the null-health-info arm is unreachable in play (a pirate/player always has health info); it counts as
+forced (direct call + stub). A target with no model (waypoint) crashes `ComputeSuckPiratePosRot`
+(null model data), which is also unreachable: metroids only target pirates and the player.
+Asm check of fn_40_2864: switch on `mAttackState` (cmpwi 0/2/4, 0x28CC-0x28F0), state 1 -> fn_40_2718(0.4) +
+CPlayer cast + SendScriptMsg (0x28FC-0x296C), state 2 CActor/health/Player casts (0x2990-0x2A58), state 3 ZRotation +
+SlerpLocal 0.95 (0x2DEC-0x2E44): no deviation found.

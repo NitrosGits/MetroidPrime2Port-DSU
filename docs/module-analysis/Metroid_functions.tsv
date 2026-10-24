@@ -32,7 +32,7 @@ offset	fn	size	class	name	slice	what	marker
 00F50	fn_40_F50	64	B	CanBeIngPossessed	-	upstream body (CMetroid)	no
 00FB4	fn_40_FB4	40	B	OnDockTouch	-	upstream body (CMetroid)	no
 00FF4	fn_40_FF4	8C	B	SetupStateMachine	met1	upstream body (CMetroid)	yes
-01080	fn_40_1080	F0	B	UpdateAttackTarget	-	upstream body (CMetroid)	no
+01080	fn_40_1080	F0	B	UpdateAttackTarget	-	upstream body (CMetroid)	yes
 01170	fn_40_1170	15C	B	FindNearestTarget	-	upstream body (CMetroid)	no
 012CC	fn_40_12CC	108	B	SelectNewTarget	met1	upstream body (CMetroid)	yes
 013D4	fn_40_13D4	130	B	CanStartAttack	-	upstream body (CMetroid)	no
@@ -46,8 +46,8 @@ offset	fn	size	class	name	slice	what	marker
 01DB0	fn_40_1DB0	88C	B	ComputeSuckPlayerPosRot	-	upstream body (CMetroid)	no
 0263C	fn_40_263C	DC	B	ComputeSuckTargetPosRot	met1	upstream body (CMetroid)	yes
 02718	fn_40_2718	14C	B	InterpolateToPosRot	met1	upstream body (CMetroid)	yes
-02864	fn_40_2864	664	B	SuckEnergyFromTarget	-	upstream body (CMetroid)	no
-02EC8	fn_40_2EC8	17C	B	ShouldReleaseFromTarget	-	upstream body (CMetroid)	no
+02864	fn_40_2864	664	B	SuckEnergyFromTarget	-	upstream body (CMetroid)	yes
+02EC8	fn_40_2EC8	17C	B	ShouldReleaseFromTarget	-	upstream body (CMetroid)	yes
 03044	fn_40_3044	8	B	fn_40_3044	-	unnamed helper (CMetroid)	no
 0304C	fn_40_304C	C4	B	DisableSolidCollision	met1	upstream body (CMetroid)	yes
 03110	fn_40_3110	388	B	RestoreSolidCollision	-	upstream body (CMetroid)	no
