@@ -42,6 +42,7 @@ struct SLdrPlantScarabSwarm {
   float grenadeExplosionMaxAudibleDistance;      // 0xab84892e
 };
 
+// @ fn_49_858
 inline SLdrPlantScarabSwarm::SLdrPlantScarabSwarm()
 : editorProperties()
 , actorInformation()
