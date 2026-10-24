@@ -170,6 +170,8 @@ CRezbit::CRezbit(TUniqueId uid, const rstl::string& name, const CEntityInfo& inf
   mPathFindSearch.SetCharacterHeight(7.f);
 }
 
+// @ fn_53_74D4
+// @ fn_53_75E4
 CRezbit::~CRezbit() {}
 
 // @ fn_53_6B78
