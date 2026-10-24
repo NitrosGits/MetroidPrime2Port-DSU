@@ -157,3 +157,9 @@ Not closed (no forced arms run this slice): bodies with 1-2 untaken arms (StartE
 ReleasePlayer, Charge, GrappleSlide/Bonk/Struggle/Break, Patrol, GetContactDamage, BeamBadAngle, BeamHitWall,
 PickGrappleSide, PauseBetweenBites, DeliverCommand defaults) and zero-coverage bodies (IsBeamBlockedByHint,
 IsNearAvoidHint, GetJumpCost, StruggleOver, StopStruggling). They need new `.con` drivers / forced arms.
+
+## gren4 (forced arms)
+
+Marked with all arms taken (arms marked F need forced vars/statecall msg 3; driver `tools/cov/specs/grenchler_gren4.con`, new `gren.*` console vars in `PortConsoleVar`): StartElectricBeam (F), CreateCollisionManager (F), ReleasePlayer (F), GrappleStruggle (F), GrappleBreak (F), Patrol (F), BeamHitWall (F), PickGrappleSide (F), StruggleOver (F), StopStruggling (F).
+
+Still open (not marked): GrappleSlide 2236, GrappleSlideBonk 2261, Charge 3073 (PathShagged/IsOver arms), GetContactDamage 4271, BeamBadAngle 3948 (swoosh gen), PauseBetweenBites 3585 (tail-destroyed arm), DeliverCommand<ProjectileAttack/Step/Taunt>, IsBeamBlockedByHint/IsNearAvoidHint/GetJumpCost (zero coverage: no AI hint or jump-point objects in the tested maps).

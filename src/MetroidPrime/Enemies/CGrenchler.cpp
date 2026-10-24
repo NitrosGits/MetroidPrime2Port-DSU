@@ -2000,6 +2000,7 @@ void CGrenchler::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_B15C
 void CGrenchler::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   bool submerged = IsDeeplySubmerged(mgr);
   if (msg == kStateMsg_Activate || mSubmerged != submerged) {
@@ -2567,6 +2568,7 @@ void CGrenchler::AddJointCollisions(
   }
 }
 
+// @ fn_27_8858
 void CGrenchler::CreateCollisionManager(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > descriptions;
   descriptions.reserve(10);
@@ -2847,6 +2849,7 @@ void CGrenchler::GrabPlayer(CStateManager& mgr) {
   mPlayerGrabbed = true;
 }
 
+// @ fn_27_7D74
 void CGrenchler::ReleasePlayer(CStateManager& mgr) {
   CPlayer* player = mgr.GetPlayer(0);
   if (player->GetAttachedActorId() == GetUniqueId()) {
@@ -2939,6 +2942,7 @@ void CGrenchler::UpdateBeamTarget(CStateManager& mgr) {
   mBeamAttack.mTargetPosition = GetPlayerBeamTargetPosition(mgr);
 }
 
+// @ fn_27_745C
 void CGrenchler::StartElectricBeam(CStateManager& mgr) {
   if (mEffectA.mBeamProjectileId != kInvalidUniqueId) {
     StopElectricBeam(mgr);
@@ -3751,6 +3755,7 @@ bool CGrenchler::IsBeamBlockedByHint(CStateManager& mgr) {
 
 bool CGrenchler::BreakGrappleLoop(CStateManager&, const CTriggerData&) const { return false; }
 
+// @ fn_27_3B6C
 void CGrenchler::PickGrappleSide(CStateManager& mgr) {
   switch (mEffectB.mGrappleSide) {
   case -1:
@@ -3932,6 +3937,7 @@ void CGrenchler::RemoveExplosion(CStateManager& mgr) {
   }
 }
 
+// @ fn_27_2F1C
 bool CGrenchler::BeamHitWall(CStateManager& mgr, const CTriggerData& data) const {
   if (mEffectC.mBeamLength > 90.f) {
     return true;
@@ -3966,6 +3972,7 @@ bool CGrenchler::BeamHitSticky(CStateManager& mgr, const CTriggerData& data) con
   return mEffectC.mTraceState == 3;
 }
 
+// @ fn_27_2CB4
 void CGrenchler::GrappleStruggle(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(kGA_GrappleStruggle, msg);
   BodyController()->SetLocomotionType(pas::kLT_Internal11);
@@ -4109,6 +4116,7 @@ void CGrenchler::DecrementAttached(CStateManager& mgr) { SendAttachedMessage(mgr
 // @ fn_27_2340
 void CGrenchler::IncrementAttached(CStateManager& mgr) { SendAttachedMessage(mgr, kSM_Increment); }
 
+// @ fn_27_2298
 void CGrenchler::GrappleBreak(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(kGA_GrappleBreak, msg);
   BodyController()->SetLocomotionType(pas::kLT_Relaxed);
@@ -4137,6 +4145,7 @@ void CGrenchler::GrappleAbort(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_2188
 bool CGrenchler::StopStruggling(CStateManager& mgr, const CTriggerData& data) const {
   if (mEffectB.mStruggleCount >= mEffectB.mStruggleLimit) {
     return true;
@@ -4144,6 +4153,7 @@ bool CGrenchler::StopStruggling(CStateManager& mgr, const CTriggerData& data) co
   return mEffectB.x10_ + GetHealthInfo()->GetHP() < mEffectB.mStartHealth;
 }
 
+// @ fn_27_2144
 bool CGrenchler::StruggleOver(CStateManager& mgr, const CTriggerData& data) const {
   if (mEffectB.x0_1_ == 1) {
     return true;
@@ -4418,8 +4428,120 @@ bool CGrenchler::PortConsoleVar(CEntity& ent, const char* name, const int* value
     current = gren->mCrystalState;
     return true;
   }
+  // gren4 coverage vars: the attack-state fields a body branches on that the machine seldom moves.
+  // gren.submerged mSubmerged, gren.side the grapple side, gren.trace the beam trace state,
+  // gren.hitzero puts the grapple hit point on the horn (no slide direction), gren.attach attaches
+  // the player to this Grenchler as GrabPlayer does (value 0 runs ReleasePlayer), gren.slideold backdates the
+  // slide start by 100 s, gren.elapsed (read) the attack clock.
+  if (strcmp(name, "gren.submerged") == 0) {
+    if (value != nullptr) {
+      gren->mSubmerged = *value != 0;
+    }
+    current = gren->mSubmerged ? 1 : 0;
+    return true;
+  }
+  if (strcmp(name, "gren.side") == 0) {
+    if (value != nullptr) {
+      gren->mEffectB.mGrappleSide = *value;
+    }
+    current = gren->mEffectB.mGrappleSide;
+    return true;
+  }
+  if (strcmp(name, "gren.trace") == 0) {
+    if (value != nullptr) {
+      gren->mEffectC.mTraceState = *value;
+    }
+    current = gren->mEffectC.mTraceState;
+    return true;
+  }
+  if (strcmp(name, "gren.hitzero") == 0) {
+    if (value != nullptr && *value != 0) {
+      gren->mEffectC.mHitPosition = gren->mBeamAttack.mHornXf.GetTranslation();
+    }
+    current = 0;
+    return true;
+  }
+  if (strcmp(name, "gren.slideold") == 0) {
+    if (value != nullptr && *value != 0) {
+      gren->mSlideStartTime = gren->mElapsedTime - 100.f;
+    }
+    current = 0;
+    return true;
+  }
+  if (strcmp(name, "gren.elapsed") == 0) {
+    current = static_cast< int >(gren->mElapsedTime);
+    return true;
+  }
+  if (strcmp(name, "gren.struggle") == 0) {
+    // struggle bookkeeping StopStruggling/StruggleOver read: <value> 0 count, 1 limit, 2 over flag
+    // (x0_1_), 3 start health +1000 (so the health arm of StopStruggling fires)
+    if (value != nullptr) {
+      switch (*value) {
+      case 0:
+        gren->mEffectB.mStruggleCount = 5;
+        gren->mEffectB.mStruggleLimit = 3;
+        break;
+      case 1:
+        gren->mEffectB.mStruggleCount = 0;
+        gren->mEffectB.mStruggleLimit = 3;
+        break;
+      case 2:
+        gren->mEffectB.x0_1_ = true;
+        break;
+      case 3:
+        gren->mEffectB.x0_1_ = false;
+        gren->mEffectB.mStartHealth = gren->GetHealthInfo()->GetHP() + 1000.f;
+        break;
+      }
+    }
+    current = 0;
+    return true;
+  }
+  if (strcmp(name, "gren.startbeam") == 0) {
+    // runs StartElectricBeam <value> times, as that many kUE_EffectOn events of a BeamAttack would
+    CStateManager* mgr = PortConsole::VarManager();
+    for (int i = 0; value != nullptr && mgr != nullptr && i < *value; ++i) {
+      gren->StartElectricBeam(*mgr);
+    }
+    current = gren->mEffectA.mBeamProjectileId != kInvalidUniqueId ? 1 : 0;
+    return true;
+  }
+  if (strcmp(name, "gren.recreate") == 0) {
+    // 1: destroy the collision manager as kSM_Delete does and build it again (vulnerability kept);
+    // 2: the same with the Grenchler pitched straight up, so its forward has no horizontal part.
+    CStateManager* mgr = PortConsole::VarManager();
+    if (value != nullptr && *value != 0 && mgr != nullptr && gren->mCollisionManager.get() != nullptr) {
+      gren->mCollisionManager->Destroy(*mgr);
+      gren->mCollisionManager = nullptr;
+      const CTransform4f saved = gren->GetTransform();
+      if (*value == 2) {
+        gren->SetTransform(CTransform4f::Translate(saved.GetTranslation()) *
+                           CTransform4f::RotateX(CRelAngle::FromDegrees(90.f)));
+      }
+      gren->CreateCollisionManager(*mgr);
+      gren->SetTransform(saved);
+    }
+    current = gren->mCollisionManager.get() != nullptr ? 1 : 0;
+    return true;
+  }
+  if (strcmp(name, "gren.attach") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    if (value != nullptr && mgr != nullptr) {
+      if (*value != 0) {
+        gren->GrabPlayer(*mgr);
+      } else {
+        gren->ReleasePlayer(*mgr);
+      }
+    }
+    current = gren->mPlayerGrabbed ? 1 : 0;
+    return true;
+  }
   float* field = nullptr;
-  if (strcmp(name, "gren.crystaldmg") == 0) {
+  if (strcmp(name, "gren.beamlen") == 0) {
+    field = &gren->mEffectC.mBeamLength;
+  } else if (strcmp(name, "gren.x24") == 0) {
+    field = &gren->mEffectB.x24_;
+  } else if (strcmp(name, "gren.crystaldmg") == 0) {
     field = &gren->mCrystalDamage;
   } else if (strcmp(name, "gren.grappledmg") == 0) {
     field = &gren->mGrappleCrystalDamage;

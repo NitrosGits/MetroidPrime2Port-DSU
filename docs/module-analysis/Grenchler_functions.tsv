@@ -47,20 +47,20 @@ offset	fn	size	class	name	slice	what	marker
 02084	fn_27_2084	1C	B	CGrenchler::Frustrated	-	upstream body (CGrenchler)	yes
 020A0	fn_27_20A0	8C	B	CGrenchler::TakeDamage	-	upstream body (CGrenchler)	no
 0212C	fn_27_212C	18	B	CGrenchler::TookKnockback	-	upstream body (CGrenchler)	yes
-02144	fn_27_2144	44	B	CGrenchler::StruggleOver	-	upstream body (CGrenchler)	no
-02188	fn_27_2188	6C	B	CGrenchler::StopStruggling	-	upstream body (CGrenchler)	no
+02144	fn_27_2144	44	B	CGrenchler::StruggleOver	-	upstream body (CGrenchler)	yes
+02188	fn_27_2188	6C	B	CGrenchler::StopStruggling	-	upstream body (CGrenchler)	yes
 021F4	fn_27_21F4	A4	B	CGrenchler::GrappleAbort	gren1	upstream body (CGrenchler)	yes
-02298	fn_27_2298	A8	B	CGrenchler::GrappleBreak	-	upstream body (CGrenchler)	no
+02298	fn_27_2298	A8	B	CGrenchler::GrappleBreak	-	upstream body (CGrenchler)	yes
 02340	fn_27_2340	28	B	CGrenchler::IncrementAttached	-	upstream body (CGrenchler)	yes
 02368	fn_27_2368	28	B	CGrenchler::DecrementAttached	-	upstream body (CGrenchler)	yes
 02390	fn_27_2390	118	B	CGrenchler::SendAttachedMessage	-	upstream body (CGrenchler)	no
 024A8	fn_27_24A8	5D0	B	CGrenchler::GrapplePull	-	upstream body (CGrenchler) 95.3%	no
 02A78	fn_27_2A78	23C	B	CGrenchler::PullPlayer	-	upstream body (CGrenchler) 99.5%	no
-02CB4	fn_27_2CB4	12C	B	CGrenchler::GrappleStruggle	-	upstream body (CGrenchler) 100.0%	no
+02CB4	fn_27_2CB4	12C	B	CGrenchler::GrappleStruggle	-	upstream body (CGrenchler) 100.0%	yes
 02DE0	fn_27_2DE0	14	B	CGrenchler::BeamHitSticky	-	upstream body (CGrenchler)	yes
 02DF4	fn_27_2DF4	14	B	CGrenchler::BeamHitPlayer	-	upstream body (CGrenchler)	yes
 02E08	fn_27_2E08	114	B	CGrenchler::BeamBadAngle	-	upstream body (CGrenchler)	no
-02F1C	fn_27_2F1C	30	B	CGrenchler::BeamHitWall	-	upstream body (CGrenchler)	no
+02F1C	fn_27_2F1C	30	B	CGrenchler::BeamHitWall	-	upstream body (CGrenchler)	yes
 02F4C	fn_27_2F4C	60	B	CGrenchler::RemoveExplosion	-	upstream body (CGrenchler)	yes
 02FAC	fn_27_2FAC	9C	B	CGrenchler::UpdateExplosionHeight	-	upstream body (CGrenchler)	no
 03048	fn_27_3048	180	B	CGrenchler::SpawnBeamHitEffect	-	upstream body (CGrenchler) 100.0%	no
@@ -71,7 +71,7 @@ offset	fn	size	class	name	slice	what	marker
 038AC	fn_27_38AC	5C	H	CRayCastResult::CRayCastResult	-	weak copy / template instance	no
 03908	fn_27_3908	3C	H	rstl::reserved_vector<TUniqueId, 1024>::~reserved_vector	-	weak copy / template instance	no
 03944	fn_27_3944	228	B	CGrenchler::GrappleLoop	-	upstream body (CGrenchler)	no
-03B6C	fn_27_3B6C	A8	B	CGrenchler::PickGrappleSide	-	upstream body (CGrenchler)	no
+03B6C	fn_27_3B6C	A8	B	CGrenchler::PickGrappleSide	-	upstream body (CGrenchler)	yes
 03C14	fn_27_3C14	8	B	CGrenchler::BreakGrappleLoop	-	upstream body (CGrenchler)	no
 03C1C	fn_27_3C1C	1FC	B	CGrenchler::IsBeamBlockedByHint	-	upstream body (CGrenchler) 87.0%	no
 03E18	fn_27_3E18	D4	H	CLineSeg::CLineSeg	-	weak copy / template instance	no
@@ -140,7 +140,7 @@ offset	fn	size	class	name	slice	what	marker
 06FD0	fn_27_6FD0	384	B	CGrenchler::CreateGrappleBeam	-	upstream body (CGrenchler) 100.0%	yes
 07354	fn_27_7354	54	H	TToken<CWeaponDescription>::~TToken	-	weak copy / template instance	no
 073A8	fn_27_73A8	B4	B	CGrenchler::StopElectricBeam	-	upstream body (CGrenchler)	no
-0745C	fn_27_745C	290	B	CGrenchler::StartElectricBeam	-	upstream body (CGrenchler) 72.0%	no
+0745C	fn_27_745C	290	B	CGrenchler::StartElectricBeam	-	upstream body (CGrenchler) 72.0%	yes
 076EC	fn_27_76EC	58	H	CElectricBeamInfo::~CElectricBeamInfo	-	weak copy / template instance	no
 07744	fn_27_7744	54	H	TToken<CElectricDescription>::~TToken	-	weak copy / template instance	no
 07798	fn_27_7798	50	B	CGrenchler::UpdateBeamTarget	-	upstream body (CGrenchler)	yes
@@ -149,7 +149,7 @@ offset	fn	size	class	name	slice	what	marker
 079D0	fn_27_79D0	68	H	rstl::optional_object<TToken<CElectricDescription>>::~optional_object	-	weak copy / template instance	no
 07A38	fn_27_7A38	16C	B	CGrenchler::CreateDamageVisorEffect	-	upstream body (CGrenchler) 100.0%	no
 07BA4	fn_27_7BA4	1D0	B	CGrenchler::CreateGrappleHitVisorEffect	-	upstream body (CGrenchler); TARGET_PC fix at 0x7C20 96.2%	no
-07D74	fn_27_7D74	144	B	CGrenchler::ReleasePlayer	-	upstream body (CGrenchler)	no
+07D74	fn_27_7D74	144	B	CGrenchler::ReleasePlayer	-	upstream body (CGrenchler)	yes
 07EB8	fn_27_7EB8	9C	B	CGrenchler::GrabPlayer	-	upstream body (CGrenchler)	yes
 07F54	fn_27_7F54	390	B	CGrenchler::DoUserAnimEvent	-	upstream body (CGrenchler)	no
 082E4	fn_27_82E4	94	B	CGrenchler::Render	-	upstream body (CGrenchler)	yes
@@ -160,7 +160,7 @@ offset	fn	size	class	name	slice	what	marker
 0860C	fn_27_860C	54	B	CGrenchler::StopBeamAttack	-	upstream body (CGrenchler)	no
 08660	fn_27_8660	19C	B	CGrenchler::BeamAttack	-	upstream body (CGrenchler)	no
 087FC	fn_27_87FC	5C	H	CBCProjectileAttackCmd::~CBCProjectileAttackCmd	-	weak copy / template instance	no
-08858	fn_27_8858	34C	B	CGrenchler::CreateCollisionManager	-	upstream body (CGrenchler) 92.9%	no
+08858	fn_27_8858	34C	B	CGrenchler::CreateCollisionManager	-	upstream body (CGrenchler) 92.9%	yes
 08BA4	fn_27_8BA4	84	H	rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
 08C28	fn_27_8C28	38	H	rstl::destroy<rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJ	-	weak copy / template instance	no
 08C60	fn_27_8C60	60	H	rstl::destroy_impl<rstl::pointer_iterator<CJointCollisionDescription, rstl::vect	-	weak copy / template instance	no
@@ -217,7 +217,7 @@ offset	fn	size	class	name	slice	what	marker
 0AEAC	fn_27_AEAC	13C	B	CGrenchler::BiteAttack	gren1	upstream body (CGrenchler)	yes
 0AFE8	fn_27_AFE8	128	B	CGrenchler::Lurk	gren1	upstream body (CGrenchler)	yes
 0B110	fn_27_B110	4C	B	CGrenchler::SetAttackState	gren1	upstream body (CGrenchler)	yes
-0B15C	fn_27_B15C	98	B	CGrenchler::Patrol	-	upstream body (CGrenchler)	no
+0B15C	fn_27_B15C	98	B	CGrenchler::Patrol	-	upstream body (CGrenchler)	yes
 0B1F4	fn_27_B1F4	4C4	B	CGrenchler::Dead	-	upstream body (CGrenchler) 99.7%	no
 0B6B8	fn_27_B6B8	8C	B	CGrenchler::SetupStateMachineHelper	gren1	upstream body (CGrenchler)	yes
 0B744	fn_27_B744	68	B	CGrenchler::GetStateMachine	-	upstream body (CGrenchler)	no

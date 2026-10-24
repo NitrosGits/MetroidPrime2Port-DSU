@@ -1,0 +1,29 @@
+# gren4: 08_swamp_grappleguardian_dark layer 3, u052e and u04fa activated and standing; the missing
+# arms of the near-complete bodies forced with the gren.* vars, statecall (msg 3 = the switch default)
+# and trigcall. Forced everywhere. Run as grenchler_grapple.con (frames 2200).
+@f300 layer 3
+@f400 god 1; give morphBall 1; give missile 250
+@f420 send u052e Activate; send u04fa Activate
+@f460 tp -168 25 -28
+@f470 face 0
+@f600 var u052e gren.submerged 1; statecall u052e Patrol 1; var u052e gren.submerged 0
+@f620 statecall u052e Patrol 0; statecall u052e Patrol 3
+@f640 statecall u052e GrappleSlide 3
+@f642 statecall u052e GrappleSlide 0; var u052e gren.hitzero 1; statecall u052e GrappleSlide 1 0.016
+@f644 var u052e gren.slideold 1; statecall u052e GrappleSlide 1 0.016; statecall u052e GrappleSlide 2
+@f650 statecall u052e GrappleSlideBonk 3
+@f652 statecall u052e GrappleSlideBonk 0; statecall u052e GrappleSlideBonk 1; var u052e gren.slideold 1; statecall u052e GrappleSlideBonk 1; statecall u052e GrappleSlideBonk 2
+@f660 statecall u052e Charge 3
+@f670 statecall u052e GrappleStruggle 3
+@f680 var u052e gren.trace 2; statecall u052e GrappleBreak 0; var u052e gren.trace 0; statecall u052e GrappleBreak 0; statecall u052e GrappleBreak 3
+@f690 trigcall u052e BeamHitWall; var u052e gren.beamlen 100; trigcall u052e BeamHitWall; var u052e gren.beamlen 1; var u052e gren.trace 2; trigcall u052e BeamHitWall; var u052e gren.trace 0
+@f700 var u052e gren.x24 5; trigcall u052e BeamBadAngle; var u052e gren.x24 0; trigcall u052e BeamBadAngle
+@f710 var u052e gren.side 2; statecall u052e GrappleLoop 0; var u052e gren.side 0; statecall u052e GrappleLoop 0; var u052e gren.side 1; statecall u052e GrappleLoop 0; var u052e gren.side -1; statecall u052e GrappleLoop 0
+@f720 var u052e gren.startbeam 2
+@f730 var u052e gren.recreate 1
+@f740 var u052e gren.recreate 2
+@f750 var u052e gren.attach 1; var u052e gren.attach 0; var u052e gren.attach 0
+@f760 var u052e gren.struggle 0; trigcall u052e StopStruggling; var u052e gren.struggle 1; var u052e gren.struggle 3; trigcall u052e StopStruggling; var u052e gren.struggle 2; trigcall u052e StruggleOver; var u052e gren.struggle 3; trigcall u052e StruggleOver
+@f770 trigcall u052e ShouldSlide; trigcall u052e ShouldBackstep
+@f780 var u052e gren.tail 1
+@f800 var u04fa gren.tail 1; send u04fa HitObject
