@@ -75,5 +75,3 @@
 @f2300 send e000500f9 Deactivate
 @f2400 send e000500f9 Delete
 @f2500 objs Glowbug
-
-# hp fall and fsm change already shown at f2280/f2290 (hp 28.0 -> 23.0; Attack -> Patrol).
