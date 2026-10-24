@@ -60,3 +60,6 @@
 @f2320 send e003d0023 Deactivate; obj e003d0023
 @f2330 send e003d0023 Delete
 @f2350 objs Bact; status
+
+# No hp fall: CBacteriaSwarm has no CHealthInfo (`damage`/`kill` refuse: not an actor with health).
+# No fsm change: CBacteriaSwarm has no generic FSM2 state (`obj` prints none) - swarm family.

@@ -47,3 +47,6 @@
 @f2300 objs Fish
 @f2400 send e00340081 Delete
 @f2450 objs Fish
+
+# No hp fall: CFishCloud has no CHealthInfo (`damage`/`kill` refuse: not an actor with health).
+# No fsm change: CFishCloud has no FSM2 state (`obj` prints none).

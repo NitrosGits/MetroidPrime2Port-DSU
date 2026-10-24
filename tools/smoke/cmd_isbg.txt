@@ -70,3 +70,5 @@
 @f5400 send e0014007a Deactivate
 @f5450 send e0014007a Delete
 @f5500 objs IngSpiderballGuardian
+
+# fsm change already shown: Patrol -> DamageReaction on damage; Dead on kill.
