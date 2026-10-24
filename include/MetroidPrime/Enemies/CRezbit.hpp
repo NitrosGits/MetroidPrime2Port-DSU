@@ -42,6 +42,7 @@ public:
                        float dt) override;
 
   // CPatterned
+  // @ fn_53_0
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   CProjectileInfo* ProjectileInfo() override;
   void SetupStateMachine(CStateManager& mgr) override;
