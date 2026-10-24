@@ -23,6 +23,8 @@ if _CARRY:
 if _TOP:  # SPL_TOP=1: the splinter has not left the top (ReachedTop true: z > descendStartZ - 0.1)
     _SETS.append('$this->mSac.mDescendStartZ = %d' % (100000 if _TOP == 'low' else -100000))
 FORCE = []
+if os.environ.get('SPL_FGINV'):  # SPL_FGINV=1 (with SPL_GRAB=0x48a): FindGrabbed's mGrabbedId == invalid arm, forced at its entry
+    FORCE += [('FindGrabbed invalid', 'CSplinter::FindGrabbed(', [], ['$this->mSac.mGrabbedId.value = 0xffff'], 0, 'mGrabbedId = kInvalidUniqueId')]
 if not _MB:
     FORCE += [
         ('Rise grabbed', 'CSplinter::Rise(', ['(int)$rdx'], _SETS, 0, 'mGrabbedId=%#x holding=%d' % (_G, _H)),
