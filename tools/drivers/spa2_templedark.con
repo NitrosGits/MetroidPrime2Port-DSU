@@ -1,0 +1,22 @@
+# ScriptPlayerActor: Agon Wastes 03_sand_temple_dark (42b935e4) layer 10, the spa1 driver plus the
+# two-actor chain the reset arm of SetIntoStateManager needs: both actors Activate (the second goes
+# to the head of the player-actor list), then the second Deactivates (a previous actor is in the
+# chain, so 0x573's `!set && previous` arm runs), then the plain suite.
+@f260 layer 10
+@f300 god 1; give darkSuit 1; give lightSuit 1; give grappleBeam 1
+@f320 obj e0024022f
+@f400 send e0024022f Activate
+@f500 send e00240396 Activate
+@f700 send e00240396 Increment
+@f760 send e00240396 Deactivate
+@f820 send e0024022f Increment
+@f900 send e0024022f Deactivate
+@f1000 send e0024022f Activate
+@f1100 send e00240396 Activate
+@f1200 send e00240396 Reset
+@f1300 send e0024022f Left
+@f1400 send e0024022f Reset
+@f1500 send e0024022f Activate
+@f1600 send e00240396 Delete
+@f1700 send e0024022f Delete
+@f1800 obj e0024022f
