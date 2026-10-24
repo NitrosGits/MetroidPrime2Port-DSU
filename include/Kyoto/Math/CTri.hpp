@@ -6,6 +6,7 @@
 #include "Kyoto/Math/CPlane.hpp"
 #include "Kyoto/Math/CVector3f.hpp"
 
+// @ fn_25_5EDC (CTri copy ctor: implicit; objdiff 100%)
 class CTri {
 public:
   CTri(const CVector3f& a, const CVector3f& b, const CVector3f& c);

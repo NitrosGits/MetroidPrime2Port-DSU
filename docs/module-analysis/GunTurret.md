@@ -95,7 +95,7 @@ Every marked body has all lines run. Arms that only a console command or a force
 
 Dead arm: Spawn's switch default (EStateMsg has only Activate/Update/Deactivate).
 
-### Unmarked
+### Historical gt1 unmarked inventory (superseded by later checkpoints)
 
 - Covered lines but an arm missing: AttackExitDone (gun destroyed: `gunturret_force3.py` never got a
   hit, the FSM leaves AttackExit by another trigger), UpdateGunOrientation (top body controller frozen),
@@ -106,4 +106,66 @@ Dead arm: Spawn's switch default (EStateMsg has only Activate/Update/Deactivate)
   PanRight, Withdraw, Think, UpdateGunPose, FindTarget, UpdateAttack, GetGunFirePosition,
   LaunchProjectile, Base ScanVisorRender/GetScanVisorRenderBounds, Top Think.
 - Never run: DoUserAnimEvent (no user events reach it), ShouldPan, both Attacked triggers, Top
-  AnimOver, GetRenderAlpha; the SLdr ctors and `__sinit` tables (not in the coverage scope).
+   AnimOver, GetRenderAlpha; the SLdr ctors and `__sinit` tables (not in the coverage scope).
+
+## gb6 checkpoint (2026-10-24)
+
+Base `31c12b0ba`; actual source markers, not the stale TSV column: **73 → 81/89**.
+Eight new markers; eight bodies still unmarked. Evidence root:
+`/tmp/opencode/reports/gb6-evidence/gunturret/`.
+
+### Constructor correction
+
+Standalone loader-data constructors must initialize absent sounds to -1, not 0.
+Retail base `13E0 li r0,-1` feeds the thirteen sound stores `13F4..1424`
+(guest offsets `b4..e4`); top `7FEC li r0,-1` feeds `7FF8/7FFC`
+(guest `58/5c`). The pre-existing loader repair helpers masked this mismatch for
+normal loads; retain them, but also set the constructors' sound defaults under
+`TARGET_PC`. All non-PC code remains unchanged apart from marker comments.
+
+### New marker / arm table
+
+| fn | verification |
+|---|---|
+| 360 / 1C38 / 7B54 | Fresh objdiff 100% for all three; forced getter oracle asserts true / address of the base collision primitive / true. |
+| 1344 | Fresh objdiff 100%; real base data destructor called three times, all 5/5 host blocks run. |
+| 13C0 / 7FB8 | Forced heap construction, field/default assertions, destruction and free; both default oracles PASS. All executable header lines run; every zero-count branch has gcov `throw=true` (host EH cleanup, absent from the retail bodies), not an untaken gameplay arm. Constructors each called three times. |
+| 3520 | Forced absent top, frozen top, aim on/off, first shot on/off, low/high step, targets above/below and left/right; real segment 6 and live top 0424. **42/42 lines, 32/32 edges ALL-ARMS**. |
+| 18EC | Forced scanning/non-scanning, destroyed/intact, absent/live top, Attack/AttackExit/Patrol/IntoPan/PanLeft/PanRight/Spawn/Withdraw/default, both raise thresholds. **12/12 lines, 17/17 edges ALL-ARMS**. |
+
+Run: `BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py SECS=300
+tools/cov/force.sh tools/cov/specs/gb6_gunturret_arms.py <out>
+42b935e4,0i_sand_hall --con tools/drivers/gb6_gunturret.con --fast --frames 1400`.
+Coverage-only `gb6_gunturret_keep_inline.cmake` retains callable inline constructors;
+ordinary host/matching compiler flags are unchanged. Post-marker run explicitly exited
+normally, with all three oracle logs PASS, zero failed calls/assignments/Python errors,
+zero `[port] caught` / reach-stub. Raw module gcno/gcda and gcov JSON retained in
+`raw-coverage/`; `header-coverage.txt` records the exception-edge audit.
+
+### Static audit and gates
+
+Reviewed full retail listings for all eight markers. Constructor objdiff percentages
+(46.223% / 64.912%) are not claimed matched; their PC overrides are retail-backed and
+tested. Runtime bodies are 99.443% / 98.549%; both tested all arms.
+`asmcheck-runtime.txt` findings are name/dataflow limitations, not proposed changes:
+`xfc03_` is guest `8c8`, loaded at `3878` and compared at `3884/3898`;
+`3778` compares computed pitch with zero, not member `x8ac_`.
+Quaternion calls `38E0/38EC/38F8` and multiplies `3908/3918` are exactly
+`YXZRotation(0,pitch,yaw)` (header expands `Z * X * Y`). Scan bounds' string
+cleanup at `19FC` belongs to the temporary locator name; const top casting at
+`1A70` is equivalent to the retail cast; `CAABox::Include` expands to the two
+`AccumulateBounds` calls at `1AF4/1B00`. This also resolves the two rotation-call
+findings in `retail-runtime.txt`.
+
+Host and coverage links: 0 FAILED; manifest check rc0; upstream configure/build
+and shasum: **87 files OK**. TARGET_PC strip-diff clean (comments excluded),
+`git diff --check` clean. No wider family sweep: only changed bodies and their
+callers' area were run, per lane brief.
+
+### Remaining eight
+
+`4B0` LoadGunTurretBase, `1E14` LaunchProjectile, `3130` FindTarget,
+`5C3C` PlayerInRange, `6518` base constructor, `76D8` base static tables,
+`7B98` LoadGunTurretTop, `9AA4` top static tables. Full retail listings are
+retained as `asm-<offset>.txt`. Static initializers match 100% but are not marked
+in this checkpoint; the other six still require targeted arm verification.

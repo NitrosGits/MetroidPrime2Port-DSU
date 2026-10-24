@@ -390,6 +390,7 @@ RSTL_DECLARE_TRIVIALLY_CONSTRUCTIBLE(SConnection)
 struct SLdrEditorProperties;
 #endif
 
+// @ fn_25_467C (CEntityInfo dtor: implicit; objdiff 100%)
 class CEntityInfo {
   TAreaId mAreaId;
   rstl::vector< SConnection > mConnections;

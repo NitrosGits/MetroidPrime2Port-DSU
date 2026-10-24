@@ -4,6 +4,7 @@
 #include "Kyoto/Math/CPlane.hpp"
 #include "Kyoto/Math/CVector3f.hpp"
 
+// @ fn_25_B14 (CCollisionSurface copy ctor: implicit; objdiff 100%)
 class CCollisionSurface {
 public:
   CCollisionSurface() {}

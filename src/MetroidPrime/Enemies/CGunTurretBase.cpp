@@ -819,6 +819,7 @@ void CGunTurretBase::UpdateGunPose(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_28_3520
 void CGunTurretBase::UpdateGunOrientation(CStateManager& mgr, CSegId seg, bool aim, float dt) {
   CGunTurretTop* top = TCastToPtr< CGunTurretTop >(mgr.ObjectById(mTopId));
   if (!top) {
@@ -1157,6 +1158,7 @@ void CGunTurretBase::LowerGun(float dt) {
   mRaise = rstl::max_val(0.f, mRaise - speed);
 }
 
+// @ fn_28_18EC
 CAABox CGunTurretBase::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   CAABox bounds = GetModelBounds();
   if (mgr.GetPlayer(0)->GetScanningObject() == GetUniqueId() && !mGunDestroyed &&

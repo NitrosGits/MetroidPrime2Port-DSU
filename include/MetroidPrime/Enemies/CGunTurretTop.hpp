@@ -43,6 +43,7 @@ public:
 
   // CPatterned
   void SetupStateMachine(CStateManager& mgr) override;
+  // @ fn_28_7B54
   bool IsScanVisorSelfRender() const override { return true; }
   CAABox GetScanVisorRenderBounds(const CStateManager& mgr) const override;
   void ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,

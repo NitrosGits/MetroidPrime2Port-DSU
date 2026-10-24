@@ -27,6 +27,7 @@ struct SLdrGunTurretTop {
   SLdrActorParameters actorInformation;  // 0x7e397fed
 };
 
+// @ fn_28_7FB8
 inline SLdrGunTurretTop::SLdrGunTurretTop()
 : editorProperties()
 , pART(kInvalidAssetId)
@@ -42,6 +43,9 @@ inline SLdrGunTurretTop::SLdrGunTurretTop()
   sound = 0;
   sound_0x5d9ed447 = 0;
 #ifdef TARGET_PC
+  // 0x7FEC li r0,-1; 0x7FF8/0x7FFC store -1 at guest+0x58/+0x5c.
+  sound = -1;            // 0x7FF8 stw r0,0x58(r31)
+  sound_0x5d9ed447 = -1; // 0x7FFC stw r0,0x5c(r31)
   // fn_28_7FB8: 2.0 (rodata 0x1A4) at guest +0xAC = patterned +0x4C (0x806C), CColor(1.0 x4,
   // rodata 0x19C) at +0x2B8 = actor +0x14 (0x8080), 0xF at +0x308 = actor +0x64 (0x8084).
   patterned.health.hI_KnockBackResistance = 2.0f;
