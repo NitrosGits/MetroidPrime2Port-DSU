@@ -1,0 +1,29 @@
+# Torvus 0g_swamp_hall layer 3, for swb11 (AssignSeekerBoids fn_80_1978): the real seeker flow.
+# The swarm creates five kMT_SeekerTarget actors in kSM_Create and teleports them onto its boids
+# every frame (UpdateSeekerTargets, the loop after AssignSeekerBoids), so a player holding the
+# use-item button with the Seeker Launcher locks them: the gun then reports one of the swarm's own
+# seeker-target uids, the swarm's mSeekerTargets intersect the gun's, and the caller's keptBoids
+# ("taken") is non-empty.  The item index in the game's control data is useItem = 18 = kFL_YButton
+# (SLdr/Tweaks.inc, the default), so only Y is pressed; Z, L, R and START are never pressed (Z
+# paused the game and ended the first run).
+# Aim: measured in the first run of this slice, the swarm's 50 boids sit around
+# (-135.5, -57.3, 40.4) and the player's eye at the tp point is (-157.4, -63.1, 42.0), i.e. yaw 75,
+# pitch -4 towards the cluster; the sweep covers the eye-height and cluster spread.  Every
+# command sits inside --frames 1200 (a press after @f1200 never runs: the driver waits for a frame
+# marker the run no longer produces).
+@f220 layer 3
+@f300 god 1; give seekerLauncher 1; give missile 250
+@f340 tp -157.4 -63.1 39.5
+@f350 aim 75 -4
+@f360 visor combat
+@f380 press y 150
+@f560 aim 75 0
+@f570 press y 150
+@f750 aim 75 -8
+@f760 press y 150
+@f940 aim 67 -4
+@f950 press y 150
+@f1130 aim 83 -4
+@f1140 press y 150
+@f1160 obj u049e
+@f1180 items

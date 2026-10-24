@@ -435,3 +435,50 @@ lwz r4,0x18(r4); addi r4,r4,0x24; bl __ct__12CTransform4f` (0x1CF4-0x1D08), the 
 
 Marked `// @ fn_80_1C78` (`src/MetroidPrime/Enemies/CSwarmBasics.cpp`). Line numbers above are the
 measured build's (before this marker, which shifts the body by one line).
+## swb11: AssignSeekerBoids 25/26 lines, 24/28 branches - the taken-scan arms stay blocked
+
+Base `014df5305`. `tools/cov/specs/swarmbasics_seeker.py` (force.py) and
+`tools/drivers/swb11_seeker.con`. The caller is the real one
+(`UpdateSeekerTargets` -> `AssignSeekerBoids(mgr, keptBoids, numLost, newBoids)` every frame), so
+`taken`, `numNeeded` and `out` are the caller's own vectors: the spec never writes, resizes or
+replaces them, and moves only one existing `mBoids` element per call (restored by a finish
+breakpoint), cycling: phase 0 = the boid beyond the orbit distance (camera + 1e6 on X), phase 1 = the
+boid exactly at the camera, phase 2 = no move.
+
+**Before (swb10's profile, same body source):** 24/26 lines, 21/28 branches; untaken 1669:0/2,
+1670:0/2, 1673:2/3 (the distance and normalisation arms, the swamp swarm's boids are almost never
+`mActive` while the function scans them) plus the whole taken-scan, 1685/1686/1691.
+
+**After one 1200-frame run (`/tmp/opencode/swb11/b`, normal exit, `caught/reach-stub: 0`,
+651 applies / 651 restores, 0 failed writes):** **25/26 lines, 24/28 branches**. The geometry arms
+turned (the 1670/1673 entries are gone). Still untaken, and all four for one reason:
+
+| arm | needs |
+|---|---|
+| 1685:0/2 | `taken` non-empty (the `for (j < taken.size())` body) |
+| 1686:0/2, 1686:1/2 | both sides of `idx == taken[j]` |
+| 1691:1/2 | `!found` false, i.e. a candidate whose index *is* in `taken` |
+
+**Measured blocker:** `taken` was empty on every one of the 655 calls (`taken=0 needed=5`), because
+the gun's seeker targets never intersected the swarm's five `kMT_SeekerTarget` actors. The driver
+gave the Seeker Launcher (`gave seekerLauncher: 1/1`), 255 missiles, combat visor, stood 22 units
+from the boid cluster at (-135.5,-57.3,40.4) (measured in the first run) and held the use-item button
+five times (frames 380-1140) with a yaw/pitch sweep (`useItem = 18 = kFL_YButton` per `SLdr/Tweaks.inc`), and
+`GetSeekerTargetLockedOn` stayed **0/8 (never called)**, `UpdateSeekerTargets` 2113:1/2 (the
+`keptBoids.push_back_unsafe`) untaken. So `CPlayerGun::UpdateSeeker`'s lock block never produced a
+target. Which of its prerequisites failed is **not** measured (two launches, no more allowed):
+`mSeekerChargeState` reaching `kSCS_FullyCharged`, `GetTargetId(mgr)` being the swarm (the path that
+would call `GetSeekerTargetLockedOn`), or the generic 50-px path's
+`GetTargetableVisorFlags` visibility on the seeker actors. The gun side needs its own slice - a spec
+on `CPlayerGun::UpdateSeeker` with the seeker state and target id logged per call. No marker: the
+module note's marker rule needs every live arm.
+
+Run 1 (`/tmp/opencode/swb11/a`) is *not* evidence: it pressed Z at frame 820, the game paused
+(`[harness] no game update for 30.0 s`), the timeout ended it and no counters were written. Launch 2
+(`b`) is the only evidence, and it is the profile above (`build-port-cov` of `014df5305` + the swb10
+marker, so its line numbers are the committed tree's: `AssignSeekerBoids` at 1658).
+
+**Correction (log label only):** the swb10 spec's APPLY line labelled a field `boid=` but passed
+`this` to the printf, so it printed the swarm actor pointer. `swarmbasics_lockon.py` labels it
+`swarm=` now and `swarmbasics_seeker.py` logs `swarm=` and `boid=` (the address of `$this->mBoids[idx]`)
+separately; the archived `/tmp/opencode/swb10` logs are untouched and still say `boid=` for the swarm.
