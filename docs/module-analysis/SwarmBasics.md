@@ -271,20 +271,111 @@ step.
 
 ## swb8: UpdateBoid 85/85 lines, 43/44 branches (613 left)
 
-`tools/cov/specs/swarmbasics_force8.py` (force.sh) writes boid 0 relative to the floor it is already
-near: each call moves `mItems[0].mTransform.m23` (the transform's translation Z) by +0.3 / -0.5 / +5 and
-sets mLaunched, mVelocity (-60 / -4), mRemainingLaunchNotOnSurfaceFrames 0, mFramesNotOnSurface 0 and
-`$this->mBoidRadius` (0.5 / 1.0), so the boid oscillates around the floor instead of drifting. Merged
-with the swb7 spec's force_ret run (`swarmbasics_force7.py`, for the 599 safe-zone stub) over four run
-pairs (swamp_hall, cliff_hall, 1200 f, timeout 700; all `RC=0`, 0 caught/reach-stub): the body now
+`tools/cov/specs/swarmbasics_force8.py` (force.sh) writes boid 0 relative to where it already is:
+each call adds +0.3 / -0.5 / +5 to `mItems[0].mTransform.m23` (the transform's translation Z) and
+sets mLaunched, mVelocity (-60 / -4), mRemainingLaunchNotOnSurfaceFrames 0, mFramesNotOnSurface 0
+and `$this->mBoidRadius` (0.5 / 1.0). **Corrections (swb9):** that is not a floor-relative,
+non-drifting placement - the three offsets are cumulative and net +4.8 per three-call cycle, so the
+boid climbs ~+4.8 per cycle and leaves the floor; the lvalue is `$this->mBoids.mItems[0]`, which is
+only boid 0 of this swarm and not necessarily the object the call updates (Think's outlier loop and
+the derived `UpdateBoid` overrides pass other boids); and phase 0's stated reason (`speed*dt -
+boidRadius = 0.5 >= 0, so the loop leaves through !found with found true`) is wrong: at
+`mSurfaceProbeScale` 1.5 the probe point sits a whole `dt*|v|` (1.0) below the plane with radius
+1.0, so `FindBestSurface` never returns true in the first place. Runs: **two** with the swb7
+force_ret spec (`a`, `a2`; the 599 safe-zone stub) and **six** with this one (`b`, `b2`-`b6`), on
+`3dfd2249,0g_swamp_hall` and `1baa96c2,0a_cliff_hall` (not the `42b935e4,01_sand_entrance` the
+spec header used to say), 1200 f, timeout 700. All eight exited normally - `[Inferior 1 (process N)
+exited normally]` in `<out>/game.log` and `game rc=0`, `caught/reach-stub: 0` in
+`/tmp/opencode/swb8/run_<dir>.log`, dirs `a a2 b b2 b3 b4 b5 b6` - 0 failed writes. Merged, the body
 reaches **85/85 lines, 43/44 branches**.
 
-The floor placement took 656/657 (the falling path's plane-height and radius tests). **613:3/4 is the
-only arm left**: `while (distance >= 0.f && !found)` needs the loop to re-test with `found` already
-true, i.e. a surface found on the first probe while `speed*dt - boidRadius >= 0` afterwards. Radii of
-0.1, 0.5, 1.0, 1000 and 0.001 were tried with velocities -4/-20/-40/-400/-60 and a boid 0.3 above and
-0.5 below the floor; the surface probe (`FindBestSurface` with radius `2*mBoidRadius` at the predicted
-point, `mSurfaceProbeScale` back along the velocity) did not report a hit on an iteration that still
-had `distance >= 0`. Next: set `mSurfaceProbeScale` small (so the predicted point stays above the
-floor) together with a radius that still reaches it, or place the boid over a known flat floor with
-`mItems[0].mVelocity` near zero and a huge radius so every probe hits.
+The floor placement took 656/657 (the falling path's plane-height and radius tests). **613:3/4 was
+the only arm left**: `while (distance >= 0.f && !found)` needs the loop to re-test with `found`
+already true, i.e. a surface found on the first probe while `speed*dt - boidRadius >= 0` afterwards.
+Radii of 0.1, 0.5, 1.0, 1000 and 0.001 were tried with velocities -4/-20/-40/-400/-60 and a boid 0.3
+above and 0.5 below the floor; the surface probe (`FindBestSurface` with radius `2*mBoidRadius` at the
+predicted point, `mSurfaceProbeScale` back along the velocity) did not report a hit on an iteration
+that still had `distance >= 0`.
+
+The proposal recorded here for the next attempt - "set `mSurfaceProbeScale` small ... or place the
+boid over a known flat floor with `mItems[0].mVelocity` near zero and a huge radius so every probe
+hits" - is **rejected for its second half** (swb9): a huge radius cannot work, because the loop's
+first test is on `distance = speed*dt` itself, so with `radius > speed*dt` the body never enters the
+loop at all, and with a near-zero velocity the probe point (scale 1.5) stays on the boid, so it can
+only hit if the boid already is within `2*mBoidRadius` of a triangle - which is the swb9 fixture, done
+with a small radius and `speed*dt = 4*radius`.
+
+## swb9: UpdateBoid 85/85 lines, 44/44 branches (ALL-ARMS) - marked
+
+`tools/cov/specs/swarmbasics_force9.py` (force.sh, persistent writes) takes 613:3/4 - the launched
+loop's re-test with `found` already true - from geometry, not from a stub. Per UpdateBoid call:
+
+- **the boid is the call's own argument**: the entry register that holds an element of
+  `$this->mBoids` (`$rcx` for this ABI; `$r8`/`$r9` are tried and would be reported), indexed off
+  `mBoids.mItems`/`mCount`/`sizeof(CBoid)`. Never `mItems[0]`: Think's boid loop and its outlier loop
+  pass different objects, and `CPlantScarabSwarm`/`CMetareeSwarm` override `UpdateBoid` and forward
+  their own (the run's backtrace shows `CPlantScarabSwarm::UpdateBoid` -> `CSwarmBasics::UpdateBoid`
+  -> `FindBestSurface` at `CSwarmBasics.cpp:617` with `radius = 0.600000024 = 2*mBoidRadius`).
+- **"on a surface" is measured, not assumed**: from the boid's own `mSurface` triangle (a real
+  `CCollisionSurface` a real `FindBestSurface` returned and 654 stored) - the translation is within
+  `2*mBoidRadius` of that triangle's plane *and* its projection is inside the triangle (the three sign
+  tests of `PointOnSurface`, recomputed in the spec) *and* the boid took the non-launched path last
+  frame (`mFramesNotOnSurface == 0`, `mLaunched == 0`). Measured capture on `0g_swamp_hall`:
+  `dt=0.016667 r=0.3000 h=0.31001` - exactly the `radius + 0.01` the snap at 663 leaves, on triangle
+  `(-132.07,-56.25,40.85)(-135.43,-57.45,40.67)(-143.61,-57.25,41.78)`, normal `(-0.1099,0.4412,-0.8907)`.
+- **saved absolute position, not a delta**: the position and triangle are cached per boid, and a later
+  call re-writes that absolute position (only while the boid is still within 0.05 of it, so the
+  `CAreaCollisionCache` Think built for this boid still covers the point).
+- **the numbers that make the loop exit through `!found`**: `speed = 4*r/dt` (so `speed*dt = 4r`, and
+  `4r - r = 3r >= 0` survives the `distance -= boidRadius`) and probe scale `s = h/(8r)`, so the probe
+  point lands `h/2` over the same triangle - inside `2r` of the plane and inside the triangle, where
+  `FindBestSurface` has to return true on the real octree by itself. Measured: `speed=72.000`,
+  `scale=0.12917`, `speed_dt=1.2000`, `minus_radius=0.9000`, `predicted_h=0.15500`.
+
+Each apply arms a one-shot breakpoint on `FindBestSurface`, so the loop's own call reports its real
+result (`PROBE-RESULT swb9-<n> found=1 predicted=(...) radius=0.60000 surface_h=0.15500
+surface_normal=(-0.1099,0.4412,-0.8907)` - the returned triangle is the captured one, at the predicted
+height). Nothing forces `found`, the loop condition's distance, or a surface: no `force_ret` stub, no
+`found` write.
+
+Runs (all `3dfd2249,0g_swamp_hall`, `swarmbasics_swamp.con`, `--fast`): `d` 1200 f and `f` 300 f on
+the coverage build, `g` 300 f on the shipped `build-port-link` after the marker - every one normal
+inferior exit (`game rc=0`, `caught/reach-stub: 0`, 0 failed writes), `/tmp/opencode/swb9/{c,d,f,g}`. `c` and `d` are the same fixture with the probe logging still broken
+(`PROBE-RESULT` never fired); `f` and `g` are the final spec, where it does. In this fixture's own
+profile **613:3/4 is taken and 613:1/4 is not**: the loop's exit on `found` is the only one it reaches
+(the falling exit needs the swb8 copy of the arms). Merged with the eight swb8 profiles:
+
+    python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/swb9/d/gcov /tmp/opencode/swb9/f/gcov \
+      /tmp/opencode/swb8/{a,a2,b,b2,b3,b4,b5,b6}/gcov --module SwarmBasics
+    SwarmBasics - CSwarmBasics::UpdateBoid(...)  85/85  44/44  ALL-ARMS
+
+The merge is against the `build-port-cov` of `8816a08d9` (pre-marker), so the line numbers in this
+table are that build's; the marker shifts the body by one line.
+
+How each group of UpdateBoid's arms was taken (all forced except the tail):
+
+| lines | arm | run |
+|---|---|---|
+| 590/592 | `mLifeTime > 0`, boid lifetime `<= 0` / not | force7 `ph7`/`ph8`/`ph10` |
+| 598/599 | safe-zone test, and the hit (KillBoid + return) | force7 `ph6` + `FORCE_INNER` stub of `PointIsInSafeZone` |
+| 613 (all 4) | loop body entered twice, exit on `distance < 0`, exit on `found` | force7 `ph0`/`ph9` (falling exit), swb9 (found exit) |
+| 617/618 | `FindBestSurface` true, remaining-launch `== 0` / not | force7 `ph2`, `ph1` |
+| 634/635/636 | `!found`, gravity, the counter | force7 `ph0`/`ph1` |
+| 640-643 | `mFramesNotOnSurface >= 30` with and without a looped sound | force7 `ph3`/`ph4` |
+| 653/656/657 | falling path: surface found, plane height, radius test | force7 `ph5`/`ph11`, swb8 floor placement |
+| 664-685 | tail (near list, steering, turn) | natural |
+
+**Marked** (`// @ fn_80_6104`, `src/MetroidPrime/Enemies/CSwarmBasics.cpp`). `asmcheck.py check
+SwarmBasics ... fn_80_6104` (all tags) gives five findings, none a behaviour difference: `NOPOS
+mVulnerableToSafeZone` (bitfield with no stated position in the header); `BIT 0x620C asm sets x4f0_01,
+C++ never writes it` (that store *is* `mBoidUpdatedThisFrame = true` at 597; the mask matches the
+header's 8th bit, the tool's anchored layout does not); `CALL 0x6370 fn_80_6AC0` (the `CCollisionSurface`
+constructor of 614, a weak copy at 0x6AC0 - `SwarmBasics_functions.tsv` row 06AC0); three `XCALL`s
+(`KillBoid`, `BoidCollidedCallback`, `ApplySteeringBehaviors`) against retail's four `bctrl` vtable
+calls the tool cannot follow - slots `0x94` twice (0x61F4, 0x6290: the two early returns), `0xBC`
+(0x6510), `0x90` (0x6938).
+
+Gates: host build `metroid_prime2_port` 0 FAILED; `gen_files_cmake.py --check` rc 0;
+`review_decomp_diff.sh 8816a08d9` rc 0 (one `MARK`, no MASK/DEL/NULL/STUB); matching build
+`configure.py && ninja` `87 files OK`; no `TARGET_PC` block and no non-comment source change, so the
+port/matching split is untouched by construction.
