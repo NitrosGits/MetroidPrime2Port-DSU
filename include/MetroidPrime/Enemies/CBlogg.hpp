@@ -28,6 +28,7 @@ public:
                           const CDamageVulnerability& otherVulnerability, bool flag);
 
   // CNonUniformVulnerability
+  // @ fn_7_17A8
   ~CBloggBodyVulnerability() override {}
   const CDamageVulnerability* GetDamageVulnerability(const CDamageVulnerability* defaultVuln,
                                                      const CVector3f& position,
@@ -53,6 +54,7 @@ public:
                            const CDamageVulnerability& otherVulnerability, bool flag);
 
   // CNonUniformVulnerability
+  // @ fn_7_0
   ~CBloggMouthVulnerability() override {}
   const CDamageVulnerability* GetDamageVulnerability(const CDamageVulnerability* defaultVuln,
                                                      const CVector3f& position,
@@ -145,8 +147,11 @@ public:
   // CPatterned
   void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                        float dt) override;
+  // @ fn_7_45D8
   CProjectileInfo* ProjectileInfo() override { return &mProjectileInfo; }
+  // @ fn_7_2A08
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
+  // @ fn_7_4B00
   CDamageInfo GetContactDamage() const override { return mContactDamage; }
   void SetupStateMachine(CStateManager& mgr) override;
   void SetIngPossessed(bool possessed, CStateManager& mgr) override;

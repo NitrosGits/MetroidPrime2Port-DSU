@@ -42,6 +42,7 @@
 
 #include <math.h>
 
+// @ fn_7_BEFC
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"ShouldPatrol", static_cast< CPatterned::StateMachine::TriggerFunc >(&CBlogg::ShouldPatrol)},
     {"AnimOver", static_cast< CPatterned::StateMachine::TriggerFunc >(&CBlogg::AnimOver)},
@@ -241,6 +242,7 @@ bool CBloggMouthVulnerability::GetCollisionResponseType(const CVector3f& positio
   return true;
 }
 
+// @ fn_7_A02C
 CBlogg::CBlogg(TUniqueId uid, const rstl::string& name, CEntityInfo& info, const CTransform4f& xf,
                const CModelData& modelData, const CPatternedInfo& patternedInfo,
                const CActorParameters& actorParams, float minAttackAngle, float maxAttackAngle,
@@ -677,6 +679,7 @@ bool CBlogg::IsChargeOver(CStateManager& mgr, const CTriggerData& data) const {
   return mChargeOver != 0;
 }
 
+// @ fn_7_5E80
 bool CBlogg::CanMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (mMeleePursuitEnded || mChargeOver) {
     return false;
@@ -701,6 +704,7 @@ bool CBlogg::CanMeleeAttack(CStateManager& mgr, const CTriggerData& data) const 
   return teamAllows || xbc5_26_ || xbc5_30_;
 }
 
+// @ fn_7_5D88
 bool CBlogg::CanRangedAttack(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   bool teamAllows = true;
@@ -803,6 +807,7 @@ void CBlogg::ReleaseHints(CStateManager& mgr) {
   }
 }
 
+// @ fn_7_1C0C
 TUniqueId CBlogg::FindNearestHint(CStateManager& mgr, const CVector3f& position,
                                   bool checkLineOfSight) const {
   TUniqueId nearest = kInvalidUniqueId;
@@ -915,6 +920,7 @@ void CBlogg::AttachPlayerToMouth(CStateManager& mgr) {
   }
 }
 
+// @ fn_7_2A10
 uchar CBlogg::GetNextPositionIndex() const {
   const int count = mPositionHistory.size();
   if (count > 0) {
@@ -1364,6 +1370,7 @@ void CBlogg::MoveToPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_65F4
 void CBlogg::GrabBall(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1571,6 +1578,7 @@ void CBlogg::SpitBall(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_38C4
 void CBlogg::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1678,6 +1686,7 @@ void CBlogg::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_3B1C
 void CBlogg::FindAttackPositions(CStateManager& mgr, const CVector3f& playerPosition,
                                  const CVector3f& bloggPosition, const CVector3f& direction,
                                  float distance) {
@@ -1750,6 +1759,7 @@ void CBlogg::FindAttackPositions(CStateManager& mgr, const CVector3f& playerPosi
   }
 }
 
+// @ fn_7_7E90
 void CBlogg::ComputeAttackPositions(CStateManager& mgr, float dt) {
   if (mHintIds.size() != 0u) {
     const TUniqueId hintId = FindNearestHint(mgr, GetTranslation(), false);
@@ -1967,6 +1977,7 @@ void CBlogg::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_7_43D8
 void CBlogg::LaunchBloggProjectile(const CTransform4f& xf, CStateManager& mgr, int maxProjectiles,
                                    uint attributes, bool homing,
                                    const CImpactVisorEffect& visorEffect, const CVector3f& scale) {
@@ -1985,6 +1996,7 @@ void CBlogg::LaunchBloggProjectile(const CTransform4f& xf, CStateManager& mgr, i
   }
 }
 
+// @ fn_7_4B4C
 void CBlogg::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                              float dt) {
   switch (type) {
@@ -2230,6 +2242,7 @@ void CBlogg::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_7_108
 CEntity* LoadBlogg(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrBlogg sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrBlogg.inc"

@@ -32,6 +32,7 @@ inline SLdrBloggStruct::SLdrBloggStruct() {
 
 inline SLdrBloggStruct::~SLdrBloggStruct() {}
 
+// @ fn_7_10E0
 inline void LoadTypedefBloggStruct(SLdrBloggStruct& sldrThis, CInputStream& input) {
   const int propertyCount = input.ReadUint16();
   for (int i = 0; i < propertyCount; ++i) {
@@ -112,6 +113,7 @@ struct SLdrBlogg {
   SLdrBloggStruct bloggStruct_0xf2ba21e1;                 // non-matching name, 0xf2ba21e1
 };
 
+// @ fn_7_E5C
 inline SLdrBlogg::SLdrBlogg()
 : editorProperties()
 , patterned()

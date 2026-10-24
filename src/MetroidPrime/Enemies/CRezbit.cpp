@@ -36,6 +36,7 @@ static const char* const skDeRezzedEffect = "DeRezzed";
 static const pas::EStepDirection skStrafeDirections[] = {pas::kSD_Left, pas::kSD_Right, pas::kSD_Up,
                                                          pas::kSD_Down};
 
+// @ fn_53_88E0
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"StateOver", static_cast< CPatterned::StateMachine::TriggerFunc >(&CRezbit::StateOver)},
     {"IsDeRezzed", static_cast< CPatterned::StateMachine::TriggerFunc >(&CRezbit::IsDeRezzed)},
@@ -97,6 +98,7 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 
 static CVector3f skShieldHalfExtents(3.5f, 0.5f, 5.f);
 
+// @ fn_53_785C
 CRezbit::CRezbit(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                  const CTransform4f& xf, const CModelData& modelData,
                  const CActorParameters& actorParams, const CPatternedInfo& patternedInfo,
@@ -169,6 +171,8 @@ CRezbit::CRezbit(TUniqueId uid, const rstl::string& name, const CEntityInfo& inf
   mPathFindSearch.SetCharacterHeight(7.f);
 }
 
+// @ fn_53_74D4
+// @ fn_53_75E4
 CRezbit::~CRezbit() {}
 
 // @ fn_53_6B78
@@ -489,6 +493,7 @@ void CRezbit::Strafe(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_5C90
 void CRezbit::BecomeRezzed(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -512,6 +517,7 @@ void CRezbit::BecomeRezzed(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_5A78
 void CRezbit::BecomeDeRezzed(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1469,6 +1475,7 @@ void CRezbit::BuildDerezModel(CAssetId model, CAssetId skinRules) {
   }
 }
 
+// @ fn_53_168
 CEntity* LoadRezbit(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrRezbit sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrRezbit.inc"

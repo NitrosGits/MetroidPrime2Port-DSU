@@ -1,0 +1,11 @@
+# Blogg rez6 (spec tools/cov/specs/blogg_force4.py): Torvus Bog 07_swamp_shaft layers 2/3/5 loaded, then the Bloggs
+# are killed (vulnerability / ctor / dtor arms); the spec patches the first LoadBlogg / LoadTypedefBloggStruct input.
+@f300 layer 2
+@f320 layer 3
+@f340 layer 5
+@f400 god 1
+@f600 kill u05fc
+@f620 kill u05f1
+@f700 spawn BLOG
+@f800 covdump
+@f900 objs Blogg

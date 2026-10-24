@@ -1,0 +1,21 @@
+# Rezbit rez6 (spec tools/cov/specs/rezbit_force4.py): loader unknown-property arms and the ctor with an invalid
+# effect / derez model happen at the layer loads; here the BecomeRezzed / BecomeDeRezzed states in both rez states,
+# `spawn REZB` without an ANCS (LoadRezbit's model-null return), then both Rezbits are killed (dtor arms).
+@f300 god 1
+@f310 layer 3
+@f450 layer 4
+@f520 place e0005011b player 15
+@f700 fsm e0005011b BecomeDeRezzed
+@f800 fsm e0005011b Idle
+@f850 fsm e0005011b BecomeRezzed
+@f950 fsm e0005011b Idle
+@f1000 fsm e0005011b BecomeRezzed
+@f1050 fsm e0005011b Idle
+@f1100 codecall e0005011b SetDeRezzedState
+@f1110 fsm e0005011b BecomeDeRezzed
+@f1160 fsm e0005011b Idle
+@f1250 spawn REZB
+@f1400 kill e0005011b
+@f1450 kill e00050065
+@f1500 covdump
+@f1700 objs rezbit

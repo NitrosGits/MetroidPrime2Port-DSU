@@ -63,6 +63,7 @@ struct SLdrRezbitData {
   SLdrDamageVulnerability shieldVulnerability; // 0xd34f1323
 };
 
+// @ fn_53_1040
 inline SLdrRezbitData::SLdrRezbitData()
 : derezModel(kInvalidAssetId)
 , derezSkinRules(kInvalidAssetId)
@@ -140,8 +141,10 @@ inline SLdrRezbitData::SLdrRezbitData()
 #endif
 }
 
+// @ fn_53_F64
 inline SLdrRezbitData::~SLdrRezbitData() {}
 
+// @ fn_53_85C
 inline void LoadTypedefRezbitData(SLdrRezbitData& sldrThis, CInputStream& input) {
   const int propertyCount = input.ReadUint16();
   for (int i = 0; i < propertyCount; ++i) {
