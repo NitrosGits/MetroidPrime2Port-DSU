@@ -4432,6 +4432,7 @@ CAABox CGrenchler::GetSortingBounds(const CStateManager& mgr) const {
   return *mGuardianBounds;
 }
 
+// @ fn_27_0168
 CEntity* LoadGrenchler(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrGrenchler sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrGrenchler.inc"
@@ -4460,7 +4461,15 @@ CEntity* LoadGrenchler(CStateManager& mgr, CInputStream& input, CEntityInfo& inf
       sldrThis.tail.character_index, sldrThis.tail.initial_anim,
       sldrThis.tailWhenUnderwater.initial_anim, sldrThis.taillessModel, sldrThis.taillessSkinRules,
       sldrThis.tail_Dark.ancs, sldrThis.tail_Dark.character_index, sldrThis.tail_Dark.initial_anim,
+#ifdef TARGET_PC
+      // Retail passes the light underwater anim twice: 0xCB8 `lwz r26, 0xa08(r1)` (tailWhenUnderwater
+      // .initial_anim) is stored at 0xD84 (`stw r26, 0x20(r1)`, the tailWhenUnderwater argument) and again
+      // at 0xDB0 (`stw r26, 0x38(r1)`, the tailWhenUnderwaterDark argument); 0xa28 (tailWhenUnderwater_Dark
+      // .initial_anim) is never read.
+      sldrThis.tailWhenUnderwater.initial_anim, sldrThis.taillessModel_Dark,
+#else
       sldrThis.tailWhenUnderwater_Dark.initial_anim, sldrThis.taillessModel_Dark,
+#endif
       sldrThis.taillessSkinRules_Dark, tailHitSound, tailDestroyedSound,
       sldrThis.biteAttackMaxPause, sldrThis.biteAttackDamageRadius,
       LdrToDamageInfo(sldrThis.biteDamage), LdrToDamageInfo(sldrThis.beamDamage),

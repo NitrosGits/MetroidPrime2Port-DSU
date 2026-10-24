@@ -1,0 +1,4 @@
+# gren6: 01_swamp_entrance layer loads for the LoadGrenchler forcing (grenchler_force6b.py). --frames 600, --fast.
+@f300 layer 4
+@f340 layer 8
+@f500 status
