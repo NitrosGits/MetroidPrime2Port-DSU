@@ -63,6 +63,7 @@ struct SLdrRezbitData {
   SLdrDamageVulnerability shieldVulnerability; // 0xd34f1323
 };
 
+// @ fn_53_1040
 inline SLdrRezbitData::SLdrRezbitData()
 : derezModel(kInvalidAssetId)
 , derezSkinRules(kInvalidAssetId)
