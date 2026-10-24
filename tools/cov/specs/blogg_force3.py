@@ -16,6 +16,7 @@ GATE_SYMS = {
     'ipf': 'CSfxManager::IsPlaying(',
     'cam': 'CCameraManager::IsInCinematicCamera(',
     'onpath': 'CPathFindSearch::OnPath(',
+    'start': 'CScriptTeamAiMgr::StartAttack(',
 }
 AFTER_SYMS = {'base_asm': 'CPatterned::AcceptScriptMsg('}
 exec(compile(open(os.path.join(os.path.dirname(os.environ['COV_SPEC']), 'force_lib.py')).read(), 'force_lib.py', 'exec'))
@@ -307,6 +308,66 @@ def attack_group():
     flush()
 
 
+def state_group():
+    """leaf getters, GrabBall (all arms), Dead (last: it changes the Blogg for good)."""
+    run('set $buf = (unsigned char*)malloc(512)')
+    run('print (long)$t->GetSearchPath() - (long)$t')
+    run('print (long)$t->ProjectileInfo() - (long)$t')
+    run('print $t->GetContactDamage()')
+    teams = actors('CScriptTeamAiMgr', 'kOL_All')
+    tid = teams[0][1] if teams else 0xffff
+    pid = int(ev(PLID))
+    lv = [T + n for n in ('mBallGrabTime', 'mBallGrabbed', 'mAbortBallGrab', 'mCanBite', 'x951_', 'mMeleeDelayTimer',
+                          'mTeamManagerId.value', 'mPlayerId.value', 'mState')]
+    base = snap(lv)
+    P = '$m->mPlayers[0]->'
+    ppos = [float(ev(P + 'mPosition.m' + c)) for c in 'XYZ']
+
+    def restore():
+        put(base)
+        run('call $m->mPlayers[0]->SetTranslation(%s)' % vec(7, *ppos))
+    for team in (0xffff, tid):
+        for start in ((None,) if team == 0xffff else (1, 0)):
+            for plid in (pid, 0xffff):
+                w(T + 'mTeamManagerId.value', team)
+                w(T + 'mPlayerId.value', plid)
+                if start is not None:
+                    gates_on({'start': (start, [])})
+                log('# GrabBall Activate team=%#x start=%s player=%#x' % (team, start, plid))
+                run('call $t->GrabBall(*$m, (EStateMsg)0, 0.016f)')
+                gates_off(['start'])
+                restore()
+    w(T + 'mTeamManagerId.value', tid)
+    for plid in (pid, 0xffff):
+        for dt, g0 in ((0.016, 0.0), (1.0, 0.0), (0.016, 0.2)):
+            w(T + 'mPlayerId.value', plid)
+            w(T + 'mBallGrabTime', g0)
+            log('# GrabBall Update player=%#x dt=%s grab time=%s' % (plid, dt, g0))
+            run('call $t->GrabBall(*$m, (EStateMsg)1, %rf)' % dt)
+            restore()
+        w(T + 'mPlayerId.value', plid)
+        log('# GrabBall Deactivate player=%#x' % plid)
+        run('call $t->GrabBall(*$m, (EStateMsg)2, 0.016f)')
+        restore()
+    flush()
+    # Dead: Update with fluid / fade combinations, then the effective one, Activate and Deactivate
+    fl0 = int(ev(T + 'mFluidIds.mCount'))
+    run('call $t->Dead(*$m, (EStateMsg)2, 0.016f)')
+    for fl, fade in ((1, 0), (0, 1), (1, 1)):
+        w(T + 'mFluidIds.mCount', fl)
+        w(T + 'mFadeToDeath', fade)
+        log('# Dead Update fluid=%d fade=%d' % (fl, fade))
+        run('call $t->Dead(*$m, (EStateMsg)1, 0.016f)')
+    w(T + 'mFluidIds.mCount', 0)
+    w(T + 'mFadeToDeath', 0)
+    run('call $t->Dead(*$m, (EStateMsg)0, 0.016f)')
+    log('# Dead Update effective')
+    run('call $t->Dead(*$m, (EStateMsg)1, 0.016f)')
+    run('print $t->mAlphaDelta')
+    w(T + 'mFluidIds.mCount', fl0)
+    flush()
+
+
 STATE_MSG = {'A': 0, 'U': 1, 'D': 2}
 
 
@@ -321,6 +382,8 @@ def hook():
             misc_group()
         if 'attack' in which:
             attack_group()
+        if 'state' in which:
+            state_group()
         gdb.execute('set $tvalid = 1')
         log('# done')
     except Exception as e:
