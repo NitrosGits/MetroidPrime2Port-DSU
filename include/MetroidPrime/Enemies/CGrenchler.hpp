@@ -576,6 +576,7 @@ public:
   // Guessed name; weak spot in front of the head, reflective everywhere else.
   class SConeVulnerability : public CNonUniformVulnerability {
   public:
+    // @ fn_27_13A94
     SConeVulnerability(const CVector3f& direction, float maxAngle,
                        EWeaponCollisionResponseTypes insideResponse,
                        EWeaponCollisionResponseTypes outsideResponse)
