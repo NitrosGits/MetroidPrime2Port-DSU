@@ -68,7 +68,7 @@ same driver), both `caught/reach-stub: 0`.
 | 6D4 ~SLdrIngSnatchingSwarm | marked: objdiff 100% |
 | 1908 CalculateArcLength | marked: **ALL-ARMS** after forcing `mArcPoints.mCount = 0` on every other call (size != 4) |
 | F7C UpdateParticles | marked: **ALL-ARMS** after stubbing `CMain::IsMaxSpeed()` to 1 for half the calls (FORCE_INNER, `$rax`) |
-| 17C8 FollowArc | 7/8: only 670:1/2 (`return t < 1.f` false) left. Forced so far: size != 4, speed <= 0 and duration <= 0 all ran; the arc-end arm needs t >= 1, which the second forcing run targets with `mArcLength = 0.001` |
+| 17C8 FollowArc | 7/8: only 670:1/2 (`return t < 1.f` false) left. Two forcing runs: size != 4, speed <= 0 and duration <= 0 all taken, but neither `$xmm0 = 1e6` (time) nor `mArcLength = 0.001` (a tiny duration, so t = time/duration >> 1) took the arc-end arm - it also needs the body to reach the return, which the arc-end hit apparently does not |
 | 29A8 SelectTarget | 35/40: 475:1/6, 475:5/6, 476:3/6, 499:1/2, 506:3/4. The `CanBeIngPossessed` -> 0 and `IsIngPossessed` -> 1 FORCE_INNER stubs fired (`forced.log`) but the arms they gate stayed untaken, and the best-candidate arms need two candidates with different swarm counts - next attempt: a second swarm (GENR) or a `loc:` write of `candidates[j].mSwarmCount` |
 | 41CC ctor | 29/38: 143/145/147 (the `mExplosionEffect != kInvalidAssetId` ternary, data: the shipped GENR always sets it) and 183 (the mStateMachineToken setup) |
 | 744 SLdrIngSnatchingSwarm ctor | not byte-identical (objdiff 72.9%): GCC inlines the sub-struct ctors MWCC kept out of line; the defaults are the ones swsldr1 fixed |
