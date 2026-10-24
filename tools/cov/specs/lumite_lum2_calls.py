@@ -35,7 +35,7 @@ gdb.execute('set $lm_busy = 0')
 gdb.execute('set $lm_done = 0')
 gdb.execute('set $lm_team = -1')
 
-STEPS = os.environ.get('LUM2_STEPS', 'basic,sun,zone,trig,knee,hop,more,team2,msg,collide,dead').split(',')
+STEPS = os.environ.get('LUM2_STEPS', 'basic,sun,zone,trig,knee,hop,cbn,more,team2,msg,collide,dead').split(',')
 
 bp = gdb.Breakpoint(addr('CLumite::Think('))
 bp.condition = ('$lm_busy == 0 && $lm_done == 0 && ((CLumite*)$rdi)->mActive && ((CLumite*)$rdi)->mAlive '
@@ -125,3 +125,72 @@ for _sym, _var in (('CCollisionSurface::IsDegenerate(', 'lm_rf_degen'), ('CAABox
                    ('CSafeZoneManager::SphereTouchingWhichSafeZone(', 'lm_rf_szm')):
     gdb.execute('set $%s = -1' % _var)
     RetForce(_sym, _var)
+
+
+# LoadLumite arms shipped data may never reach (no model, the -1 phase sounds): at the line of the test the local is
+# written once (the first Lumite load of the run; the loaded object is dropped for the model arm).
+class LoadBp(gdb.Breakpoint):
+    def __init__(self, loc, kind, off, val):
+        super().__init__(loc, internal=True)
+        self.kind, self.off, self.val, self.n = kind, off, val, 0
+        self.expr = '%s -0x%x = %d' % (kind, off, val)
+
+    def stop(self):
+        self.n += 1
+        with open(OUT + '/lum2_load.log', 'a') as fh:
+            fh.write('LoadBp hit %d %s\n' % (self.n, self.expr))
+        if self.n == 1:
+            try:
+                gdb.execute('set var %s($rbp - %d) = %d' % ('{char}' if self.kind == 'char_slot' else '{int}', self.off, self.val))
+            except gdb.error as e:
+                with open(OUT + '/lum2_load.log', 'a') as fh:
+                    fh.write('LoadBp %s: %s\n' % (self.expr, e))
+        return False
+
+
+if os.environ.get('LUM2_LOAD', '1') == '1':
+    # the tests are compiled to `cmpb $0,-N(%rbp)` after the LdrToModelData call and `mov -N(%rbp),%rXXd` for the two
+    # sounds: the breakpoints sit on those instructions and write the stack slots (the source line of the test has no code of its own).
+    import re
+    _dis = gdb.execute('disassemble ' + addr('LoadLumite(')[1:], to_string=True).split('\n')
+    _ins = [re.match(r'\s*(0x[0-9a-f]+) <\+(\d+)>:\s+(.*)', l) for l in _dis]
+    _ins = [('(%s + %s)' % (addr('LoadLumite(')[1:], m.group(2)), m.group(3)) for m in _ins if m]
+    for _k, (_a, _t) in enumerate(_ins):
+        if 'call' in _t and 'LdrToModelData' in _t:
+            _m = re.search(r'cmpb\s+\$0x0,-0x([0-9a-f]+)\(%rbp\)', _ins[_k + 1][1])
+            LoadBp('*' + _ins[_k + 1][0], 'char_slot', int(_m.group(1), 16), 0)
+            _sl = [(a, re.search(r'mov\s+-0x([0-9a-f]+)\(%rbp\),%r\d+d', t)) for a, t in _ins[_k + 2:_k + 12]]
+            _sl = [(a, int(m.group(1), 16)) for a, m in _sl if m]
+            LoadBp('*' + _sl[0][0], 'int_slot', _sl[0][1], -1)
+            LoadBp('*' + _sl[1][0], 'int_slot', _sl[1][1], -1)
+            break
+
+
+# CVector3f::CanBeNormalized forced false for one call made from a given source line of the caller
+# ($lm_cbn_line_k = line, $lm_cbn_cnt_k = how many calls from it to force; k = 1..3). The lines of the tests are found by text.
+class CbnForce(gdb.Breakpoint):
+    def stop(self):
+        try:
+            fr = gdb.newest_frame().older()
+            line = fr.find_sal().line
+            for k in (1, 2, 3):
+                if int(gdb.convenience_variable('lm_cbn_cnt_%d' % k)) > 0 and \
+                        int(gdb.convenience_variable('lm_cbn_line_%d' % k)) == line:
+                    gdb.execute('set $lm_cbn_cnt_%d = $lm_cbn_cnt_%d - 1' % (k, k))
+                    RetSetBp(fr.newer(), 0)
+                    break
+        except (gdb.error, ValueError, AttributeError, TypeError):
+            pass
+        return False
+
+
+for _k in (1, 2, 3):
+    gdb.execute('set $lm_cbn_cnt_%d = 0' % _k)
+    gdb.execute('set $lm_cbn_line_%d = 0' % _k)
+CbnForce(addr('CVector3f::CanBeNormalized('), internal=True)
+_srcl = open(os.path.join(HERE, '..', '..', '..', 'src/MetroidPrime/Enemies/CLumite.cpp')).read().split('\n')
+for _name, _txt in (('while', 'while (!cross.CanBeNormalized()'), ('inner', 'if (mHop.mLaunchDirection.CanBeNormalized())'),
+                    ('tozone', 'if (!toZone.CanBeNormalized())'), ('normal', 'if (!normal.CanBeNormalized())'),
+                    ('hopdir', 'if (direction.CanBeNormalized())')):
+    _ln = [i for i, l in enumerate(_srcl, 1) if _txt in l]
+    gdb.execute('set $lm_L_%s = %d' % (_name, _ln[0] if _ln else 0))

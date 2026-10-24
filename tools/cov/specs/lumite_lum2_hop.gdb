@@ -128,6 +128,8 @@ if hints:
             run('call $t->ChooseHop(*$m)')
             restore()
     cand([selfid]); run('call $t->ChooseHop(*$m)'); restore()
+    cand([hints[0]]); run('set var $t->mHop.mChosenScore = -1.0f'); run('set var $t->mHop.mChosenHintId.value = %d' % selfid)
+    run('call $t->ChooseHop(*$m)'); restore()
     hq = ptr(hints[0], 'CScriptAIHint')
     a0 = int(gdb.parse_and_eval('%s->mActive' % hq))
     gdb.execute('set var %s->mActive = 0' % hq)
