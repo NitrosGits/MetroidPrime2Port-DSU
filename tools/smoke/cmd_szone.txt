@@ -20,7 +20,7 @@
 # light crystals pass non-dark shots through unless entangled. Constant HP alone is not a miss.
 # Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC): in fast mode
 # the shot object ids and the late `objs SafeZone` listings vary between runs, so the transcript is
-# not a fixed baseline. Capped, its 2400 updates take ~40 s. F=2400, last check f2300.
+# not a fixed baseline. Capped, its 2500 updates take ~40 s. F=2500, last check f2300.
 @f300 god 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give chargeBeam 1; give unlimitedBeamAmmo 1; give missile 50
 @f310 beam light
 @f320 tp -82.3 -75.0 5.1
@@ -85,4 +85,7 @@
 @f1900 send u04d4 Deactivate
 @f2000 tp -141.1 -85.9 -10.3
 @f2100 send u0474 Delete
+# appended: count drop around the delete
+@f2090 objs SafeZone
+@f2110 objs SafeZone
 @f2300 objs SafeZone

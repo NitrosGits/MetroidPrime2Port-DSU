@@ -2,7 +2,7 @@
 # (-4,-51,55); it sleeps until `send <id> Alert`. The steps follow tools/cov/specs/sporb_hall.con
 # (the sporb1 coverage driver: wake, needles, the morph-ball grab and hold, the top's flinch and
 # damage, the flail). Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the
-# family runs F=2400, last check f2350.
+# family runs F=2600, last check f2350.
 @f300 god 1; give morphBall 1; give boostBall 1; give powerBomb 5; give missile 50; fastmorph 1
 @f320 tp 6 -51 53.5
 @f340 send u0470 Alert; fsm u0470 WakeUp
@@ -15,6 +15,8 @@
 @f1000 shoot u0470 charged
 @f1300 tp 6 -51 53.5
 @f1500 obj u0470; obj u046e
+# appended: hp fall on the top (child) actor
+@f1550 damage u046e 5; obj u046e
 @f1900 press x 30
 @f2000 damage u0470 50
 @f2100 shoot u0470 missile
@@ -22,4 +24,6 @@
 # the base is killed from the console - `kill` zeroes the patterned's health and runs its Death the
 # way ApplyDamage does (kSS_DeathRattle), as the Splitter's chassis and the Hunter Ing are.
 @f2250 kill u0470; obj u0470
+# appended: real death on the top + count drop
+@f2300 damage u046e 999; objs sporb
 @f2350 objs sporb; status

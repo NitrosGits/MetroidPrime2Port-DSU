@@ -21,7 +21,7 @@
 # Checks are game updates (@f<n>), never wall seconds. The family is NC: unpaced, con.py's 0.5 s
 # connect lands at ~update 300 - the script's own first step, at ~1500 updates a second measured -
 # so `layer 3` and the f330 `objs` would arrive with no margin between them; capped, the layer is in
-# by f330 as in the driver. Capped, its 3600 updates take ~62 s. F=3600, last check f3500.
+# by f330 as in the driver. Capped, its 3700 updates take ~62 s. F=3700, last check f3500.
 @f300 god 1; layer 3; give missile 50; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
 @f330 objs WallWalker
 @f360 obj e002500f9
@@ -47,6 +47,9 @@
 @f2440 obj e0025014e
 @f2700 damage e00250156 10
 @f2740 obj e00250156
+# hp fall on a leg collision actor (missile), then a forced fsm change
+@f2752 damage u05fc 1 0 missile; obj u05fc
+@f2760 fsm e002500f9 RightLegHitReaction; obj e002500f9
 @f2860 obj e0025009e
 @f2900 send e0025009e Activate
 @f3000 obj e0025009e
