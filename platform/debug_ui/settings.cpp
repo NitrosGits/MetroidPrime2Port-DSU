@@ -31,6 +31,12 @@
 #include <sstream>
 #include <string>
 
+#if !defined(_WIN32)
+// `environ`, for the MP2_* dump below. Bionic declares it only from here (unistd.h), so a
+// desktop-only include chain left this undeclared on Android.
+#include <unistd.h>
+#endif
+
 using namespace PortOverlayState;
 
 namespace {
