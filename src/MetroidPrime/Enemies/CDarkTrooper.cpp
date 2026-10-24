@@ -323,6 +323,7 @@ void CDarkTrooper::PreRender(CStateManager& mgr) {
 // @ fn_12_4B60
 void CDarkTrooper::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_12_497C
 CVector3f CDarkTrooper::GetAimPosition(const CStateManager&, float dt) const {
   CVector3f offset = CVector3f::Zero();
   if (dt > 0.f) {
@@ -435,6 +436,7 @@ void CDarkTrooper::FireMissile(CStateManager& mgr) {
   }
 }
 
+// @ fn_12_3D08
 void CDarkTrooper::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                    EUserEventType type, float dt) {
   bool handled = true;
@@ -622,6 +624,7 @@ void CDarkTrooper::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_12_31BC
 void CDarkTrooper::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     RemoveMaterial(kMT_Target, kMT_Orbit, kMT_SeekerTarget, mgr);
@@ -735,6 +738,7 @@ void CDarkTrooper::ThinkRagDoll(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_12_2C78
 void CDarkTrooper::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     UnmarkPathRegion(mgr);
@@ -752,6 +756,7 @@ void CDarkTrooper::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_12_2AB0
 void CDarkTrooper::CreateRagDoll(CStateManager& mgr) {
   if (!mRagDollHolder.mRagDoll.get()) {
     UpdateHitDamageTime(1000.f);
@@ -850,6 +855,7 @@ bool CDarkTrooper::InMissileRange(CStateManager& mgr, const CTriggerData&) const
   return InRange(mgr, mRangedAttackMinRange, mRangedAttackMaxRange);
 }
 
+// @ fn_12_23B4
 void CDarkTrooper::UnmarkPathRegion(CStateManager& mgr) {
   if (mMarkedRegionIndex != -1) {
     if (CPFArea* area = GetPathArea(mgr)) {
@@ -1085,6 +1091,7 @@ void CDarkTrooper::PreRenderBoneTracking(CStateManager& mgr) {
   }
 }
 
+// @ fn_12_1484
 CDamageInfo CDarkTrooper::GetContactDamage() const {
   if (mTransitioning || !mAlive) {
     CDamageInfo damage = CPatterned::GetContactDamage();
@@ -1095,6 +1102,7 @@ CDamageInfo CDarkTrooper::GetContactDamage() const {
   return CPatterned::GetContactDamage();
 }
 
+// @ fn_12_13F0
 CVector3f CDarkTrooper::GetIngSnatchingNormal(float) const {
   CVector3f normal = mHeadDirection * -1.f;
   normal.SetZ(0.f);
