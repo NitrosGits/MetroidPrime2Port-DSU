@@ -665,42 +665,67 @@ Gates: host build 0 FAILED; `gen_files_cmake.py --check` rc 0; `review_decomp_di
 MARK); matching `configure.py && ninja` + forced `build/G2ME01/ok` re-check **87 files OK**. Evidence
 archived before the marker: `/tmp/opencode/reports/swb14-evidence/` (gcno, gcda, raw gcov JSON,
 `swb13_geom.log`, `binary.sha256`, `source.sha256`).
-## swb15: UpdateAllBoidMovement 7/7 lines, 6/6 branches (ALL-ARMS) - marked
+## swb15: UpdateAllBoidMovement 7/7 lines, 6/6 branches measured - NOT marked
 
-Base `9794622f0`, branch `decomp/swb15`. Two launches of the two allowed (run `a` is diagnostic
-only: its MoveBoid oracle used `sizeof(CVector3f)` as the `mAdvancementDeltas` stride).
+Base `9794622f0`, branch `decomp/swb15`, two launches (the cap). The coverage numbers stand - the
+compiler counters do not depend on the fixture - but the run's **oracle accounting does not close**,
+so the marker was removed again (`ae9f65e14` had it; the correction commit takes it out) and this
+body stays unmarked until the anomaly is explained.
 
-**Why this body needs its own area.** `UpdateAllBoidMovement` is the base-class default of a virtual,
+**Why this body needs its own area.** `UpdateAllBoidMovement` is the base-class default of a virtual
 and every shipped swarm class overrides it (CBacteriaSwarm, CMetareeSwarm, CIngBlobSwarm,
-CPlantScarabSwarm, CEmperorIngLightSwarm each have their own out-of-line body). **CFlyerSwarm does
-not**, so only a CFlyerSwarm reaches the base body - through Think's virtual call. Agon
-`42b935e4,01_sand_entrance` has four (u041d, u04ff, u05c4, u05c6), and they are naturally
-`mAnimated = 1` with 5 or 7 boids and `mModelDatas`/`mAdvancementDeltas` of 4 (so `mask = 3`).
+CPlantScarabSwarm, CEmperorIngLightSwarm each have their own out-of-line body); CFlyerSwarm does not,
+so only a CFlyerSwarm reaches the base body - through Think's virtual call. Agon
+`42b935e4,01_sand_entrance` has four, naturally `mAnimated = 1` with 5 or 7 boids and 4
+model/advancement entries (`mask = 3`).
 
-**Fixture** (`tools/cov/specs/swb15_updateall.py`, its own file; the shared seeker spec is untouched):
-one phase per call of the real body, each write restored at the body's return with raw readback -
-ph0 `mAnimated = 0` (the early-return side, which the shipped data never takes), ph1 `mAnimated = 1`
-with its boids (the loop), ph2 `mAnimated = 1` with `mBoids.mCount` lowered to 0 inside the existing
-allocation (the zero-boid side). A second entry is a **MoveBoid oracle**: while a window is open it
-checks every call the body makes - `this`/`mgr`, the boid pointer `== &mBoids[i]`, the delta pointer
-`== &mAdvancementDeltas[i & mask]` (stride `sizeof(CAdvancementDeltas) = 0x1C`, as the asm's
-`0x5070 mulli` shows, and `GetOffsetDelta()` is that struct's first member), and `dt` - and it compares
-the call count with the expectation. `MoveBoid` itself is never replaced or skipped.
+**Run `b` (raw, as logged)**: 4325 body calls, `game rc=0`, `caught/reach-stub: 0`, normal exit,
+coverage 7/7 lines, 6/6 branches. Restores: 2880 `OK` + 1445 `NATURAL` = 4325.
 
-Run `b`: `42b935e4,01_sand_entrance`, `swarmbasics_sand.con`, `--fast`, 1200 frames, `game rc=0`,
-`caught/reach-stub: 0`, normal inferior exit, 4325 body calls, 2880 forced and 1445 natural windows,
-**7/7 lines, 6/6 branches, ALL-ARMS**. Restores: **2880 OK**, 1445 natural (nothing written), **0**
-mismatch/failed. MoveBoid oracle: 4323 windows OK; **one** window (`swb15-2819-ph1`) reported one extra
-call with `i = 6`'s boid pointer and 6's delta (8 calls for 7 boids) - logged, not hidden; every other
-window matched exactly. Simulation (`mock-tests/`): phases, guards (no models / count above capacity
-refused), restore-originals readback, argument mismatch detection and the summary line all pass.
+**Reconciliation of the oracle log** (`/tmp/opencode/swb15-reconcile/`, mechanical, from the raw
+`swb15_geom.log`): 4325 window opens, 4324 `MOVE-LOOP` closes (4323 `OK` + 1 `MISMATCH`) and 4325
+restores. Exactly one tag differs: **`swb15-2861-ph2` opened and restored but never closed**. The
+cause is visible in the raw order: two calls of the **same** swarm entered before the first one's
+finish fired -
 
-`asmcheck.py check SwarmBasics … fn_80_5024` (all tags): no findings; one `NOPOS` note that the header
-does not state `mAnimated`'s bit (the asm is `0x5044 lbz r0,0x4f0(r3)` + `0x504C extrwi. r0,r0,1,27`,
-i.e. mask 0x10, then `0x5050 beq` to the return). Marked `// @ fn_80_5024`
-(`src/MetroidPrime/Enemies/CSwarmBasics.cpp:881`; the run's line numbers are the pre-marker ones).
+    swb15-2861-ph2 FORCED swarm=0x555558777ba0 ... mBoids.mCount 7->0   (open)
+    swb15-2862-ph0 FORCED swarm=0x555558777ba0 ... mBoids.mCount 0->0   (second open, same swarm)
+    RESTORE swb15-2861-ph2 OK ...            (closes the *global* window, i.e. 2862-ph0's)
+    MOVE-LOOP swb15-2862-ph0 OK calls=0 expected=0
+    RESTORE swb15-2862-ph0 OK ...            (window already consumed: no close)
 
-Gates: host build 0 FAILED; `gen_files_cmake.py --check` rc 0; `review_decomp_diff.sh 9794622f0` (one
-MARK); matching `configure.py && ninja` + forced `build/G2ME01/ok` re-check **87 files OK**. Evidence
-frozen before the marker: `/tmp/opencode/reports/swb15-evidence/` (gcno, gcda, raw gcov JSON, the
-module's asm, `binary.sha256`, `source.sha256`, the fixture log, the run log, `mock-tests/`).
+33 such "open while open" events occur in the run, and the one bad window (`swb15-2819-ph1`, 8
+MoveBoid calls for 7 boids, `i = 6` repeated) is one of them: the second window's first MoveBoid call
+was folded into the first window's counter. The fixture had exactly the defects the review names - a
+singleton `_st['window']`, a `FinishBreakpoint` that closes whatever window is global, no caller/frame
+ownership, no `out_of_scope`, no pending-window check at exit.
+
+**What the raw evidence does *not* resolve**: *why* two entries of the same body overlap. The nm table
+has exactly one symbol for the body (and one for `MoveBoid`), so a duplicate breakpoint from the
+symbol match is ruled out; the log records no frame identity, so a late/duplicated gdb finish and a
+genuinely re-entrant call cannot be told apart offline. Per the review rule ("if raw evidence cannot
+uniquely resolve the anomaly, remove the marker") the marker is out.
+
+**Hardenened fixture** (`tools/cov/specs/swb15_updateall.py`, rewritten, **not runtime-tested**): one
+window record per body entry, keyed by the gdb frame, with its own restore/closing breakpoint bound to
+that record (no shared "current window"); duplicate entries for the same frame are refused and counted;
+the MoveBoid oracle attributes a hit only to the single open window whose `this` matches, and counts
+anything else (no owner, several owners, unreadable args) as `unattributed`; `out_of_scope` closes a
+window that is discarded and counts it as `unwound`; a partial write is rolled back immediately and
+counted; a missing return breakpoint means no writes at all; out-of-order closes, pending windows at
+exit, restore mismatches and refusals all make the exit line report `status=FAIL` with per-reason
+counts. Mock suite (`/tmp/opencode/swb15-reconcile/mock/mock_suite.py`) covers a clean window,
+duplicate entry, non-caller traffic, nested windows for two callers, an unreturned window, an unwind, a
+partial write rolled back and a missing return breakpoint: all pass.
+
+The body's asm shape was checked independently of the fixture: `0x5044 lbz r0,0x4f0(r3)` +
+`0x504C extrwi. r0,r0,1,27` (mAnimated, mask 0x10), `0x5050 beq` to the return, `0x5054` the model
+count, `0x5060 subi` the mask, `0x5068-0x509C` the loop (`and`/`mulli 0x1c`/`lwz` items/`bl MoveBoid`/
+`cmplw`+`blt`). `asmcheck.py check SwarmBasics … fn_80_5024` needs a marker to map the body, so it was
+run against the marker commit `ae9f65e14`: no findings, one `NOPOS` note (the header states no bit for
+`mAnimated`).
+
+Evidence frozen before the marker went in, and untouched by this correction:
+`/tmp/opencode/reports/swb15-evidence/` (gcno, gcda, raw gcov JSON, the module's asm, binary/source
+hashes, the raw fixture log, the run log, mock tests); the mechanical reconciliation and the hardened
+fixture's mock suite are in `/tmp/opencode/swb15-reconcile/`.
