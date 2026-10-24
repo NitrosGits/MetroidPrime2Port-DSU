@@ -537,6 +537,7 @@ void CWispTentacle::Pull(CStateManager&, EStateMsg msg, float) {
   }
 }
 
+// @ fn_86_1780
 void CWispTentacle::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
   if (mSpawnFromPortal) {
