@@ -35,7 +35,7 @@ offset	fn	size	class	name	slice	what	marker
 019AC	fn_7_19AC	54	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
 01A00	fn_7_1A00	130	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::vector	-	weak copy / template instance	no
 01B30	fn_7_1B30	48	H	fn_7_1B30	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
-01B78	fn_7_1B78	94	B	CBlogg::ReleaseHints	-	upstream body (CBlogg)	no
+01B78	fn_7_1B78	94	B	CBlogg::ReleaseHints	-	upstream body (CBlogg)	yes
 01C0C	fn_7_1C0C	308	B	CBlogg::FindNearestHint	blogg1	fixed (blogg1): blocked ray skips facing dot	no
 01F14	fn_7_1F14	5C	H	CRayCastResult::CRayCastResult	-	weak copy / template instance	no
 01F70	fn_7_1F70	100	B	CBlogg::CollectHints	-	upstream body (CBlogg)	no
@@ -105,10 +105,10 @@ offset	fn	size	class	name	slice	what	marker
 05948	fn_7_5948	4	H	fn_7_5948	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
 0594C	fn_7_594C	C	B	CBlogg::BallGrabbed	blogg1	upstream body (CBlogg)	yes
 05958	fn_7_5958	140	B	CBlogg::CanGrabBall	-	upstream body (CBlogg)	yes
-05A98	fn_7_5A98	5C	B	CBlogg::DetectBall	-	upstream body (CBlogg)	no
+05A98	fn_7_5A98	5C	B	CBlogg::DetectBall	-	upstream body (CBlogg)	yes
 05AF4	fn_7_5AF4	54	B	CBlogg::PlayerInBallMode	-	upstream body (CBlogg)	no
 05B48	fn_7_5B48	AC	B	CBlogg::ShouldEndBallPursuit	-	upstream body (CBlogg)	no
-05BF4	fn_7_5BF4	5C	B	CBlogg::ShouldEndPursuit	-	upstream body (CBlogg)	no
+05BF4	fn_7_5BF4	5C	B	CBlogg::ShouldEndPursuit	-	upstream body (CBlogg)	yes
 05C50	fn_7_5C50	8	B	CBlogg::CantMoveToPlayer	-	upstream body (CBlogg)	no
 05C58	fn_7_5C58	34	B	CBlogg::InBiteRange	blogg1	upstream body (CBlogg)	yes
 05C8C	fn_7_5C8C	24	B	CBlogg::InMeleeRange	blogg1	upstream body (CBlogg)	yes

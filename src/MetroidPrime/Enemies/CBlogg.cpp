@@ -719,6 +719,7 @@ bool CBlogg::CanTaunt(CStateManager& mgr, const CTriggerData& data) const {
   return !CanMeleeAttack(mgr, data) && !CanRangedAttack(mgr, data) && mTauntReady;
 }
 
+// @ fn_7_5BF4
 bool CBlogg::ShouldEndPursuit(CStateManager& mgr, const CTriggerData& data) const {
   return !CanMeleeAttack(mgr, data) || mPlayerPursuitTime >= mMaxPlayerPursuitTime;
 }
@@ -747,6 +748,7 @@ bool CBlogg::PlayerInBallMode(CStateManager& mgr, const CTriggerData& data) cons
   return false;
 }
 
+// @ fn_7_5A98
 bool CBlogg::DetectBall(CStateManager& mgr, const CTriggerData& data) const {
   return mIsMegaBlogg ? false : mCanBite && IsPlayerWithin(mgr, mMaxBallDetectionRange);
 }
@@ -771,6 +773,7 @@ bool CBlogg::IsPlayerReachable(CStateManager& mgr, const CTriggerData& data) con
   return player != nullptr ? CanReachPlayer(mgr, player) : false;
 }
 
+// @ fn_7_1B78
 void CBlogg::ReleaseHints(CStateManager& mgr) {
   const uint count = mHintIds.size();
   for (uint i = 0; i < count; ++i) {
