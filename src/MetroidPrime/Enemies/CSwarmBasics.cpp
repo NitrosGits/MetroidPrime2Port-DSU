@@ -2081,6 +2081,7 @@ void CSwarmBasics::FreezeBoids(const CVector3f& position, float radius) {
   }
 }
 
+// @ fn_80_168
 void CSwarmBasics::UpdateSeekerTargets(CStateManager& mgr) {
   uint numTargets = mSeekerTargets.size();
   const rstl::reserved_vector< rstl::pair< TUniqueId, float >, 5 >& gunTargets =

@@ -4,7 +4,10 @@
 #     3dfd2249,0g_swamp_hall --driver "python3 tools/drivers/con.py {port} tools/drivers/swb12.con" \
 #     --fast --frames 1200
 #
-# 1. `gun_fixture` at the entry of the real caller, CSwarmBasics::UpdateSeekerTargets: the swarm's own
+# 1. `caller_fixture` at the entry of the real caller, CSwarmBasics::UpdateSeekerTargets, one phase
+#    per call: ph0 supplies ONE real seeker uid in the gun's mSeekerTargets (so the caller builds a
+#    non-empty keptBoids itself), ph1 arms the guarded null-answer below, ph2 does neither.  The
+#    swarm's own
 #    five kMT_SeekerTarget actors (created in kSM_Create, uids in mSeekerTargets, mapped to boid
 #    indices in mSeekerBoidIndices by the previous frame) give ONE real uid, and that uid is supplied
 #    as the single element of CPlayerGun::mSeekerTargets (reserved_vector<pair<TUniqueId,float>,5>,
@@ -53,7 +56,8 @@ _GUN_EL = '(rstl::pair<TUniqueId, float>*)&((CPlayerGun*)%d)->mSeekerTargets.mDa
 _st = {
     'gunCalls': 0, 'gunWrites': 0, 'gunSkipCount': 0, 'gunSkipPick': 0, 'gunSkipNoGun': 0,
     'assignCalls': 0, 'apply': 0, 'err': 0, 'takenIdx': -1, 'takenUid': -1, 'takenSlot': -1,
-    'restoreFail': 0,
+    'restoreFail': 0, 'window': False, 'windowOpens': 0, 'nullUid': -1, 'nullHits': 0,
+    'nullArmed': 0,
 }
 
 
@@ -191,8 +195,124 @@ class _RestoreGun(gdb.FinishBreakpoint):
         return False
 
 
-def gun_fixture(g):
-    """Supply ONE real swarm seeker-target uid in the player's gun for this call."""
+def _sym_name(name_part):
+    """Mangled name of the first t/T symbol matching name_part, for a relocated `*name` breakpoint.
+
+    A bare address from nm/gdb is the link-time one and the binary is PIE, so the breakpoint is set
+    from the symbol instead (the same way tools/cov/force.py arms its breakpoints).
+    """
+    key = 'sym_' + name_part
+    if key in _st:
+        return _st[key]
+    name = ''
+    try:
+        for ln in open(os.environ['COV_NM']):
+            parts = ln.rstrip(chr(10)).split(chr(9))
+            if len(parts) != 2:
+                continue
+            f = parts[0].split()
+            if len(f) == 3 and f[1] in 'tTW' and name_part in f[2] and '.cold' not in f[2]:
+                name = f[2]
+                break
+    except Exception as e:
+        _log('%s: nm table unreadable: %s' % (name_part, e))
+    _st[key] = name
+    return name
+
+
+def _invalid_uid():
+    try:
+        return _i(gdb, '((TUniqueId*)&kInvalidUniqueId)->value') & 0xFFFF
+    except Exception:
+        return 0xFFFF
+
+
+class _WindowClose(gdb.FinishBreakpoint):
+    """Closes the UpdateSeekerTargets window and disables the null-answer breakpoint."""
+
+    def __init__(self, frame, tag):
+        super().__init__(frame, internal=True)
+        self.tag = tag
+
+    def _close(self, how):
+        _st['window'] = False
+        bp = _st.get('nullBp')
+        if bp is not None:
+            bp.enabled = False
+        if how != 'return':
+            _st['windowUnwound'] = _st.get('windowUnwound', 0) + 1
+            _log('WINDOW-UNWOUND %s: the frame went out of scope without a normal return; the'
+                 ' window is closed and the null-answer breakpoint disabled' % self.tag)
+        elif _st['windowOpens'] <= 3:
+            _log('WINDOW-CLOSE %s (nullHits logged so far %d)' % (self.tag, _st['nullHits']))
+
+    def stop(self):
+        self._close('return')
+        return False
+
+    def out_of_scope(self):
+        # gdb calls this when the frame is discarded abnormally (an exception unwinding through it)
+        self._close('unwind')
+
+
+class _NullAnswer(gdb.Breakpoint):
+    """Guarded callee-answer fixture.
+
+    Inside the UpdateSeekerTargets window only, and only for the one chosen real seeker uid, the
+    uid argument handed to CObjectList::GetObjectById is substituted with kInvalidUniqueId, so the
+    callee takes its own `uid == kInvalidUniqueId` path and returns nullptr; the caller's
+    `if (CActor* act = TCastToPtr<...>(...))` then evaluates on a real null pointer.  No object is
+    deleted or dangled, no vector or count is written, and nothing but a register argument of this
+    one call is touched, so there is no persistent state to restore.
+    """
+
+    def __init__(self, spec):
+        super().__init__(spec, internal=True)
+        self.silent = True
+        self.enabled = False
+
+    def stop(self):
+        st = _st
+        if not st['window']:
+            return False
+        try:
+            uid = _i(gdb, '$esi') & 0xFFFF
+        except Exception:
+            return False
+        if st['nullUid'] < 0 or uid != st['nullUid']:
+            return False
+        try:
+            inv = _invalid_uid()
+            gdb.execute('set $esi = %d' % inv)
+            st['nullHits'] += 1
+            if st['nullHits'] <= 4:
+                _log('FORCE-NULL uid=0x%x -> 0x%x: CObjectList::GetObjectById takes its own invalid-uid'
+                     ' path (argument only, no memory written)' % (uid, inv))
+        except Exception as e:
+            _log('FORCE-NULL failed uid=0x%x: %s' % (uid, e))
+        return False
+
+
+def _arm_null_answer():
+    bp = _st.get('nullBp')
+    if bp is None:
+        name = _sym_name('13GetObjectByIdE9TUniqueId')
+        if not name:
+            _log('null-answer fixture: no CObjectList::GetObjectById symbol')
+            return None
+        try:
+            bp = _NullAnswer('*' + name)
+        except Exception as e:
+            _log('null-answer fixture: could not arm (%s)' % e)
+            return None
+        _st['nullBp'] = bp
+        _log('null-answer fixture armed on *%s' % name)
+    return bp
+
+
+def caller_fixture(g):
+    """Per-call state for UpdateSeekerTargets: a gun target (ph0), the null-answer (ph1), or
+    neither (ph2); every call gets a window that closes at its return."""
     st = _st
     st['gunCalls'] += 1
     try:
@@ -202,27 +322,62 @@ def gun_fixture(g):
         nboids = _i(g, '((CSwarmBasics*)%d)->mBoids.mCount' % this)
     except Exception as e:
         if st['err'] < 4:
-            _log('gun entry read failed: %s' % e)
+            _log('caller entry read failed: %s' % e)
         st['err'] += 1
         return
     if ntargets <= 0 or nboids <= 0:
-        if st['gunSkipPick'] < 3:
-            _log('no targets/boids yet (targets=%d boids=%d)' % (ntargets, nboids))
-        st['gunSkipPick'] += 1
         return
+    phase = st['gunCalls'] % 3
+    st['window'] = True
+    st['windowOpens'] += 1
+    try:
+        _WindowClose(g.newest_frame(), 'swb14-w%d' % st['gunCalls'])
+    except Exception as e:
+        _log('window close could not be armed: %s' % e)
+        st['window'] = False
+        return
+    # one real seeker uid: a live kMT_SeekerTarget actor with a valid boid index
     try:
         player = _i(g, '(long)((CStateManager*)%d)->mPlayers[0]' % mgr)
         gun = _i(g, '(long)((CPlayer*)%d)->mGun.mPtr' % player) if player else 0
-    except Exception as e:
-        if st['err'] < 4:
-            _log('gun chain failed: %s' % e)
-        st['err'] += 1
+    except Exception:
+        player = gun = 0
+    if phase == 2 or not player or not gun:
         return
-    if not player or not gun:
-        if st['gunSkipNoGun'] < 3:
-            _log('no player/gun yet (player=0x%x gun=0x%x)' % (player, gun))
-        st['gunSkipNoGun'] += 1
+    st['nullUid'] = -1
+    pick = None
+    for k in range(ntargets if ntargets < 5 else 5):
+        try:
+            uid = _i(g, '((CSwarmBasics*)%d)->mSeekerTargets.mItems[%d].value' % (this, k))
+            idx = _i(g, '((CSwarmBasics*)%d)->mSeekerBoidIndices.mItems[%d]' % (this, k))
+        except Exception:
+            continue
+        ent = _actor_of(g, mgr, uid) if uid != 0xFFFF else 0
+        if st['gunCalls'] <= 2:
+            _log('slot %d uid=0x%x idx=%d actor=0x%x' % (k, uid, idx, ent))
+        if uid != 0xFFFF and 0 <= idx < nboids and ent:
+            pick = (k, uid, idx, ent)
+            break
+    if pick is None:
+        if st['gunSkipPick'] < 5:
+            _log('no usable slot (targets=%d boids=%d)' % (ntargets, nboids))
+        st['gunSkipPick'] += 1
         return
+    slot, uid, idx, ent = pick
+    if phase == 1:
+        # the null-answer path: this uid will be reported lost and its lookup answers null
+        st['nullUid'] = uid
+        bp = _arm_null_answer()
+        if bp is None:
+            st['nullUid'] = -1
+            return
+        bp.enabled = True
+        st['nullArmed'] += 1
+        if st['nullArmed'] <= 3:
+            _log('NULL-PHASE slot=%d uid=0x%x actor=0x%x boid_idx=%d (enabled for this call only)'
+                 % (slot, uid, ent, idx))
+        return
+    # phase 0: supply ONE real uid in the gun so the caller builds a non-empty keptBoids itself
     try:
         gcount = _i(g, '((CPlayerGun*)%d)->mSeekerTargets.mCount' % gun)
     except Exception as e:
@@ -235,36 +390,14 @@ def gun_fixture(g):
             _log('gun already has %d seeker target(s) - left alone' % gcount)
         st['gunSkipCount'] += 1
         return
-    pick = None
-    for k in range(ntargets if ntargets < 5 else 5):
-        try:
-            uid = _i(g, '((CSwarmBasics*)%d)->mSeekerTargets.mItems[%d].value' % (this, k))
-            idx = _i(g, '((CSwarmBasics*)%d)->mSeekerBoidIndices.mItems[%d]' % (this, k))
-        except Exception:
-            continue
-        ent = _actor_of(g, mgr, uid) if uid != 0xFFFF else 0
-        if st['gunCalls'] <= 2:
-            _log('slot %d uid=0x%x idx=%d actor=0x%x (boids=%d)' % (k, uid, idx, ent, nboids))
-        if uid == 0xFFFF or idx < 0 or idx >= nboids or not ent:
-            continue
-        pick = (k, uid, idx, ent)
-        break
-    if pick is None:
-        if st['gunSkipPick'] < 5:
-            _log('no slot with a real actor and a valid boid index (targets=%d boids=%d)'
-                 % (ntargets, nboids))
-        st['gunSkipPick'] += 1
-        return
-    slot, uid, idx, ent = pick
     elem = _GUN_EL % gun
     try:
-        # raw words of element 0: word 0 is the TUniqueId plus its padding, word 1 the float's bits
         w0 = _i(g, '*(int*)((char*)(%s) + 0)' % elem)
         w1 = _i(g, '*(int*)((char*)(%s) + 4)' % elem)
     except Exception as e:
         _log('gun element snapshot failed: %s' % e)
         return
-    tag = 'swb12-gun-%d' % (st['gunWrites'] + 1)
+    tag = 'swb14-gun-%d' % (st['gunWrites'] + 1)
     try:
         _RestoreGun(g.newest_frame(), {'gun': gun, 'elem': elem, 'count': gcount,
                                        'w0': w0, 'w1': w1, 'tag': tag})
@@ -281,10 +414,10 @@ def gun_fixture(g):
         return
     st['gunWrites'] += 1
     st['takenIdx'], st['takenUid'], st['takenSlot'] = idx, uid, slot
-    _log('%s gun=0x%x player=0x%x swarm=0x%x slot=%d uid=0x%x actor=0x%x boid_idx=%d of %d'
-         ' mCount %d->1 (element 0 words were 0x%08x 0x%08x)'
-         % (tag, gun, player, this, slot, uid, ent, idx, nboids, gcount,
-            w0 & 0xFFFFFFFF, w1 & 0xFFFFFFFF))
+    _log('%s gun=0x%x swarm=0x%x slot=%d uid=0x%x actor=0x%x boid_idx=%d of %d mCount %d->1'
+         ' (element words were 0x%08x 0x%08x)'
+         % (tag, gun, this, slot, uid, ent, idx, nboids, gcount, w0 & 0xFFFFFFFF, w1 & 0xFFFFFFFF))
+
 
 
 def assign_fixture(g):
@@ -411,8 +544,24 @@ def assign_fixture(g):
                 taken_first))
 
 
+def _summary(event=None):
+    """Exact fixture counters when the inferior exits (the per-hit log lines are capped)."""
+    st = _st
+    _log('SUMMARY exit: callerCalls=%d gunWrites=%d gunSkips=%d nullArmed=%d nullHits=%d'
+         ' windowOpens=%d windowUnwound=%d assignCalls=%d applies=%d restoreFail=%d err=%d'
+         % (st['gunCalls'], st['gunWrites'], st['gunSkipPick'], st['nullArmed'], st['nullHits'],
+            st['windowOpens'], st.get('windowUnwound', 0), st['assignCalls'], st['apply'],
+            st['restoreFail'], st['err']))
+
+
+try:  # a stub gdb (static tests) has no events; the summary is best-effort either way
+    gdb.events.exited.connect(_summary)
+except Exception:
+    pass
+
+
 FORCE = [
-    ('1978 caller gun target', 'CSwarmBasics::UpdateSeekerTargets(', [], [gun_fixture], 0,
+    ('168 caller targets', 'CSwarmBasics::UpdateSeekerTargets(', [], [caller_fixture], 0,
      "one real swarm seeker-target uid (an existing kMT_SeekerTarget actor with a valid boid index)"
      " is supplied as the gun's only target so the caller itself builds a non-empty taken; the gun"
      ' vector and the element bits are restored when the call returns'),
