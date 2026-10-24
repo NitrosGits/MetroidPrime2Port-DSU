@@ -1,0 +1,7 @@
+# srp2: CScriptRiftPortal e00070073 (Temple Grounds 12_temple_finalgate). Activate + Increment make
+# Think call AdvanceModel (incandescent model every frame, line model while opening); the gdb fixture
+# (tools/cov/specs/srp2_advancemodel.py) owns the first seven calls.
+@f300 god 1; obj e00070073; tp 4.5 118.7 -16.6; face 0
+@f340 send e00070073 Activate; obj e00070073
+@f420 send e00070073 Increment
+@f700 obj e00070073; screenshot
