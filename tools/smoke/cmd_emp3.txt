@@ -1,4 +1,4 @@
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2600, last check f2250.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2600, last check f2040.
 @f1000 layer 4
 @f1420 objs emperoring
 @f1460 send e000b0003 Activate
@@ -13,4 +13,11 @@
 @f1780 damage e000b0003 1000
 @f1820 objs emperoring
 @f1830 objs emperoring
-@f2250 objs emperoring
+
+# Stage3 (family's own actor) pokes after Stage1 is gone
+@f1900 obj e000b0094
+@f1920 damage e000b0094 10
+@f1940 obj e000b0094
+@f1960 kill e000b0094
+@f2000 objs emperoring
+@f2040 objs emperoring
