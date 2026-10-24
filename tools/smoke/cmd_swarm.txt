@@ -2,11 +2,13 @@
 # flyer swarms u041d, u04ff, u05c4 and u05c6. The steps follow tools/cov/specs/swarmbasics_sand.con
 # (the swarm1 coverage driver: god-mode player in the swarm, every beam, charge and missile, morph
 # ball, the Increment/Decrement and InternalMessage0 messages, Deactivate/Activate).
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2400,
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2600,
 # last check f2350.
 @f300 layer 2
 @f340 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give screwAttack 1; fastmorph 1
 @f380 send u041d Activate; send u04ff Activate; obj u041d
+# appended: hp fall check
+@f400 damage u041d 1; obj u041d
 @f420 tp -338.4 -87.7 -6.7
 @f700 obj u041d
 @f720 lockon 1
@@ -47,5 +49,7 @@
 @f2020 obj u041d
 @f2250 shoot u041d charged; shoot u041d charged
 @f2320 send u041d Deactivate; obj u041d
+# appended: count drop before delete
+@f2310 objs swarm
 @f2330 send u041d Delete
 @f2350 objs swarm; status

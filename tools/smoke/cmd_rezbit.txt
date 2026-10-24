@@ -5,7 +5,7 @@
 # The family fights e0005016d, one of the Rezbits the area holds from the start (inactive until
 # `send Activate`, as Torvus's Bloggs are); the Rezbits the layer switch adds (e0005011b,
 # e00050047) stream in after it.
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2350.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2600, last check f2380.
 @f300 god 1; give missile 50; layer 3; layer 4
 @f320 send e0005016d Activate
 @f400 objs rezbit; obj e0005016d
@@ -28,3 +28,7 @@
 @f2250 shoot e0005016d charged
 @f2300 obj e0005016d
 @f2350 objs rezbit; obj e0005016d; status
+# appended: fsm change (forced) and real kill + count drop
+@f2360 fsm e0005016d EnergyBoltAttack; obj e0005016d
+@f2370 kill e0005016d
+@f2380 objs rezbit

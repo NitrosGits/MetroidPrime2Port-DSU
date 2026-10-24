@@ -51,3 +51,6 @@
 @f1840 objs tryclops
 @f1900 obj u0455
 @f1960 objs tryclops
+# appended: real kill on the second cyclops + count drop
+@f1970 kill u0455
+@f1980 objs tryclops

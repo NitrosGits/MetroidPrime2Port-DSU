@@ -1,7 +1,7 @@
 # Splinter (module 74: CSplinter, the Morphology: Splinter - it lies in wait, ambushes, pounces, jumps and explodes its acid sac).
 # Temple Grounds 02_temple_exploration (world 3bfa3eff, layer 0): three Splinters u055b/u055c/u057c around (214, -224, -40), inactive at load.
 # Steps repeat tools/cov/specs/splinter_te_fight.con: god mode with missiles, morph ball and boost ball, Activate all three, alert, hurt and kill them, with `obj` reads.
-# Checks are game updates (@f<n>), never wall seconds. F=3200, last check f3100.
+# Checks are game updates (@f<n>), never wall seconds. F=3400, last check f3100.
 @f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
 @f305 send u055b Activate; send u055c Activate; send u057c Activate
 @f310 tp 205 -215 -40
@@ -12,3 +12,5 @@
 @f2300 damage u055b 10; damage u055c 10 missile
 @f2600 damage u057c 10 missile
 @f3100 objs Splinter
+# appended: fsm change (forced) on a live splinter before its death
+@f1750 fsm u055b Patrol; obj u055b

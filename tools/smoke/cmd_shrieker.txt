@@ -6,7 +6,7 @@
 # into the deflection field, then lethal damage; the second one stays buried as the contrast.
 # Left out on purpose: the approach's Bury/Retreat/UprootShriek walk and the dark-combo death of the
 # 6400-update coverage driver (they need the frames a 2400-update family does not have).
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2320.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2600, last check f2340.
 @f300 god 1; give missile 50
 @f350 objs shrieker
 @f400 obj e000900c9
@@ -31,3 +31,6 @@
 @f2250 objs shrieker
 @f2300 obj e0009007b
 @f2320 status
+# appended: real kill on the second (buried) shrieker + count drop
+@f2330 kill e0009007b
+@f2340 objs shrieker
