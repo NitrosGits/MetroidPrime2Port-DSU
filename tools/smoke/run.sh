@@ -227,40 +227,36 @@ declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # Fast mode (MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8, unpaced: ~5x shorter runs) for every family whose
 # script is timed in game updates (cmd_*.txt via con.py). The V drivers time their steps in wall
 # seconds, so those families stay under the cap. NC is the second exception: a family whose area
-# boots so quickly that its unpaced updates are over (0.3 s for 2400) before con.py's 0.5 s retry
-# gets a console connection - it stays capped (~40 s, ~110 s for wisptentacle's 6200), or nothing
-# would be driven at all. amt is the tight case: unpaced, con.py connects at 0.5 s when the run is
-# already at ~560 of its 9400 updates (its first check is f600), so it stays capped (~155 s).
-# spa is the other kind: unpaced, `layer 10`'s two PLAC objects only appear around f1300 (the layer
-# load trails the fast updates), so every send before that answers "no object with editor id"; capped,
-# they are in by f340 as in its driver. Capped, its 2000 updates take ~35 s.
-# wallwalker is spa's case with a thinner margin, measured: unpaced, 3600 updates run from 0.4 s to
-# 2.6 s (~1500 a second) and con.py connects at 0.5 s, already at ~update 300 - the script's own
-# first step - so `layer 3` and the f330 `objs WallWalker` would come within a few updates of each
-# other with nothing between them if the machine were faster. Capped, the layer is in by f330 as in
-# its driver; its 3600 updates take ~62 s.
-# isbg is wallwalker's case at the boss's own scale, measured: unpaced, 5700 updates run from 0.3 s
-# to 2.5 s (~2600 a second) and con.py connects at 0.5 s around update 300, the `layer 13` step
-# itself; the guardian then needs ~500 frames to appear (its notes), and `send e0014007a Activate`
-# at f1000 is only ~200 updates behind that, so a faster machine would activate nothing. Capped,
-# the guardian is in for f900 as in its driver; its 5700 updates take ~95 s. spp runs fast: its two
-# PLCTs are layer 0 of the booted area, so no layer step can trail, and its transcript is identical
-# capped and uncapped. mysf is spp's case: its three wasps are layer 0 of 0e_temple_hall and already
-# listed `inactive` in the f340 `objs`, and its 3200-update transcript is byte-identical capped and
-# uncapped. spor and scriptgui are the thin-margin kind, measured: unpaced, spor's 2000 updates run
-# from 0.1 s to 0.6 s (its log: the frame limit is up at 0.6 s, ~4000 a second) and con.py connects at
-# 0.5 s, so only ~100 ms of run is left for the whole script - a faster machine would connect after
-# the run had ended and drive nothing at all (an empty transcript still reports 0 caught/stub). Capped,
-# its 2000 updates take ~33 s. scriptgui has room but not determinism: unpaced its 700 updates run
-# from 0.3 s to 1.0 s, and one `objs Gui` line reads `inactive` uncapped but active capped - the
-# widget's state follows the update rate, so the transcript is not a fixed baseline. Capped, the
-# front end's 700 updates take ~25 s.
+# boots so quickly that its unpaced updates are over before con.py connects - it stays capped, or
+# nothing would be driven at all.
+#
+# MP2_CONSOLE_WAIT=120 now holds the boot until con.py connects for every cmd-file family, so the
+# "thin margin" NC cases were re-tested (capped vs fast, /tmp/opencode/ncfast1_cap vs ncfast1_fast):
+# the families below now run fast because their fast transcripts match the capped ones in hp/fsm/objs
+# (positions, camera, fps and projectile ids may differ). Dropped from NC after that re-test:
+# emp1 ingswarm amt wisptentacle isbg kral stod szone rptl drkc plct spp ming snak eyeb kroc iss ibs
+# puff cball fobj skyr isg atma mree.
+# Remaining NC families, measured to still differ fast (keep capped):
+#   darktrooper - fsm state/timing differs (Pursue vs SmallShotAttack at the check frame).
+#   bacteriaswarm - object count (3 vs 1) and health (999 vs 994) differ.
+#   tryclops - fsm differs (Patrol/PathFind vs Dizzy).
+#   octapede - object count (5 vs 6) and shot ids differ.
+#   spa - layer 10 PLAC objects not loaded fast ("no object with editor id").
+#   wallwalker - layer 3 trailing; fsm/hp differ.
+#   spor - run too short / state differs (InActive vs Active).
+#   scriptgui - Gui widget active vs inactive (state follows update rate).
+#   pssm - swarm boid count (23 vs 17) and frustum differ.
+#   pbug - fsm/hp differ (FastPatrol/Patrol vs Turn/Injured).
+#   chog - hp/fsm differ (Jump, damage amounts).
+#   plac - hp check count differs.
+#   atmb - layer 0 objects missing fast (0 vs 4).
+#   shrd - kill behaviour differs (killed vs "not a patterned actor").
+#   fsw - object count (6 vs 2) differs.
+#   rubk - object ids/counts differ.
 FASTENV="MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8"
-declare -A NC=( [emp1]=1 [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1 [wisptentacle]=1
-               [octapede]=1 [amt]=1 [spa]=1 [wallwalker]=1 [isbg]=1 [spor]=1 [scriptgui]=1 [kral]=1
-               [pssm]=1 [stod]=1 [pbug]=1 [szone]=1 [rptl]=1 [chog]=1 [drkc]=1 [plac]=1 [plct]=1 [spp]=1
-               [ming]=1 [snak]=1 [eyeb]=1 [kroc]=1 [atma]=1 [atmb]=1 [shrd]=1 [fsw]=1 [iss]=1
-               [ibs]=1 [mree]=1 [puff]=1 [rubk]=1 [cball]=1 [fobj]=1 [skyr]=1 [isg]=1 )
+declare -A NC=( [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1 [octapede]=1 [spa]=1 [wallwalker]=1
+               [spor]=1 [scriptgui]=1 [pssm]=1 [pbug]=1 [chog]=1 [plac]=1 [atmb]=1 [shrd]=1
+               [fsw]=1 [rubk]=1 )
 # Extra environment per family: tools/run_gameplay.sh's variables, not the game's directly. The
 # harness passes them on to the game, and run_gameplay.sh maps a few of its own onto MP2_* names
 # (SKIP_FRONTEND -> MP2_SKIP_FRONTEND, SKIP_INTRO, SKIP_CINEMATICS, FAST_LOAD). scriptgui needs the
