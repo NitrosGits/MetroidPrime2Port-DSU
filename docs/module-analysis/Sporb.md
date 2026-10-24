@@ -148,7 +148,6 @@ Near-complete, not marked (gcov line:arm untaken):
 
 | function | untaken |
 |---|---|
-| UpdateGrabber | 237/245 lines; Idle-with-projectile arms, max-range clamp in Extend, tendril-gen absent |
 | AttachPlayer, ResetAfterGrab | projectile missing (1416, 1418, 1603, 1605) |
 | SpitPlayer | 7/14 arms (morph-state variants) |
 | UpdateShooting, ResetShotTimers, AttackExit, Fire, Attack | 1-4 arms each |
@@ -164,3 +163,107 @@ Never ran:
 Guardian note (sporb2): the guardian loads with its timer scale maxed, so it fires at
 PickTargetPosition floor points (the impacts land 5-20 units from the player). `send u05f8
 SetToZero` makes it aim at the player (mPowerBombAimPosition), and then a bomb can hit the player.
+
+## sporb3: UpdateGrabber fn_76_71AC (2026-10-24)
+
+**Marked.** Read all retail blocks 0x71AC–0x8CDC (0x1B34 bytes), including unordered compares.
+The earlier survey missed seven clamp operand-order differences. `rstl::min_val(a,b)` is
+`b < a ? b : a`, and `max_val(a,b)` is `a < b ? b : a`; operand order matters for NaNs and signed
+zero. The PC path now matches the retail selections below. Also move locator/bounds construction
+inside the successful projectile lookup: retail 0x7230/0x7250 exits before that work.
+No other behaviour change; the two sporb1 corrections remain valid.
+
+### Block audit
+
+| retail block | verified behaviour |
+|---|---|
+| 0x71AC–0x730C | Prologue; invalid id / failed projectile cast returns; inverted bounds and world connect locator only after those guards; state dispatch 0–6, default goes to the common tail. |
+| 0x7310–0x7318 | Idle sets projectile solid phase to 0. |
+| 0x731C–0x73D8 | Attach: locator rotation quaternion and position, attached=true; `mCanSpit` changes state 5 to 6. |
+| 0x73DC–0x74F8 | Spit: same transform; 0x7490 `ble` skips release unless timer **>** rodata 114 = 0.6 (NaN waits). Release clears passable/carrying, adds material 0x3b, sets solid=0, state=4 and resets; otherwise attached=true. Timer always adds dt. |
+| 0x74FC–0x76A8 | Launch: state=1, projectile state=0; X rotation rodata 118 = -1.5707964 (`-M_PIF/2`); quaternion from look-at times rotation. Flight sound `oris 0xa000` = `0xa0000000`; fire sound unflagged. |
+| 0x76AC–0x7788 | Extend: landed phase=1 **or** any grabbing id enters Hold, stops loop/physics, plays world-hit sound and closes projectile. |
+| 0x778C–0x795C | BallInside=2: pick target without lead, world ball-attach locator, look-at velocity, dot and next/aim squared distances. 0x7934 `fcmpo dot,0`; 0x7958 `cror eq,lt,eq`; 0x795C `beq` holds iff dot<=0 (unordered proceeds). |
+| 0x7960–0x7B4C | 0x7978/0x797C `fcmpo abs(dot),1e-5; blt` holds for small magnitude; 0x7998/0x799C `fcmpo next,aim; ble` extends unless next>aim (unordered extends). Hold moves the projectile by target minus locator offset, closes/stops, sounds, claims grabbing id, stops wakes and applies damage. 0x7AC4–0x7AD4 constructs `1ull << 59`: data_358 = 0x3b, Solid. |
+| 0x7B50–0x7BBC | Optional valid top; non-guardian disables telegraph. Invalid id and failed cast converge without effect. |
+| 0x7BBC–0x7E5C | Extend tendril: look-at from origin; 0x7C2C/0x7C30 chooses `length < range ? length : range` (unordered selects range). Count = uint(distance / rodata 120 = 0.15)+2. Sinusoidal x offset times i/count, y=0.15*i; particle pos/prev-pos stores, maximum size, bounds expansion. |
+| 0x7E60–0x7F80 | 0x7E74/0x7E78 chooses `next < 0 ? 0 : next` (unordered keeps next), then sets outgoing velocity. Range test uses **incoming** speed in the unrotated y step, as upstream does. 0x7F10 `ble` skips clamp unless squared distance>range². 0x7F5C computes an unused transformed clamp vector: there is intentionally **no** SetTranslation. Hold/stop/close follows. |
+| 0x7F84–0x83AC | Hold timer: 0x7F90/0x7F94 chooses `duration < next ? duration : next` (unordered keeps next). 0x8008/0x800C length clamp as Extend. Sine amplitude `1-hold/duration`, phase ends at count-1; live particle end-frame=0; remaining particles rest at base position. |
+| 0x83AC–0x8488 | Attach timer: 0x83B8/0x83BC chooses next on unordered. 0x83D8 `cror eq,gt,eq` requires ordered timer>=duration; retract, optionally carry ball/disable boost/send Entered. Otherwise solid or a different grabbing Sporb retracts only at exact hold duration (0x8478 `fcmpu`; NaN unequal). |
+| 0x848C–0x869C | While still holding: boosting **and** passable escapes, sets Retract, clears x8f8/passable/carrying, opens projectile, sets player leave-morph bit 0x80 at 0x1144, marks escaped, clears grabbing id, computes unused locator, effect+sound. Retract sound chooses carrying/missed sound and ORs 0x20000000 (0x8660). Always stops projectile. |
+| 0x86A0–0x8A38 | Retract length clamp 0x86F8/0x86FC identical; straight tendril, end-frame=0, particle bounds and leftover resting loop. |
+| 0x8A38–0x8B78 | 0x8A4C/0x8A50 chooses `0 < next ? 0 : next` (unordered keeps next). 0x8AB0 `bge` skips arrival unless direction²<step² (NaN keeps retracting). Arrival stops/positions; no ball resets, carrying enters Attach and optionally closes top, sets locomotion Lurk=2 and state Flailing=8. Stops tendril on both arrival paths. Otherwise sets rotated velocity. |
+| 0x8B78–0x8BBC | Carrying sets attached. Escaped and releaseTimer>rodata C8=0.1 closes; otherwise timer adds dt (NaN adds). |
+| 0x8BC0–0x8CDC | Save grabber position except states 5/6, always set quaternion+position transform, attach player iff attached, copy bounds iff generator, epilogue. |
+
+Sound calls throughout use vtable 0x78, constants C0=1, C8=0.1, F8=1000, C4=0, channel 0,
+segment 0, priority 20, volume 127, current distance/position/next-area/mgr and true.
+Particle size maxima use strict `size > maxSize`, retaining maxSize for unordered, as upstream.
+Retail's null particle-address branches (0x7D54/0x8158/0x87E4) cannot occur with i<active count:
+the live vector allocation supplies those indexed elements (CElementGen.cpp:666–700, 854).
+The upstream Hold/Retract generator-null guards are stronger than retail's unconditional
+leftover-loop dereference (0x824C/0x88D8); retained and explicitly exercised, not newly added.
+
+### Reproducible coverage and branch table
+
+Final source: **245/245 lines, 134/134 non-exception gcov edges, ALL-ARMS**. The compiler
+attributes the initial dot test to several adjacent expression lines; all copies are covered.
+Two final runs, both in `3dfd2249,0e_swamp_hall`, normal exits and caught/reach-stub=0:
+
+```sh
+tools/games_running.sh --wait
+BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py tools/cov/force.sh \
+  tools/cov/specs/sporb_grabber_arms.py /tmp/opencode/sporb3-final-arms \
+  3dfd2249,0e_swamp_hall --con tools/cov/specs/sporb_hall2.con --fast --frames 3000
+tools/games_running.sh --wait
+BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=$PWD/tools/cov/cov_force.py tools/cov/force.sh \
+  tools/cov/specs/sporb_force.py /tmp/opencode/sporb3-final-grab \
+  3dfd2249,0e_swamp_hall --con tools/cov/specs/sporb_grab.con --fast --frames 2600
+python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/sporb3-final-arms/gcov \
+  /tmp/opencode/sporb3-final-grab/gcov --module Sporb --fn fn_76_71AC
+```
+
+The first spec runs 37 one-call scenarios and restores the inputs. Scenario indexes below are
+zero-based; every call succeeded. Assertions #10 and #27–36 all PASS. The second run forces only
+the projectile's capture radius (sporb1 spec); the complete grab/attach/spit and boost chains then
+execute. Natural below means normal execution after the stated driver/capture setup.
+
+| branch family | evidence (both outcomes unless specified) |
+|---|---|
+| invalid projectile / cast | forced (`force_ret.py` #0/#1), natural valid lookup |
+| all seven states / default | natural state dispatch plus forced #2 Idle, #3 default |
+| Extend landed / another grabbing Sporb / neither | natural landed/flight; forced #5 grabbing id |
+| BallInside / ordinary flight | capture-radius run / hall flight |
+| dot<=0 / abs(dot)<1e-5 / overshoot / continue | forced #27 zero forward, #28 tiny forward; capture run supplies ordered overshoot and continuation; forced #29 NaN forward asserts Extend |
+| top absent/present, guardian/non-guardian | forced #6/#7; natural top/non-guardian |
+| all three particle loops, particles present/absent | natural iterations/exits/writes; forced #9/#13/#24 active count=0 skips writes |
+| generator present/absent (each state and common tail) | natural present; forced #4/#8/#12/#23 null generator |
+| maximum range / ordinary flight | forced #10 range=0.15 and projectile displaced +10 x (assert Hold); natural flight |
+| outgoing/incoming speed clamps | natural and forced #11 negative outgoing, #25 positive incoming; NaN #30/#33 assert propagation |
+| hold/attach timer clamps | natural below/at durations; forced #31/#32 NaN assert propagation and no early attach |
+| length clamps in Extend/Hold/Retract | natural lengths; forced #10 finite clamp; #34/#35/#36 unordered length asserts count=22 for range=3 |
+| Hold expired/not, attach timeout with/without ball | forced #14/#15, #21/#22; natural hold/retract chain |
+| solid, no grabbing id, own id, other id | forced #14–18 |
+| boosting false/true, passable false/true | natural non-boost; forced #19 boost+not-passable, #20 boost escape; capture run also boosts free |
+| Retract arrival/non-arrival, carrying/not | natural complete/missed grab chains; forced #26 arrives carrying with missing top |
+| release timer / escaped flag | natural capture/boost run (both timer arms and escaped/not) |
+| Attach can-spit false/true; Spit timer wait/release | natural capture/attach/spit chain |
+| tail Attach/Spit exclusion, attached flag, bounds | natural all states; forced #4 supplies bounds-null |
+
+### Gates and audit findings
+
+- Host and coverage links: 0 FAILED. `gen_files_cmake.py --check`: rc 0. TARGET_PC strip-diff
+  against bf635ac9f: CLEAN (ignoring marker comments). Matching build plus dtk hash check:
+  **87 files OK**, All 77.98% fuzzy / 54.39% matched; Game Code 94.14% / 63.29%.
+  CSporbBase unit 74.15462% fuzzy / 23.537437% matched; unchanged non-PC code.
+- `asmcheck` all tags: four CALL findings. `internal_dereference` is the string destructor;
+  fn_76_59BC = the real unmarked PickTargetPosition body (CSporbBase.cpp:1766), fn_76_E358 =
+  real PlayBallEscapeEffect (CSporbProjectile.cpp:423), fn_76_7000 = real AttachPlayer
+  (CSporbBase.cpp:1494). All executed; no stub. Four OFFS findings are the older compound
+  explanatory comments pairing multiple addresses/operand names; exact instructions and
+  senses are audited in the table above. No mask/store/compare finding.
+- `retail_diff`: those same three unmarked-but-real callees; -1.5707964 is `-M_PIF / 2.f`.
+  `review_decomp_diff`: one MARK, fn_76_71AC, justified by the block audit and ALL-ARMS run;
+  no ASM lines (upstream file, so the explicit all-tag check above is the applicable one).
+- Optional UpdateShooting / UpdateAim remain unmarked in this slice. No whole-module sweep
+  or unrelated-family runs; no shared-code changes or temporary production probes.
