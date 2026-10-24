@@ -633,13 +633,13 @@ their snapshots, **0** mismatches/failures.
 
 **The two dead arms** (2114:1 and 2123:1 in the run's numbering; 2115:1 and 2124:1 after this
 slice's marker) are the two exits of the two inner `for (uint j = 0; j < numTargets; ++j)` searches.
-Each search can leave in two ways, and neither is reachable:
+Each search has two no-match exit paths; neither is reachable (the successful-match break is):
 
 - **zero-trip exit** - `0x2CC cmplwi r29,0` with `0x2D0 ble .L_00000308` (the `numNew` loop) and
   `0x33C cmplwi r29,0` with `0x340 ble .L_000003A8` (the `numNew..numLost` loop). It needs
-  `numTargets == 0`, but `mSeekerTargets` is written only in `kSM_Create` (`reserve(5)` at 353,
-  `push_back_unsafe(uid)` at 368) and nothing in the class erases, pops or clears it, so its size is 5
-  on every call.
+  `numTargets == 0`, which makes the initial fill produce `numLost == 0`. The bounded
+  `AssignSeekerBoids` output then gives `numNew == 0`, so neither outer loop enters an inner
+  search. This does not require assuming creation has already populated exactly five targets.
 - **exhausted-search fallthrough** - after `0x304 bdnz .L_000002D4` (the `numNew` loop) and
   `0x3A4 bdnz .L_00000344` (the `numNew..numLost` loop), i.e. the "no match found" way out. It needs a
   `lostTargets` entry that is in no slot of `mSeekerTargets`. `lostTargets` has one writer - the
