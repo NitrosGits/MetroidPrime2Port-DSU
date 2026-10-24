@@ -503,10 +503,26 @@ Base `e99a3837f`, branch `decomp/swb12`. No source change. `tools/cov/specs/swar
   what leaves the run a natural swarm, **not** an observation that the gun locks by itself.
 
 **Measured: 26/26 lines, 27/28 branches** (`/tmp/opencode/swb12/b`, normal exit,
-`caught/reach-stub: 0`, 725 applies / 962 boid restores / 946 gun writes / 946 gun restores, 0 failed
-writes). The four taken-scan arms (1685:0/2, 1686:0/2, 1686:1/2, 1691:1/2) all turned: the gun
-element gave `taken=[idx]`, and the ph3 cone put that boid and others among the candidates, so the
-scan's equality and inequality sides both ran.
+`caught/reach-stub: 0`, 725 applies, 0 failed writes). The four taken-scan arms (1685:0/2, 1686:0/2,
+1686:1/2, 1691:1/2) all turned: the gun element gave `taken=[idx]`, and the ph3 cone put that boid and
+others among the candidates, so the scan's equality and inequality sides both ran.
+
+**That run is a flawed-persistent-placement fixture, not accepted transient verification.** Its
+`plan` stored the *target* position in the field the restore wrote, so the 962 `RESTORE-BOID` lines
+rewrote the target: the boids were never put back, the mutations accumulated across the run, and the
+phase-2 calls ("natural swarm") ran on a swarm whose boids had already been moved. The coverage counts
+above stand as counts (the arms did execute), but nothing in that run shows that the transient writes
+are undone, and its log lines must not be read as successful restores. Corrected afterwards, with no
+launches left: `plan` now keeps `target` and the ORIGINAL translation read before any write (separate
+fields), the restore writes the original through the cached `&mBoids[idx]`; the gun element is
+snapshotted and restored as two raw 32-bit words at the cached element address (`*(int*)((char*)elem+0)`
+/ `+4`, written back with `set {int}`), not through a float `%r`; phase 3 takes the index from *this
+call's* `taken` vector (guarded, in range) instead of a global left by an earlier call or swarm.
+Verified statically without a launch (emulated gdb over a model of the boid fields, the caller's
+vectors, the camera and the gun element): every phase leaves all boid transforms and `mActive` equal to
+their originals after the call returns, the writes carry the targets, `taken=[]` and an out-of-range
+taken entry move nothing, and the gun's `_RestoreGun` puts the element's exact words and `mCount`
+back.
 
 **The one arm left, 1682:1/4** - the `out.size() < numNeeded` **false** exit of
 `for (uint i = 0; out.size() < numNeeded && i < candidates.size(); ++i)`. It needs `out` to actually

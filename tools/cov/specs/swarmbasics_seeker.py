@@ -22,9 +22,20 @@
 #    `taken` and one whose index is not - the equality and inequality sides of the scan.  Boid
 #    translation and mActive are restored at AssignSeekerBoids' return.
 # Every restore breakpoint is armed BEFORE the first write, and a fixture aborts without writing if
-# arming fails (the swb11 version wrote first: corrected here).  phase 2 is deliberate: it is what
-# leaves the run a natural swarm, not an observation that the gun locks by itself (swb11 measured
-# that it does not).
+# arming fails (the swb11 version wrote first).  phase 2 is deliberate: it is what leaves the run a
+# natural swarm, not an observation that the gun locks by itself (swb11 measured that it does not).
+#
+# CORRECTION (swb12 rework, after the run): the run that produced 26/26 lines / 27/28 branches used a
+# version of this fixture whose plan stored the TARGET position in the field the restore wrote, so its
+# "RESTORE-BOID" lines rewrote the target and the boids were never restored - the run's phase-2 calls
+# were therefore not natural either.  Its numbers are counts only and no transient-restore claim rests
+# on them.  Now the plan keeps `target` and the ORIGINAL translation (read before any write), the
+# restore writes the original through the cached &mBoids[idx]; the gun element is snapshotted and
+# restored as raw 32-bit words at the cached element address, not through a float %r; and phase 3
+# takes the index from THIS call's taken vector (guarded, in range) rather than a global from an
+# earlier call or another swarm.  Verified statically with an emulated gdb over a model of the boid
+# fields, the caller's vectors, the camera and the gun element: unchanged log files are the record of
+# the old run and must not be relabelled.
 CLASS = 'CSwarmBasics'
 
 import os
@@ -99,13 +110,16 @@ class _RestoreBoids(gdb.FinishBreakpoint):
     def stop(self):
         for it in self.items:
             try:
-                gdb.execute('set var %s.mTransform.m03 = %r' % (it['b'], it['pos'][0]))
-                gdb.execute('set var %s.mTransform.m13 = %r' % (it['b'], it['pos'][1]))
-                gdb.execute('set var %s.mTransform.m23 = %r' % (it['b'], it['pos'][2]))
+                # ORIGINAL translation (read before the write), not the target that was written
+                gdb.execute('set var %s.mTransform.m03 = %r' % (it['b'], it['orig'][0]))
+                gdb.execute('set var %s.mTransform.m13 = %r' % (it['b'], it['orig'][1]))
+                gdb.execute('set var %s.mTransform.m23 = %r' % (it['b'], it['orig'][2]))
                 gdb.execute('set var %s.mActive = %d' % (it['b'], it['active']))
-                _log('RESTORE-BOID %s boid=0x%x idx=%d pos=(%.5f,%.5f,%.5f) active=%d'
-                     % (it['tag'], it['addr'], it['idx'], it['pos'][0], it['pos'][1],
-                        it['pos'][2], it['active']))
+                _log('RESTORE-BOID %s boid=0x%x idx=%d written_target=(%.5f,%.5f,%.5f)'
+                     ' restored_original=(%.5f,%.5f,%.5f) active=%d'
+                     % (it['tag'], it['addr'], it['idx'], it['target'][0], it['target'][1],
+                        it['target'][2], it['orig'][0], it['orig'][1], it['orig'][2],
+                        it['active']))
             except Exception as e:
                 _log('RESTORE-BOID %s FAILED: %s' % (it['tag'], e))
         return False
@@ -122,10 +136,14 @@ class _RestoreGun(gdb.FinishBreakpoint):
             gun, elem = info['gun'], info['elem']
             gdb.execute('set var ((CPlayerGun*)%d)->mSeekerTargets.mCount = %d'
                         % (gun, info['count']))
-            gdb.execute('set var (%s)[0].first.value = %d' % (elem, info['uid0']))
-            gdb.execute('set var (%s)[0].second = %r' % (elem, info['lock0']))
-            _log('RESTORE-GUN %s gun=0x%x mCount back to %d, element 0 back to uid=0x%x second=%r'
-                 % (info['tag'], gun, info['count'], info['uid0'], info['lock0']))
+            # the element's two 32-bit words, byte for byte (no float round-trip: a NaN payload or a
+            # signed zero would not survive %r -> parse)
+            gdb.execute('set {int}((char*)(%s) + 0) = %d' % (elem, info['w0']))
+            gdb.execute('set {int}((char*)(%s) + 4) = %d' % (elem, info['w1']))
+            _log('RESTORE-GUN %s gun=0x%x mCount back to %d, element 0 words back to'
+                 ' 0x%08x 0x%08x'
+                 % (info['tag'], gun, info['count'], info['w0'] & 0xFFFFFFFF,
+                    info['w1'] & 0xFFFFFFFF))
         except Exception as e:
             _log('RESTORE-GUN %s FAILED: %s' % (info['tag'], e))
         return False
@@ -198,15 +216,16 @@ def gun_fixture(g):
     slot, uid, idx, ent = pick
     elem = _GUN_EL % gun
     try:
-        uid0 = _i(g, '(%s)[0].first.value' % elem)
-        lock0 = _f(g, '(%s)[0].second' % elem)
+        # raw words of element 0: word 0 is the TUniqueId plus its padding, word 1 the float's bits
+        w0 = _i(g, '*(int*)((char*)(%s) + 0)' % elem)
+        w1 = _i(g, '*(int*)((char*)(%s) + 4)' % elem)
     except Exception as e:
         _log('gun element snapshot failed: %s' % e)
         return
     tag = 'swb12-gun-%d' % (st['gunWrites'] + 1)
     try:
         _RestoreGun(g.newest_frame(), {'gun': gun, 'elem': elem, 'count': gcount,
-                                       'uid0': uid0, 'lock0': lock0, 'tag': tag})
+                                       'w0': w0, 'w1': w1, 'tag': tag})
     except Exception as e:
         _log('%s: restore could not be armed (%s) - no writes' % (tag, e))
         return
@@ -221,8 +240,9 @@ def gun_fixture(g):
     st['gunWrites'] += 1
     st['takenIdx'], st['takenUid'], st['takenSlot'] = idx, uid, slot
     _log('%s gun=0x%x player=0x%x swarm=0x%x slot=%d uid=0x%x actor=0x%x boid_idx=%d of %d'
-         ' mCount %d->1 (slot bits were uid=0x%x second=%r)'
-         % (tag, gun, player, this, slot, uid, ent, idx, nboids, gcount, uid0, lock0))
+         ' mCount %d->1 (element 0 words were 0x%08x 0x%08x)'
+         % (tag, gun, player, this, slot, uid, ent, idx, nboids, gcount,
+            w0 & 0xFFFFFFFF, w1 & 0xFFFFFFFF))
 
 
 def assign_fixture(g):
@@ -255,6 +275,15 @@ def assign_fixture(g):
         ocount = -2
     if count <= 0 or items <= 0 or not taken:
         return
+    # the index to place in front comes from THIS call's taken vector, never from a global left by
+    # an earlier call (or by another swarm's call): guarded read of its single entry
+    taken_first = -1
+    if tcount > 0:
+        try:
+            v = _i(g, '((%s*)%d)->mItems[0]' % (_VEC_U, taken))
+            taken_first = v if 0 <= v < count else -1
+        except Exception:
+            taken_first = -1
     phase = st['assignCalls'] % 4
     cam = _cam(g, mgr) if phase in (0, 1, 3) else None
     moves = []
@@ -262,7 +291,7 @@ def assign_fixture(g):
         moves.append((0, (cam[0][0] + 1.0e6, cam[0][1], cam[0][2])))
     elif phase == 1 and cam:
         moves.append((0, cam[0]))
-    elif phase == 3 and cam and 0 <= st['takenIdx'] < count:
+    elif phase == 3 and cam and taken_first >= 0:
         # swb12 measured 27/28 with only two boids moved: 1682:1/4 (the `out.size() < numNeeded`
         # false exit) needs `out` to actually reach numNeeded, i.e. numNeeded candidates that are
         # NOT in `taken`.  So move min(count, numNeeded + 1) boids into the cone: the taken one
@@ -272,10 +301,10 @@ def assign_fixture(g):
         eye, fwd, right = cam
         ahead = (eye[0] + 2.0 * fwd[0], eye[1] + 2.0 * fwd[1], eye[2] + 2.0 * fwd[2])
         want = min(count, (needed if needed > 0 else 1) + 1)
-        moves.append((st['takenIdx'], ahead))
+        moves.append((taken_first, ahead))
         for k in range(1, want):
-            idx = (st['takenIdx'] + k) % count
-            if idx == st['takenIdx']:
+            idx = (taken_first + k) % count
+            if idx == taken_first:
                 break
             lateral = 0.05 * k
             moves.append((idx, (ahead[0] + lateral * right[0], ahead[1] + lateral * right[1],
@@ -286,10 +315,13 @@ def assign_fixture(g):
                  % (st['assignCalls'], tcount, needed, ocount, count))
         return
     plan = []
-    for idx, pos in moves:
+    for idx, target in moves:
         b = '((CSwarmBasics*)%d)->mBoids.mItems[%d]' % (this, idx)
         try:
-            plan.append({'b': b, 'idx': idx, 'pos': pos,
+            # the ORIGINAL translation, read before anything is written to this boid
+            orig = (_f(g, b + '.mTransform.m03'), _f(g, b + '.mTransform.m13'),
+                    _f(g, b + '.mTransform.m23'))
+            plan.append({'b': b, 'idx': idx, 'target': target, 'orig': orig,
                          'active': _i(g, b + '.mActive'),
                          'addr': _i(g, '&' + b),
                          'tag': 'swb12-%d-ph%d' % (st['apply'] + 1, phase)})
@@ -304,9 +336,9 @@ def assign_fixture(g):
     wrote = []
     for it in plan:
         try:
-            g.execute('set var %s.mTransform.m03 = %r' % (it['b'], it['pos'][0]))
-            g.execute('set var %s.mTransform.m13 = %r' % (it['b'], it['pos'][1]))
-            g.execute('set var %s.mTransform.m23 = %r' % (it['b'], it['pos'][2]))
+            g.execute('set var %s.mTransform.m03 = %r' % (it['b'], it['target'][0]))
+            g.execute('set var %s.mTransform.m13 = %r' % (it['b'], it['target'][1]))
+            g.execute('set var %s.mTransform.m23 = %r' % (it['b'], it['target'][2]))
             g.execute('set var %s.mActive = 1' % it['b'])
             wrote.append(it)
         except Exception as e:
@@ -315,13 +347,14 @@ def assign_fixture(g):
     if wrote:
         st['apply'] += 1
         _log('APPLY %s swarm=0x%x boids=%d taken=%d needed=%d out=%d moved=%s was_active=%s'
-             ' targets=(%s) cam=(%.5f,%.5f,%.5f) takenIdx=%d'
+             ' targets=(%s) originals=(%s) cam=(%.5f,%.5f,%.5f) taken_first=%d'
              % (wrote[0]['tag'], this, count, tcount, needed, ocount,
                 ','.join(str(it['idx']) for it in wrote),
                 ','.join(str(it['active']) for it in wrote),
-                ';'.join('(%.4f,%.4f,%.4f)' % it['pos'] for it in wrote),
+                ';'.join('(%.4f,%.4f,%.4f)' % it['target'] for it in wrote),
+                ';'.join('(%.4f,%.4f,%.4f)' % it['orig'] for it in wrote),
                 cam[0][0] if cam else 0.0, cam[0][1] if cam else 0.0, cam[0][2] if cam else 0.0,
-                st['takenIdx']))
+                taken_first))
 
 
 FORCE = [
