@@ -129,4 +129,44 @@ log("== D damage 5, hp before", hp(TARGET))
 log(cmd(f"damage {TARGET} 5").strip())
 time.sleep(1)
 log("== D damage, hp after", hp(TARGET))
+
+# --- appended checks: fsm change, kill ---
+def _state(uid):
+    o = cmd(f"obj {uid}")
+    m = re.search(r"fsm (.+)", o)
+    return (m.group(1).strip() if m else None), o
+
+prev_state, _ = _state(TARGET)
+log("== fsm change: state before %s" % prev_state)
+log(cmd(f"damage {TARGET} 5").strip())
+time.sleep(1)
+changed = False
+for _ in range(10):
+    time.sleep(0.5)
+    st, _ = _state(TARGET)
+    if st is not None and st not in ("-", prev_state):
+        log("== fsm change: natural %s -> %s" % (prev_state, st))
+        changed = True
+        break
+if not changed:
+    log("== fsm change: no natural change; forcing fsm %s Patrol" % TARGET)
+    log(cmd(f"fsm {TARGET} Patrol").strip())
+    time.sleep(1)
+    st, _ = _state(TARGET)
+    log("== fsm change: after force %s" % st)
+
+before = len(objs("CIng"))
+log("== kill: objs CIng before %d" % before)
+log(cmd(f"kill {TARGET}").strip())
+# kill alone must drop the count (Ing fades over ~0.5-3s); no forced fsm, no obj on a gone actor
+after = before
+for i in range(20):
+    time.sleep(0.5)
+    after = len(objs("CIng"))
+    if after < before:
+        log("== kill: natural drop after %.1fs" % ((i + 1) * 0.5))
+        break
+else:
+    log("== kill: FAIL no count drop within 10s")
+log("== kill: objs CIng after %d" % after)
 log("== done")

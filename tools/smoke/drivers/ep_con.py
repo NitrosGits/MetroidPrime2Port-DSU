@@ -23,7 +23,7 @@ import time
 
 PORT = int(os.environ.get("MP2_CONSOLE", "47412"))
 LOGPATH = sys.argv[1] if len(sys.argv) > 1 else ""
-DURATION = float(sys.argv[2]) if len(sys.argv) > 2 else 120.0
+DURATION = float(sys.argv[2]) if len(sys.argv) > 2 else 130.0
 
 OBJ_RE = re.compile(
     r"^u([0-9a-f]{4})\s+([0-9a-f]{8})\s+(\S+)\s+a(\d+)"
@@ -179,6 +179,57 @@ def main():
     for uid in uids:
         log("u%s state counts: %s" % (uid, dict(counts[uid].most_common())))
         log("u%s transitions: %s" % (uid, "; ".join(transitions[uid])))
+
+    # --- appended checks: hp fall, fsm change, kill ---
+    target_uid = uids[0]
+    def _hp(uid):
+        out = con.cmd("obj u%s" % uid, timeout=8.0)
+        m = re.search(r"hp ([\d.]+)/([\d.]+)", out)
+        return (float(m.group(1)), float(m.group(2))) if m else None, out
+
+    before_hp, _ = _hp(target_uid)
+    log("== hp fall: before damage hp %s" % (before_hp,))
+    con.act("damage u%s 100" % target_uid)
+    time.sleep(1.0)
+    after_hp, _ = _hp(target_uid)
+    log("== hp fall: after damage 100 hp %s" % (after_hp,))
+    if before_hp is None or after_hp is None or after_hp[0] == before_hp[0]:
+        for combo in ["missile", "powerbomb", "dark", "light"]:
+            log("== hp fall: trying damage u%s 100 0 %s" % (target_uid, combo))
+            con.act("damage u%s 100 0 %s" % (target_uid, combo))
+            time.sleep(1.0)
+            now_hp, _ = _hp(target_uid)
+            log("== hp fall: after %s hp %s" % (combo, now_hp))
+            if now_hp is not None and (before_hp is None or now_hp[0] != before_hp[0]):
+                break
+        else:
+            log("== hp fall: no hp change observed with any weapon; before=%s after=%s" % (before_hp, after_hp))
+
+    prev_state, _ = state_of(con, target_uid)
+    log("== fsm change: state before poll %s" % prev_state)
+    changed = False
+    for _ in range(10):
+        time.sleep(1.0)
+        st, _ = state_of(con, target_uid)
+        if st is not None and st not in ("-", prev_state):
+            log("== fsm change: natural %s -> %s" % (prev_state, st))
+            changed = True
+            break
+    if not changed:
+        log("== fsm change: no natural change; forcing fsm u%s Taunt" % target_uid)
+        con.act("fsm u%s Taunt" % target_uid)
+        time.sleep(1.0)
+        st, _ = state_of(con, target_uid)
+        log("== fsm change: after force %s" % st)
+
+    out_before = con.cmd("objs elitepirate", timeout=12.0)
+    cnt_before = out_before.count("CElitePirate")
+    log("== kill: objs elitepirate before %d" % cnt_before)
+    con.act("kill u%s" % target_uid)
+    time.sleep(2.0)
+    out_after = con.cmd("objs elitepirate", timeout=12.0)
+    cnt_after = out_after.count("CElitePirate")
+    log("== kill: objs elitepirate after %d" % cnt_after)
     return 0
 
 
