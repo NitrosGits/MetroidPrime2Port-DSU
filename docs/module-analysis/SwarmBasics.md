@@ -210,3 +210,17 @@ Measured now, still open:
 | 5024 UpdateAllBoidMovement | 0/7 | **the body never runs even with `mAnimated` forced**: it has an out-of-line symbol (objdiff 99.5%) but no caller in the module - retail calls it from Think's tail, and Think does not reach line 867 in these runs (Think 82/88: 851/853/856/857, the outlier loop, are untaken). Next: find what returns before Think's tail (the occlusion block and the outlier loop) |
 | 4538 HardwareLight | 0/8 | Render 45/53 still leaves 1217/1218/1222/1223 untaken, so the forced `mEnableLighting`/`mUseSoftwareLight` did not reach the HardwareLight call; the locals are read at Render's entry, so a `loc:` write (with `$this` captured at the entry) is the next attempt |
 | 3B34 Render | 45/53, 37/56 | as above, plus the light-combo arms |
+
+## swb5: the three next steps measured
+
+`tools/cov/specs/swarmbasics_force5.py` (force.sh) writes, all through `$this`: Think's outlier list
+forged to `&mBoids.mItems[0]` (the vector's element array is `mItems`, not `mBegin`), boid 0's
+`mLaunched` from the 1000th UpdateBoid on, and Render's light flags plus a forged outlier list on one
+call in 590. Six runs (swamp_hall, cliff_hall, 1200 frames, timeout 700), every one exits normally
+(`RC=0`, `caught/reach-stub: 0`, 0 failed writes).
+
+| fn | before -> now | what the runs showed |
+|---|---|---|
+| 6104 UpdateBoid | 48/85, 17/44 -> **72/85, 27/44** | the `mItems[0].mLaunched` force works (the launched path 604-641 ran). Left: 590/592/598/599 (the lifetime and safe-zone arms: `mLifeTime` is a swarm member, so those need `$this->mLifeTime` on a frame where a boid is also launched), 617/618 (the `mRemainingLaunchNotOnSurfaceFrames` arm), 634-642 (the no-surface/stuck arms) |
+| 5024 UpdateAllBoidMovement | 0/7, 0/6 | unchanged: **the body cannot be measured here - it has an out-of-line symbol (objdiff 99.5%) but gcov never attributes a hit to it, so GCC inlines it into Think and the standalone copy is dead.** Marking it needs the inlined-line evidence (the same route the SLdr struct ctor used) or a build where it is not inlined |
+| 3B34 Render / 4538 HardwareLight | 36/53, 31/56 / 0/8 | unchanged: the outlier-loop light arms (1216-1226) still never run. The forced list at Think's entry is wiped by `UpdatePartition()` (which clears `mOutlierBoidList` later in the same body), and the write at Render's entry did not take either: `Render` reads `mOutlierBoidList` at 1215 but the loop stays untaken, so the write is being overwritten or the breakpoint's `$this` differs - check with a `forced.log` counter per hit before the next attempt |
