@@ -25,7 +25,7 @@
 # unpaced runs' transcripts are not even the same read (a boot's object ids differ, u049e against
 # u0618, and the boid counts 2/50 against 4/50 follow the update rate - the swarm generates boids
 # per update), so the rate would decide the baseline. Capped, its 3000 updates take ~46 s (2.1 s ->
-# 48.1 s in the log) and two runs are byte-identical. F=3000, last check f2960.
+# 48.1 s in the log) and two runs are byte-identical. F=3160, last check f2960.
 @f220 layer 3
 @f300 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; fastmorph 1
 @f340 objs PlantScarabSwarm
@@ -39,6 +39,8 @@
 @f1640 tp -146.0 -70.0 36.0
 @f1840 tp -157.4 -63.1 39.5
 @f2000 obj e001e00b6
+@f2010 damage e001e00b6 1
+@f2015 obj e001e00b6
 @f2020 tp 142.6 -63.1 119.5
 @f2200 tp -153.0 -66.0 37.0
 @f2400 lockon 1

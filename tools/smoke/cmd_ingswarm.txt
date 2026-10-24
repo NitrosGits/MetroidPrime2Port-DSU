@@ -12,7 +12,7 @@
 # coverage driver's (its spec counts the calls per state message). `kill` refuses it for the same
 # reason the console kill refuses a CSwarmBasics ("not a patterned actor with health"), so the 500
 # damage is what ends the swarm; a swarm also ends by exploding on the player after a dive.
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2350.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2550, last check f2350.
 # The family stays capped (run.sh NC): a fast run of 2400 updates is over in 0.3 s, before con.py
 # gets a console connection, so nothing would be driven.
 @f150 god 1; give missile 50
@@ -30,6 +30,7 @@
 # The Damage arm and IsDead -> Dead, on a swarm that was just put at contact range (a placed swarm
 # explodes on its dive after ~200 updates, so the hit goes in early).
 @f1750 damage e000e018b 500
+@f1760 obj e000e018b
 @f1800 objs Snatch
 @f1940 send e000e018c SetToZero
 @f1990 place e000e018b player 2

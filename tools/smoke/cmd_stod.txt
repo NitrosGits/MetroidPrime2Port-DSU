@@ -43,4 +43,6 @@
 @f1100 send e00410066 Deactivate; obj e00410066
 @f1140 send e00410066 Activate; obj e00410066
 @f1200 obj e00410048; kill e00410066
+@f1220 send e00410066 Delete
+@f1260 obj e00410048; objs StoneToad
 @f1300 obj e00410048; objs StoneToad

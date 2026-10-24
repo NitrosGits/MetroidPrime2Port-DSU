@@ -21,6 +21,8 @@
 @f380 send e00240396 Activate
 @f400 objs PlayerActor
 @f700 obj e0024022f
+@f705 damage e0024022f 1
+@f710 obj e0024022f
 @f720 send e0024022f Increment
 @f740 send e00240396 Increment
 @f1000 send e0024022f Left
