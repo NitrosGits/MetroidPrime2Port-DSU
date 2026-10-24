@@ -541,3 +541,51 @@ Evidence (`/tmp/opencode/reports/swb12-evidence/`): `CSwarmBasics.cpp.gcno`, the
 `CSwarmBasics.cpp.gcda`, the raw `CSwarmBasics.cpp.gcov.json.gz`, `binary.sha256`, `source.sha256` -
 archived before any marker change, and since this slice changes no source the gcno stays the
 committed tree's.
+## swb13: AssignSeekerBoids 26/26 lines, 28/28 branches (ALL-ARMS) - marked
+
+Base `3a921d5dc`, branch `decomp/swb13`. One launch of the two allowed.
+
+The fixture (`tools/cov/specs/swarmbasics_seeker.py`) now does what the swb12 rework should have:
+every write and every restore goes through the **cached absolute boid pointer** (`&mBoids[idx]`,
+`((CSwarmBasics::CBoid*)addr)->…`), never re-resolving the vector; the original translation is
+snapshotted as **raw 32-bit words** (offsets of `mTransform.m03/m13/m23` taken from the debug info,
+logged once) together with `mActive`; and each restore **reads back** what it wrote and compares with
+the snapshot, logging `RESTORE-BOID … OK` or `… MISMATCH` and counting mismatches. The gun element is
+restored as its two raw words plus `mCount`, also read back (`RESTORE-GUN … OK/MISMATCH`). Phase 3
+takes the index from **this call's** `taken` vector (guarded in range) and moves
+`min(count, numNeeded + 1)` boids into the camera cone (the taken one first, then distinct non-taken
+indices), so the output loop fills `out` to `numNeeded` and exits on its first condition; it also
+refuses to widen when the caller's `out` capacity is below `numNeeded`. `taken`/`out` are never
+written.
+
+Run: `3dfd2249,0g_swamp_hall`, `swarmbasics_swamp.con`… `tools/drivers/swb12.con`, `--fast`,
+1200 frames, `/tmp/opencode/swb13/a`: `game rc=0`, `caught/reach-stub: 0`, normal inferior exit,
+639 applies.
+
+| evidence | count |
+|---|---|
+| `RESTORE-BOID … OK` (words + `mActive` identical to the snapshot) | **1243** |
+| `RESTORE-BOID … MISMATCH` / `FAILED` | **0 / 0** |
+| `RESTORE-GUN … OK` (element words + `mCount` identical) | **603** |
+| `RESTORE-GUN … MISMATCH` / `FAILED` | **0 / 0** |
+
+Coverage: **26/26 lines, 28/28 branches, ALL-ARMS** (the last arm, 1682:1/4 - the
+`out.size() < numNeeded` false exit - turned with the widened cone). Marked `// @ fn_80_1978`
+(`src/MetroidPrime/Enemies/CSwarmBasics.cpp:1658`; the run's numbers are the pre-marker ones, the
+marker shifts the body by one line).
+
+`asmcheck.py check SwarmBasics … fn_80_1978` (all tags) gives three CALL findings, all template
+instances of `rstl::vector<pair<uint,float>>` on the local candidate list: `0x1A24` `bl reserve`
+(`candidates.reserve(mBoids.size())`, line 1666), `0x1B38` `bl rstl::sort<…>` (line 1681), `0x1BD4`
+`bl __dt__…vector<pair<uint,float>>` (the local's destructor). No MASK/BIT/CR/STORE findings.
+
+Gates: host build `metroid_prime2_port` 0 FAILED; `gen_files_cmake.py --check` rc 0;
+`review_decomp_diff.sh 3a921d5dc` (one `MARK`, nothing else); matching `configure.py && ninja` and a
+forced `build/G2ME01/ok` re-check **87 files OK**. Evidence archived before the marker
+(`/tmp/opencode/reports/swb13-evidence/`: gcno, the run's gcda, raw gcov JSON, `swb13_geom.log`,
+`binary.sha256`, `source.sha256`).
+
+Static pre-run check of the same fixture (emulated gdb over a model that stores boid memory as raw
+words): all phases leave every boid's words and `mActive` bit-identical, `taken=[]` and an
+out-of-range entry move nothing, phase 3 moves 5 (taken + 4 non-taken), and the gun restore is exact -
+`/tmp/opencode/swb13-static/check.py` → PASS.
