@@ -1036,6 +1036,7 @@ void CMetroid::DisableSolidCollision(CMetroid& target) {
   target.SetMaterialFilter(filter);
 }
 
+// @ fn_40_69B0
 bool CMetroid::InAttackPosition(CStateManager& mgr, const CTriggerData&) const {
   if (mAttackTarget != kInvalidUniqueId) {
     const CActor* actor = static_cast< const CActor* >(mgr.GetObjectById(mAttackTarget));
@@ -1205,6 +1206,7 @@ void CMetroid::ApplyDamageGrowth(CStateManager& mgr, TUniqueId sender) {
 }
 #endif
 
+// @ fn_40_54C8
 void CMetroid::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1369,6 +1371,7 @@ void CMetroid::TelegraphAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_40_5CF4
 void CMetroid::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1554,6 +1557,7 @@ void CMetroid::SuckEnergyFromTarget(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_40_1DB0
 void CMetroid::ComputeSuckPlayerPosRot(const CPlayer& player, CStateManager& mgr, CVector3f& pos,
                                        CQuaternion& rot) const {
   const CCameraManager* camMgr = mgr.GetCameraManager(mgr.MaskUIdNumPlayers(player.GetUniqueId()));
@@ -1742,7 +1746,9 @@ void SetRelLoaderFunctionToLoader() {
   SetSMetroid_FuncPtrs(&REL_loader_Metroid);
 }
 
+// @ fn_40_10C (objdiff 100%)
 extern "C" void RELMain() { SetRelLoaderFunctionToLoader(); }
 
+// @ fn_40_E8 (objdiff 100%)
 extern "C" void RELExit() { SetSMetroid_FuncPtrs(nullptr); }
 #endif

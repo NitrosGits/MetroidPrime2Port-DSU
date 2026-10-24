@@ -71,6 +71,7 @@ inline SLdrMetroidAlpha::SLdrMetroidAlpha()
   metroidFlagsMetroid = 0x00000000u;
 }
 
+// @ fn_40_CD0 (objdiff 100%)
 inline SLdrMetroidAlpha::~SLdrMetroidAlpha() {}
 
 #endif
