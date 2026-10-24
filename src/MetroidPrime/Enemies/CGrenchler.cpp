@@ -431,6 +431,7 @@ CGrenchler::SGrappleEffect::SGrappleEffect(CAssetId id)
                                       gpSimplePool->GetObj(SObjectTag('PART', id)))
                                 : rstl::optional_object< TToken< CGenDescription > >()) {}
 
+// @ fn_27_127FC
 CGrenchler::SEffectA::SEffectA(CAssetId surfaceRings, CAssetId electric, CAssetId beam,
                                CAssetId hitFx, CAssetId eyeGlow)
 : x0_(surfaceRings)
