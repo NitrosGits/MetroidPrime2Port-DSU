@@ -21,6 +21,7 @@ struct SLdrSpankWeed {
   float hurtSleepDelay;                  // 0x9b5a4744
 };
 
+// @ fn_73_B90
 inline SLdrSpankWeed::SLdrSpankWeed() : editorProperties(), patterned(), actorInformation() {
   patterned.contactDamage.dI_WeaponType = 9;
   patterned.contactDamage.dI_Damage = 20.0f;
@@ -35,6 +36,7 @@ inline SLdrSpankWeed::SLdrSpankWeed() : editorProperties(), patterned(), actorIn
   hurtSleepDelay = 5.0f;
 }
 
+// @ fn_73_B20
 inline SLdrSpankWeed::~SLdrSpankWeed() {}
 
 #endif
