@@ -42,6 +42,7 @@
 
 #include <math.h>
 
+// @ fn_7_BEFC
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"ShouldPatrol", static_cast< CPatterned::StateMachine::TriggerFunc >(&CBlogg::ShouldPatrol)},
     {"AnimOver", static_cast< CPatterned::StateMachine::TriggerFunc >(&CBlogg::AnimOver)},
