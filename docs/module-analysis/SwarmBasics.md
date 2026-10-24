@@ -393,3 +393,45 @@ Gates: host build `metroid_prime2_port` 0 FAILED; `gen_files_cmake.py --check` r
 `review_decomp_diff.sh 8816a08d9` rc 0 (one `MARK`, no MASK/DEL/NULL/STUB); matching build
 `configure.py && ninja` `87 files OK`; no `TARGET_PC` block and no non-comment source change, so the
 port/matching split is untouched by construction.
+## swb10: FindBestLockOnIndex 21/21 lines, 14/14 branches (ALL-ARMS) - marked
+
+`tools/cov/specs/swarmbasics_lockon.py` (force.py). One existing element of `$this->mBoids` is moved
+for the duration of each `FindBestLockOnIndex` call and its **absolute** translation (and `mActive`)
+is restored by a finish breakpoint at the call's return. Three phases, cycled per call:
+
+| phase | the boid's translation | arm it reaches |
+|---|---|---|
+| 0 | the camera's own (`m03,m13,m23` read from `mCameraManagers[0]->mFpCamera->mTransform`) | `delta == 0` -> `CanBeNormalized()` false (the documented blocker: a boid exactly at the camera) |
+| 1 | camera + 1e6 on X | `delta.MagSquared() > maxDistanceSq` true -> `continue` |
+| 2 | camera + the transform's own right column | normalizable, `dot == 0` -> the `dot > maxDot` false side |
+
+The camera is read through the source's own chain (`CStateManager::GetCameraManager(0)`,
+`CCameraManager::GetFirstPersonCamera()`, `GetTransform()` = `CActor::mTransform`, then
+`GetTranslation/GetForward/GetRight` of `CTransform4f`), every member name checked against the build's
+DWARF with `ptype`/`p &((T*)0)->m` before the run - no retail offset is used (the host layout differs:
+`mActive` 0xBA host vs 0xB2 retail, `sizeof(CBoid)` 192 host vs 0xB8 retail, camera transform 0x34 host
+vs 0x24 retail). The candidate is the first already-active element, else element 0 with `mActive` set
+for the call and restored after it; the other 49 elements are untouched, so the loop still takes both
+sides of `if (it->mActive)`. No array/count/model write, no condition stub, no `found`/return write.
+
+**The "13/14, one arm" recollection does not match this build.** On the pre-merge coverage build (same
+body source), before the fixture, the body was **20/21 lines, 10/14 branches** (four arms untaken),
+because the swamp swarm's boids are almost never `mActive` while the function scans them - only 4 of
+52800 element visits in the swb9 profiles were active. With the fixture the single run gives **21/21
+lines, 14/14 branches, ALL-ARMS**.
+
+Run: `3dfd2249,0g_swamp_hall`, `swarmbasics_swamp.con`, `--fast`, 1200 frames, one launch:
+`game rc=0`, `caught/reach-stub: 0`, normal inferior exit, 864 applies and 864 restores, 0 failed
+writes (`/tmp/opencode/swb10/a`, geometry in `swb10_geom.log`). Note the coverage build was rebuilt on
+the merged tree (6bec08d36) for this run, so its gcno differs from the swb8/swb9 runs' - their
+profiles are stamp-incompatible and were **not** merged; this row is the one run alone.
+
+`asmcheck.py check SwarmBasics ... fn_80_1C78` (all tags): **0 findings**. The body matches the asm
+shape: `lwz r3,0x14fc(r4)` player + `bl GetOrbitMaxTargetDistance` (0x1CF0), `lwz r4,0x151c(r31);
+lwz r4,0x18(r4); addi r4,r4,0x24; bl __ct__12CTransform4f` (0x1CF4-0x1D08), the loop over
+`0x184/0x17c` with stride 0xB8 (0x1DC4-0x1DD8), `extrwi. 1,24` on 0xb2(r31) for `mActive` (0x1D30),
+`fcmpo/bgt` against the squared orbit distance (0x1D70), `bl CanBeNormalized` + `clrlwi./beq` (0x1D7C),
+`bl AsNormalized` and the `fmadds` dot compared with `lbl_80_rodata_0` = 0.5 (`fcmpo/ble` 0x1DAC).
+
+Marked `// @ fn_80_1C78` (`src/MetroidPrime/Enemies/CSwarmBasics.cpp`). Line numbers above are the
+measured build's (before this marker, which shifts the body by one line).
