@@ -112,6 +112,7 @@ struct SLdrBlogg {
   SLdrBloggStruct bloggStruct_0xf2ba21e1;                 // non-matching name, 0xf2ba21e1
 };
 
+// @ fn_7_E5C
 inline SLdrBlogg::SLdrBlogg()
 : editorProperties()
 , patterned()
