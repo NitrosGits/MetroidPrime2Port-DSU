@@ -61,7 +61,7 @@ Open arms (cpp line), so these bodies stay unmarked:
 | ApplySteeringBehaviors 1228 | attacking-boid arm (cpp:254) |
 | BoidCollidedCallback 11C0 | never called |
 | BoidCollidedWithPlayerCallback 1144 | launched arm (cpp:264), forced but not reached |
-| SpawnGrenades C6C | POI arms at cpp:292-295 (combinations of weight, character and value; ANCS data) |
+| SpawnGrenades C6C | POI arms (weight, character, value; ANCS data). psc6: all six measured dead - the only int32 POI the attack animation ever walks is weight 1.0 / character -1 / value 26, and two more are structural - so the body is marked (arm table in the seventh pass) |
 
 Not driven arm by arm: the SLdr ctor (fixed above) and dtor, plus the weak copies (H).
 
@@ -335,3 +335,49 @@ purpose, because the marker's rebuild invalidates the original notes; run 2 matc
 (`psc5_r2.matching.gcno` 3d906014...c67b with `psc5_r2.gcda` 98db9467...c3e6, binary
 0f7c0ed4...4794). Raw gcov JSON for both: `psc5_r1_raw.gcov.json`, `psc5_r2_raw.gcov.json`; reports
 `psc5_r{1,2}_gcov_report.txt`.
+
+## Seventh pass (psc6, 2026-10-24, base 41506a1af)
+
+Two launches (the slice's cap), `3dfd2249,0g_swamp_hall`, 1200 frames, fast, **read-only probe, no writes
+at all**, both `[port] caught/reach-stub: 0` and `[Inferior 1 (process N) exited normally]`. Spec and gdb
+side in one lane file, `tools/cov/specs/psc6_grenade_probe.py`, driver `psc6_grenade_0g.con`.
+
+    BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/specs/psc6_grenade_probe.py tools/cov/force.sh \
+      tools/cov/specs/psc6_grenade_probe.py /tmp/opencode/psc6_r1 3dfd2249,0g_swamp_hall \
+      --con tools/cov/specs/psc6_grenade_0g.con --fast --frames 1200
+
+At every entry the probe records the real slot argument (`$rcx`), the slot's boid index, the animation's
+`mCharIdx` and the whole int32 POI list the body walks - the same static `CAnimData::mInt32POINodes` that
+`GetInt32POIList` returns - so the shipped input behind each POI arm is measured, not inferred.
+
+    run 1: calls=2904 no_slot=1816 with_nodes=17 zero_count=1071
+    run 2: calls=2928 no_slot=2214 with_nodes=11 zero_count=703
+    the only node list ever walked (28 node-bearing calls, two boots):
+      C6C: boidIndex=0 slot=0 animChar=0 passedInt=1 stored=16
+           nodes=[(weight 1.0, charIdx -1, mVal 26, mType 6, nameHash 2203981133)]
+    -> the into-attack animation (#2) of ANCS 0x8bb689b4 has one int32 POI: weight 1.0, character -1,
+       value 26 = kUE_ObjectDrop (the same ANCS and animation numbers on all three placements).
+
+Profile (merged over both launches): SpawnGrenades **29/29 lines, 20/26 edges**, untaken @ 298:1/2,
+299:0/2, 300:0/4, 300:2/4, 300:3/4, 301:1/2 - all six dead, proved below.
+
+| arm (retail asm) | condition | edges | status |
+|---|---|---|---|
+| 0xCAC / 0xCB0 | `boidIndex == -1` -> 0xF88 | 1088 continue / 1816 early | both ran |
+| 0xCC0 / 0xCC8 | `count <= 0` -> 0xF88 | 17 with nodes / 1071 empty | both ran |
+| 0xCCC / 0xCD0 | `nodes == nullptr` -> 0xF88 | 17 / 0 | false side dead: `GetInt32POIList` returns `mInt32POINodes.data()`, the address of the static `uchar mData[16*sizeof]` (CAnimData.cpp:40), never null |
+| 0xCE4, 0xCEC, 0xCF0, 0xCF4 | `Float() <= node.GetWeight()` -> 0xF78 | 17 / 0 | false side dead: the only walked node has weight 1.0, and `Float() = 1.52590222e-5f * Next()` with `Next() = (mSeed >> 16) & 0xffff <= 65535` (CRandom16.cpp:43-48), so `Float() <= 0.99998474 < 1.0` |
+| 0xD00 / 0xD04 | `character == -1` -> 0xD14 | 17 / 0 | false side dead: charIdx is -1 on the only node |
+| 0xD0C / 0xD10 | `character == animData.mCharIdx` -> 0xF78 | 0 / 0 | never evaluated and cannot be: the asm jumps from 0xD04 straight to 0xD14 while character == -1, so both edges die with the test above (gcov's 300:0/4, 300:2/4, 300:3/4) |
+| 0xD14 / 0xD18 | `node.GetValue() == kUE_ObjectDrop (26)` -> 0xF78 | 17 / 0 | false side dead: the only node's mVal is 26 |
+| 0xF80 / 0xF84 | loop `i < count` -> 0xCE0 | 17 back-edges / 17 exits | both ran |
+| 0xE14 | retail's `grenade == nullptr` -> 0xF18 | - | no host branch: operator new cannot return null here, so gcc removed the test and cpp:312 has no gcov arm |
+| 0xE20+ | EH landing pads for the string / CModelData / CActorParameters temporaries | 0 | throw edges; `tools/cov/gcov_report.py` excludes them (cpp:310, 311, 313, 314) |
+
+Marker: **added** `// @ fn_49_C6C` (cpp:288). The profile was taken before that line.
+
+Evidence archived before any edit or rebuild, `/tmp/opencode/psc6_evidence`: both runs' `.gcda`
+(89b16ac0...bb5a, dde0cc47...136b) with the matching `.gcno` 3d906014...c67b (same build for both), run 1's
+source copy (ee9a078a...c3e3), binary 78dd2b18...fb38, raw gcov JSON, per-line edge extracts and the
+per-run/merged report files. The two runs are separate boots, so the node tuple is not one run's accident;
+the merged profile is what the row above quotes.

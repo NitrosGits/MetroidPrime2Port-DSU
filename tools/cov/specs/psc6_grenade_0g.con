@@ -1,0 +1,13 @@
+# Torvus Bog 0g_swamp_hall layer 3: CPlantScarabSwarm e0c1e00b6, psc6 launch 1.
+# The player stands among the boids and shifts position a few times so the swarm keeps taking attack
+# slots (SpawnGrenades only walks the POI list while its slot has a boid), 1200 frames, fast.
+@f220 layer 3
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; fastmorph 1
+@f380 send e001e00b6 Activate
+@f420 tp -153.0 -66.0 37.0
+@f600 obj e001e00b6
+@f700 tp -151.0 -66.5 36.5
+@f900 obj e001e00b6
+@f1000 tp -149.5 -67.0 37.5
+@f1100 obj e001e00b6
+@f1190 obj e001e00b6
