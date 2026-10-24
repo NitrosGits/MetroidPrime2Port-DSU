@@ -55,7 +55,7 @@ Open arms (cpp line), so these bodies stay unmarked:
 | function | open arms |
 |---|---|
 | ctor 2300 | 50 1/4 and 3/4 (invalid animRes, intoAttack -1: data), 65 1/2 (attackAnimation -1: data), 71 1/3 (rs_new null/EH), EH cleanup lines |
-| Think 1B64 | 112 1/2 (no free attack slot: attackerCount 3, live but not hit), 102 3/4 (compound loop condition) |
+| Think 1B64 | 112 1/2 (no free attack slot: attackerCount 3, live but not hit), 102 3/4 (compound loop condition). psc5: both proved dead (free-slot and loop-invariant proofs), 86/90/108 ran, so the body is marked (arm table in the sixth pass) |
 | PreRenderBoid 12AC | 218 1/2 (slot -1 path), not reached even with the force. psc3: 218:1/2 proved dead in the shipped configuration (4 base models, 3 slots, shared bit 7; only two mask clears, neither of the shared bit). psc4: 229:1/2 ran with a real slot-0 boid after a transient shared pose, so the body is marked (arm table in the fifth pass) |
 | RenderBoid 1254 | slot -1 arm (cpp:241), forced but not reached |
 | ApplySteeringBehaviors 1228 | attacking-boid arm (cpp:254) |
