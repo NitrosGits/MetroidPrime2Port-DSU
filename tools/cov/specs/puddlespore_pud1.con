@@ -1,0 +1,27 @@
+@f300 god 1; give morphBall 1; give missile 50; fastmorph 1; objs Player
+@f400 place e00150015 player 8
+@f500 fsm e00150015 TurnAround
+@f540 tp 158.69 -33.56 38.3
+@f600 fsm e00150015 TurnAround; tp 158.69 -33.56 42
+@f660 fsm e00150015 TurnAround; tp 142.69 -33.56 42
+@f720 fsm e00150015 TurnAround; tp 150.69 -25.56 42
+@f780 fsm e00150015 TurnAround; tp 150.69 -41.56 42
+@f840 press x 20; fsm e00150015 TurnAround; tp 158.69 -33.56 40
+@f900 press x 20; fsm e00150015 TurnAround; place e00150015 player 0
+@f960 fsm e00150015 TurnAround; tp 150.69 -33.56 38.3
+@f1020 damage e00150015 1 1; fsm e00150015 TurnAround
+@f1080 send e00150015 Activate; send e00150015 Deactivate; send e00150015 Activate
+@f1140 fsm e00150015 Run; tp 150.69 -33.56 46
+@f1200 shoot e00150015 1 dir 0 0 -1
+@f1260 fsm e00150015 Run; tp 160 -33.56 40; press x 30
+@f1320 fsm e00150015 Run; beam 1; shoot e00150015
+@f1380 fsm e00150015 Run; beam 2; shoot e00150015
+@f1440 fsm e00150015 Run; beam 0; shoot e00150015 missile
+@f1500 fsm e00150015 Attack; tp 150.69 -33.56 46
+@f1600 fsm e00150015 GetUp; tp 150.69 -33.56 38.3
+@f1700 fsm e00150015 Run; tp 160 -33.56 40; press x 30
+@f1800 fsm e00150015 Attack; press x 30
+@f1900 fsm e00150015 Run
+@f2000 send e00150015 AIUpdateDisabled
+@f2100 send e00150015 Delete
+@f2200 objs PuddleSpore
