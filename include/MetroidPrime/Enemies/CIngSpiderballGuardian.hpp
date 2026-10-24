@@ -40,6 +40,7 @@ public:
                        float dt) override;
 
   // CAi
+  // @ fn_35_0
   bool IsListening() const override { return true; }
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;
 

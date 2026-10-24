@@ -23,6 +23,7 @@ struct SLdrIngSpiderballGuardianStruct {
   float maxChargeTime;      // 0xe5065ea8
 };
 
+// @ fn_35_E9C
 inline SLdrIngSpiderballGuardianStruct::SLdrIngSpiderballGuardianStruct() {
   minPatrolSpeed = 5.0f;
   maxPatrolSpeed = 10.0f;
@@ -34,8 +35,10 @@ inline SLdrIngSpiderballGuardianStruct::SLdrIngSpiderballGuardianStruct() {
   maxChargeTime = 15.0f;
 }
 
+// @ fn_35_E60
 inline SLdrIngSpiderballGuardianStruct::~SLdrIngSpiderballGuardianStruct() {}
 
+// @ fn_35_CC4
 inline void LoadTypedefIngSpiderballGuardianStruct(SLdrIngSpiderballGuardianStruct& sldrThis,
                                                    CInputStream& input) {
   const int propertyCount = input.ReadUint16();
@@ -108,6 +111,7 @@ struct SLdrIngSpiderballGuardianData {
   SLdrAudioPlaybackParms audioPlaybackParms_0x44c1f241; // non-matching name, 0x44c1f241
 };
 
+// @ fn_35_BEC
 inline SLdrIngSpiderballGuardianData::SLdrIngSpiderballGuardianData()
 : ingSpiderballGuardianStruct()
 , ingSpiderballGuardianStruct_0x2d163ff7()
@@ -129,8 +133,10 @@ inline SLdrIngSpiderballGuardianData::SLdrIngSpiderballGuardianData()
   unknown_0x32133b39 = 20.0f;
 }
 
+// @ fn_35_B04
 inline SLdrIngSpiderballGuardianData::~SLdrIngSpiderballGuardianData() {}
 
+// @ fn_35_86C
 inline void LoadTypedefIngSpiderballGuardianData(SLdrIngSpiderballGuardianData& sldrThis,
                                                  CInputStream& input) {
   const int propertyCount = input.ReadUint16();
@@ -235,6 +241,7 @@ inline SLdrIngSpiderballGuardian::SLdrIngSpiderballGuardian()
 #endif
 }
 
+// @ fn_35_7F0
 inline SLdrIngSpiderballGuardian::~SLdrIngSpiderballGuardian() {}
 
 #endif
