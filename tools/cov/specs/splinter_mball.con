@@ -1,0 +1,22 @@
+# 0e_temple_hive_hall (layers 3 4), cable worker u048d (a.k.a. u0636): morph ball under it, WaitOnCable idle timer, MBallMoved,
+# GrabMBall (Attach), then GrabSac/Rise/DropAndExplode bodies via statecall (the shipped FSM2 has no node for GrabMBall).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/splinter.py <out> 3bfa3eff,0e_temple_hive_hall --con <this> --fast --frames 2200
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f302 layer 3; layer 4
+@f305 send u0604 Activate; send u0602 Activate; send u048d Activate; send u048a Activate; send u0487 Activate
+@f310 tp 87 -349 -89
+@f340 press x 30
+@f400 fsm u048d WaitOnCable
+@f500 trigcall u048d MBallMoved
+@f520 statecall u048d WaitOnCable 1
+@f700 tp 88 -349 -89
+@f710 statecall u048d WaitOnCable 1; trigcall u048d MBallMoved
+@f800 statecall u048d GrabMBall 0
+@f805 obj u048d
+@f806 statecall u048d GrabMBall 1; statecall u048d GrabMBall 2
+@f810 trigcall u048d MBallMoved; trigcall u048d MorphballWaiting
+@f900 statecall u048d GrabSac 0; statecall u048d GrabSac 2
+@f910 statecall u048d Rise 0; statecall u048d Rise 1; statecall u048d Rise 2
+@f1000 press x 30
+@f1100 statecall u048d WaitOnCable 0; trigcall u048d MBallMoved
+@f1200 statecall u048d DropAndExplode 0; statecall u048d DropAndExplode 1
