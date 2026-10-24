@@ -1,8 +1,17 @@
 """srp2b: CScriptRiftPortal::Render (fn_64_C88) screen-space clamp arms, owned fixture calls.
 
-OFFLINE ONLY, never executed in this form: the one srp2b launch (/tmp/opencode/srp2-b) ran the
-previous version, whose absolute PIE breakpoint failed to insert (0 cases). The Site at line ~303
-is now symbol+offset, checked only by a static gdb dry run and the offline selftests.
+EXECUTED ONCE in this form (srp2c, evidence /tmp/opencode/srp2-c, binary sha256 badf8607...3df06,
+frozen at /tmp/opencode/srp2c-frozen), result: 0 cases completed, no mark. srp2b (/tmp/opencode/
+srp2-b) ran an earlier version whose absolute PIE breakpoint failed to insert. In srp2c the
+symbol+offset Site inserted and fired. 80 windows returned before the site (EARLY, guard term not
+logged; the driver had the portal inactive until f340 and not opening before f420, so the first
+guard terms `!GetActive()` / `!(mOpening||mOpen)` are the likely cause, unproven). The 81st window
+passed the site, APPLY logged (natural-a, maxY 0.349, readback equal), then FAIL "one
+GXSetTexCopySrc, got 0" (ignored_nested=1): the copy hit was not seen in an owned frame, cause
+undetermined (no per-breakpoint frame logging), and the halt stopped the driver before the f700/f760
+screenshots. srp2 launches are exhausted (3/3); a future run needs per-breakpoint hit/caller
+logging before ignoring, a logged guard term per EARLY, a non-halting failure mode, and a driver
+that waits for an open portal before arming.
 
 Use default force.py (FORCE = []). A window is one natural Render call, owned by guarded frame
 equality + inferior/thread, armed with a FinishBreakpoint before anything is written. Right after
@@ -246,7 +255,7 @@ class Site(gdb.Breakpoint):
 class Copy(gdb.Breakpoint):
     def stop(self):
         try:
-            w = owned(2)  # Render -> CopyFrameBufferRegion -> GXSetTexCopySrc
+            w = owned(1)  # CopyFrameBufferRegion is inlined: Render calls GXSetTexCopySrc directly (d34b1b)
             if w is None:
                 return False
             check(w.site is not None, 'copy only after the clamp site')
