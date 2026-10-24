@@ -68,10 +68,12 @@ public:
                        float dt) override;
 
   // CPhysicsActor
+  // @ fn_28_1C38
   const CCollisionPrimitive* GetCollisionPrimitive() const override { return &mCollisionPrimitive; }
 
   // CPatterned
   void SetupStateMachine(CStateManager& mgr) override;
+  // @ fn_28_360
   bool IsScanVisorSelfRender() const override { return true; }
   CAABox GetScanVisorRenderBounds(const CStateManager& mgr) const override;
   void ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,

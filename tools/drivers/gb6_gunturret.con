@@ -1,0 +1,5 @@
+@f300 objs GunTurret
+@f350 scan u043a 15 120
+@f400 scan u043d 15 120
+@f600 fsm u043d Attack
+@f900 obj u043d

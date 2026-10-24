@@ -63,6 +63,7 @@ struct SLdrGunTurretBase {
   SLdrActorParameters actorInformation;  // 0x7e397fed
 };
 
+// @ fn_28_13C0
 inline SLdrGunTurretBase::SLdrGunTurretBase()
 : editorProperties()
 , attackDamage()
@@ -115,6 +116,20 @@ inline SLdrGunTurretBase::SLdrGunTurretBase()
   maxAudibleDistance = 100.0f;
   soundFallOff = 0.0f;
 #ifdef TARGET_PC
+  // 0x13E0 li r0,-1; 0x13F4..0x1424 store that sentinel to all thirteen sound words.
+  gFFireShotSound = -1;                // 0x13F4 stw r0,0xb4(r31)
+  pirateFireShotSound = -1;            // 0x13F8 stw r0,0xb8(r31)
+  lockOnSound = -1;                    // 0x13FC stw r0,0xbc(r31)
+  gunPanSound = -1;                    // 0x1400 stw r0,0xc0(r31)
+  gFGunChargeSound = -1;               // 0x1404 stw r0,0xc4(r31)
+  pirateGunChargeSound = -1;           // 0x1408 stw r0,0xc8(r31)
+  gunLowerLoopedSound = -1;            // 0x140C stw r0,0xcc(r31)
+  gunLowerOffSound = -1;               // 0x1410 stw r0,0xd0(r31)
+  gunRaiseLoopedSound = -1;            // 0x1414 stw r0,0xd4(r31)
+  gunRaiseOffSound = -1;               // 0x1418 stw r0,0xd8(r31)
+  pirateGunDeathLowerLoopedSound = -1; // 0x141C stw r0,0xdc(r31)
+  gFGunDeathLowerLoopedSound = -1;     // 0x1420 stw r0,0xe0(r31)
+  poleSparksSound = -1;               // 0x1424 stw r0,0xe4(r31)
   // fn_28_13C0: 2.0 (rodata 0x8) at guest +0x13C = patterned +0x4C (0x1528), 1 at +0x320 =
   // patterned +0x230 (0x152C), CColor(1.0 x4, rodata 0x10) at +0x348 = actor +0x14 (0x1540), 0xF
   // at +0x398 = actor +0x64 (0x1544).
@@ -125,6 +140,7 @@ inline SLdrGunTurretBase::SLdrGunTurretBase()
 #endif
 }
 
+// @ fn_28_1344
 inline SLdrGunTurretBase::~SLdrGunTurretBase() {}
 
 #endif
