@@ -28,6 +28,7 @@
 @f4050 obj u051a
 @f4070 obj u051a
 @f4090 obj u051a
+@f4100 fsm u051a Dead
 @f4110 fsm u051a Lurk
 @f4130 send u051a Delete
 @f4200 objs DarkCommando
