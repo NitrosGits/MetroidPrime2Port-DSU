@@ -1880,6 +1880,7 @@ void CBlogg::UpdateAimWeights() {
   mLastForward = xf.GetForward();
 }
 
+// @ fn_7_87C8
 void CBlogg::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -2050,6 +2051,7 @@ void CBlogg::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUse
   }
 }
 
+// @ fn_7_8F7C
 void CBlogg::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const bool wasActive = GetActive();
   const TUniqueId senderId = msg.GetSenderId();
