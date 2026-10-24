@@ -146,6 +146,7 @@ void CSporbProjectile::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_76_F084
 void CSporbProjectile::Think(float dt, CStateManager& mgr) {
   const CTransform4f locatorXf =
       GetTransform() * GetScaledLocatorTransform(rstl::string_l(skBallAttachLocator));

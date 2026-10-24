@@ -690,6 +690,7 @@ void CSporbBase::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_AA88
 void CSporbBase::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mState = kS_Patrolling;
@@ -705,6 +706,7 @@ void CSporbBase::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Patrol(mgr, msg, dt);
 }
 
+// @ fn_76_A898
 void CSporbBase::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -735,8 +737,14 @@ void CSporbBase::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
     }
     if (mIsPowerBombGuardian && !mStages.empty() && mStageIndex < mStages.size() &&
         mShotsInBurst != 2 && mStages[mStageIndex]->mDoubleShotChance > 0.f) {
+#ifdef TARGET_PC
+      // 0xAA50 addi; 0xAA54 cmplw; 0xAA60 stb: clamp the full sum before byte storage.
+      mAttacksSinceDoubleShot = rstl::min_val(static_cast< uint >(mAttacksSinceDoubleShot) + 1,
+                                             static_cast< uint >(mAttacksPerDoubleShot));
+#else
       mAttacksSinceDoubleShot =
           rstl::min_val(static_cast< uchar >(mAttacksSinceDoubleShot + 1), mAttacksPerDoubleShot);
+#endif
     }
     mPowerBombsFired = 0;
     break;
@@ -979,6 +987,7 @@ void CSporbBase::GoToSleep(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_9304
 void CSporbBase::FakeDeath(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -1032,6 +1041,7 @@ bool CSporbBase::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_76_915C
 bool CSporbBase::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetOcclusionState() ==
       CGameArea::kOS_Occluded) {
@@ -1525,6 +1535,7 @@ void CSporbBase::UpdateGrabber(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_76_7000
 void CSporbBase::AttachPlayer(CStateManager& mgr) {
   if (mProjectileId != kInvalidUniqueId) {
     if (CSporbProjectile* projectile =
@@ -1877,6 +1888,7 @@ CDamageInfo CSporbBase::GetContactDamage() const {
   return CPatterned::GetContactDamage();
 }
 
+// @ fn_76_55A4
 void CSporbBase::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                                  float dt) {
   switch (type) {
@@ -1909,6 +1921,12 @@ void CSporbBase::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
     }
     break;
   case kUE_Projectile: {
+#ifdef TARGET_PC
+    // 0x57CC lbz r0,0x9ac(r28); 0x57D4 beq 0x5884: skip the entire ordinary event.
+    if (!mIsPowerBombGuardian) {
+      break;
+    }
+#endif
     if (mIsPowerBombGuardian) {
       if (!mTimerScaleMaxed) {
         mAimTarget = mPowerBombAimPosition;
@@ -1927,10 +1945,17 @@ void CSporbBase::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }
 
+// @ fn_76_5558
 CVector3f CSporbBase::GetLeanDirection(float forward, float back, float left, float right) {
+#ifdef TARGET_PC
+  // 0x5564 fsubs f3,f4,f3; 0x556C fsubs f1,f1,f2: right-left, forward-back.
+  return CVector3f(right - left, forward - back, 0.f).AsNormalized();
+#else
   return CVector3f(back - left, forward - right, 0.f).AsNormalized();
+#endif
 }
 
+// @ fn_76_5388
 CVector3f CSporbBase::GetTopAttachPosition(const CStateManager& mgr) const {
   if (mTopId != kInvalidUniqueId) {
     if (const CSporbTop* top = TCastToConstPtr< CSporbTop >(mgr.GetObjectById(mTopId))) {
