@@ -82,3 +82,43 @@ grappleguardian area does), and the persistent force.py writes interleaved. Now
 | FindFluid / IsInhabitingFluid | 2/4, 3/4 | unmarked: no Blogg gets a fluid id (the two ScriptWater u061a/u0591 never register one) |
 
 Marked by blog2 (asmcheck clean apart from the unported CanMeleeAttack call and the bitfield NOPOS): 5BF4, 5A98, 1B78.
+
+## rez6 (2026-10-24)
+
+Marked (20 of 22; 105/107 behaviour rows): GetSearchPath 2A08, ProjectileInfo 45D8, GetContactDamage 4B00, ~CBloggMouthVulnerability 0,
+~CBloggBodyVulnerability 17A8 (header inline); GetNextPositionIndex 2A10, CanRangedAttack 5D88, CanMeleeAttack 5E80, FindNearestHint 1C0C,
+FindAttackPositions 3B1C, ComputeAttackPositions 7E90, Dead 38C4, GrabBall 65F4, LaunchBloggProjectile 43D8, DoUserAnimEvent 4B4C,
+LoadBlogg 108, SLdrBlogg ctor E5C, LoadTypedefBloggStruct 10E0, CBlogg ctor A02C, `__sinit` BEFC (marker on `skTriggers`: 45 ptmf blobs
+named through the TSV equal skTriggers+skStates+skCodeFuncs in order; bss_14 = 0.5235988 = skAttackAngleStep, bss_18 = (0,0,5) = skWaterTestOffset).
+**Left: Think 87C8 and AcceptScriptMsg 8F7C** (see below).
+
+Runs (`tools/cov/specs/force_lib.py` shared helpers; all via `/force.sh` with `COV_GDB_SCRIPT`, `--fast`, <= 1900 frames):
+- `blogg_force3.py` + `blogg_forced3.con` (07_swamp_shaft, no team manager) / `blogg_forced3g.con` (08_swamp_grappleguardian, 3 team managers,
+  2 ScriptWaters); env `BLG_AT=1500 BLG_GROUPS=misc|attack|state|uevent` (the hook runs at the 1500th live Think and calls the leaf bodies with
+  the members each arm needs, then restores them). misc: GetNextPositionIndex, CanMelee/RangedAttack (team answers by a gate), FindNearestHint
+  (real hints, inactive / in-use / stale ids, LOS on/off). attack: FindAttackPositions (OnPath answered by a gate, a real water id + its
+  bounds, a real team joined by four Bloggs, role owner invalid), ComputeAttackPositions (hint/no-hint, player invalid, the three direction
+  loops via OnPath answer lists: 117 calls). state: the three leaf getters, GrabBall (team none/real, StartAttack 1/0, player valid/invalid,
+  dt 0.016/1.0), Dead (fluid/fade combinations). uevent: DoUserAnimEvent types 0 and 26 (player valid/invalid, CanCreateProjectile refusal by
+  a gate, the projectile token's bytes cleared for TryCache false: player-null call only, the player-valid path reads the token item first).
+- `blogg_force4.py` + `blogg_load.con` (07_swamp_shaft): first LoadBlogg input patched (0x2dd3662e -> 0xfeedbeef skip arm, isMegaBlogg 1 so
+  the first CBlogg is built through the mega arm, cleared on the returned object), first LoadTypedefBloggStruct (0x3e505ddb -> 0xfeedbeef);
+  `spawn BLOG` without ancs = LoadBlogg's model-null return.
+
+Dead arms (proofs): ComputeAttackPositions `hint != nullptr` after FindNearestHint returned its id (only returns ids it resolved), `flatAngle >= 0`
+false and `flatAngle > cur` (GetAngleDiff = acos of a clamped value, never negative/NaN: CVector3f.cpp:103-117); GrabBall switch default
+(EStateMsg has three values); LaunchBloggProjectile homing=true (both callers pass false) and rs_new null; CBlogg ctor null arms of
+`BodyController()` and of the two rc_ptr copies/ifs of members constructed by rs_new in the init list.
+
+asmcheck false positives worth knowing: SLdrBlogg ctor XSTORE (every field; the checker cannot place the stack struct) - verified by hand,
+store by store (0x2f8..0x4d0, 0x7ac..0x7f0, TARGET_PC extras); ctor BIT x681_10/40/80 = the inlined EnableBurn/Freeze/Slow(false).
+DoUserAnimEvent type 0x1a really falls through to the base call (asm 0x4FD4 -> 0x4FE4), as the C++ does.
+
+Left for the next slice:
+- Think (87C8): untaken in the natural + forced runs: the MoveToAttackPosition/MoveToPlayer/FacePlayer turn-speed arm, the Dying speed arm,
+  IsPlayerWithinChargeRange branches, the mouth-open sound arm (ChargeAttack && inRange && mMouthClosed && xbc5_28_), the morph-ball
+  arm (spawned-morph-state test), mBallGrabbed, the hit-colour lerp (xb68_ > 0), and the whole mega-Blogg phase block (the first Blogg
+  of blogg_force4's load has mPhases = 3; the rest of the object is non-mega). Plan: direct Think calls per mState with the members written.
+- AcceptScriptMsg (8F7C): AreaLoaded pivot loop, HitObject (charge arm 0xbc4&0x2, collision-actor sender, mouth damage), Damage (the
+  weapon-up arm of blogg1), bomb / power-bomb sender arm, InternalMessage0 (kill), fall-through. Plan: a `send`/direct-call queue with
+  a crafted CScriptMsg and real CollisionActor / weapon senders.
