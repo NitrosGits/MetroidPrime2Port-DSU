@@ -256,7 +256,7 @@ declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # widget's state follows the update rate, so the transcript is not a fixed baseline. Capped, the
 # front end's 700 updates take ~25 s.
 FASTENV="MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8"
-declare -A NC=( [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1 [wisptentacle]=1
+declare -A NC=( [emp1]=1 [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1 [wisptentacle]=1
                [octapede]=1 [amt]=1 [spa]=1 [wallwalker]=1 [isbg]=1 [spor]=1 [scriptgui]=1 [kral]=1
                [pssm]=1 [stod]=1 [pbug]=1 [szone]=1 [rptl]=1 [chog]=1 [drkc]=1 [plac]=1 [plct]=1 [spp]=1
                [ming]=1 [snak]=1 [eyeb]=1 [kroc]=1 [atma]=1 [atmb]=1 [shrd]=1 [fsw]=1 [iss]=1
