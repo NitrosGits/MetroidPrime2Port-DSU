@@ -197,6 +197,7 @@ CIngSpaceJumpGuardian::CIngSpaceJumpGuardian(TUniqueId uid, const rstl::string& 
 // @ fn_34_5B30
 CIngSpaceJumpGuardian::~CIngSpaceJumpGuardian() {}
 
+// @ fn_34_5760
 void CIngSpaceJumpGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId senderId = msg.GetSenderId();
   const EScriptObjectMessage message = msg.GetMessage();
@@ -240,7 +241,12 @@ void CIngSpaceJumpGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
 #endif
     break;
   case kSM_Launching:
+#ifdef TARGET_PC
+    // 0x5A10 lhz r7,0x38(r1); 0x5A38 sth r7,0x44(r1): preserve incoming sender.
+    CPatterned::AcceptScriptMsg(mgr, CScriptMsg(senderId, GetUniqueId(), kSM_OffGround));
+#else
     CPatterned::AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), GetUniqueId(), kSM_OffGround));
+#endif
 #ifdef TARGET_PC
     // 0x5A84-0x5A8C: stfs to +0x1c0/+0x1c4/+0x1c8 = CPhysicsActor::mMomentum.
     SetMomentumWR(CVector3f(0.f, 0.f, -(GetMass() * GetGravityConstant())));
@@ -277,6 +283,7 @@ void CIngSpaceJumpGuardian::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_34_5274
 void CIngSpaceJumpGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                             EUserEventType type, float dt) {
   bool handled = false;
@@ -545,6 +552,7 @@ void CIngSpaceJumpGuardian::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_34_46D0
 void CIngSpaceJumpGuardian::FollowIntroPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   switch (msg) {
@@ -600,6 +608,7 @@ void CIngSpaceJumpGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float 
   }
 }
 
+// @ fn_34_3DA8
 void CIngSpaceJumpGuardian::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -779,6 +788,7 @@ void CIngSpaceJumpGuardian::SelectTarget(CStateManager& mgr, float dt) {
   mPlayerId = mgr.GetPlayer(0)->GetUniqueId();
 }
 
+// @ fn_34_34CC
 void CIngSpaceJumpGuardian::SelectJumpTarget(CStateManager& mgr, float dt) {
   const rstl::vector< TUniqueId > points = FindJumpPoints(mgr);
   const rstl::vector< TUniqueId > candidates = FilterJumpPoints(mgr, points);
@@ -941,6 +951,7 @@ void CIngSpaceJumpGuardian::TouchDamage(CStateManager& mgr, TUniqueId senderId) 
   }
 }
 
+// @ fn_34_2534
 void CIngSpaceJumpGuardian::CollisionDamage(CStateManager& mgr, TUniqueId senderId) {
   if (mAlive) {
     if (CCollisionActor* colAct = TCastToPtr< CCollisionActor >(mgr.ObjectById(senderId))) {
@@ -1019,6 +1030,7 @@ void CIngSpaceJumpGuardian::UpdateLight(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_34_1BFC
 void CIngSpaceJumpGuardian::CameraShake(CStateManager& mgr, const rstl::string& locatorName) {
 #ifdef TARGET_PC
   // 0x1C60 bl FindConnectedObject__7CEntity: first matching connection, no RNG draw.
@@ -1079,6 +1091,7 @@ const SLdrIngSpaceJumpGuardianStruct* CIngSpaceJumpGuardian::GetCurrentStruct() 
   return &mData.ingSpaceJumpGuardianStruct;
 }
 
+// @ fn_34_1660
 rstl::vector< TUniqueId >
 CIngSpaceJumpGuardian::FilterJumpPoints(CStateManager& mgr,
                                         const rstl::vector< TUniqueId >& points) {
@@ -1124,6 +1137,7 @@ CIngSpaceJumpGuardian::FilterJumpPoints(CStateManager& mgr,
   return points;
 }
 
+// @ fn_34_1198
 rstl::vector< TUniqueId > CIngSpaceJumpGuardian::FindJumpPoints(CStateManager& mgr) {
   rstl::vector< TUniqueId > result;
   if (const CEntity* current = mgr.GetObjectById(mJumpTarget)) {

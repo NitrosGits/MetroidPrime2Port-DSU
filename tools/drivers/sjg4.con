@@ -1,0 +1,8 @@
+@f260 layer 2
+@f400 send u051f Activate
+@f420 tp -75 -110 -8
+@f600 codecall u051f SelectJumpTarget; codecall u051f FindBestMiniPortals
+@f650 send u051f Launching
+@f700 shoot u051f
+@f800 shoot u051f
+@f900 obj u051f

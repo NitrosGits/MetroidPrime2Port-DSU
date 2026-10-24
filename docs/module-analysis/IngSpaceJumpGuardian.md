@@ -191,7 +191,7 @@ The input members are restored after each call. Collision manager/light already 
 | 216C UpdateLight | 2184–21B0 base byte420 bit40 = alive: saturate intensity at1; 21B4–21D0 light lookup/cast; 21D4–2264 black→data colour lerp, head locator, point light, attenuation(1/data,0,0), SetLight. Alive0/1, missing light, intensity0/2 with dt.25 cover both saturation outcomes. | 10/10, 4/4 ALL-ARMS |
 | 2498 SetCollisionVulnerability | 24A8/2500–2510 unsigned count loop; 24C8–24F4 description id lookup/cast/null; 24F8–24FC vulnerability copy. Real reflect vulnerability, ordinary seven actors, one invalid description id and count0. | 7/7, 4/4 ALL-ARMS |
 | 2874 UpdateCollisionVulnerabilities | 2898–28B0 health virtual slot3C and full health copy2998; 28B4–2974 count loop; 28BC–28E8 description lookup/null; 28EC–2960 qualified base vulnerability, virtual HealthInfo slot38 and full health assignment. Same ordinary/invalid-id/count0 inputs. | 9/9, 4/4 ALL-ARMS |
-| 2ED0 ComputeJumpVelocity | 2F10–2F4C jumping bit80/invalid-id/absent actor guards; 2F50–2FA0 deltas, start/target heights, gravity virtual slot114; 2FA8–2FBC higher-height selection; 2FC0–3028 vertical sqrt, flight time, XY/time, SetVelocityWR; 302C–303C jumping bit80 and duration stores. True/false jumping, FFFF/FFFE/player target; explicit actor height playerZ±5 covers both apex arms with apex offset10. | 20/20, 6/6 ALL-ARMS |
+| 2ED0 ComputeJumpVelocity | 2F10–2F4C jumping bit80/invalid-id/absent actor guards; 2F50–2FA0 deltas, start/target heights, gravity virtual slot114; 2FA8–2FBC higher-height selection; 2FC0–3028 vertical sqrt, flight time, XY/time, SetVelocityWR; 302C–303C jumping bit80 and duration stores. True/false jumping, FFFF/FFFE/player target. Height fixtures corrected/rerun in sjg4: GetTranslation reads mPosition, not transform translation. | 20/20, 6/6 ALL-ARMS |
 | 36B8 SteerToDest | 36D4–36F8 message dispatch; 36FC–3740 Ready1, walk/run speed ratio, full-speed steering; 3748–3760 missing target; 3764–37E0 safe delta and positive forward dot; 37E4–3840 normalized facing cmd; 3848–3858 Over3; 3860–3864 NotReady0. Msg0/1/2/3, invalid/player target and delta0/±forward. | 22/22, 10/10 ALL-ARMS |
 | 3888 PathFind | 38B0–38CC dispatch; 38D0–38F0 full-speed range1; 38F4–3914 path bit40 guards navigation; 3918–3924 heard bit20 clear; 392C–3940 Update path bit40; 3944–3954 search index versus count−1 (tail runs for every msg); 3958–39A8 negative forward dot and safe magnitude; 39AC–3A14 clear and normalized facing cmd. Msg0/1/2/3 with path0/1, over/not-over, forward/backward and tiny backward input. | 19/19, 15/15 ALL-ARMS |
 | 4864 Dead | 489C qualified base call; 48A0–48B4 dispatch; 48B8–4948 default speed, real PART token/blob spawn, timer2; 4950–496C UpdateBlob and body Death-state guard; 4970–49A4 boss-id clear; 49A8–49F8 scaleZ=max(0,Z−dt/.75); 49FC–4A34 <=0 shrinks timer and clears render02/blob04; 4A38–4A58 timer<=0 DeathDelete. Msg0/1/2, real body Locomotion/Death states, matching/nonmatching boss, positive/zero scale and timer2/0. Deletion is last, not stubbed. | 24/24, 13/13 ALL-ARMS |
@@ -242,3 +242,100 @@ rc0, All77.98% fuzzy/54.39% matched,Game94.14%/63.29%,dtk shasum87 files OK.
 Only upstream-file diff is nine marker comments, so non-PC strip-diff CLEAN.
 `tools/review_decomp_diff.sh 293c09dab`:9 MARK, no other findings; all nine accounted for above.
 Unchanged families and whole-module smoke skipped per scope.
+
+## sjg4 completion (2026-10-24)
+
+Base `5b9bf4d92`, final nine markers: **60 → 69/69 behaviour bodies**. Full instruction
+listings and evidence: `/tmp/opencode/reports/sjg4-evidence/`. No table/classification
+changes. Only new production fix is AcceptScriptMsg's synthetic Launching sender.
+
+### Retail audit / forced-arm table
+
+Every fixture below is **forced (`tools/cov/specs/sjg4_runtime_arms.py`)** unless described
+as natural. Real object lookup, casts, RNG, path search, safe-zone containment, constructors,
+effects, damage and deletion execute. No callee is stubbed and no return value is replaced.
+
+| body | instruction/block audit and exercised inputs | final gcov |
+|---|---|---|
+| 1198 FindJumpPoints | 11CC–1248 current target lookup and Arrived/Next connected-object predicate, vector assignment14F0/destruction160C; 124C–1260 empty fallback/reserve10; 1264–129C actor position+world up; 12A0–12BC list loop/cast; 12C0–1310 active,GetInUse,type0,not-last,same-area chain; 1314–138C search flags1, real PathExists success/failure, append id, restore301; 1390–13C0 capacity break/advance/end; 13C4–13D8 return copy/destruction. Invalid/player target, real connected waypoint→jump point, individual active/inUse/type/last/area failures, null path area, empty list and temporary player entry in waypoint-list slot. Natural room points cover capacity bound. | 19/20 lines,40/40 ALL-ARMS; closing-brace EH only below |
+| 1660 FilterJumpPoints | 1674–1688 empty input; 168C–16D0 reserve two vectors and loop; 16D4–1710 point lookup and linked waypoint cast at +180; 1714–1728 real safe-zone rejection; 172C–1790 AI-waypoint versus ordinary-waypoint partition; 1794–17A4 iteration; 17A8–17E4 current-stage chance, RNG[0,100], <= compare and linked-empty test; 17E8–1864 linked/ordinary/original return and lifetime cleanup. Empty input, FFFF id, missing link, real WP/AI links; all four stage chances101/−1; zones empty versus a real safe zone with waypoint mPosition at its centre. | 22/22,34/34 ALL-ARMS |
+| 1BFC CameraShake | 1C38–1C6C mode1 chooses Retreat else Play, Attach, FindConnectedObject without RNG; 1C70–1C90 lookup/cast/null; 1C94–1CA0 caller locator transform; 1CA4–1CD4 copy shake data1E44 and replace position; 1CD8–1CEC AddCameraShaker(false,false), destructor1D28. Alias one real connection to a real shaker editor id, both states; empty connections for null. | 10/10,7/7 ALL-ARMS |
+| 2534 CollisionDamage | 255C–258C alive40 and sender collision cast; 2590–25F4 touched id, collision/self HealthInfo virtual38, initial/current HP, weapon cast; 25F8–2634 damage=initial−collisionHP, weapon forward28/38/48, TakeDamage virtualA4; 2638–2658 oldHP>damage or last10 AND damageable08 gates HP store; 265C–26B8 oldHP<=0 calls Death virtual98 with DeathRattle and RecordDamageSource(true,false); 26BC–2710 damageable08 gates CKnockBackInfo/virtual9C; 2714 restores collision HP to initial, including no-weapon path. Real live projectile and real hitbox; dead actor, player sender, nonweapon touched; HP100/1/0 with damage10; all boolean combinations. C++ reorders the two side-effect-free bit reads but preserves their conjunction. | 23/23,16/16 ALL-ARMS |
+| 34CC SelectJumpTarget | 34F8/3524 real Find/Filter, vector copy13F0/dtor160C; 3540–3560 clear last/targetFFFF and hasPath40; 3564–35A0 nonempty,RNG index,lookup/null; 35A4–35DC retain point id, load destination at+180, set hasPath40, navigation destination, faceFFFF; tail destroys vectors. Empty list, real connected candidate and missing lookup. Missing lookup forced once at the real manager call's input register after real Find/Filter/RNG; real lookup returns null, not a patched return or callee stub. Host callsite is found from live disassembly, never hard-coded. | 16/16,11/11 ALL-ARMS |
+| 3DA8 Jump | 3DD0–3DF8 message switch; 3DFC–3EA4 Ready1,Stop,AI cast→mode1/0,timers0/1,sfx0,Shield on,reflect vulnerability; 3EAC–3F54 CanIssue(Jump13), target/null, Normal0 versus Ambush2/Three3 from mode/last10, construct44F8 and deliver4400, missing→Over3; 3F58–4198 no-sfx AND jumping80, timer+=dt, >duration−.5 emitter127/medium versus material add; 419C–41D4 existing handle updates emitter; 41D8–4254 jumping,shield timer−dt,<=0 Shield off/base vulnerability; 425C–43D4 NotReady0,last=(mode==1),mode−1,sfx0,damageable08,Shield off,base vulnerability,material removal,Stop. Msg0/1/2/3; AI/player/missing target; ready/nonready; mode0/1,last0/1; jumping0/1; timers below/above thresholds; captured **real AddEmitter handle**, asserted nonzero then reused for UpdateEmitter. | 55/55,29/29 ALL-ARMS |
+| 46D0 FollowIntroPattern | 4704 Patrol always; 4708–4728 msg switch; 472C–4764 introFFFF→GetConnectedObject(Attack,Follow); 4768–4790 destination assignment and WP cast; 4794–47F0 dot<=0 (`cror eq,lt,eq`) sets waypoint-nav inPosition bit80 at6F0; 47F4–4830 walk/run ratio and full-speed blend; 4838 stores destination back to intro. Msg0/1/2/3; introFFFF,real AI waypoint,player cast failure; actor **mPosition** set to target position±forward, both dot arms. This resolves sjg3's ineffective transform-translation-only fixture. | 22/22,9/9 ALL-ARMS |
+| 5274 DoUserAnimEvent | 5294–52C0 event jump table up to22/default; 52C4–52F4 mode!=−1 orbit8; 52F8–5320 damageable08 off/on; 5328–5348 optional/index>=0/index<count; 534C–5424 transform+portal position, increment index, damage*dt, no-immunity80, miniportal info(1,2,150,1); 5428–5560 real portal allocation/ctor/AddObject and temporary cleanup; 5564 handled; 556C–5580 camera/shockwave use **node locator+30**, then base dispatch; 5584–5600 eyes on/off; 5604–5614 blob04 on; 5618–5634 unhandled→qualified base call. Real CInt32POINode stream ctor with head locator; every event/default,mode−1/non−1,optional absent,present index−1/equal count/valid. Shipped live token used for valid spawn. | 51/51,27/27 ALL-ARMS |
+| 5760 AcceptScriptMsg | 578C–579C cache incoming sender/message, qualified base call first; 57A0–5870 message dispatch; 5874–5898 Create activates body,collision,light; 58A0–5908 Delete blob/collisions/light and boss-id equality cleanup; 5910–5990 Activate/Deactivate collision and nullable light; 5998–59C0 area path pointer; 59C8–59F8 OffGround gravity*mass negative momentum; 5A00–5A4C Launching synthesizes OffGround preserving incoming sender,invalid originator,self recipient,stateFFFFFFFF; 5A50–5A90 momentum/ComputeJumpVelocity; 5A98–5AA4 Landed clears jumping80; 5AAC–5AD4 Damage calls CollisionDamage then sets hit80 at420; 5ADC–5AE8 Resisted sets hit; 5AF0–5B04 Hit calls TouchDamage. Natural Create/AreaLoaded/Delete plus explicit all other messages/default,light valid/missing,boss own/FFFF. | 47/47,18/18 ALL-ARMS |
+
+Jump material list is **1ULL shifted by 30/31/49/32/43**, not those integers ORed:
+3FDC/4018/4034/4050/406C read those enum data words; 400C/4028/4044/4060/407C
+perform shifts, 4090–40AC removes, 40C0–4194 adds, 42F4–43CC removes at deactivation.
+Flags/constants in every row were independently decoded from the full instruction listings.
+
+### Sender correction and regression oracles
+
+Retail `5A10 lhz r7,0x38(r1)` reloads the cached incoming sender; `5A38 sth r7,0x44(r1)`
+writes synthetic message.sender. The upstream call supplied guardian UID twice. New
+TARGET_PC call supplies `CScriptMsg(senderId, GetUniqueId(), kSM_OffGround)`; #else retains
+the original verbatim. Originator/recipient/message/state remain unchanged. Entry breakpoints
+on derived/base AcceptScriptMsg compare the actual synthetic sender with the actual incoming
+Launching sender: final runs include **senderFFFF versus guardian051F PASS**, not just the
+trivial self-sender case.
+
+The same translation-cache discovery corrects the previous 2ED0 height fixture claim.
+Launching's callee now also runs with actor mPosition.Z=playerZ−5/+5,apex10; independent
+velocity-Z bounds assert42.4264069/34.6410162 respectively, both PASS. No 2ED0 production
+change was required. Emitter fixture also asserts its captured real handle is nonzero.
+
+### Reproduction / final profiles
+
+```sh
+tools/games_running.sh --wait
+BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py SECS=300 \
+  tools/cov/force.sh tools/cov/specs/sjg4_runtime_arms.py <core> \
+  42b935e4,02_sand_sandfalls_dark --con tools/drivers/sjg4.con --fast --frames 1400
+tools/games_running.sh --wait
+SJG4_MODE=damage BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py SECS=300 \
+  tools/cov/force.sh tools/cov/specs/sjg4_runtime_arms.py <damage> \
+  42b935e4,02_sand_sandfalls_dark --con tools/drivers/sjg4.con --fast --frames 1400
+python3 tools/cov/gcov_report.py build-port-cov <core>/gcov <damage>/gcov --module IngSpaceJumpGuardian
+```
+
+Core runs at first active Think,76 calls. Damage mode waits for a real live projectile,
+12 calls including real death/deletion and actor cleanup; it makes the fixture actor inactive
+and queues its deletion so restored input flags cannot resume a half-destroyed combatant.
+Both final runs exit normally,failed calls/assignments/Python errors0,caught/reach-stub0.
+Do not combine the early animation/effect fixtures with delayed destructive fixtures:
+an experimental delayed combined run hit particle-tree traversal after returning to Think;
+the two-mode fixture avoids that invalid state/lifetime mixture. No shared-engine change.
+
+FindJumpPoints's single unexecuted line is its closing brace (final source1169), not a
+live retail arm. Saved gcno shows it is block39, reached solely via exception cleanup
+38→39; incoming paths to38 are throwing cleanup arcs (including34→35→36→37→38).
+Raw gcov JSON has no normal block id for that line; all40 nonthrow branch edges ran.
+No EH exception waiver is needed for any missing branch: all nine have ALL-ARMS.
+Retail allocation-null/stack-temporary null tests in5274 are MW allocation/lifetime ABI
+arms: native throwing allocation and real non-null stack objects do not have those normal
+paths. No allocation failure was fabricated; all executable native allocation/lifetime arms ran.
+
+### Static review / final gates
+
+asmcheck MISSING1198/1660/1BFC and broad CollisionDamage XBIT/XCALL/BRANCH findings
+are the existing parser incorrectly swallowing the remainder of the file as CollisionDamage
+(it reports48 conditions and even the loader ctor at1215 inside2534). Actual2534 body is
+955–994 before marker edits elsewhere; its eight PPC conditional branches were audited above.
+NOPOS/BIT leads: A34 bits80/40/10/08/04 are jumping/path/last/damageable/blob;6F0 bit80
+is CWaypointNavigation::mInPosition. Source names/setters implement exactly those operations.
+CALL leads2324=CreateLight,2498=SetCollisionVulnerability,1198/1660/1BFC/1904 are the
+literal named helper calls whose definitions the parser misses. Cast/lookup leads in
+Follow/Jump are TCastToConstPtr→TCastToPtr and const GetObjectById forwarding to ObjectById.
+13F0/14F0/160C are native vector copy/assignment/destruction;1A84 CEntityInfo destruction;
+1D28/1E44 shake-data lifetime;44F8 CBCJumpCmd construction and4400 full jump command
+delivery (not sliced);internal_dereference is implicit string cleanup. Full helper listings
+were inspected. retail_diff's eight CALL/one shape leads are those same parser/copy cases.
+
+Host/coverage links rc0,0 FAILED;gen_files_cmake --check rc0;upstream configure+ninja
+rc0,All77.98% fuzzy/54.39% matched,Game94.14%/63.29%,dtk shasum87 files OK.
+Non-PC strip-diff CLEAN; no probes/shared-tool edits. Unchanged families and whole-module
+smoke skipped per scope. Evidence includes final gcno/profiles/raw JSON,logs,asm and checks.
+`tools/review_decomp_diff.sh 5b9bf4d92`:9 MARK, no other findings; all nine audited above.
