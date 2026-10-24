@@ -75,3 +75,8 @@
 @f3280 send e00280089 Delete
 @f3290 send e00280088 Delete
 @f3400 objs PillBug
+@f1510 damage e00280089 5; obj e00280089
+@f1520 damage e00280089 5 0 missile; obj e00280089
+@f1530 damage e00280089 5 0 dark; obj e00280089
+@f1540 damage e00280089 5 0 light; obj e00280089
+@f1550 damage e00280089 5 0 bomb; obj e00280089

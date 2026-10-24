@@ -75,3 +75,4 @@
 @f904 send e0036ff01 Reset
 @f906 send e0036ff01 Delete
 @f930 objs Barrier
+@f940 damage e0036ff03 5; obj e0036ff03
