@@ -94,8 +94,18 @@ env DISPLAY="$DISP" SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw SDL_AUDIODRIVER=dum
 GDB=$!
 trap 'kill -TERM "$GDB" 2>/dev/null' TERM INT
 wait "$GDB"; RC=$?
-# gdb -batch returns 1 when its trailing `bt` finds no stack, i.e. after a normal exit.
-grep -q "^\[Inferior 1 (process [0-9]*) exited normally\]" "$OUT/game.log" && RC=0
+# gdb's own rc says nothing about the game: -batch returns 1 when the trailing `bt` finds no
+# stack (a normal exit), and 0 when it stopped the game at a signal and killed it on quit. Only
+# gdb's inferior exit record counts.
+if grep -q "^\[Inferior 1 (process [0-9]*) exited normally\]" "$OUT/game.log"; then
+  RC=0
+elif CODE=$(grep -o "^\[Inferior 1 (process [0-9]*) exited with code [0-9]*\]" "$OUT/game.log" |
+              grep -o "code [0-9]*" | tail -1) && [ -n "$CODE" ]; then
+  RC=$((10#${CODE#code }))
+elif [ "$RC" -ne 124 ]; then
+  echo "no normal inferior exit in game.log (stopped at a signal, or killed)" >&2
+  RC=1
+fi
 [ -n "$DRV" ] && kill "$DRV" 2>/dev/null
 echo "game rc=$RC"
 echo "caught/reach-stub: $(grep -a -c '\[port\] caught\|reach-stub' "$OUT/game.log")"
