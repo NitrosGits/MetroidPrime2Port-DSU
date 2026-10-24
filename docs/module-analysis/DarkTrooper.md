@@ -43,11 +43,10 @@ Driver `tools/drivers/darktrooper_unknown.con`, spec `tools/cov/specs/darktroope
 Grounds 04_temple_unknownenemies layers 2 3 (u049d u0488 u0487), 5200 frames `--fast`. 34 bodies
 marked (every line and arm ran, or no branches). SmallShotAttack and MissileAttack are marked with one
 dead arm: msg outside Activate/Update/Deactivate (EStateMsg has three enumerators,
-`include/MetroidPrime/StateMachineCommon.hpp:4`). Not marked:
+`include/MetroidPrime/StateMachineCommon.hpp:4`). Not marked (dtr5 marked CanSmallShotAttack fn_12_1800, InRange fn_12_200C, ApplyMeleeDamage fn_12_3AFC; ALL-ARMS on natural + missile driver + `darktrooper_missile_force.py`, whose forced mFiresMissiles=1 run covers the `:1021` short-circuit; asm read against `asmcheck.py annotate`, its BIT/NOPOS finding on x928_40 is the missing bit-position table, same as the accepted fn_12_17C0):
 
 | function | missing arm |
 |---|---|
-| CanSmallShotAttack, InRange, ApplyMeleeDamage | one short-circuit / out-of-range arm |
 | Think, Sleep, Pursue, Dead, CreateRagDoll, ThinkRagDoll, Touch, KnockBack, PreRender, DoUserAnimEvent, AcceptScriptMsg, GetAimPosition, FireSmallShot | 1-10 arms each (gcov_report rows) |
 | UnmarkPathRegion, MarkPathRegion, GetContactDamage, GetRagDoll, Null, ctor, dtor | not or partly reached |
 
@@ -56,6 +55,8 @@ Missile family (dtr4, FireMissile / CanMissileAttack / ShouldPause marked, ALL-A
 (`press X`)), specs `darktrooper_missile_force.py` (mFiresMissiles=1, forced), `_los.py` (LOS clear, forced), `_deg408.py` /
 `_deg412.py` (forced: zero `toTarget` / `forward` XY locals at :408 / :412; dead in practice, the jittered target and gun column
 never give exactly zero), plus a natural run with mFiresMissiles=0 (gate-false arm). Arms 408/412 are forced only.
+
+Still open after dtr5 (flag-gated, none reachable by console in the shipped areas; each needs a gdb force at entry): AcceptScriptMsg 202:2/8,5/8 217 227 233 247:3/4 252; KnockBack 280 285 (flotsam/ragdoll); GetAimPosition 329 (lockOn 0xff); FireSmallShot 342 362 366 380; DoUserAnimEvent 459 473 474 502; Think 569 579 592; Sleep 624 627; Touch 687 688; Dead 734 740; Pursue 810 817 825.
 
 Next (superseded for missiles): a Dark Missile Trooper area (01_temple_hive02 / 01_temple_hive_04) for the missile arms;
 forced arms with `tools/cov/force.sh` for the rest.
