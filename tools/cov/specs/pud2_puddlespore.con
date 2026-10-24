@@ -1,0 +1,37 @@
+# Torvus Bog 0d_swamp_hall_dark (3dfd2249,cbc72d79): CPuddleSpore e00150015.  Copied from
+# tools/cov/specs/puddlespore.con for pud2 and given extra shots before the Delete, so
+# CPuddleSpore::WeaponHitsWeakSpot is invoked several times by real player projectiles (its natural
+# callers are Touch and GetCollisionResponseType).  The pud2 fixture turns ONE of those invocations
+# into the open-vulnerability-rejects arm by writing a real CWeaponMode() value into the referenced
+# mode for that call only.
+@f300 god 1; give morphBall 1; give missile 50; fastmorph 1; objs Player
+@f400 place e00150015 player 8
+@f600 fsm e00150015 InActive
+@f605 damage e00150015 1 1
+@f650 touch e00150015 u0000
+@f660 fsm e00150015 Attack
+@f700 tp 150.69 -33.56 50
+@f760 tp 150.69 -33.56 50; obj e00150015
+@f800 fsm e00150015 Run
+@f860 obj e00150015
+@f900 fsm e00150015 TurnAround
+@f1000 fsm e00150015 GetUp
+@f1100 tp 150.69 -33.56 38.13
+@f1200 tp 160 -33.56 38.3; press x 30
+@f1500 tp 160 -33.56 40; press x 30
+@f1560 fsm e00150015 Run
+@f1570 beam 1
+@f1580 shoot e00150015
+@f1600 fsm e00150015 Run; beam 2
+@f1610 shoot e00150015
+@f1640 fsm e00150015 Run; beam 0
+@f1650 shoot e00150015 1 dir 0 0.2 1
+@f1680 fsm e00150015 Run
+@f1690 shoot e00150015 missile
+@f1700 fsm e00150015 Run
+@f1710 shoot e00150015
+@f1730 shoot e00150015 1
+@f1750 shoot e00150015 missile
+@f1770 obj e00150015
+@f1800 send e00150015 Delete
+@f1950 objs PuddleSpore

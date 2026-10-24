@@ -84,7 +84,7 @@ Six dirs merge with
 | 135C TurnAround | 7/8 → dead | CanIssueCommand false arm `forced (pud1_force.py: mAnimationState kAS_NotReady)`; edge 592:3/4 dead, same three-value msg switch (0x1364/0x1380/0x138C) |
 | 2B98 KnockOffPlayers | 27/28 → dead | edge 289:1/2 dead: 0x2BF0 (`x838 >= player min.z`) implies min.z <= max.z, so 0x2C54 (`min.z - max.z >= 0.2f`) is never taken |
 | 19C4 SetupCollisionManager | 42/43 → dead | edge 475:3/4 (the TCastToPtr null at 0x1D24) dead: those ids are the manager's own, one `rs_new CCollisionActor` per joint in the call that fills them (CCollisionActorManager.cpp:121-196) |
-| 2DA4 WeaponHitsWeakSpot | 9/10 | 248:3/4 open (0x2DF8: WeaponHits false while open — a weapon mode the open vulnerability rejects; power, charge and missile all hit) |
+| 2DA4 WeaponHitsWeakSpot | 9/10 at pud1 | 248:3/4 open at pud1 (0x2DF8: WeaponHits false while open — a weapon mode the open vulnerability rejects; power, charge and missile all hit). **pud2 measured it** (see below); the geometric sides are the ones the pud2 runs miss |
 | 23F0 UpdatePlayerContact | 35/42 | 311:1/2, 338:1/2 (cast null, as 19C4), 341:1/2 (no touch bounds), 353/358/382 (hasGroundCollider false: the player always has kMT_GroundCollider here), 370:1/2 (zero-length push direction) |
 | 34E0 Think | 15/18 | 97:1/2 and 99:1/6 need mShockWaveSfx == 0, but `CSfxHandle(0)` makes mID `(++mRefCount << 14) | 0` (CSfxHandle.cpp:5), never 0; 104:1/2 needs the player exactly at the wave's x/y (0x3678 CanBeNormalized) |
 | 42C LoadPuddleSpore | 12/16 | 670:1/2 (modelData null: the shipped model always loads), 678/692 edges (temporaries' exception clean-up) |
@@ -103,3 +103,87 @@ Not driven arm by arm: the SLdr ctor and dtor, `__sinit`, and the weak copies (H
 `spor`: area `3dfd2249,cbc72d79` (0d_swamp_hall_dark), driver `tools/cov/specs/puddlespore.con`, about 1900 frames
 fast. Expect `objs PuddleSpore` to list e00150015, then nothing after Delete. The pass condition is 0
 `[port] caught` / `reach-stub`.
+
+## pud2 (2026-10-24, base d25d73d68): 2DA4 measured, two geometric sides still open
+
+Two launches (the slice's cap), `3dfd2249,cbc72d79`, `[port] caught/reach-stub 0`, both inferior exits
+normal. Fixture `tools/cov/specs/pud2_weaponhitsweakspot.py` (spec + gdb side), mock
+`pud2_weaponhitsweakspot_selftest.py`, own driver `pud2_puddlespore.con` (run 1) plus the existing
+`puddlespore.con` (run 2).
+
+Retail fn_51_2DA4: 0x2DC8 `bl IsOpen` / 0x2DD0 `beq` tail, 0x2DD4-0x2DE4 vtable+0x40
+(GetDamageVulnerability), 0x2DF0 `bl CDamageVulnerability::WeaponHits` / 0x2DF8 `beq` tail (the arm
+pud1 left open), then GetCenterPoint, the CUnitVector3f, the up dot and the two sine compares.
+
+Forcing the open+WeaponHits-false arm: one real invocation (first open call, caller
+`CPuddleSpore::Touch`, `mState == kPS_Open`) had the referenced CWeaponMode rewritten for that call to the
+word a default-constructed `CWeaponMode()` has (`kWT_None = -1` → `0x0000ffff`,
+include/MetroidPrime/Weapons/WeaponTypes.hpp:32-47), which `CDamageVulnerability::WeaponHits` rejects at
+`IsInvalidWeaponType` (CDamageVulnerability.cpp:7,109-111). A FinishBreakpoint was armed before the write;
+the original word was written back and read back, and the OUTER function returned true:
+
+    (what the two boots captured: the fixture's own entry/return breakpoints plus gcov. There is no
+     breakpoint on the nested `CDamageVulnerability::WeaponHits` call and no per-call capture of its
+     argument or its return value, so this is an outer entry/return + coverage result, NOT a direct
+     nested-call oracle for that predicate.)
+
+    call 1: FORCED CWeaponMode 0x0 -> 0xffff via caller CPuddleSpore::Touch state=0x1
+    forced call: restored ORIGINAL CWeaponMode word 0x0 at 0x55555819484c (read back 0x0; before 0xffff)
+    call 1: returned true (forced=1 caller=CPuddleSpore::Touch state=0x1 type_in=0x0)
+
+Natural calls in the same runs (25 and 10; total calls 26 and 11) came from both real callers with states 1 (open) and 2, types
+0x0 (power), 0x1 (dark), 0x6 (missile), and their returns matched the arms (false = weak spot hit, true =
+skip). Only THIS spore is acted on (same-this check) and only the two real callers are inside the window;
+anything else is refused and logged (mock covers a same-this wrong-caller and a different-this rejection).
+
+Merged profile (both runs, same build ae5d9b39...): fn_51_2DA4 **6/6 lines, 8/10 edges**, untaken @
+**250:1/2** and **251:1/4** - the geometric side where the hit point is *below* the touch-box centre
+(dot <= -mHitDetectionSine). All five hits that reached the geometric block in these runs were inside the
+sine band or above it, so those two sides were not taken; the driver's shots come from the platform and
+from above, never from under the box. (pud1's historical merged profile had those sides; its gcda cannot be
+merged with this build - the source changed in pud1 - so they are not cited as pud2 evidence.)
+
+**Body stays unmarked** (two live geometric sides unmeasured). Closing it needs one more run with a shot
+taken from below the touch box (for example `tp` under the spore and fire upward, or the pud1 combined
+driver), which the slice's cap does not allow.
+
+Evidence `/tmp/opencode/pud2_evidence`: `pud2_r1.gcda` 72282220..., `pud2_r2.gcda` cfc2ca3e..., matching
+`pud2.matching.gcno` d0a1c50c..., `CPuddleSpore.source.cpp` f7dfc69d..., binary ae5d9b39...,
+`weaponHitsWeakSpot.disasm.txt`, both diag/fixture transcripts, `pud2_merged_raw.gcov.json` and the merged
+report.
+
+Independent review found `pud2_merged_raw.gcov.json` contains only run 1's 26 calls
+(6/6 lines, 7/10 edges), despite its name. It is not merged-profile evidence.
+Re-merging the two frozen gcda files with `gcov-tool merge` and the frozen matching
+gcno independently reproduces **6/6 lines, 8/10 edges**, missing 250:1 and 251:1.
+The regenerated profile is `/tmp/opencode/pud2-independent-review/merged/CPuddleSpore.cpp.gcov.json.gz`;
+the original mislabeled archive is preserved unchanged.
+
+### Correction (offline, NOT run - 2026-10-24)
+
+After the two boots the fixture was hardened offline, with zero further launches; the recorded raw-run
+evidence above comes from the earlier fixture version and is unchanged. The correction:
+
+- the attempted mode write is now recorded **before** the write, and the return restore runs for **every
+  attempted mutation**, including one whose write raised (partial store) or whose post-write readback was
+  unreadable/mismatched - previously `forced` was only set after a successful readback, so such a call
+  skipped the restore at the return;
+- a failed write/readback now gets an immediate rollback plus an honest readback log; the failure stays
+  recorded even if the rollback succeeds, and "restored" is only claimed when the readback shows the
+  original word;
+- `summarize` counts **every accepted/armed call** (natural ones included) in the pending/unreturned check
+  and every attempted mutation in the unrestored check; a refused (wrong caller or other spore) call is
+  counted as refused only and never as completion evidence;
+- a returned call whose bool result could not be read (`$rax` unreadable) or is not 0/1 is **not evidence**:
+  the summary fails with "returned without a readable bool result", and the forced call specifically must
+  be **observed** to return true - an unreadable forced return can never pass (the earlier version's
+  `ret is not None` guard silently accepted it);
+- the mock suite (`pud2_weaponhitsweakspot_selftest.py`, offline) now also covers: successful write with a
+  failed post-write readback (restored, memory exact, failure reported), a partial write followed by an
+  exception (restored), a rollback that fails (memory keeps the forced value, `restored=0`), an unreturned
+  natural call, an unreadable forced return and an unreadable natural return (both FAIL, exact memory and
+  counters asserted), plus the earlier both-paths, wrong-caller, wrong-this, restore-mismatch, no-natural
+  and install-failure cases. 12 scenarios, 0 failures.
+
+No frame-level identity substitution is used anywhere: the window is the caller frame's name plus the
+tracked `this`, exactly as in the boots.
