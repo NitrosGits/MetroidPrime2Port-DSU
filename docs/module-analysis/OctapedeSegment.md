@@ -54,3 +54,17 @@ Dead, Bounce, ThinkAboutMove, Freeze, the loader, SetFuncPtrs, RELMain, RELExit.
 (occlusion arms 303/304/308; `setarea` to force them crashes in CActor::UpdatePortalSystemState on an
 unloaded area, console misuse), CollidedWith (list-count-0, live-segment, non-mask arms),
 AcceptScriptMsg, FindHeadSegment, Explode, DoUserAnimEvent, Burn, the SLdr ctor/dtor (header).
+
+## Second pass (oct1, 2026-10-24)
+
+`tools/cov/specs/oct1_force.py` on the oct1 natural driver (`octapede_cliffhall.con`), merged with the
+oct1 runs (`gcov_report.py build-port-cov /tmp/opencode/oct_{a,b,c}/gcov --module OctapedeSegment`).
+Every write is one call, restored at the next entry.
+
+| body | arms | forced | still open |
+|---|---|---|---|
+| 30BC AcceptScriptMsg | 42/46 | 0x281's bouncing early return (`mSegmentState = kSegS_Bouncing`, `mBouncesRemaining = 2`) | 236:3/4 and 239:3/4 (the AreaLoaded connection casts: the `connMsg == kSM_Action` and cast-null arms, decided by the shipped APRC connections), 248:1/4 and 248:2/4 (`mHeadSegmentId != GetUniqueId() && mChildSegmentIds.size() > 0` - the head-self write did not move them) |
+| 14E0 CollidedWith | 22/26 | 0x572's `if (mBrokenApart)` false arm and 0x585's `... && mBouncesRemaining > 0` false arm | 571:3/4 (the function-static bounce mask's guard), 582:1/2 (`list.GetCount() > 0` false: a collision with an empty list), 584:1/2, 585:1/4 |
+| 2924 Think | 62/72 | nothing landed: `mBouncesRemaining = 0` with `mPlayerObstructed` set/clear did not reach 0x312/0x313 (they read the tick's own values) | 308:1/2, 309:1/4, 309:2/4, 313:0/2 (the occlusion-state arms: `area.GetOcclusionState() != kOS_Visible`), 324:5/6, 348:1/4, 348:2/4, 356:3/4, 371:3/6, 371:5/6 |
+| 1D64 Cross | - | - | the inlined `CVector3f::Cross` helper: no standalone instrumented body, so no coverage evidence and no marker |
+| D28/DA4 SLdrOctapedeSegment dtor and ctor | - | - | inline in the header; the ctor's retail defaults are oct1's fix |
