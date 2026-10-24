@@ -379,3 +379,319 @@ normalizations, sign gates, clamps and stores. Natural hall updates run between 
   a signed bound difference; retail 0x69F4 is the same `psq_st ...,1,qr2`. That caller and
   shared conversion remain outside this two-function slice; neither is needed for the
   local UpdateShooting correction. No other functions marked or unrelated runs performed.
+
+## sporb5: core update, messages and targeting (2026-10-24)
+
+Base **31baf7af4**. Compared the module-76 retail inventory with actual source/header `// @`
+markers: 35 unmarked B-class bodies, 138 marked. This checkpoint marks **four**:
+Think (AF8C), AcceptScriptMsg (B9E4), PredictAimOffset (481C), PickTargetPosition (59BC).
+At this checkpoint the module reached **142/173**; remaining inventory is below. Loader/constructor byte size
+is dominated by generated properties/initializers; the core runtime branching was taken first.
+
+### Corrections
+
+All seven changes preserve the original non-PC text under TARGET_PC:
+
+| function / retail | correction |
+|---|---|
+| Think 0xB2B0 `lwz r3,0x60(r28)`; 0xB2B8 `lwz r3,0x10(r3)` | Flinch additive animation belongs to **this base's** CAnimData, not the top's. r28 is this throughout. |
+| Think 0xB3A0 `fcmpo f0,f1`; 0xB3A4 `bge`; 0xB3AC `fmr f0,f1` | f0=1, f1=blend+dt. Select next on unordered: `min_val(next,1)`. |
+| Think 0xB6C4 `subf`; 0xB6C8 `clrlwi. r31,r0,24`; 0xB6DC `divwu` | Double-shot bound difference wraps to **uchar** before nonzero test and modulo. Reversed 4/3 bounds give range=255, divisor=256. |
+| Think 0xB880–0xB888 | Gate the emitter loop on guardian byte 0x9ac. The older survey accepted the ordinary actor's invalid-handle loop as equivalent; now the original skip is explicit. |
+| AcceptScriptMsg 0xBDB0 `subf`; 0xBDB4 `clrlwi. r31,r0,24`; 0xBDC8 `divwu` | Same byte-range correction when Create chooses the initial double-shot count. |
+| AcceptScriptMsg 0xBF0C `subf`; 0xBF18 `stw`; 0xBF24 `fsubs` with rodata 128=2^52 | Remaining stages convert as **unsigned** (no xoris). Since host vector::size returns int, explicitly convert the subtraction to uint before float. Stage=5, count=4 produces a large positive health factor, not a negative one. |
+| PickTargetPosition 0x5A0C `lbz r4,0x9ac(r4)`; 0x5A14 `cmplwi r4,0`; 0x5A18 `beq`; 0x5C2C `cmplwi r4,0`; 0x5C3C `beq` | The ordinary actor enters with r4=0 and nothing writes r4 or calls another function before the second comparison. The prediction call at 0x5C60 is therefore **dead**, regardless of incoming boolean r6 (never read). Use zero predicted offset; preserve the public signature. |
+
+### Full block audit: Think, 0xAF8C–0xB9E0
+
+| block | result |
+|---|---|
+| 0xAF8C–0xAFD4 | Prologue; CEntity +0x20 bit 0x80 is active, false goes directly to epilogue; otherwise CPatterned::Think. |
+| 0xAFD8–0xB06C | Guardian and not timerScaleMaxed (+0xa74 bit0x20): predict from locator and add player's virtual aim position (vtable 0x54, time=0), store power-bomb aim xyz +0xa50. |
+| 0xB070–0xB0C4 | Detection range resets timer to C4=0; outside max attack range and timer<leash increments by dt. 0xB0B8 `fcmpo`/`bge` means strict <, unordered skips. |
+| 0xB0C8–0xB0F4 | Guardian, nonempty stages and unsigned byte attacks>=threshold set shotsInBurst=2. |
+| 0xB0F8–0xB174 | Actor transform times scaled connect locator; invalid top id / failed top cast converge. Source ObjectById handles invalid id itself. |
+| 0xB178–0xB1FC | Alive top gets connect transform; dead top enters FakeDeath unless state 6/7. Guardian forces immune (top +0x800 bit0x80). |
+| 0xB200–0xB27C | Transform top lockon locator through connect; require hit-by-player bit (+0x420 bit0x80) and not immune. |
+| 0xB280–0xB370 | Repeated hit test at 0xB284 cannot be false after 0xB270; mark topHit, clear top hit, add base flinch at weight1, false/true. Ordered blend>=1 snapshots base lockon position and four lean weights; NaN skips snapshot. Always blend=0. |
+| 0xB374–0xB3F0 | Immune clears hit; advance blend with corrected clamp. Orbit xyz = saved*(1-blend)+head*blend. |
+| 0xB3F4–0xB500 | Alive top, frozen top, unfrozen base: Freeze via vtable 0xc0, zero/forward vectors, top duration, rodata138=-1; optionally freeze projectile, then ResetShotTimers. |
+| 0xB504–0xB5B4 | Valid projectile and passable: retail `(state!=6 || state!=7)` is deliberately tautological; set x8f8, stop non-boosting player/angular velocity/velocity, clear player's +0x1144 bit0x80 (leave-morph). |
+| 0xB5B8–0xB5EC | Grabber states4/0 (Idle/Launch) copy connect transform; every valid projectile copies its position. |
+| 0xB5F0–0xB65C | State0/1 decays and resets. States3/4/8/9/10 use firing windup; threshold .8 ordinary, 2.433333 guardian burst>1, otherwise1.3 (rodata144/13C/140). Strict x860>threshold; unordered waits. Negative state values have no writer (EState and assignments only 0–11). |
+| 0xB660–0xB6F4 | Guardian, stages, valid index, sufficient attacks and burst>1 reset counter then choose inclusive double-shot interval using corrected byte range. |
+| 0xB6F8–0xB720 | Guardian updates aim; both types UpdateAttack(dt,mgr). |
+| 0xB724–0xB7B4 | Before windup: ordinary or unlocked guardian picks target; boolean is state3/4; lock aim, UpdateAim, x860+=dt. |
+| 0xB7B8–0xB83C | Other states: same ordinary/unlocked test; the state3/4 expression is necessarily false here; pick, lock, UpdateAim. |
+| 0xB840–0xB87C | States8/6/7/11 additionally decay; sleeping/patrolling branch calls decay and ResetShotTimers. |
+| 0xB880–0xB93C | Guardian-only loop over four emitter slots. Invalid/dead projectile: RemoveEmitter, zero handle, invalid uid; live energy projectile: UpdateEmitter at translation, zero velocity, volume0x80. |
+| 0xB940–0xB9E0 | Four base additive animations forward/back/left/right with corresponding weights, false/false; epilogue. |
+
+**Dead predicate proof:** 0xB698 / source `mShotsInBurst > 1` false cannot occur after its
+preceding guardian/nonempty/counter tests pass: 0xB0C8–0xB0F4 already set the burst to2.
+The only intervening reset is frozen-top ResetShotTimers, which also sets x860=0; then
+the positive windup threshold prevents reaching this predicate. This is the sole uncovered
+Think gcov edge. The passable-state OR and repeated hit-bit branch above are other retail
+redundancies optimized away by the host, not missing port logic.
+
+### Full block audit: AcceptScriptMsg, 0xB9E4–0xC034
+
+| block | result |
+|---|---|
+| 0xB9E4–0xBAE4 | Message dispatch: STOP, INCR, DECR, ALRT, SMAX, RSET, XALD, STRT, ZERO, XCRT; XAUD/default go to common base call. FourCC lis/addi pairs decoded directly. |
+| 0xBAE8–0xBB38 | Iterate 12-byte connections and resolve each editor id; Approach=0x41505243. Try top first. |
+| 0xBB3C–0xBBA4 | Set top uid; save vulnerability via vtable0x40; assign Immune via vtable0xa0; set immune0x80 and base uid. |
+| 0xBBA8–0xBC10 | Otherwise try projectile (store uid), then waypoint (append uid); failed casts do nothing. |
+| 0xBC14–0xBCD0 | GRNT=0x47524e54 stores needle spawner. Loop exit resets shared grabbing uid. Optional projectile gets top uid; optional top gets projectile uid. |
+| 0xBCD4–0xBD6C | Create activates inactive body, Crouch=0, animation state=-1. Remove Target=40, Orbit=41, SeekerTarget=63; assign guardian Reflect vs ordinary Immune vulnerability; remove Target again, add material54. |
+| 0xBD70–0xBDE0 | Guardian and valid nonempty stage choose initial double-shot interval; byte wrapping described above. |
+| 0xBDE4–0xBE28 | Optional tendril gets actor position and creates uint(maxRange/rodata120=.15)+2 particles. |
+| 0xBE2C–0xBE5C | Guardian Increment: max(stage-1,0), byte store, SetStage. |
+| 0xBE60–0xBF70 | Guardian Decrement: increment byte before SetStage, deliver ExitState=10, FSM Flinch; unsigned (count-stage)/count times initial HP. Stack-command destructor null arm at0xBEA8 is impossible. |
+| 0xBF74–0xBFA0 | Alert resets detection timer/sets alerted; Reset clears alerted/topHit and sets timer=leash. |
+| 0xBFA4–0xC000 | Start/Stop modify +0xa74 bit0x80; SetToMax copies max scale and sets bit0x20; SetToZero uses rodataC0=1 and clears bit0x20. |
+| 0xC004–0xC034 | Every message reaches CPatterned::AcceptScriptMsg, then epilogue. |
+
+### Full block audit: targeting
+
+| function / block | result |
+|---|---|
+| PredictAimOffset 0x481C–0x48CC | Prologue; effective morphed iff spawned state==0 and transition state==1. Morphed uses ball surface-to-world, otherwise player's transform. |
+| 0x48D0–0x4968 | Radius=mAimSpreadRadius*Float; angle=rodataF4=6.2831855*Float. Rotate radius*player forward about normalized player up via quaternion and matrix. |
+| 0x496C–0x49A4 | Repeat effective morph test; only non-boosting morphed player predicts motion; others return spread. |
+| 0x49A8–0x4A54 | Virtual player aim at time0, GetGravity, PredictFlightTime(height,gravity,from,aim), PredictMotion(time*predictionScale), copy CMotionState and add its displacement to aim. |
+| 0x4A58–0x4AD8 | One-time filter init: include 1ull<<59 (data618=Solid), exclude (1ull<<20)|(1ull<<33) (data61C=ProjectilePassthrough, data620=Character), filter type3. |
+| 0x4ADC–0x4BA4 | Distance/normalized direction to predicted point; invalid hit uid, empty near list, BuildNearList excludes this actor; RayWorldIntersection, copy result, check valid byte. |
+| 0x4BA8–0x4C68 | Valid hit returns hitPoint-aim+spread; invalid returns displacement+spread; other morph/boost states return spread; epilogue. No floating compare/clamp to alter. |
+| PickTargetPosition 0x59BC–0x5A5C | Prologue; guardian branch copies player translation as fallback and reserves waypoint-count vector storage. |
+| 0x5A60–0x5AD0 | Each uid must cast to waypoint and be active. Radius=0 unless stage count nonzero and index valid, then stage+0x18 spread radius. |
+| 0x5AD4–0x5B84 | Two Float draws per active waypoint: random radius and angle2*pi. Rotate forward-radius about Z, add waypoint xyz, append. |
+| 0x5B88–0x5BF4 | Zero candidates retains player translation; one uses index0 without RNG; multiple use unsigned Next()%count. Return xyz and destroy positions vector. |
+| 0x5BF8–0x5C74 | Ordinary effective morph test chooses zero base offset vs mAttackAimOffset. Prediction arm is dead as proven above; predicted offset is zero. |
+| 0x5C74–0x5D20 | Virtual player aim(time0)+predicted+base, then epilogue. |
+
+PredictAimOffset's only uncovered host edge is the `__cxa_guard_acquire` false return after
+the initial guard-byte test found uninitialized. The filter's only initializer is this
+function; its sole live production caller is Sporb Think on the game-update thread (the
+old ordinary targeting call is now non-PC only). No concurrent or recursive initialization
+occurs, and the initializer consists of material-list bit operations. Both first-use and
+already-initialized paths ran; the compiler's contention path is not a retail arm.
+
+### Coverage and assertions
+
+Spec: `tools/cov/specs/sporb_think_msg_arms.py`. Its labels include the retail offsets and
+inputs, so assertion evidence is readable without fragile scenario-number references.
+Forced Think calls temporarily bypass CPatterned::Think to keep the selected state stable;
+forced message calls bypass only the common CPatterned::AcceptScriptMsg tail. Natural
+updates/messages in both runs execute those base calls. Child state/inputs are restored;
+animation/FSM/particle side effects are exercised, not mocked. Flinch traces the real
+AddAdditiveAnimation recipient. Ray scenarios execute the real query, then override only
+its returned validity/point. Ordinary targeting asserts zero calls to PredictAimOffset.
+
+| body | lines / nonexception edges | evidence |
+|---|---|---|
+| Think | 113/113, 107/108 | All live arms; sole dead burst predicate above. Inactive; detection inside/outside/NaN; missing/wrong-type children; all12 states; dead top; flinch blends1/.5/NaN; blend clamp .5/1.5/NaN; freeze relay with base frozen/unfrozen and projectile present/absent; passable/boost combinations; guardian stage count/index/counters and equal/ordered/reversed ranges; natural live/dead emitter updates. |
+| AcceptScriptMsg | 80/80, 48/48 | ALL-ARMS. Natural load/create plus every message in the switch; empty/invalid Approach connection; missing children; guardian stage guards; equal/ordered/reversed double-shot bounds; Decrement stage0/3/4/255 asserts health .75/0/1073741824/1 with initialHP=1. |
+| PickTargetPosition | 36/36, 39/39 | ALL-ARMS. Both actor kinds; all effective-morph selectors and both track arguments; no/one/three active waypoints; missing waypoint cast; empty/out-of-range stage; natural inactive waypoint arm. |
+| PredictAimOffset | 35/35, 23/24 | All live arms; only host static-guard contention edge above. Three morph-selector combinations, boosting, forced valid/invalid ray. Zero spread/prediction-scale yields zero miss offset or asserted hit offset(1,2,3). |
+
+Hall: **65 calls, 63 assertions**. Guardian: **72 calls, 70 assertions**. Four other calls
+allocate/free plain message scratch; **133/133 assertions PASS**, no forcing errors.
+Both exit normally, caught/reach-stub=0, 1800/3200 frame limits:
+
+```sh
+tools/games_running.sh --wait
+BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py SECS=300 tools/cov/force.sh \
+  tools/cov/specs/sporb_think_msg_arms.py /tmp/opencode/sporb5-final-hall \
+  3dfd2249,0e_swamp_hall --con tools/drivers/sporb4_hall.con --fast --frames 1800
+tools/games_running.sh --wait
+SPORB5_GUARDIAN=1 BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py \
+  SECS=300 tools/cov/force.sh tools/cov/specs/sporb_think_msg_arms.py \
+  /tmp/opencode/sporb5-final-pbg 3dfd2249,11_swamp_bloggtank_dark \
+  --con tools/cov/specs/sporb_pbg.con --fast --frames 3200
+python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/sporb5-final-hall/gcov \
+  /tmp/opencode/sporb5-final-pbg/gcov --module Sporb \
+  --fn fn_76_AF8C --fn fn_76_B9E4 --fn fn_76_481C --fn fn_76_59BC
+```
+
+### Gates / static findings
+
+- Host/coverage links: 0 FAILED; manifest check rc0; TARGET_PC strip-diff vs31baf7af4 clean,
+  ignoring markers; configure+ninja and dtk hash check: **87 files OK**. All77.98% fuzzy /
+  54.39% matched, Game Code94.14% /63.29%.
+- asmcheck BIT/NOPOS findings: stage byte +0xa04 is shifted by3 to index 8-byte retail
+  ownership_transfer entries, not eight independent bit tests. +0xa74 bits0x80/0x40/0x20
+  map to mActive/mAimLocked/mTimerScaleMaxed. CEntity +0x20 bit0x80 is GetActive; the
+  actor-specific mActive is a different field. Each mapping was checked in the blocks above.
+- CALL findings are real implementations/implicit C++ operations: fn_76_9914 copies
+  CDamageVulnerability (21 byte entries, words+0x18/+0x1c, nested remainder); the Immune/
+  ImmuneRicochet names are tool aliases for ImmuneVulnerabilty/ReflectVulnerabilty;
+  internal_dereference is string destruction. fn_76_D854 reserves vector<CVector3f>,
+  fn_76_5D24 destroys it; waypoint TCastToConstPtr uses the same retail cast. fn_76_4D04
+  copies13 floats (CMotionState), fn_76_4C6C copies CRayCastResult including validity.
+- retail_diff: three implicit vector/copy calls above and two 6.2831855 constant findings,
+  both `2.f * M_PIF`. No unexplained finding. review_decomp_diff: four MARK lines, no ASM
+  lines for this upstream file; explicit per-function asmcheck supplies the audit instead.
+
+### Remaining 31 bodies after the first four-function checkpoint
+
+These are **not certified by this checkpoint**: no completed full audit/all-live-arms proof.
+Keep prioritizing the runtime bodies and then the property/initialization branches. The
+inventory's historical marker column was not used or updated.
+
+| id | body |
+|---|---|
+| 2858 | LoadSporbBase |
+| C130 | CSporbBase constructor |
+| FE64 | LoadSporbNeedle |
+| 10680 | CSporbNeedle::Explode |
+| F494 | CSporbProjectile constructor |
+| DE60 | LoadSporbProjectile |
+| 9304 | CSporbBase::FakeDeath |
+| 55A4 | CSporbBase::DoUserAnimEvent |
+| 3B8 | LoadSporbTop |
+| 44BC | CSporbBase::ShootPowerBomb |
+| F084 | CSporbProjectile::Think |
+| 4D70 | CSporbBase::CreatePowerBomb |
+| E48 | CSporbTop::ScanVisorRender |
+| A898 | CSporbBase::Attack |
+| 5388 | CSporbBase::GetTopAttachPosition |
+| 7000 | CSporbBase::AttachPlayer |
+| 403C | CSporbBase::ScanVisorRender |
+| E358 / E4D4 | CSporbProjectile::PlayBallEscapeEffect / PlayBallSpitEffect |
+| 915C | CSporbBase::ShouldAttack |
+| 102CC | SLdrSporbNeedle constructor |
+| AA88 | CSporbBase::Patrol |
+| 10D24 | CSporbNeedle::Render |
+| 3C50 / 26A8 | CTendrilGen constructor / destructor |
+| 2804 | SetFuncPtrs |
+| 5558 | CSporbBase::GetLeanDirection |
+| 2E8 / DE58 | Top / Projectile IsScanVisorSelfRender |
+| DE50 / 10468 | Projectile / Needle GetCollisionPrimitive |
+
+## sporb5 continuation: state transitions, animation events and attachment (2026-10-24)
+
+Nine further bodies audited/marked, bringing this slice to **13 new markers**, module
+**151/173**. The first checkpoint is f9310cbf7. Source base remains31baf7af4.
+
+### Three further corrections
+
+| function | defining retail instructions | correction |
+|---|---|---|
+| Attack A898 | 0xAA48 `lbz r3,0xa10(r31)`; 0xAA4C `lbz r0,0xa11(r31)`; 0xAA50 `addi r3,r3,1`; 0xAA54 `cmplw r0,r3`; 0xAA58 `bge 0xAA60`; 0xAA5C `mr r3,r0`; 0xAA60 `stb r3,0xa10(r31)` | Clamp the full incremented counter before storing a byte. The old uchar conversion wrapped255+1 to0 before the clamp. Now255/3 yields3 and255/255 yields255. |
+| DoUserAnimEvent 55A4 | 0x57CC `lbz r0,0x9ac(r28)`; 0x57D0 `cmplwi r0,0`; 0x57D4 `beq 0x5884` | The **whole** projectile-event action is guardian-only, including locator lookup, ShootPowerBomb and increment. Ordinary actors skip directly to the common CPatterned tail; they must not dereference their null ProjectileInfo. |
+| GetLeanDirection 5558 | 0x5564 `fsubs f3,f4,f3`; 0x556C `fsubs f1,f1,f2`; 0x5580/5584/5588 `stfs` xyz; 0x558C `bl AsNormalized` | Input f1/f2/f3/f4 are forward/back/left/right. Normalize `(right-left,forward-back,0)`, not `(back-left,forward-right,0)`. Distinct-axis input(1,2,3,7) now produces(4,-1,0)/sqrt17. |
+
+### Complete block audits
+
+| body / block | audit |
+|---|---|
+| Patrol AA88–AABC | Prologue; only Activate=0 enters local state changes; other messages go to common tail. |
+| AAC0–AAF8 | Set base state1, locomotion1(Relaxed); resolve top+0x7c4, successful cast sets top state3. |
+| AAFC–AB20 | Resolve projectile+0x7c6; successful cast sets projectile state6. |
+| AB24–AB54 | Every message calls CPatterned::Patrol with original msg/dt, then epilogue. |
+| Attack A898–A8C4 | Only Activate=0 acts; all other messages return. |
+| A8C8–A928 | Base state2, locomotion2(Lurk); optional top state4, optional projectile state7. |
+| A92C–A984 | Ready byte+0x888=1, windup+0x860=0, clear +0xa74 bit0x40(aimLocked). Range requires inside maxGrab and outside minGrab; calls preserve short circuit. |
+| A988–A9F0 | Effective morphed iff spawned0 and transition1. Grab only when in range, shared grabbing uid invalid and non-guardian: attackType1, grabberState4; else attackType0. |
+| A9F4–AA44 | Guardian, nonzero stage count, unsigned index<count, burst!=2, stage doubleShotChance>0. `fcmpo; ble` skips zero/negative/NaN. |
+| AA48–AA84 | Full-width counter increment/clamp then byte store as corrected; reset powerBombsFired byte+0xa18=0; epilogue. |
+| FakeDeath 9304–9344 | Dispatch Activate0, Update1, Deactivate2; all other values do nothing. |
+| 9348–9434 | State6, animation Ready1; CBCGenerateCmd type15, generate6, targetzero, anim-1, flags all false. DeliverCmd then copy complete derived command; locomotion7. |
+| 9438–9474 | Optional projectile: clear passable+0x7ec, DeleteObjectRequest(projectile uid). |
+| 9478–94A8 | StopTendril; SendScriptMsgs EXIT=0x45584954, player uid, message-1(None). |
+| 94AC–94F0 | Only if shared grabbing uid==this uid: set player+0x1144 bit0x80 (leave-morph), SetBallBoostState0(Available), clear shared uid. |
+| 94F4–9518 | UnFreeze; copy Black RGB only to actor+0x44c/44d/44e, preserving alpha. |
+| 951C–9604 | Update: CanIssueCommand(controller,Generate12), if true deliver/copy same Generate6 command. |
+| 9608–9628 | Deactivate animation NotReady0; epilogue. |
+| ShouldAttack 915C–91C8 | Get area's loaded phase16; unloaded treated occluded0, loaded consults postconst+0x13c; occluded returnsfalse. |
+| 91CC–91F8 | Returnfalse unless alerted+0x909 and shared grabbing uid invalid. |
+| 91FC–9234 | Range inside maxAttack+0x7e0 and outside minAttack+0x7e4, same short circuit as source. |
+| 9238–92A0 | Optional top: return inRange OR topHit+0x94f; missing top returns just inRange; epilogue. |
+| DoUserAnimEvent 55A4–55F0 | Dispatch event8(DamageOn),0(Projectile),31(SoundPlay), all others common tail. |
+| 55F4–560C | SoundPlay dispatch attackType1(Grab),0(Shoot), others skip. |
+| 5610–569C | Grab sound+0x94c; ProcessSoundEvent virtual slot0x78 with volume1, .1, maxdistance1000, zero segment/flags/time, priority20, volume127, camera distance, translation, next-area id, mgr, true. |
+| 56A0–5738 | Shoot sound+0x94a with identical args unless state11(Flinching). |
+| 573C–57C8 | DamageOn only in state8(Flailing): ApplyDamage(this,player,this,damage+0x83c,includeSolid/excludeEmpty,type3,zero vector); data358=59 means1ull<<59. |
+| 57CC–57FC | Projectile ordinary actor skips to common tail as corrected; guardian with maxed bit0x20 clear copies +0xa50 aim xyz into +0x914. |
+| 5800–5834 | Maxed guardian with fired byte+0xa18!=0 picks new target(false); first shot retains old target. |
+| 5838–5880 | Guardian GetLocatorPosition; ShootPowerBomb(height+0x9d8,locator,mgr,4,aim), increment fired byte. |
+| 5884–58B4 | All event types, including skipped ordinary projectile event, call CPatterned::DoUserAnimEvent with unchanged node/type/dt, then epilogue. |
+| AttachPlayer 7000–707C | Prologue; invalid projectile uid or failed cast skips whole action. |
+| 7080–7110 | Save player translation; virtual aim slot0x54(time0); copy projectile transform; lookup scaled `ball_attach_LCTR` and get its translation; destroy temporary string. |
+| 7114–71A8 | World=projectileXf*locator; SetTranslation(world-(aim-playerPosition)); epilogue. |
+| GetLeanDirection 5558–55A0 | Prologue, corrected axis differences, rodataC4 zero Z, AsNormalized; epilogue. |
+| GetTopAttachPosition 5388–53E8 | Prologue; require valid top uid, successful cast, alive bit0x40 at top+0x420; otherwise return zero. |
+| 53EC–5478 | GetLeanDirection(forward/back/left/right); unit vectors from saved topAttachXY/zeroZ and lean; LookAt with angle rodataF4=6.2831855 (2*pi). |
+| 547C–5518 | Build rotation matrix; rotate top orbit(+0x7c4)-base translation, then add base translation; store xyz. |
+| 551C–5554 | Failed guard returns zero xyz; common epilogue. |
+| Projectile Think F084–F14C | Prologue; actorXf*scaled `ball_attach_LCTR`, extract locator position; MoveCollisionPrimitive(locatorPos-actorPos). |
+| F150–F1C0 | Always CPatterned::Think; player aim(time0); effective morph selector spawned0/transition1; require projectile state0(Launch). |
+| F1C4–F21C | Solid phase0: squared distance<=radius² via `fcmpo; cror eq,lt,eq; bne skip`; NaN skips. Remove Solid59, set phase2(BallInside), passable1. |
+| F220–F260 | Otherwise only phase2: squared distance>radius² via `fcmpo; ble skip`; NaN skips. Set phase0, add Solid59, passable0. Phase1(Landed) unchanged. |
+| F264–F29C | Epilogue. |
+
+### Runtime arm evidence
+
+Spec `tools/cov/specs/sporb_runtime_arms.py`, same hall/guardian driver and run environment
+as the earlier checkpoint; substitute `sporb_runtime_arms.py` for `sporb_think_msg_arms.py`
+and use `/tmp/opencode/sporb5-runtime-final-{hall,pbg}`. Hall1800 frames, guardian3200.
+**67/65 calls, 65/63 assertions respectively; 128 PASS, zero FAIL/forcing errors.**
+All nine bodies have every nonexception arm taken; no dead-edge waivers:
+
+| body | lines | edges | forced cases plus natural caller coverage |
+|---|---|---|---|
+| Patrol AA88 | 11/11 | 6/6 | msgs0/1/2/3; children present/missing; common base call runs. |
+| Attack A898 | 30/30 | 32/32 | msgs0/1/2/3, child guards, each effective morph arm, outside/inside-min range, shared grab owner, both actor types, all stage guards, chancezero/NaN, counter0/3/255 versus limit3/255. |
+| FakeDeath 9304 | 28/28 | 10/10 | all message arms; update ready/not-ready; absent/live projectile; shared owner self/notself; alpha123 retained with RGBzero; real deferred deletion last in batch. |
+| ShouldAttack 915C | 9/9 | 16/16 | unloaded/loaded, occluded/visible, alerted false, grab busy, outside/too-close/inrange, top present/absent, topHit outside. |
+| DoUserAnimEvent 55A4 | 33/33 | 17/17 | each event/default; sound attack-1/0/1, flinching/nonflinching; damage flail/nonflail; ordinary projectile asserts **zero ShootPowerBomb calls and unchanged fired count**, guardian maxed/unmaxed and first/later shots assert one call and countincrement. |
+| AttachPlayer 7000 | 14/14 | 5/5 | invalid id, wrong type, actual projectile locator and player translation. |
+| GetLeanDirection 5558 | 2/2 | 0/0 | asymmetric independent vector oracle(4,-1,0)/sqrt17. |
+| GetTopAttachPosition 5388 | 12/12 | 10/10 | invalid/wrong-type/dead top, live aligned vectors assert returned top orbit. |
+| Projectile Think F084 | 24/24 | 20/20 | each morph selector, launch/nonlaunch, phases0/1/2, radiuslarge/zero/NaN; phase assertions verify entry/exit and unordered skips. |
+
+Forced event calls use nonnull scratch for the **unused** node reference and bypass only the
+common CPatterned event tail; natural events execute the real tail. Forced projectile Think
+bypasses only CPatterned::Think to keep selected state stable; natural updates execute it.
+Other functions run their real callees. Scalar state/inputs restore between scenarios;
+command, audio, damage, material and delete effects are real. Forced cases are identified
+by offset labels in `forced.log`. Both runs exit0, caught/reach-stub0, console plans complete.
+
+### Gates and static findings
+
+- Host and coverage links0 FAILED; manifest rc0; non-PC strip-diff versus31baf7af4 clean
+  for both upstream files; configure+ninja and dtk hash check **87 files OK**.
+- asmcheck: Attack stage-byte shift at0xAA24 indexes 8-byte ownership_transfer entries,
+  not eight independent flag tests. +0xa74 bit0x40 is aimLocked; bit0x20 is timerScaleMaxed.
+  FakeDeath `ShouldRetry__11CTryCommand` is the reconstructed `CAnimationState::CanIssueCommand`.
+  AttachPlayer/Projectile Think `internal_dereference` is string destruction;
+  GetTopAttachPosition's const top cast uses the retail TCastToPtr implementation.
+  ShootPowerBomb44BC has a real body at CSporbBase.cpp; it remains unmarked pending its
+  own all-arms evidence. The tool's “unported” means no marker, not a missing call.
+- retail_diff: only that unmarked ShootPowerBomb call and 6.2831855=`2.f*M_PIF` in
+  GetTopAttachPosition. No unexplained finding. Diff has no production probes.
+- review_decomp_diff versus31baf7af4:13 MARK lines and one NULL heuristic hit. The latter
+  is the boolean `!mIsPowerBombGuardian` at0x57D4, not a pointer guard; its retail branch
+  is quoted above. No ASM lines (upstream files); explicit asmcheck covers all13 bodies.
+- Tests limited to these changed/marked bodies and their hall/guardian callers; no other
+  family or whole-module sweep was run.
+
+### Remaining 22 unmarked bodies at the continuation checkpoint
+
+Inventory is from actual `// @` markers, not the historical TSV marker column:
+2858 LoadSporbBase; C130 Base ctor; FE64 LoadSporbNeedle; 10680 Needle::Explode;
+F494 Projectile ctor; DE60 LoadSporbProjectile; 3B8 LoadSporbTop;
+44BC Base::ShootPowerBomb; 4D70 Base::CreatePowerBomb; E48 Top::ScanVisorRender;
+403C Base::ScanVisorRender; E358/E4D4 Projectile::PlayBallEscapeEffect/PlayBallSpitEffect;
+102CC SLdrSporbNeedle ctor; 10D24 Needle::Render; 3C50/26A8 CTendrilGen ctor/dtor;
+2804 SetFuncPtrs; 2E8/DE58 Top/Projectile IsScanVisorSelfRender;
+DE50/10468 Projectile/Needle GetCollisionPrimitive.
+
+Needle::Explode10680–10A9C was read against retail with no mismatch found, but remains
+**unmarked**: the normal hall run did not spawn any needles, so no runtime proof yet.
+The previous sporb4 `sporb_shoot_aim_arms.py` spec's forced UpdateShooting calls generate
+real needles and are the starting point for that continuation. Its owner guards include
+collision-actor owner remapping; test those as well as direct/radius damage, trail-null,
+already-exploded, zero/NaN radius and distance boundaries. Do not count the static read
+alone as certification.
