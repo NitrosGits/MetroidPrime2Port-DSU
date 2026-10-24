@@ -372,6 +372,7 @@ void CLumite::UpdateSunlight(CStateManager& mgr, float dt) {
   mAlphaDelta = 0.f;
 }
 
+// @ fn_39_3C08
 bool CLumite::IsTouchingSunTrigger(CStateManager& mgr) const {
   if (mAttackState != 0 && mSurface.mKind == 2) {
     return true;
@@ -399,6 +400,7 @@ bool CLumite::IsTouchingSunTrigger(CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_39_51E0
 void CLumite::DamageSafeZoneOccupant(CStateManager& mgr, float dt) {
   if (mSurface.mKind == 2 && mSurface.mZoneId != kInvalidUniqueId) {
     CScriptSafeZone* zone = TCastToPtr< CScriptSafeZone >(mgr.ObjectById(mSurface.mZoneId));
@@ -520,6 +522,7 @@ void CLumite::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUs
   }
 }
 
+// @ fn_39_3780
 void CLumite::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                            CStateManager& mgr) {
   if (mAlive) {
@@ -543,6 +546,7 @@ void CLumite::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
   CPatterned::CollidedWith(id, list, mgr);
 }
 
+// @ fn_39_5D50
 void CLumite::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Delete: {
@@ -697,6 +701,7 @@ bool CLumite::CanAttack(CStateManager& mgr, const CTriggerData& data) const {
   return InDetectionRange(mgr, trigger);
 }
 
+// @ fn_39_3228
 bool CLumite::ReadyToMove(CStateManager& mgr, const CTriggerData& data) const {
   if (mSurface.mKind == 2 && mSurface.mZoneId != kInvalidUniqueId) {
     const CScriptSafeZone* zone =
@@ -851,6 +856,7 @@ void CLumite::FireBigShot(CStateManager& mgr) {
   LaunchProjectile(xf, mgr, 5, 0, false, visorEffect, scale);
 }
 
+// @ fn_39_38E8
 void CLumite::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(3, msg);
   if (msg == kStateMsg_Activate) {
@@ -949,6 +955,7 @@ void CLumite::TurnTowards(EStateMsg msg, const CVector3f& target) {
 
 // Hopping
 
+// @ fn_39_2F10
 void CLumite::TurnToHopPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(4, msg);
   switch (msg) {
@@ -1174,6 +1181,7 @@ bool CLumite::TrySunlightHop(CStateManager& mgr, const CVector3f& hintPosition, 
   return true;
 }
 
+// @ fn_39_1CF4
 CScriptSafeZone* CLumite::FindSafeZone(CStateManager& mgr, const CVector3f& position) {
   const CSafeZoneManager* zoneMgr = mgr.GetSafeZoneManager();
   for (float radius = 0.5f; radius <= 8.f; radius *= 2.f) {

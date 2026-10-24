@@ -16,12 +16,29 @@ set var $lm_msg->m_msg = kSM_AreaLoaded
 call $t->AcceptScriptMsg(*$m, *$lm_msg)
 set var $t->mActive = 1
 printf "msg areaLoaded inactive done\n"
+set $lm_ifd = $lm_bc->mIntoFreezeDur
+set var $lm_bc->mIntoFreezeDur = 0.5f
 set var $lm_bc->mFrozenDur = 10.0f
-set var $lm_bc->mTimeFrozen = 1.0f
+set var $lm_bc->mTimeFrozen = 2.0f
 set var $t->mVerticalMovement = 0
 set var $lm_msg->m_msg = kSM_OffGround
 call $t->AcceptScriptMsg(*$m, *$lm_msg)
 set var $lm_bc->mFrozenDur = $lm_fd
+set var $lm_bc->mIntoFreezeDur = $lm_ifd
 set var $lm_bc->mTimeFrozen = $lm_tf
 set var $t->mVerticalMovement = $lm_vm
 printf "msg offground frozen done\n"
+# AreaLoaded with a team id already set (the second operand), Delete with hint ids that are no hints
+set $lm_hop = $t->mHop
+set $lm_tid = $t->mTeamAiMgrId.value
+set var $t->mTeamAiMgrId.value = $t->mUniqueId.value
+set var $lm_msg->m_msg = kSM_AreaLoaded
+call $t->AcceptScriptMsg(*$m, *$lm_msg)
+set var $t->mTeamAiMgrId.value = $lm_tid
+printf "msg areaLoaded with team id done\n"
+set var $t->mHop.mHintId.value = $t->mUniqueId.value
+set var $t->mHop.mChosenHintId.value = $t->mUniqueId.value
+set var $lm_msg->m_msg = kSM_Delete
+call $t->AcceptScriptMsg(*$m, *$lm_msg)
+set var $t->mHop = $lm_hop
+printf "msg delete done\n"

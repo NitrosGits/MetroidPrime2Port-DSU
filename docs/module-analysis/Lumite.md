@@ -83,3 +83,42 @@ that the state-cycling driver never did. Merged with the older runs, every unmar
   BuildHopCandidates, Dead (dark/annihilator death arms), DamageSafeZoneOccupant 401.
 - Dead by policy: ctor 179:0/2, 179:1/2 (cleanup edges).
 - Next: a force spec (`mSurface.mKind=2`, `mZoneId`, team/death-weapon members) for the lists above, then asm check per function.
+
+## lum2 (2026-10-24): forced arms, 22 markers
+
+Evidence: gcov of 8 runs on one coverage build (build-port-cov), merged with `gcov_report.py`: natural + gdb-forced runs
+(`LUM2=1 python3 tools/drivers/lumite_natural.py`, steps in `tools/cov/specs/lumite_lum2_*.gdb`, driver `lumite_lum2_calls.py`) in
+0j_sand_hall_dark, 02_sand_sandfalls layer 5, 0a_sand_hall, 0q_temple_hall layer 2, 08_sand_casualpirates_dark layer 3, plus the
+state-cycling `lumite_states.py` (0a, FORCE_DEAD=1 0a, FORCE_DEAD=1 0j). 37 of 53 bodies with branches have every arm taken. The gdb
+side calls the body at a Lumite `Think` entry with the members written (never register-named convenience variables: all `$lm_*`):
+
+| step | what is forced | arms |
+|---|---|---|
+| basic | ProjectileInfo with attack state 0; alpha 0; Think inactive / state 3 / landed / not landed / 1 / 4; StickToSurface kind 2; UpdateSunlight dead; PreRender not transitioning; FacingHint on the Lumite's own point; ResetAttackTimer / RandomVector with `mRandomAvailable` 0; EffectOn/Off in state 4; GetKneeName(7) | ProjectileInfo 222, GetScannable 212, Think 229/251, Stick 267, Sunlight 298, PreRender 421, FacingHint 748, Reset 775, RandomVector 808, DoUserAnimEvent 502/507, GetKneeName default |
+| sun | attack state 1 + kind 2 + not transitioning (touching at once, `!mTransitioning` alpha arm); dark visor | UpdateSunlight 343/350 |
+| zone | every safe zone of the area active / forced inactive, IsHurtful forced 0/1, plus the Lumite's own uid (null cast), kind 2 | DamageSafeZoneOccupant 401/405, SpawnZoneImpact 412, ReadyToMove 693/701 |
+| trig | Lumite moved onto each plain CScriptTrigger, flags with/without LumiteSunlight, active off, `DoBoundsOverlap` forced false | IsTouchingSunTrigger 383/390/394 |
+| knee | fake rstl::string objects (empty, every knee name, Lx, Rx) | GetKneeIndex 438/445 |
+| hop | FindSafeZone / TrySunlightHop at each zone, BuildHopCandidates, ChooseHop, TurnToHopPoint, Hop, SelectHopTarget with hop plan members written (plan and surface restored) | FindSafeZone, TurnToHopPoint, most hop arms |
+| more | Taunt Deactivate with `IsDegenerate` forced 0/1; FindSafeZone with the manager forced to answer a non-zone id; Dead with velocity 0 / fade running / `IsDead` forced | Taunt 892, FindSafeZone 1184, Dead |
+| team (TeamBp) | the area's CScriptTeamAiMgr id (sandfalls u0590; no shipped Lumite is connected to it) written into `mTeamAiMgrId`, then JoinTeam + GetTeamRole | JoinTeam, GetTeamRole, StartTeamAction, EndTeamAction |
+| team2 | `mTeamAiMgrId` = own uid (null cast); IsPartOfTeam forced false; team role forced Unknown (heckler); five hop actions forced | QuitTeam, CanAttack 679, CanTaunt 715, ReadyToMove 693/698 |
+| msg | fabricated CScriptMsg: AreaLoaded on an inactive Lumite, with a team id set; OffGround with the body controller frozen; Delete with hint ids that are no hint | AcceptScriptMsg 558/571/579/588 |
+| collide | fabricated CCollisionInfoList (Floor material or none) on a dead Lumite, bounce speed above / below 1 | CollidedWith 521/522 |
+| dead | Dead Activate with each cause-of-death weapon, Update with previous-on-ground both ways | Dead 1301/1302/1312/1313 |
+
+Marked (22): ProjectileInfo, Think, StickToSurface, UpdateSunlight, SpawnZoneImpact, PreRender, GetKneeIndex, GetKneeName,
+DoUserAnimEvent, QuitTeam, CanAttack, CanTaunt, FacingHint, ResetAttackTimer (asmcheck: only weak-copy calls and the bit
+names asmcheck cannot resolve; header comments now give `mInSunlight` 0x954 0x80, `mTransitioning` 0x954 0x40, `mHop.mLanded`
+0x950 0x04; hop plan bits in x950: 0x40 selected, 0x20 failed, 0x10 launched, 0x04 landed, 0x02 did-side-taunt, 0x01 aborted),
+IsTouchingSunTrigger, DamageSafeZoneOccupant, CollidedWith, AcceptScriptMsg, ReadyToMove, Taunt, FindSafeZone, TurnToHopPoint.
+Dead arm with proof: TurnToHopPoint 971:1/2 (`else if (mHopFailed)` false arm needs ChooseHop true with neither bit set, but
+ChooseHop returns `mHopSelected || mHopFailed`).
+
+Not marked, with the reason:
+- ClearLineOfFire 743:1/2, 746:3/4; ChooseHop 1222:3/4, 1230:1/2: the function-local `static const CMaterialFilter` guard edge
+  (cleanup-edge policy; ChooseHop also its LOS-blocked arm).
+- Hop 1023:1/2; SelectHopTarget 1122:3/4, 1134:1/2 (`while (!cross.CanBeNormalized())` needs the Lumite's up parallel to the plane normal);
+  TrySunlightHop 1151:0/2 (dead: FindSafeZone already required `(zone - position).CanBeNormalized()` on the same vector) and 1168:0/2;
+  BuildHopCandidates 1298:3/4 (`!zone->GetActive()` is dead: FindSafeZone returns only active zones; the hurtful arm was not reached);
+  Dead 1333:2/4; LoadLumite 1348/1353/1357 (null model, sounds -1: shipped-data scan not done); ctor 179:0/2, 179:1/2 (cleanup edges).
