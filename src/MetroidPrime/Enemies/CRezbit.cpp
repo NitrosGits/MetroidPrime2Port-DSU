@@ -198,6 +198,7 @@ bool CRezbit::Listen(CStateManager& mgr, const CVector3f& position, EListenNoise
   return heard;
 }
 
+// @ fn_53_6CBC
 void CRezbit::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   if (mStateMachine->HasState()) {
     mStateMachine->SetState(mgr, *this, rstl::string_l("Dead"));
@@ -436,6 +437,7 @@ void CRezbit::FollowAttackPath(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_60B8
 void CRezbit::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (mHasPathDestination) {
     mPathFindNavigation.PathFind(mgr, msg, dt, *this);
@@ -659,6 +661,7 @@ void CRezbit::SelectStrafeDirection(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_53_4F68
 void CRezbit::SetTargetDest(CStateManager& mgr, float dt) {
   const CVector3f position = GetTranslation();
   CVector3f destination = position;
@@ -668,8 +671,14 @@ void CRezbit::SetTargetDest(CStateManager& mgr, float dt) {
     const CVector3f offset = targetPos - position;
     float maxRangeSq;
     if (mRezState == 0) {
+#ifdef TARGET_PC
+      // Retail keeps the laser range unless the energy-bolt one is strictly smaller (NaN: laser).
+      maxRangeSq = rstl::min_val(mData.cuttingLaserMaxAttackDist * mData.cuttingLaserMaxAttackDist,
+                                 mData.energyBoltMaxAttackDist * mData.energyBoltMaxAttackDist);
+#else
       maxRangeSq = rstl::min_val(mData.energyBoltMaxAttackDist * mData.energyBoltMaxAttackDist,
                                  mData.cuttingLaserMaxAttackDist * mData.cuttingLaserMaxAttackDist);
+#endif
     } else {
       maxRangeSq = mData.virusMaxAttackDist * mData.virusMaxAttackDist;
     }
@@ -698,6 +707,7 @@ void CRezbit::ResetAttackTimes(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_53_4D28
 void CRezbit::RaiseShields(CStateManager& mgr, float dt) {
   if (mShieldBroken) {
     return;
@@ -799,6 +809,7 @@ bool CRezbit::FoundStrafeDirection(CStateManager& mgr, const CTriggerData& data)
   return mStrafeIndex != -1;
 }
 
+// @ fn_53_67E0
 bool CRezbit::ShouldLaserAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (mAttackTimer <= 0.f && mAttackSelection == 1 && mLaserId == kInvalidUniqueId &&
       !mgr.GetCameraManager(0)->IsInCinematicCamera()) {
@@ -821,6 +832,7 @@ bool CRezbit::ShouldLaserAttack(CStateManager& mgr, const CTriggerData& data) co
   return false;
 }
 
+// @ fn_53_6688
 bool CRezbit::ShouldEnergyBoltAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (mAttackTimer <= 0.f && mAttackSelection == 2 &&
       !mgr.GetCameraManager(0)->IsInCinematicCamera()) {
