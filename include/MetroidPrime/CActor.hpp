@@ -83,6 +83,7 @@ public:
   virtual bool CanRenderUnsorted(const CStateManager&) const;
   virtual void PreRenderAllViewports(CStateManager& mgr);
   virtual CHealthInfo* HealthInfo();
+  // @ fn_25_23E8
   virtual const CHealthInfo* GetHealthInfo() const {
     return const_cast< CActor* >(this)->HealthInfo();
   }

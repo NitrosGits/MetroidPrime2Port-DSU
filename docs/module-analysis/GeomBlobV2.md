@@ -346,3 +346,80 @@ Normal host link and post-marker coverage link: **0 FAILED**. Generator `--check
 (both TARGET_PC and non-PC). Spec syntax and `git diff --check` passed. No additional B
 functions were newly marked; existing bulk tags and shared/header bodies retain their status.
 Only this SPE/caller-area run was needed; no unrelated smoke or module sweep.
+
+## gb5 checkpoint: explicit inline helpers (2026-10-24)
+
+Base `49261294b`. Inventory compared TSV classB rows with actual source/header markers,
+not the stale TSV marker column:19 remaining. **Eight explicit inline bodies marked,
+62 → 70/81**. No production logic or class/layout/classification changes; only eight
+marker comments in five headers. Shared-header edits are marker-only.
+
+### Matched-body verification and retail audit
+
+All19 candidates are **100.0% matching in the freshly rebuilt upstream report**, with
+exact module25 virtual offsets and original symbols. The source unit's `address` is
+unit-relative: for SPE helpers use `metadata.virtual_address` (e.g.21908=5594), not
+address3308. Saved binding records and report SHA256:
+`/tmp/opencode/reports/gb5-evidence/matching-final.json`.
+
+Per DECOMP_WORKFLOW's matched-body rule, 100% matches require no separate all-arm gcov
+run. This exception is explicit: the ordinary caller-area run below is not claimed to
+cover every arm of these header bodies. Each marked body also received a full instruction
+audit using `asmcheck.py annotate GeomBlobV2 0x<off> --all-ins`.
+
+| id | canonical explicit definition | instruction audit |
+|---|---|---|
+| A90 | `Enemies/CCollisionTracker.hpp`,STriangleSlot ctor | AA4 calls recordAD4; AA8–AB8 constructs plane at38 from vertices0/C/18 of the copied surface; returns this. Existing mTriangle initializer followed by CPlane(v0,v1,v2). |
+| AD4 | same header,STriangleRecord ctor | AE4 preserves ushort index; AF0 invokes implicit surface copyB14; AF4 stores index at30. Existing mSurface/mIndex initialization, no branch. B14 already exists as a native implicit copy, not a stub. |
+| 1830 | `WorldFormat/CCollisionCache.hpp`,**nonconst** NextTriangle overload | 184C–1854 trianglesRemaining guard; 1858–188C offset into ushort data,remaining−1,leafExhausted80=(remaining==0),offset+=24 halfwords; 1890–18F0 statusZero40 gates plane construction/copy and leafTriangleCount−1,last writes ushort status1; 18FC–192C empty triangles: leaves0→ReadGeometry,leaves−1,ReadLeaf,recurse. Host uses native sizeof(slot)/sizeof(ushort), matching its cache writer's layout. Const overload is a different body and is not marked1830. |
+| 1948 | same header,GetLeafBounds | 1964–1974 if triangles remain,return leaf bounds; 1978–19A8 leaves0→ReadGeometry,leaves−1,ReadLeaf,retest; 19B4–1A24 repeats; 1A28–1A30 recurse. PPC compiler unrolls recursive iterations; source's single recursive step is byte-matching. |
+| 23E8 | `MetroidPrime/CActor.hpp`,GetHealthInfo const | 23F4–2400 vtable slot38 invokes nonconst HealthInfo; 2404–2410 returns its pointer. Host const_cast then virtual HealthInfo is the exact forwarding body. |
+| 3488 | `Kyoto/Particles/CElementGen.hpp`,GetParticleCount | 3488 lwz254;348C return. Existing mActiveParticleCount getter. |
+| 461C | `MetroidPrime/CEffect.hpp`,explicit empty virtual dtor | 4634–4638 nullable MW wrapper;463C–4648 derived vtable;464C base CActor destruction;4650–465C signed-short deletion flag>0 frees. Host empty derived destructor implicitly runs base and native D0/D2 own the deletion ABI. No null-this call is legal native C++. |
+| 5594 | `Kyoto/Particles/CElementGen.hpp`,GetEmitterTime const | 5594 lwz68;5598 return. Existing mCurFrame getter. |
+
+asmcheck all-tags reports MISSING for all eight because its definition parser does not
+recognize these unqualified inline class definitions. Literal markers, explicit source
+bodies, full instruction audits and exact-symbol 100% report records establish identity;
+no masked correctness discrepancy is being waived.
+
+### Caller-area run / gates
+
+```sh
+tools/games_running.sh --wait
+BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=$PWD/tools/cov/cov_force.py SECS=300 \
+  tools/cov/force.sh tools/cov/specs/geomblobv2_gb3_force.py <out> \
+  1baa96c2,2735236b --frames 1600 --fast
+```
+
+Reuses gb3's real Ing/CT emission fixture; no new runtime probes or fixture modifications.
+Post-marker binary exited normally at1600 frames,caught/reach-stub0,force/Python errors0.
+Only affected module/caller area tested; no unchanged-family/whole-module sweep.
+Host/coverage links rc0,0 FAILED;gen_files_cmake --check rc0;upstream configure+ninja rc0,
+All77.98% fuzzy/54.39% matched,Game94.14%/63.29%;explicit dtk shasum87 files OK.
+All five headers strip-diff CLEAN (marker-only); full evidence retained under
+`/tmp/opencode/reports/gb5-evidence/`.
+`tools/review_decomp_diff.sh 49261294b`:8 MARK, no other findings; each audited above.
+
+### Eleven implicit bodies deferred: annotation/ownership decision required
+
+These are already implemented by native compiler-generated special members, and all
+eleven match100% in the upstream report. They have **no explicit function definition**
+above which to place a truthful marker. Do not attach markers to class declarations or
+add no-op implementations merely to change the progress count. No B/H reclassification
+was made in this lane. The orchestrator should choose the project's representation for
+implicit bodies; making shared engine definitions explicit exceeds a marker-only lane edit.
+
+| ids | existing implicit definition site |
+|---|---|
+| B14 CCollisionSurface copy ctor | `include/WorldFormat/CCollisionSurface.hpp`,class |
+| 3224/3490 SBlobStrand copy ctor/assignment;33A0 dtor | `include/MetroidPrime/Enemies/CCollisionTracker.hpp`,struct |
+| 32A0/350C CSurfacePath copy ctor/assignment;33F8 dtor | same module header,class |
+| 4094 CCollisionCache dtor | `include/WorldFormat/CCollisionCache.hpp`,class |
+| 467C CEntityInfo dtor | `include/MetroidPrime/CEntityInfo.hpp`,class |
+| 5B08 CAreaCollisionCache dtor | `include/WorldFormat/CMetroidAreaCollider.hpp`,class |
+| 5EDC CTri copy ctor | `include/Kyoto/Math/CTri.hpp`,class |
+
+Full instruction listings for all19 candidates are retained. No missing gameplay body,
+engine defect or new accessor requirement was found; the residual work is source-marker
+representation/ownership, not an undiscovered gameplay algorithm.

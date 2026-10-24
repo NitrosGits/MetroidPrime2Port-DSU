@@ -115,11 +115,13 @@ public:
   virtual bool GetParticleEmission() const override { return mParticleEmission; }
   virtual const CColor& GetModulationColor() const override;
   float GetGeneratorRate() const override;
+  // @ fn_25_5594
   int GetEmitterTime() const override { return mCurFrame; }
 
   int GetSystemCount() override;
   virtual bool IsSystemDeletable() override;
   virtual rstl::optional_object< CAABox > GetBounds() override;
+  // @ fn_25_3488
   virtual int GetParticleCount() override { return mActiveParticleCount; }
   virtual bool SystemHasLight() override;
   virtual CLight GetLight() override;

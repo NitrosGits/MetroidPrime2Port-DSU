@@ -43,6 +43,7 @@ RSTL_DECLARE_BITWISE_CONSTRUCTION(SSurfacePathSegment)
 
 // Guessed name: the triangle payload of a collision-cache slot.
 struct STriangleRecord {
+  // @ fn_25_AD4
   STriangleRecord(const CCollisionSurface& surface, ushort index)
   : mSurface(surface), mIndex(index) {}
 
@@ -52,6 +53,7 @@ struct STriangleRecord {
 
 // Guessed name: a collision triangle with its plane, laid out like a packed collision-cache slot.
 struct STriangleSlot {
+  // @ fn_25_A90
   STriangleSlot(const CCollisionSurface& surface, ushort index)
   : mTriangle(surface, index)
   , mPlane(mTriangle.mSurface.GetVert(0), mTriangle.mSurface.GetVert(1),

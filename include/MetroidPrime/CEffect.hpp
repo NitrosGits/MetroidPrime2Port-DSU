@@ -8,6 +8,7 @@ public:
   CEffect(TUniqueId uid, const CEntityInfo& info, const rstl::string& name, const CTransform4f& xf);
 
   // CEntity
+  // @ fn_25_461C
   ~CEffect() override {}
   CEntity* TypesMatch(int typeId) const override;
 
