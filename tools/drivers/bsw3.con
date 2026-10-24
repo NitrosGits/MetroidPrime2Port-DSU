@@ -1,0 +1,8 @@
+# Targeted BacteriaSwarm caller drive; actual native fixtures start at tick 350.
+@f300 god 1; give lightSuit 1; give scanVisor 1
+@f320 send e003d0023 Activate
+@f420 tp 181.9 147.5 -28.9
+@f600 scan e003d0023 10 30
+@f650 visor combat
+@f1000 obj e003d0023
+@f1100 send e003d0023 Delete
