@@ -292,3 +292,7 @@ Spec `tools/cov/specs/grenchler_force7.py` (force_ret CALLS + spec-local gdb hoo
 
 Asm: UpdateBeamTrace matches (objdiff 99.9%); GrapplePull (95%): only regalloc/scheduling, an extra pair of stack stores and the const vs non-const
 `GetPlayerTargetPosition` symbol (same body); x90c_80 = mTrackPlayer (0x25FC). No behaviour differences.
+
+| IssueDeathBodyCommand 6358 | 20/20 | forced (CALLS, grenchler_force7.py): mSubmerged 1 (0x637C `cmplwi 1`: NextState 0xC, locomotion 9); mPlayDeathAnims 0 (0x63D0 bit 0x8); `CBodyController::HasBodyState` stub lists (0x63D8 state 0xE Hurled, 0x64D0 state 0 Fall); mBodyType 3 (0x63F0 `cmpwi 3` flyer -> inline CBCHurledCmd, id 0x10); `IsIngPossessed` stub (0x64E4); mPendingMassiveDeath (0x6504 bit 0x8) with `CheckConnectedObject` stub 0xFFFF / 1 (0x652C); mWaterId 459 + z -5000 (0x6554 `fcmpo; bge` skip: severity 6). The CommandMgr is Reset after each call (a delivered Hurled command crashed CBSHurled::Start: the Grenchler has no hurled animation) |
+
+IssueDeathBodyCommand objdiff (85%) is the compiler inlining `CBCHurledCmd` / `DeliverCmd`: the retail stores (cmd id 0x10 at 0x22C, -direction at 0x230-0x238, zero vector 0x23C-0x244, flag byte 0x248) are the same fields the port's ctor + `mHurled = cmd` write; the remaining diffs are vtable symbol names and stack offsets. No TARGET_PC change needed.

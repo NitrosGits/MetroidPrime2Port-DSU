@@ -103,3 +103,24 @@ CALLS.append(('GrapplePull direct calls', 'CGrenchler::PreRender(', '((CGrenchle
     (_LAST_AT_PLAYER + [('$P->mBackwardInput', '0.5')], _GP, [_NOPULL]),          # moved away, backing off
     ([('$this->mEffectC.mLastHornPosition.mX', '100000.0'), ('$P->mBackwardInput', '0.5')], _GP, [_NOPULL]),  # coming closer, backing off
 ], 'GrapplePull Update: msg default, no pull direction, horn moved away with and without backward input, closer with backward input'))
+
+_BC = '$this->mBodyController.mPtr'
+_DEATH = '$this->IssueDeathBodyCommand(*$mgr, $this->mReflectInfo.mLandingPosition)'
+_HBS = 'CBodyController::HasBodyState('
+_WATER = [('*(unsigned short*)&$this->mWaterId', '459'), ('$this->mTransform.m23', '-5000.0')]  # u0459 (decimal uid), a02's water
+_ID_SC = [
+    ([('$this->mSubmerged', '1')], _DEATH, []),                                                      # NextState (retail 0x6360 region)
+    ([('$this->mSubmerged', '0'), ('%s->mPlayDeathAnims' % _BC, '0')], _DEATH, []),                                              # no death anims
+    ([('$this->mSubmerged', '0')], _DEATH, [(_HBS, [0, 0])]),                                                                  # neither body state
+    ([('$this->mSubmerged', '0'), ('%s->mBodyType' % _BC, '3')], _DEATH, [(_HBS, [1])]),                                         # hurled flyer
+    ([('$this->mSubmerged', '0')], _DEATH, [(_HBS, [1, 0])]),                                                                  # hurled state but not a flyer, no fall state
+    ([('$this->mSubmerged', '0'), ('$this->mPendingMassiveDeath', '0')], _DEATH, [(_HBS, [0, 1]), ('CPatterned::IsIngPossessed(', 0)]),  # knock down
+    ([('$this->mSubmerged', '0'), ('$this->mPendingMassiveDeath', '0')], _DEATH, [(_HBS, [0, 1]), ('CPatterned::IsIngPossessed(', 1)]),  # ing-possessed state id
+    ([('$this->mSubmerged', '0'), ('$this->mPendingMassiveDeath', '1')], _DEATH, [(_HBS, [0, 1]), ('CEntity::CheckConnectedObject(', 65535)]),  # X-damage link missing: knock down
+    ([('$this->mSubmerged', '0'), ('$this->mPendingMassiveDeath', '1')], _DEATH, [(_HBS, [0, 1]), ('CEntity::CheckConnectedObject(', 1)]),      # link found: nothing
+    ([('$this->mSubmerged', '0'), ('$this->mPendingMassiveDeath', '0')] + _WATER, _DEATH, [(_HBS, [0, 1])]),                      # under the water: severity six
+]
+# a delivered Hurled/KnockDown command would be consumed by the next Think (the Grenchler has no hurled animation): reset the manager after each call
+_RESET = ([], '$this->mBodyController.mPtr->mCmdMgr.Reset()', [])
+CALLS.append(('IssueDeathBodyCommand direct calls', 'CGrenchler::PreRender(', '((CGrenchler*)$rdi)->mIsGrappleGuardian == 0',
+             [x for sc in _ID_SC for x in (sc, _RESET)], 'IssueDeathBodyCommand: submerged, no death anims, hurled flyer, knock-down with/without X-damage link, ing-possessed, below the surface'))

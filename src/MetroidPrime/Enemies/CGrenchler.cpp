@@ -3176,6 +3176,7 @@ void CGrenchler::TurnToPlayer(CStateManager& mgr, float dt, float turnSpeed) {
   RotateToPoint(mgr.GetPlayer(0)->GetTranslation(), dt, turnSpeed);
 }
 
+// @ fn_27_6358
 void CGrenchler::IssueDeathBodyCommand(CStateManager& mgr, const CVector3f& direction) {
   if (mSubmerged == true) {
     BodyController()->SetLocomotionType(pas::kLT_Internal9);
