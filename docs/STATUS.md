@@ -302,3 +302,7 @@ The openchamber tool rejects every non-string argument (2026-10-20), so lanes ru
 - Batch 12 (25b367dda) and batch 13 (0d9af897f) merged after asm review by a dedicated Opus review lane and orchestrator checks; smoke12b/smoke13 no regressions (`--jobs 4` once gave flaky exit-137 shutdown hangs on ing/ep/plain/emp3, clean at `--jobs 2`).
 - Audit-session fixes routed or applied: PlayerTurret refire `<= 0` (a19f25ae8), DarkSamus CanMissileDeflect `> 0` and RollReflectChanceForHit's first roll (f5802a210), CommandoPirate's five 662C/8028/86B4 items, the DigitalGuardian knee knock-back, the 177C8/114C8 stand-ins, the SpacePirate weapon switch, Hurled, Ing timer, trooper alpha and charge list.
 - MiniMax misreads caught in review (`lis` as a small value, `__shl2i` input read as a high word, an early return skipping retail's tail) are now in LANE_BRIEF "Decode traps".
+
+## Smoke rules (2026-10-24)
+
+Poke your own family's actor; no `=> err` proofs; strictly increasing @f; objs checked >=40f after a kill; editor ids, not uids; no forced Dead. Beam-free lanes = `worker` + model `opencode-go/beam-free`; their reports are unreliable, so check con_*.out.
