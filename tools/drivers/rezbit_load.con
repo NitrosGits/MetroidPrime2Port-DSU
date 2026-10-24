@@ -1,0 +1,8 @@
+# Rezbit rez6: load the Sanctuary Fortress Rezbits (layers 3+4), kill one, nothing else (loader / ctor / dtor arms).
+@f300 god 1
+@f310 layer 3
+@f450 layer 4
+@f520 place e0005011b player 15
+@f900 kill e0005011b
+@f1100 covdump
+@f1400 objs rezbit

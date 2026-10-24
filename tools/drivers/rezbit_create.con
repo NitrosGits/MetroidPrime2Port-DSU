@@ -1,0 +1,6 @@
+@f300 god 1
+@f310 layer 3
+@f450 layer 4
+@f520 place e0005011b player 15
+@f800 send e0005011b Create
+@f850 obj e0005011b
