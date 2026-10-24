@@ -109,3 +109,38 @@ Dead arms (db2):
 
 Smoke family proposal `dbar`: area 42b935e4,08_sand_casualpirates, `tools/drivers/destructiblebarrier_forced.con`,
 1200 frames, god 1.
+
+## db3 (2026-10-24, base cab739771): loader dtor fn_13_BA0 marked
+
+One launch (of the slice's two), `42b935e4,08_sand_casualpirates` (the module is data-dead, so the db1
+forced driver's `spawn DBAR` path is the only way in), 600 frames, fast, `[port] caught/reach-stub: 0`,
+inferior exited normally. Fixture `tools/cov/specs/db3_sldr_dtor.py` (read-only), mock
+`db3_sldr_dtor_selftest.py`, own driver `db3_dbar_dtor.con` (three spawns).
+
+Retail fn_13_BA0 (`__dt__23SLdrDestructibleBarrierFv`, weak, 0xBA0..0xC1C): 0xBB8 `mr. r30,r3` / 0xBBC
+`beq` null-this guard, then the four member destructors (0xBC8 SLdrActorParameters +0x214, 0xBD4
+SLdrDamageVulnerability +0xB8, 0xBE0 SLdrHealthInfo +0xB0, 0xBEC SLdrEditorProperties +0), then 0xBF0
+`extsh. r0,r31` / 0xBF4 `ble` / `bl __dl__FPv` - the MWCC deleting-flag variant.
+
+Host build: `_ZN23SLdrDestructibleBarrierD1Ev` == `D2Ev` at 0xde1b20 (four member calls, no null guard, no
+flag), **no `D0Ev` symbol at all**, and the only call site in the binary is 0xde26fc in
+`LoadDestructibleBarrier`'s `.cold` epilogue, with `this = lea -0x670(%rbp)` - the loader's own stack
+object. Measured on the run: the normal path **inlines** the empty body, so the four member dtors run
+with gdb showing an inlined `SLdrDestructibleBarrier::~SLdrDestructibleBarrier()` frame whose caller is
+`LoadDestructibleBarrier`, root `0x7fffffffbb90` inside the loader frame, three times (one per spawn);
+the out-of-line 0xde1b20 copy **never ran** (`outofline_hits=0`), i.e. the retail guard/delete variants
+have no host counterpart on this path.
+
+gcov (same run, `--module DestructibleBarrier`): `SLdrDestructibleBarrier::~SLdrDestructibleBarrier()`
+header line 97, blocks 5/5 executed, `execution_count 3`, no branches.
+
+Live paths: the member-dtor chain ran on every invocation; the retail null-this and delete-flag arms are
+unreachable for this object (single caller-owned stack lifetime, non-null `lea`, object never deleted,
+and the host build emits no deleting variant), so all live arms are justified. Marker
+`// @ fn_13_BA0` added above the inline definition (header line 97).
+
+Evidence `/tmp/opencode/db3_evidence`: `db3_r2.gcda` ef655298..., matching `db3.matching.gcno`
+c6d42831..., pre-marker `SLdrDestructibleBarrier.source.hpp` 94a42706..., executed fixture
+`db3_sldr_dtor.executed.py` 8da67562..., binary da8ea578..., `dtor_outofline.disasm.txt`,
+`loader_callsite.disasm.txt`, `db3_r2_diag.log` (12 member-dtor lines), `db3_r2_fixture.txt`,
+`db3_r2_raw.gcov.json`, `sha256.txt`.
