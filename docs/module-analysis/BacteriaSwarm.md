@@ -85,9 +85,8 @@ finding on any of them, so no body changed):
 - **Unreachable in retail** - no `bl` to them anywhere in the module asm: UpdateEffects 1448 (its only
   caller in the family would be UpdateSwarmAnimations 34C8, which is `blr` only), FindClosestCell 163C
   (called only from UpdateEffects, 0x1510), HardwareLight 2CB4. Not markable: no run can execute them.
-- **ApplySafeZoneAvoidance 1C78** - the 0x1D04 (no zone) arm is the only one that runs: the five shipped
-  BSWMs have no SAFZ in their area, so `SphereTouchingWhichSafeZone` never returns an id and 911/913/915-917
-  stay at 0. Gated by shipped data, not forceable (the query is not a member write).
+- **ApplySafeZoneAvoidance 1C78** - bac1 reached only the no-zone arm. bsw2 closes the remaining arms
+  with explicitly labelled callee-answer fixtures; see below (the old "not forceable" claim was wrong).
 - **Render 262C** - untaken 742:1/2, 743:1/2 (`lights == 0`, the light mask is never 0 in a lit room),
   757:1/2, 763:3/4, 775:3/4, 781:1/2. The mActive-false arms are dead by construction (UpdatePartition
   links only active boids; KillBoid reactivates the same index in the same call), but 742/743 are not.
@@ -95,14 +94,101 @@ finding on any of them, so no body changed):
   the driver's walk-out does not leave the area), 524:1/2 (`ShouldBuildAreaCollisionCacheForPartition`
   is `li r3,1; blr` at 13F4, so the false arm is dead), 529:1/2, 532:3/4, 542:1/2, 545:3/4, 577:1/2,
   578:1/2 (same mActive argument as Render) - the occlusion arms alone block the marker.
-- **FindBestSurface 4CB0** - 317:1/2: the `kMT_AIPassthrough` skip never happens (no such surface in the
-  probed boxes); not forceable.
+- **FindBestSurface 4CB0** - bac1 missed the AIPassthrough skip. bsw2 closes it with one modified
+  returned triangle temporary, without changing the tree or disc data.
 - **CreateBoid 56DC** - 226:0/4, 226:2/4, 226:3/4: the waypoint arms need a Follow connection to a live
   CScriptWaypoint and the five shipped BSWMs have no waypoint connections (shipped-data dead, but no run
   took them); 232:1/4, 232:3/4 need `forceParticle == false` from KillBoid (which only runs on a boid box
   overlap). Not marked.
-- **CBacteriaSwarm ctor 5F10** - 161:1/2 and 168:1/2: both `!= kInvalidAssetId` skips stay untaken because
-  every shipped BSWM has valid particle ids; the two ids are stack arguments, so they cannot be forced
-  from a member write. Not marked.
-- **FindBestLockOnIndex B44** - 1158:1/3: the `!delta.CanBeNormalized()` arm needs a boid exactly at the
-  camera position. Not marked.
+- **CBacteriaSwarm ctor 5F10** - bac1 missed the invalid particle-id paths. bsw2 forces the actual
+  by-value stack argument and referenced data member, plus invalid scan model; see below.
+- **FindBestLockOnIndex B44** - bac1 missed camera-coincident boid geometry. bsw2 closes it using a
+  real boid and the real first-person camera transform.
+
+## bsw2: four remaining assigned bodies (2026-10-24)
+
+Base `3b3cd4799cee99fdeac09bf58e8bc68f178b7a5f`, branch `decomp/bsw2`.
+Only ctor 5F10, surface search 4CB0, safe-zone avoidance 1C78 and lock-on B44 were
+annotated/marked. Full-file C++ token comparison against the base is identical after
+stripping comments: no behaviour fix was needed. Excluded bodies and SwarmBasics were untouched.
+
+### Per-function arm table
+
+| function | complete evidence / outcome |
+|---|---|
+| **fn_6_B44 FindBestLockOnIndex — marked** | **21/21 lines, 14/14 branches**. Natural calls plus forced (`bacteriaswarm_bsw2.py` native queue): empty range, inactive boid, exact camera coincidence, far out of orbit range, camera-right perpendicular, behind camera, camera-forward winner. The real first-person camera matrix supplies all geometry; one real boid's transform/active flag and temporary vector count are restored after each call. Seven return-value oracles verify -1 or index 0. |
+| **fn_6_1C78 ApplySafeZoneAvoidance — marked** | **14/14 lines, 10/10 branches**. Natural no-zone calls; forced callee-answer fixtures for invalid id, valid id/missing object, inside sphere, outside sphere and exact radius boundary. The typed safe-zone storage is used only by inline position/scale reads (no virtual call or destructor). Five independent oracles check touching/in-zone flags and all three components of the accumulated ahead vector. No fixture is claimed to be a shipped SAFZ. |
+| **fn_6_4CB0 FindBestSurface — marked** | **23/23 lines, 16/16 branches**. Natural real collision-cache traversal covers cache/leaf/triangle loops, hit/miss, closer/not-closer, PointOnSurface true/false, output update and return. Forced one actual `GetTriangle(unsigned int)` return: only its stack temporary gets AIPassthrough bit 28. Logged flags **0x80000003 → 0x90000003**, then the one-shot hook disables itself. No collision-tree/disc mutation. |
+| **fn_6_5F10 ctor — marked** | **79/79 lines, 40/46 branches**; all remaining successful-retail paths accounted for below. Natural valid scan/particle ids (four constructor calls); forced actual ctor entry (`BSW2_CTOR_SKIP=1`) invalidates death-particle reference member, boid-particle stack argument and referenced scan-model id (three calls). Finish hooks verify both generator pointers null and absent scan data, restore both reference arguments. The by-value stack argument expires normally; no production accessor/probe. |
+| ctor two old-pointer-delete arms (measured source 172,179) | **Retail-dead by first-write proof.** Retail `0x62A0 li r6,0`, `0x63B4 stw r6,0x440(r15)`, `0x63C0 stw r6,0x458(r15)` clear both generator pointers. The first subsequent member writes are `0x666C stw r14,0x440` and `0x67D8 stw r14,0x458`; CElementGen construction receives its token/own storage, not this swarm. Thus tests at `0x6648..6650` and `0x67B4..67BC` cannot see an old generator. Host disassembly agrees: ctor+1309/+1374 zero host offsets 0x6c0/0x6f0; +2000/+2506 test them before the first assignment. Do not fabricate an old pointer merely to cover an impossible arm. |
+| ctor four arms attributed to closing brace (measured line 182) | **Host EH cleanup, not retail-body arms.** These are the two optional-description validity tests at host ctor+10764/+10824, both sides counted by gcov in the cold unwind landing pad. The path destructs partially constructed members/base and ends at `_Unwind_Resume` (+10944). Retail `5F10..68AC` has ordinary initialization/RAII temporary cleanup and normal return, not this GCC landing pad. These four host-only exception arms are not falsely labelled runtime-covered or shipped gameplay paths. |
+
+### Retail structural check
+
+- **B44:** initial dot=0.5/result=-1, squared orbit limit (`0xBA0..BC4`), real FP camera
+  (`0xBC8..BEC`), active byte 0x81 mask **0x20** (`0xBF8 extrwi ...,1,26`), strict
+  distance `>` (`0xC3C/40`), normalization guard (`0xC48/50`), strict best-dot `>`
+  (`0xC78/7C`) and winner updates (`0xC80/84`). No visibility ray was added; ties retain
+  the earlier index. The vector-loop tail matches `0xC88..CA4`.
+- **1C78:** sphere uses boid translation and `mTouchRadius` (`0x1CB4..1CEC`); invalid
+  id and null object guards (`0x1D00/04`, `0x1D18/1C`); static cast as in retail.
+  Touching mask **0x04** (`0x1D28 rlwimi ...,2,29,29`), in-zone mask **0x08**
+  (`0x1D7C rlwimi ...,3,28,28`), strict squared-distance `< radius-X²` (`0x1D70/74`),
+  then unconditional additive normalized escape force (`0x1D84..1DCC`). No false-arm flag clear.
+- **4CB0:** radius initializes sphere and best distance (`0x4CD0..4D08`), intersecting
+  leaves only (`0x4D24/2C`), actual triangles (`0x4D60`), mask from `0x4D48 lis r31,0x1000`
+  = **0x10000000**, low u64 word (`0x4D70..4D90`), not 0x1000. Absolute plane height,
+  strict closest-distance comparison and PointOnSurface gate (`0x4D94..4E04`); sphere,
+  output, best distance and found updated together (`0x4E08..4E9C`). Three nested loop tails match.
+- **5F10:** checked initial actor/material and scan-model selection (`0x5FB0..61D4`),
+  data-derived members/defaults and partition loop (`0x61D8..6450`), second scan-model
+  choice (`0x6454..64DC`), flag byte (`0x64E0..6530`) and both particle paths
+  (`0x64EC..6800`). Flag masks are 0x80 blending=false, 0x40 spawn argument, 0x20 unknown
+  argument, 0x10 patrolling=false, 0x08 pursuing=false. The already documented host
+  `mThinkCounter=0` initialization is retained, not reclassified as a new divergence.
+
+Full asmcheck for **each of these four**: RC1, seven completeness heuristics plus four
+NOPOS advisories. The latter's bit positions are derived above. CALLs: `6D94` is
+CModelData::None, `6B34` its copy constructor, CAABox is the member initializer,
+CToken::Lock is in TLockedToken construction, `68AC` is optional assignment, `4EFC`
+is the implicit surface copy. The ctor BRANCH finding (retail 24 conditions vs source 2)
+is initializer choices, partition/temporary/ownership expansion; the measured host branches
+and two retail-dead old-pointer tests above account for it. Correctness tags
+MASK/XBIT/CROP/XCMP/XSTORE/OFFS: RC0, no findings. No actual divergence found.
+
+### Reproduction and evidence
+
+```
+tools/games_running.sh --wait
+COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py BUILD=$PWD/build-port-cov SECS=600 \
+  tools/cov/force.sh tools/cov/specs/bacteriaswarm_bsw2.py <new-main-dir> \
+  3bfa3eff,04_temple_unknownenemies_dark --con tools/cov/specs/bacteriaswarm_bsw2.con --fast --frames 1000
+tools/games_running.sh --wait
+BSW2_CTOR_SKIP=1 COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py BUILD=$PWD/build-port-cov SECS=600 \
+  tools/cov/force.sh tools/cov/specs/bacteriaswarm_bsw2.py <new-ctor-dir> \
+  3bfa3eff,04_temple_unknownenemies_dark --fast --frames 600
+python3 tools/cov/gcov_report.py build-port-cov <new-main-dir>/gcov <new-ctor-dir>/gcov \
+  --module BacteriaSwarm --fn fn_6_B44 --fn fn_6_1C78 --fn fn_6_4CB0 --fn fn_6_5F10
+```
+
+Final runs `/tmp/opencode/bsw2-main4` (1000 frames, 14 queue scenarios / 12 return-store
+oracles / one triangle mutation) and `/tmp/opencode/bsw2-ctor3` (600 frames, three actual
+argument fixtures/restores) both have normal inferior exits, zero caught/reach-stub,
+no Python/fixture errors. `/tmp/opencode/reports/bsw2-evidence` preserves **matching gcno,
+measured source, raw JSON, binary/source hashes and ctor disassembly** before marker rebuild;
+the marker-only replacement changes no line numbers, but old profiles must use that gcno.
+Coverage summary `/tmp/opencode/bsw2-coverage2.txt`.
+
+All exploratory directories retained. `main1/ctor1` had an early harness assertion on a
+duplicate cold ctor symbol; `main2` timed out from an over-broad per-triangle breakpoint
+(debugger overhead, no production fix), and `main3`'s one-shot caller-name filter missed
+the qualified name without parameters. They are **not** final closure evidence. `ctor2`
+successfully checked particle skips, but final ctor3 also covers both scan-model choices.
+
+Final gates/logs: `/tmp/opencode/bsw2-{link-build,cov-build,manifest,strip-diff,matching-configure,
+matching-build,matching-sha1,asmcheck-all,asmcheck-correctness,review,runtime-audit}.log`.
+Host/coverage builds, manifest, strip-diff token identity, matching build and all 87 SHA1
+entries, review and runtime audit RC0; full asmcheck RC1 explained above. No whole-family
+smoke or excluded-body changes. Pre-existing configure log and all prior evidence preserved.
+Review's four MARK lines are the four bodies justified here; its DEL entries are existing
+lines with appended asm-offset comments, not deleted C++ tokens (strip-diff verifies that).

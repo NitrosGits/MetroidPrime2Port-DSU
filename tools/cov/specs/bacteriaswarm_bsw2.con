@@ -1,0 +1,7 @@
+# bsw2 only: placed Temple Grounds Ingstorm; native queue fires after frame 500.
+@f300 god 1; give lightSuit 1
+@f350 send e003d0023 Activate
+@f400 obj e003d0023
+@f420 tp 181.9 147.5 -28.9
+@f600 lockon 1; obj e003d0023
+@f900 send e003d0023 Delete

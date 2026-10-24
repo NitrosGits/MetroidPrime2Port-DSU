@@ -76,6 +76,11 @@ CBacteriaSwarm::CBoid::CBoid(const CTransform4f& xf, uint index)
 , mInSafeZone(false)
 , mPursuingPlayer(false) {}
 
+// @ fn_6_5F10
+// 0x5FB0-0x6198: actor args and shifted Scannable/Trigger/NonSolidDamageable/RadarObject bits.
+// 0x6214-0x63BC: empty vectors, 125 null partitions, data-derived radii/priorities/counts,
+// timers 0/5, probe scale 1.5 and degree-to-radian turn-speed conversion (rodata_68).
+// 0x63C4-0x6450: sounds/timing/volume, lock index -1, zero positions and blend.
 CBacteriaSwarm::CBacteriaSwarm(
     const TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
     const CVector3f& boundingBoxExtent, const CTransform4f& xf, CActorParameters actorParameters,
@@ -151,13 +156,15 @@ CBacteriaSwarm::CBacteriaSwarm(
 , mLastOrbitPosition(CVector3f::Zero())
 , mLockOnBlendStart(CVector3f::Zero())
 , mLockOnBlend(0.f)
+// 0x6454-0x64DC: second scan-model validity choice and temporary cleanup.
 , mScanModelData(scanModel.GetId() == kInvalidAssetId ? CModelData(CModelData::None())
                                                       : CModelData(scanModel))
-, mBlendingLockOn(false)
-, mSpawnInstantly(spawnInstantly)
-, x504_26_(unknownFlag)
-, mAnyPatrolling(false)
-, mAnyPursuing(false) {
+, mBlendingLockOn(false) // 0x64E0-0x64F0: clear 0x504 mask 0x80.
+, mSpawnInstantly(spawnInstantly) // 0x64F4-0x650C: copy mask 0x40.
+, x504_26_(unknownFlag) // 0x6508-0x6518: copy mask 0x20.
+, mAnyPatrolling(false) // 0x651C-0x6524: clear mask 0x10.
+, mAnyPursuing(false) { // 0x6528-0x6530: clear mask 0x08.
+  // 0x64EC-0x6534: skip invalid death PART; 0x6538-0x6694: construct, emission=false.
   if (data.mDeathParticleEffect != kInvalidAssetId) {
     mDeathParticleDescription =
         rstl::optional_object< TLockedToken< CGenDescription > >(TLockedToken< CGenDescription >(
@@ -165,6 +172,7 @@ CBacteriaSwarm::CBacteriaSwarm(
     mDeathParticleGenerator = rs_new CElementGen(*mDeathParticleDescription);
     mDeathParticleGenerator->SetParticleEmission(false);
   }
+  // 0x6698-0x66A0: skip invalid boid PART; 0x66A4-0x6800: construct, emission=false.
   if (particleEffect != kInvalidAssetId) {
     mBoidParticleDescription = rstl::optional_object< TLockedToken< CGenDescription > >(
         TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', particleEffect))));
@@ -299,8 +307,10 @@ CCollisionSurface CBacteriaSwarm::FindBestCollisionInBox(CStateManager& mgr, con
   return result;
 }
 
+// @ fn_6_4CB0
 bool CBacteriaSwarm::FindBestSurface(const CAreaCollisionCache& cache, CVector3f pos, float radius,
                                      CCollisionSurface& out) {
+  // 0x4CD0-0x4D0C: initial sphere/range, found=false; 0x4EB8-0x4ED0: cache/leaf loops.
   bool found = false;
   float minDistance = radius;
   CSphere sphere(pos, radius);
@@ -308,16 +318,20 @@ bool CBacteriaSwarm::FindBestSurface(const CAreaCollisionCache& cache, CVector3f
     const CMetroidAreaCollider::COctreeLeafCache& leafCache = cache.GetOctreeLeafCache(i);
     for (int j = 0; j < leafCache.GetNumLeaves(); ++j) {
       const CAreaOctTree::Node& node = leafCache.GetLeaf(j);
+      // 0x4D24-0x4D2C: only intersecting leaves; 0x4D30-0x4D60: triangle loop.
       if (CCollidableSphere::Sphere_AABox_Bool(sphere, node.GetBoundingBox())) {
         const CAreaOctTree::TriListReference triangles = node.GetTriangleArray();
         const CAreaOctTree& tree = node.GetOwner();
         const int triangleCount = triangles.GetSize();
         for (int k = 0; k < triangleCount; ++k) {
           const CCollisionSurface surface(tree.GetTriangle(triangles.GetAt(k)));
+          // 0x4D48 lis r31,0x1000; 0x4D70-0x4D90: skip low-word bit 28 (0x10000000).
           if (!CMaterialList(surface.GetSurfaceFlags()).HasMaterial(kMT_AIPassthrough)) {
             const CPlane plane = surface.GetPlane();
             const float distance = CMath::AbsF(plane.GetHeight(pos));
+            // 0x4DD4-0x4E04: absolute plane height < best, then PointOnSurface.
             if (distance < minDistance && PointOnSurface(surface, pos, plane)) {
+              // 0x4E08-0x4E9C: shrink sphere, copy surface, set found and new best distance.
               sphere = CSphere(pos, distance);
               out = surface;
               found = true;
@@ -904,22 +918,25 @@ void CBacteriaSwarm::ApplyBoundsAvoidance(CBoid& boid,
   }
 }
 
+// @ fn_6_1C78
 void CBacteriaSwarm::ApplySafeZoneAvoidance(CStateManager& mgr, CBoid& boid,
                                             const rstl::reserved_vector< CBoid*, 50 >& nearList,
                                             CVector3f& ahead) {
+  // 0x1CB4-0x1D04: boid position + touch radius query; skip invalid UID.
   const CVector3f pos = boid.GetTranslation();
   const TUniqueId zoneId =
       mgr.GetSafeZoneManager()->SphereTouchingWhichSafeZone(mgr, CSphere(pos, mTouchRadius));
   if (zoneId != kInvalidUniqueId) {
+    // 0x1D14-0x1D1C: skip a missing object (retail uses a static cast).
     if (const CScriptSafeZone* zone =
             static_cast< const CScriptSafeZone* >(mgr.GetObjectById(zoneId))) {
-      boid.mTouchingSafeZone = true;
+      boid.mTouchingSafeZone = true; // 0x1D20-0x1D2C: boid byte 0x81 mask 0x04.
       const float radius = zone->GetScale().GetX();
       const CVector3f delta = pos - zone->GetTranslation();
-      if (delta.MagSquared() < radius * radius) {
-        boid.mInSafeZone = true;
+      if (delta.MagSquared() < radius * radius) { // 0x1D30-0x1D74: strict radius-X test.
+        boid.mInSafeZone = true; // 0x1D78-0x1D80: byte 0x81 mask 0x08, no else clear.
       }
-      ahead += mSafeZoneAvoidance * delta.AsNormalized();
+      ahead += mSafeZoneAvoidance * delta.AsNormalized(); // 0x1D84-0x1DCC: additive force.
     }
   }
 }
@@ -1141,7 +1158,9 @@ int CBacteriaSwarm::GetLockOnIndex(CStateManager& mgr) const {
   return FindBestLockOnIndex(mgr);
 }
 
+// @ fn_6_B44
 int CBacteriaSwarm::FindBestLockOnIndex(CStateManager& mgr) const {
+  // 0xBA0-0xBD4: dot threshold 0.5, result=-1, squared orbit range and actual FP camera.
   float maxDot = 0.5f;
   int index = 0;
   int result = -1;
@@ -1152,16 +1171,16 @@ int CBacteriaSwarm::FindBestLockOnIndex(CStateManager& mgr) const {
   const CVector3f cameraForward = cameraXf.GetForward();
   for (rstl::vector< CBoid >::const_iterator it = mBoids.begin(); it != mBoids.end();
        ++it, ++index) {
-    if (it->mActive) {
+    if (it->mActive) { // 0xBF8-0xC00: byte 0x81 mask 0x20.
       const CVector3f delta = it->GetTranslation() - cameraPos;
-      if (delta.MagSquared() > maxDistanceSq) {
+      if (delta.MagSquared() > maxDistanceSq) { // 0xC04-0xC40: out-of-range continue.
         continue;
       }
-      if (delta.CanBeNormalized()) {
+      if (delta.CanBeNormalized()) { // 0xC44-0xC50: reject camera-coincident boid.
         const float dot = CVector3f::Dot(cameraForward, delta.AsNormalized());
-        if (dot > maxDot) {
+        if (dot > maxDot) { // 0xC60-0xC7C: strict best-dot test; ties keep earlier index.
           result = index;
-          maxDot = dot;
+          maxDot = dot; // 0xC80-0xC84: update winner and threshold.
         }
       }
     }
