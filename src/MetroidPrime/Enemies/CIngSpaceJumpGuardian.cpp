@@ -139,6 +139,7 @@ public:
 };
 } // namespace
 
+// @ fn_34_5E58
 CIngSpaceJumpGuardian::CIngSpaceJumpGuardian(TUniqueId uid, const rstl::string& name,
                                              const CEntityInfo& info, const CTransform4f& xf,
                                              const CModelData& modelData,
@@ -1176,6 +1177,7 @@ void CIngSpaceJumpGuardian::UpdateBlob(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_34_170
 CEntity* LoadIngSpaceJumpGuardian(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrIngSpaceJumpGuardian sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrIngSpaceJumpGuardian.inc"

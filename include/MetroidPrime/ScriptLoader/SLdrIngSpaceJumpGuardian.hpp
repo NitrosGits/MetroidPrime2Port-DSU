@@ -23,6 +23,7 @@ struct SLdrIngSpaceJumpGuardianStruct {
   float unknown_0x3e370622; // 0x3e370622
 };
 
+// @ fn_34_E84
 inline SLdrIngSpaceJumpGuardianStruct::SLdrIngSpaceJumpGuardianStruct() {
   tauntChance = 10.0f;
   attackChance = 90.0f;
@@ -33,6 +34,7 @@ inline SLdrIngSpaceJumpGuardianStruct::SLdrIngSpaceJumpGuardianStruct() {
 
 inline SLdrIngSpaceJumpGuardianStruct::~SLdrIngSpaceJumpGuardianStruct() {}
 
+// @ fn_34_D18
 inline void LoadTypedefIngSpaceJumpGuardianStruct(SLdrIngSpaceJumpGuardianStruct& sldrThis,
                                                   CInputStream& input) {
   const int propertyCount = input.ReadUint16();
@@ -89,6 +91,7 @@ struct SLdrIngSpaceJumpGuardianData {
   SLdrShockWaveInfo shockWaveInfo;           // 0x8f4787cb
 };
 
+// @ fn_34_B7C
 inline SLdrIngSpaceJumpGuardianData::SLdrIngSpaceJumpGuardianData()
 : ingSpotBlobEffect(kInvalidAssetId)
 , ingSpaceJumpGuardianStruct()
@@ -127,8 +130,10 @@ inline SLdrIngSpaceJumpGuardianData::SLdrIngSpaceJumpGuardianData()
 #endif
 }
 
+// @ fn_34_ADC
 inline SLdrIngSpaceJumpGuardianData::~SLdrIngSpaceJumpGuardianData() {}
 
+// @ fn_34_864
 inline void LoadTypedefIngSpaceJumpGuardianData(SLdrIngSpaceJumpGuardianData& sldrThis,
                                                 CInputStream& input) {
   const int propertyCount = input.ReadUint16();
@@ -221,6 +226,7 @@ inline SLdrIngSpaceJumpGuardian::SLdrIngSpaceJumpGuardian()
 #endif
 }
 
+// @ fn_34_7E8
 inline SLdrIngSpaceJumpGuardian::~SLdrIngSpaceJumpGuardian() {}
 
 #endif
