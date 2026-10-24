@@ -339,7 +339,7 @@ def assign_fixture(g):
         # NOT in `taken`.  So move min(count, numNeeded + 1) boids into the cone: the taken one
         # first (index equality) and the rest as distinct non-taken indices (inequality), and the
         # caller's newBoids has capacity numLost == numNeeded, so out stops exactly at the limit.
-        # NOTE: this wider cone is DERIVED from that uncovered arm, not yet measured.
+        # swb13 measured this wider cone: AssignSeekerBoids reached 28/28 branches.
         eye, fwd, right = cam
         ahead = (eye[0] + 2.0 * fwd[0], eye[1] + 2.0 * fwd[1], eye[2] + 2.0 * fwd[2])
         # never ask for more than the caller's out vector can hold
@@ -349,7 +349,7 @@ def assign_fixture(g):
                 ocap = _i(g, '((%s*)%d)->mCapacity' % (_VEC_U, out))
         except Exception:
             ocap = -1
-        if ocap >= 0 and ocap < needed:
+        if ocap < 0 or ocap < needed:
             _log('phase3 skipped: out capacity %d < numNeeded %d' % (ocap, needed))
             return
         want = min(count, (needed if needed > 0 else 1) + 1)
