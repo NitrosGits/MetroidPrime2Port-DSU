@@ -143,3 +143,33 @@ Not marked (untaken after fp2):
 The rest of fp1's "partly covered" list is unchanged (cover-point arms: no shipped cover point in
 these areas; Think, Patrol, PathFind, Retreat, TurnAround, Walk, GetUp, Bounce, TargetPatrol, ...).
 
+## Coverage (fpir1: the 11 rows still unmarked)
+
+The TSV's marker column is stale; the list is the TSV's B rows minus the `// @ fn_22_*` markers in
+src/include: 0, 470, 478, 480, 5D4, 1228, 15DC, 2738, 6040, 96D4, AA84. All 11 annotated against the
+asm; no body differed from retail (so no code change, only markers and one member offset). One
+natural run at this commit (`flyingpirate.py` + `flyingpirate_sandfalls.con`, sandfalls, 3600 f:
+`caught/reach-stub: 0`) covers the five marked rows; the rest are blocked by shipped data, and the
+forced fp2 runs cannot move them (see the tables above).
+
+Marked (5, all objdiff 100% - matched bodies need no coverage run; each line also ran in the gcov
+build):
+
+| fn | evidence |
+|---|---|
+| 0 ~CFlyingPirate | 100%; D0/D2 both 2/2 lines. The asm is the member chain: 0x98 `__dt__rstl::reserved_vector<TLockedToken<CGenDescription>,3>`, 0xa8 `__dt__6CTokenFv`, ... down to the vtable store at 0x34 and the 0x24 null-this guard |
+| 470 GetSearchPath | 100%; `0x470 addi r3,r3,0x970 / blr` = `&mPathFindSearch`, so that member is at 0x970 (now in the header) |
+| 478 IsListening | 100%; `0x478 li r3,0x1 / blr` = `return true` |
+| 480 GetGravityConstant | 100%; `0x484 extrwi. r0,r0,1,26` (xbb8_20 = mIsAquaPirate) picks `skAquaGravityConstant` 5.0f (0x490) or `skGravityConstant` 50.0f (0x49c). gcov: the aqua arm is untaken here (no aqua pirate in the sandfalls) |
+| 1228 ~SLdrFlyingPirate | 100%; 0x1250/0x125c/0x1268 the three SLdrDamageInfo dtors, then ActorParameters, PatternedAITypedef, EditorProperties and the 0x1294 delete-flag guard - reverse declaration order |
+
+Left unmarked (6):
+
+| fn | untaken (this run's gcov lines) |
+|---|---|
+| 5D4 LoadFlyingPirate | 2041:1/2 (`if (!modelData) return nullptr`: LdrToModelData has to fail), 2050:0/2, 2050:1/2 (the CFlyingPirateData argument list); objdiff 99.4 |
+| 15DC Think | 28 arms (1865:0/2, 1870:0/2, 1876, 1907, 1909, 1911, 1918, 1928, 1929, 1934, 1939, 1945, 1949, 1950, 1964, 1968, 1969, 1986, 1995, 2021): the frozen/cinematic-cam/aqua/water and burst-fire branches; objdiff 99.98 |
+| 96D4 CFlyingPirate ctor | 219/220/221 (the `(mData.mType & 2) ? 4 : 3` path-find type), 273, 285, 286 (aqua/type variants); objdiff 99.93 |
+| 2738 DoUserAnimEvent | 1782:1/3 (the switch), 1784/1785 (`mIsAttackingObject` and `Token().IsLoaded()`), 1792/1795 (the `!mIsAttackingObject && mIsAquaPirate` homing arm): needs an aqua pirate that is not attacking an object; objdiff 92.1 (the inline token cache, header-side) |
+| 6040 CoverFind | 14/21 lines, 7/22 arms: the whole cover-point loop needs a `CScriptCoverPoint` in the area, and the shipped FPRT areas have none |
+| AA84 __sinit_CFlyingPirate_cpp | objdiff 100%, but it is compiler-generated from the trigger/state/code tables: no source line to put a marker on (same as the other modules' __sinit rows) |
