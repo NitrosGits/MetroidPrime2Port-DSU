@@ -20,3 +20,5 @@
 @f820 objs FlyerSwarm
 @f900 objs FlyerSwarm
 @f2200 objs FlyerSwarm
+
+# No fsm change: CFlyerSwarm (CSwarmBasics -> CActor) has no generic FSM2 state (obj prints none) - swarm family.
