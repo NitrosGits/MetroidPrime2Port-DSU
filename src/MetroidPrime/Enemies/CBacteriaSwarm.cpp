@@ -215,28 +215,35 @@ void CBacteriaSwarm::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) 
   }
 }
 
+// @ fn_6_56DC
 void CBacteriaSwarm::CreateBoid(CStateManager& mgr, int index, bool forceParticle) {
+  // 0x5758-0x57C8: world bounds, center and extent; 0x57D8/0x5804/0x5830: strict > 0.5.
   const CAABox bounds = GetBoundingBox();
   const CVector3f center = bounds.GetCenterPoint();
   const CVector3f size = bounds.GetMaxPoint() - bounds.GetMinPoint();
   const float signX = mgr.Random()->Float() > 0.5f ? 1.f : -1.f;
   const float signY = mgr.Random()->Float() > 0.5f ? 1.f : -1.f;
   const float signZ = mgr.Random()->Float() > 0.5f ? 1.f : -1.f;
+  // 0x5850-0x58B0: independent z,y,x draws, half-extent * sign * draw + center.
   const float z = 0.5f * size.GetZ() * signZ * mgr.Random()->Float() + center.GetZ();
   const float y = 0.5f * size.GetY() * signY * mgr.Random()->Float() + center.GetY();
   const float x = 0.5f * size.GetX() * signX * mgr.Random()->Float() + center.GetX();
   const CVector3f position(x, y, z);
+  // 0x58B4-0x58E0: 360 degrees * draw, degrees-to-radians, RotateZ.
   const CRelAngle angle = CRelAngle::FromDegrees(360.f * mgr.Random()->Float());
   const CMatrix3f rotation = CMatrix3f::RotateZ(angle);
   const TUniqueId waypointId = GetWaypointForState(kSS_Patrol, mgr);
+  // 0x58F0/0x5900: Patrol=0x5054524C; 0x5924-0x595C: non-null AND active (mask 0x80).
   const CScriptWaypoint* waypoint =
       TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(waypointId));
   const CTransform4f xf = (waypoint && waypoint->GetActive()) ? waypoint->GetTransform()
                                                               : CTransform4f(rotation, position);
+  // 0x597C-0x59CC: whole transform, active byte 0x81 |= 0x20, zero velocity, patrol speed.
   mBoids[index].mTransform = xf;
   mBoids[index].mActive = true;
   mBoids[index].mVelocity = CVector3f::Zero();
   mBoids[index].mSpeed = mPatrolSpeed;
+  // 0x59D4/0x59DC: generator then forceParticle; 0x5A14/0x5A20: translation, exactly one particle.
   if (mBoidParticleGenerator.get() && forceParticle) {
     mBoidParticleGenerator->SetTranslation(mBoids[index].GetTranslation());
     mBoidParticleGenerator->ForceParticleCreation(1);
@@ -470,7 +477,9 @@ void CBacteriaSwarm::AddDoorRepulsors(CStateManager& mgr) {
   }
 }
 
+// @ fn_6_3570
 void CBacteriaSwarm::Think(float dt, CStateManager& mgr) {
+  // 0x35B4/0x35DC: actor active mask 0x80; 0x35BC-0x35D4: clear patrol/pursuit 0x10/0x08.
   if (!GetActive()) {
     return;
   }
@@ -480,39 +489,47 @@ void CBacteriaSwarm::Think(float dt, CStateManager& mgr) {
     return;
   }
   SetTransformDirty();
+  // 0x35E8-0x3608: subtract dt from both cooldowns and increment think counter.
   mBoidGenCooldownTimer -= dt;
   mDamageCooldownTimer -= dt;
   ++mThinkCounter;
   const CGameArea& area = mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId());
+  // 0x3630-0x364C: phase Loaded=16 then Visible=1; non-loaded means Occluded.
   if (area.GetOcclusionState() != CGameArea::kOS_Visible) {
     if (mOccludedTimer > 0.f) {
+      // 0x365C-0x3668: strict > zero before subtract; 0x3678-0x3680: <= zero exits.
       mOccludedTimer -= dt;
     }
     if (mOccludedTimer <= 0.f) {
       return;
     }
     if (mThinkCounter & 2) {
+      // 0x3688/0x368C: PPC bit 30 = value mask 0x02, return when set.
       return;
     }
   } else {
-    mOccludedTimer = 7.f;
+    mOccludedTimer = 7.f; // 0x3694-0x369C, rodata 0x48.
   }
   UpdateParticles(dt);
   int prevLockOnIndex = mLockOnIndex;
   mLockOnIndex = GetLockOnIndex(mgr);
   UpdateLockOnBlend(prevLockOnIndex, mLockOnIndex, dt);
   const CPlayerState* playerState = mgr.GetPlayer(0)->GetPlayerState();
+  // 0x36E0/0x36EC/0x36F8: both visor enums 2 and index != -1; material ids 40,41.
   if (playerState->GetCurrentVisor() == CPlayerState::kPV_Scan &&
       playerState->GetTransitioningVisor() == CPlayerState::kPV_Scan && mLockOnIndex != -1) {
     AddMaterial(kMT_Target, kMT_Orbit, mgr);
+    // 0x3714-0x3738: last orbit position copied from the selected boid.
     mLastOrbitPosition = mBoids[mLockOnIndex].GetTranslation();
   } else {
     RemoveMaterial(kMT_Target, kMT_Orbit, mgr);
   }
+  // 0x3814-0x3834: unlimited==0 OR created<max, then cooldown<=0 (cror eq,lt,eq).
   while ((mMaxCreatedBoids == 0 || mCreatedBoids < mMaxCreatedBoids) &&
          mBoidGenCooldownTimer <= 0.f) {
     bool created = false;
     for (int i = 0; i < mBoids.size(); ++i) {
+      // 0x3770-0x37DC: first inactive slot; CreateBoid(...,true), ++created, cooldown+=1/rate.
       if (!mBoids[i].mActive) {
         CreateBoid(mgr, i, true);
         ++mCreatedBoids;
@@ -522,11 +539,13 @@ void CBacteriaSwarm::Think(float dt, CStateManager& mgr) {
       }
     }
     if (!created) {
+      // 0x37E0-0x3804: failed search still adds 1/rate and leaves creation loop only.
       mBoidGenCooldownTimer += 1.f / mBoidGenRate;
       break;
     }
   }
   UpdatePartition();
+  // 0x383C-0x3894: partition rebuilt, count=0, bounds copied; 0x39B4/0x39C8/0x39D4: 5^3.
   const CAABox bounds = GetBoundingBox();
   int count = 0;
   mAabox = GetBoundingBox();
@@ -538,14 +557,17 @@ void CBacteriaSwarm::Think(float dt, CStateManager& mgr) {
         if (boid != nullptr) {
           CAreaCollisionCache cache = GetAreaCollisionCacheForPartition(x, y, z);
           if (ShouldBuildAreaCollisionCacheForPartition(rowIndex + z * 25)) {
+            // 0x38F8-0x390C: vtable slot 0x94, build iff true (retail helper always returns 1).
             CGameCollision::BuildAreaCollisionCache(mgr, cache);
           }
           for (; boid != nullptr; boid = boid->mNext) {
+            // 0x3918-0x3948: ++count, active mask 0x20, accumulate translation.
             ++count;
             if (boid->mActive) {
               mAabox.AccumulateBounds(boid->GetTranslation());
             }
             if ((mThinkCounter & 1) == (count & 1) && boid->mActive) {
+              // 0x394C-0x3990: matching low bits AND active; UpdateBoid slot 0x80.
               UpdateBoid(cache, mgr, dt, *boid, rowIndex + z * 25);
             }
           }
@@ -554,11 +576,13 @@ void CBacteriaSwarm::Think(float dt, CStateManager& mgr) {
     }
   }
   for (CBoid* boid = mOutlierBoidList; boid != nullptr; boid = boid->mNext) {
+    // 0x39E4-0x3A34: same count/active/parity checks for outliers.
     ++count;
     if (boid->mActive) {
       mAabox.AccumulateBounds(boid->GetTranslation());
     }
     if ((mThinkCounter & 1) == (count & 1) && boid->mActive) {
+      // 0x3A38-0x3ADC: margin 1.5+(0.5+radius); bounds/cache; UpdateBoid partition=-1.
       const float margin = 1.5f + (0.5f + mBoidRadius);
       const CVector3f extent(margin, margin, margin);
       const CAABox boidBounds(boid->GetTranslation() - extent, boid->GetTranslation() + extent);
@@ -569,6 +593,7 @@ void CBacteriaSwarm::Think(float dt, CStateManager& mgr) {
   }
   UpdateSwarmAnimations(mgr, dt);
   UpdateAllBoidMovement(dt);
+  // 0x3B2C-0x3B7C: patrol 0x10; timer+=dt, >= threshold resets 0 and draws min+(max-min)*R.
   if (mAnyPatrolling) {
     mPatrolSoundTimer += dt;
     if (mPatrolSoundTimer >= mNextPatrolSoundTime) {
@@ -578,6 +603,7 @@ void CBacteriaSwarm::Think(float dt, CStateManager& mgr) {
     }
   }
   if (mAnyPursuing) {
+    // 0x3B80-0x3BD0: pursuit 0x08; identical >= threshold timer/random update.
     mPursuitSoundTimer += dt;
     if (mPursuitSoundTimer >= mNextPursuitSoundTime) {
       mPursuitSoundTimer = 0.f;
@@ -586,11 +612,13 @@ void CBacteriaSwarm::Think(float dt, CStateManager& mgr) {
     }
   }
   if (mBoidParticleGenerator.get()) {
+    // 0x3BD4-0x3C48: generator guard, aim position, min(root active count, boid count), i=0.
     const CVector3f playerPos = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
     const int particleCount =
         rstl::min_val(mBoidParticleGenerator->GetParticleCount(), int(mBoids.size()));
     for (int i = 0; i < particleCount; ++i) {
       CBoid& boid = mBoids[i];
+      // 0x3C54-0x3CC4: active 0x20; pos/prev=boid, end=0, patrol/pursuit color blend.
       if (boid.mActive) {
         CElementGen::CParticle& particle = mBoidParticleGenerator->mParticles[i];
         particle.mPos = boid.GetTranslation();
@@ -599,10 +627,12 @@ void CBacteriaSwarm::Think(float dt, CStateManager& mgr) {
         particle.mColor =
             CColor::Lerp(mPatrolColor, mPursuitColor, boid.mColorBlend / mColorChangeTime);
         const float distanceSquared = (playerPos - boid.GetTranslation()).MagSquared();
+        // 0x3CC8-0x3D48: patrol 0x10, timer==0, !pursuing 0x02, random<=weight, sound.
         if (mAnyPatrolling && mPatrolSoundTimer == 0.f && !boid.mPursuingPlayer &&
             mgr.Random()->Float() <= mPatrolSoundWeight) {
           PlayBoidSound(mPatrolSound, boid.GetTranslation(), distanceSquared);
         }
+        // 0x3D4C-0x3DCC: pursuit 0x08, timer==0, pursuing 0x02, random<=weight, sound.
         if (mAnyPursuing && mPursuitSoundTimer == 0.f && boid.mPursuingPlayer &&
             mgr.Random()->Float() <= mPursuitSoundWeight) {
           PlayBoidSound(mPursuitSound, boid.GetTranslation(), distanceSquared);
@@ -748,18 +778,22 @@ void CBacteriaSwarm::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_6_262C
 void CBacteriaSwarm::Render(const CStateManager& mgr) const {
+  // 0x2644-0x2670: destination alpha enabled only for alpha != -1.
   const int alpha = GetRenderAlphaBufferAlpha(mgr);
   if (alpha != -1) {
     gpRender->SetDestinationAlpha(alpha);
   }
-  uint drawMask = -1;
+  uint drawMask = -1; // 0x2680/0x268C; 0x2690-0x26AC: opaque flags, alpha=1.
   const CModelFlags flags(CModelFlags::kT_Opaque, 1.f);
   const uint lights = CGraphics::GetLightMask();
+  // 0x26C0-0x26EC: mask zero selects NONE/NONE, otherwise CLAMP/SPOT.
   CGX::SetChanCtrl(CGX::Channel0, GX_FALSE, GX_SRC_REG, GX_SRC_REG,
                    static_cast< GXLightID >(lights), lights ? GX_DF_CLAMP : GX_DF_NONE,
                    lights ? GX_AF_SPOT : GX_AF_NONE);
   for (int x = 0; x < 5; ++x) {
+    // 0x2700-0x284C: 5^3 partition loops, stride y=5,z=25; null heads skipped.
     int rowIndex = x;
     for (int y = 0; y < 5; ++y, rowIndex += 5) {
       for (int z = 0; z < 5; ++z) {
@@ -768,15 +802,18 @@ void CBacteriaSwarm::Render(const CStateManager& mgr) const {
         if (boid != nullptr) {
           const CAABox bounds = BoxForPosition(x, y, z, 0.f);
           if ((index & 3) == (mThinkCounter & 3)) {
+            // 0x273C/0x2770-0x2778: compare low 2 bits for software-light refresh.
             const CColor color = SoftwareLight(mgr, bounds);
             for (CBoid* it = boid; it != nullptr; it = it->mNext) {
               if (it->mActive) {
+                // 0x27AC/0x27B0: active mask 0x20; 0x27BC-0x27CC: Lerp by rodata 0.3.
                 it->mAmbientLighting = CColor::Lerp(it->mAmbientLighting, color, 0.3f);
               }
             }
           }
           for (; boid != nullptr; boid = boid->mNext) {
             if (boid->mInFrustum && boid->mActive) {
+              // 0x27E4-0x27F0: frustum mask 0x10 then active 0x20; RenderBoid slot 0x88.
               RenderBoid(boid, drawMask, flags);
             }
           }
@@ -787,14 +824,17 @@ void CBacteriaSwarm::Render(const CStateManager& mgr) const {
   CBoid* boid = mOutlierBoidList;
   int index = 0;
   for (; boid != nullptr; boid = boid->mNext) {
+    // 0x2858-0x2870: ++index, frustum 0x10 then active 0x20.
     ++index;
     if (boid->mInFrustum && boid->mActive) {
       const CVector3f pos = boid->GetTranslation();
       const CVector3f extent(mBoidRadius, mBoidRadius, mBoidRadius);
       const CAABox bounds = CAABox(pos - extent, pos + extent);
+      // 0x2874-0x28C0: boid-centered radius bounds; 0x28C8-0x2904: low-2-bit refresh.
       if ((index & 3) == (mThinkCounter & 3)) {
         const CColor color = SoftwareLight(mgr, bounds);
         if (boid->mActive) {
+          // 0x2928-0x2950: recheck active 0x20, same 0.3 Lerp.
           boid->mAmbientLighting = CColor::Lerp(boid->mAmbientLighting, color, 0.3f);
         }
       }
@@ -807,9 +847,11 @@ void CBacteriaSwarm::Render(const CStateManager& mgr) const {
   CGraphics::DisableAllLights();
 #endif
   if (mBoidParticleGenerator.get()) {
+    // 0x2984-0x299C: non-null generator Render, after DisableAllLights.
     mBoidParticleGenerator->Render();
   }
   if (alpha != -1) {
+    // 0x29A0-0x29C0: disable destination alpha under the same != -1 guard.
     gpRender->DisableDestinationAlpha();
   }
 }
