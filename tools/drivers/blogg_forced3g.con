@@ -6,4 +6,6 @@
 @f440 send u0654 Activate; send u0651 Activate; send u064d Activate; send u0649 Activate; send u0646 Activate; send u0641 Activate; send u05c5 Activate; send u05be Activate
 @f460 tp -165 32 -34
 @f1850 covdump
+@f1700 uevent u0654 1
+@f1710 uevent u0651 27
 @f1860 objs Blogg

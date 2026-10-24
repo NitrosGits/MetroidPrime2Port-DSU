@@ -17,6 +17,7 @@ GATE_SYMS = {
     'cam': 'CCameraManager::IsInCinematicCamera(',
     'onpath': 'CPathFindSearch::OnPath(',
     'start': 'CScriptTeamAiMgr::StartAttack(',
+    'canproj': 'CStateManager::CanCreateProjectile(',
 }
 AFTER_SYMS = {'base_asm': 'CPatterned::AcceptScriptMsg('}
 exec(compile(open(os.path.join(os.path.dirname(os.environ['COV_SPEC']), 'force_lib.py')).read(), 'force_lib.py', 'exec'))
@@ -368,6 +369,44 @@ def state_group():
     flush()
 
 
+def uevent_group():
+    """DoUserAnimEvent type 0 (Projectile) and 26 (ObjectDrop) by direct calls; LaunchBloggProjectile's token / limit
+    refusals by gates (only the refusing answers are forced; the accepting ones run the real projectile creation)."""
+    run('set $node = (unsigned char*)calloc(1, 512)')
+    pid = int(ev(PLID))
+    NODE = '*(CInt32POINode*)$node'
+    base = snap([T + 'mPlayerId.value', T + 'mBallGrabbed'])
+    for plid in (pid, 0xffff):
+        w(T + 'mPlayerId.value', plid)
+        for tc, cc in ((None, None), (0, None), (None, 0)):
+            if tc is not None and plid == pid:
+                continue   # ProjectileInfo()->GetProjectileSpeed() reads the token's item before Launch: SEGV with it cleared
+            g = {}
+            saved = None
+            if tc is not None:
+                # TryCache is inlined: the projectile token's bytes are zeroed (no item, no lock) and restored after
+                tk = int(ev('(long)&$t->mProjectileInfo.mWeaponDescription'))
+                n = int(ev('sizeof(TCachedToken<CWeaponDescription>)'))
+                saved = (tk, bytes(gdb.selected_inferior().read_memory(tk, n)))
+                gdb.selected_inferior().write_memory(tk, bytes(n))
+            if cc is not None:
+                g['canproj'] = (cc, [])
+            if g:
+                gates_on(g)
+            log('# DoUserAnimEvent Projectile player=%#x token-cleared=%s canproj=%s' % (plid, tc is not None, cc))
+            run('call $t->DoUserAnimEvent(*$m, %s, (EUserEventType)0, 0.016f)' % NODE)
+            gates_off(['canproj'])
+            if saved:
+                gdb.selected_inferior().write_memory(saved[0], saved[1])
+    for plid in (pid, 0xffff):
+        w(T + 'mPlayerId.value', plid)
+        w(T + 'mBallGrabbed', 1)
+        log('# DoUserAnimEvent ObjectDrop player=%#x' % plid)
+        run('call $t->DoUserAnimEvent(*$m, %s, (EUserEventType)26, 0.016f)' % NODE)
+    put(base)
+    flush()
+
+
 STATE_MSG = {'A': 0, 'U': 1, 'D': 2}
 
 
@@ -384,6 +423,8 @@ def hook():
             attack_group()
         if 'state' in which:
             state_group()
+        if 'uevent' in which:
+            uevent_group()
         gdb.execute('set $tvalid = 1')
         log('# done')
     except Exception as e:
