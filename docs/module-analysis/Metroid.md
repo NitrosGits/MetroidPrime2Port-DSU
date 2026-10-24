@@ -172,3 +172,27 @@ Forced run `tools/cov/specs/metroid_force7.py` (08_sand_casualpirates, direct ca
   Dead: CObjectList::RemoveObject nulls mEntity and unlinks the slot, AddObject links only set entities, so a linked slot is never null.
 Asm check: IsPirateValidTarget 0x470C (attached id, vtable 0x3c, hp > 0 ble), IsPlayerInFluid 0x15A8 (count, id, vtable 0x54, CScriptWater cast, aimZ < max.z),
 FindNearestTarget 0x1170 (skip self/ignore, dist < min bge, pirate then player): no deviation.
+
+## met6 lane (base 5659009c8, 2026-10-24)
+
+Specs (all on `42b935e4,08_sand_casualpirates`; rebuild and rerun every natural driver first, older gcda do not match):
+`metroid_force8.py` + `.con` (force.py `loc:` writes `metroidData.xc4_24_ = 1` for the first load: LoadMetroidAlpha builds a CBabyMetroid; u0535 becomes one and its state table is walked by `fsm`),
+`metroid_force8b.py` (force_ret CALLS from the baby's own first Think; also writes the flag with a gdb breakpoint), `metroid_force8c.py` + `.con` (force_ret CALLS from the first CMetroid::Think:
+direct calls with field writes, stubs and two spec-local gdb hooks: `$m6_t` makes `GetAnimTimeRemaining` answer 0 / 5, `$m6_p` makes `GetAttackTargetPos` answer the metroid's own position, written into xmm0/xmm1 because a
+12-byte CVector3f comes back in registers). Natural set: every `metroid_*.con` driver through `metroid_growth.py`.
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| CBabyMetroid::Generate 8C38 | 2/2 | forced (baby flag, `fsm u0535 Generate`) |
+| CBabyMetroid::Dodge 90E0 | 4/4 | forced (baby flag, `fsm u0535 Dodge` x7: the 0.5 random draw both ways) |
+| CBabyMetroid::Think 9C78 | 24/24 | forced (CALLS from its own Think: hit while seeking with a live / missing counter, dodge roll for / against / already dodging / timer short, on top of the player, hive timer; TryJoinHive and CMetroid::Think stubbed) |
+| ComputeSuckPiratePosRot 1B4C | 4/4 | forced (no target actor) |
+| ApplySeparationBehavior 40F4 | 9/10 | forced (this metroid's area id changed: every other body is in another area). Untaken: `ai == nullptr`, dead: CListeningAiList::IsQualified (GameObjectLists.cpp:29) needs `TCastToConstPtr<CPatterned>` |
+| TelegraphAttack 50BC | 22/23 | forced (state 0/1/2/3, timer, speed 0 / 2, target none / bogus / self / player, Attacked / PatternShagged stubs). Untaken: the EStateMsg switch default (three values) |
+| Generate 5CF4 | 26/27 | forced (growth energy past the explosion threshold with MassiveDeath stubbed, body state Generate / other, anim time 0 / 5 by hook, frozen, Attacked stub). Untaken: the switch default |
+| Attack 54C8 | 28/29 | forced (state Two with the player held by this metroid in another area / this area / nobody; the random source unavailable: `mRandomAvailable` written 0). Untaken: the switch default |
+| InAttackPosition 69B0 | 32/32 | forced (area mismatch, IsPlayerInFluid stub, morph state and xa40_28_ combinations, z ranges, max range, attackDelta == 0 by the `$m6_p` hook) |
+| ComputeSuckPlayerPosRot 1DB0 | 28/31 | forced (morph state 2 / 3, transition factor 0.9 / 0.1 / no duration). Untaken: the 3 default arms of the 4-value EPlayerMorphBallState switch |
+
+Header / runtime rows, objdiff 100%, marked without a run: GetSearchPath 0, IsListening 8, ~CMetroidData 918, ~SLdrMetroidAlpha CD0, RELMain 10C, RELExit E8.
+Not marked: the CMetroidData ctors 8354 / 8418, SLdrMetroidAlpha ctor D70 (55%), the unnamed REL-local helpers 3044 / 85F4 / A378 / A410 (0%: template copies), both `__sinit` rows.

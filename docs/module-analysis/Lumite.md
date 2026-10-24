@@ -68,3 +68,18 @@ Not marked, with the reason:
   The safe-zone/sunlight hop paths need a Lumite next to a lit safe zone; the tested rooms have none.
 - Dead is reached only forced (`fsm <id> Dead`, 18/23 lines): a real lethal `damage`, even with
   hp + 0.5, deletes the Lumite at once, so Dead never runs naturally in these runs.
+
+## lum1 slice (2026-10-24): coverage state, no markers added
+
+`tools/drivers/lumite_natural.py` (no `fsm` forcing; wakes inactive SafeZone/AIHint, places the player at 4..45 m, small damages;
+`MP2_GODMODE=1`, areas 0a_sand_hall, 0j_sand_hall_dark, 02_sand_sandfalls layer 5) reaches the safe-zone, sunlight and hop code
+that the state-cycling driver never did. Merged with the older runs, every unmarked function still has at least one untaken arm:
+
+- Closest: DeliverCommand 1389:1/2; Think 229:1/2, 251:3/6; StickToSurface 267:0/2; UpdateSunlight 298:1/2, 343:2/4, 350:0/2;
+  IsTouchingSunTrigger 383:1/4, 383:3/4, 390:1/2; CanAttack 679:1/2; CanTaunt 715:0/2; ResetAttackTimer 775:1/2; FacingHint 748:1/2;
+  RandomVector 808:0/2; Taunt 878:3/4; TurnTowards 900:3/4; Start/EndTeamAction 644:0/2, 651:0/2; ClearLineOfFire 731:1/2, 734:3/4;
+  LoadLumite 1334:1/2, 1339:0/2, 1343:0/2; PreRender 421:0/2; SpawnZoneImpact 408:3/4, 412:0/2.
+- Larger: CollidedWith, JoinTeam/QuitTeam/GetTeamRole, ReadyToMove, Hop, SelectHopTarget, TrySunlightHop, FindSafeZone, ChooseHop,
+  BuildHopCandidates, Dead (dark/annihilator death arms), DamageSafeZoneOccupant 401.
+- Dead by policy: ctor 179:0/2, 179:1/2 (cleanup edges).
+- Next: a force spec (`mSurface.mKind=2`, `mZoneId`, team/death-weapon members) for the lists above, then asm check per function.

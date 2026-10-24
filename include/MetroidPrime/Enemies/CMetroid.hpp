@@ -12,6 +12,7 @@ class CStateManager;
 
 // Echoes layout recovered from the Metroid REL copy constructor (0xC8 bytes). Member names follow
 // the generated SLdrMetroidAlpha record where it has one.
+// @ fn_40_918 (implicit dtor, objdiff 100%)
 class CMetroidData {
 public:
   CMetroidData(const CDamageVulnerability& frozenVulnerability,
@@ -93,11 +94,13 @@ public:
   // CAi
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;
   void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
+  // @ fn_40_8
   bool IsListening() const override { return true; }
   CVector3f GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                       const CVector3f& aimPos) const override;
 
   // CPatterned
+  // @ fn_40_0
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   void SetupStateMachine(CStateManager& mgr) override;
   bool CanBeIngPossessed(CStateManager& mgr) const override;

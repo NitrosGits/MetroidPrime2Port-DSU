@@ -22,6 +22,7 @@ class CElementGen;
 class CGenDescription;
 
 // Guessed class: the tunable properties of a Shrieker.
+// @ fn_69_6D08 (implicit copy ctor, objdiff 100%)
 class CShriekerData {
 public:
   CShriekerData(float detectionHeight, float rustleDetectionRadius, float popDetectionRadius,
@@ -68,6 +69,10 @@ CHECK_SIZEOF(CShriekerData, 0xdc)
 // Guessed class: a burrowed enemy that rises from the ground to shriek, fire and bite.
 class CShrieker : public CPatterned {
 public:
+#ifdef TARGET_PC
+  // Host: the console's `var <id> shr.<name> [value]` (coverage fixtures, see CShrieker.cpp).
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
+#endif
   CShrieker(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
             const CTransform4f& xf, const CModelData& modelData,
             const CPatternedInfo& patternedInfo, const CActorParameters& actorParams,
@@ -91,10 +96,12 @@ public:
 
   // CAi
   void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
+  // @ fn_69_8
   bool IsListening() const override { return true; }
 
   // CPatterned
   CProjectileInfo* ProjectileInfo() override;
+  // @ fn_69_0
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   void SetupStateMachine(CStateManager& mgr) override;
 

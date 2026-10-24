@@ -34,6 +34,9 @@
 #include "MetroidPrime/Weapons/CGameProjectile.hpp"
 #include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "REL/REL_Setup.h"
+#ifdef TARGET_PC
+#include "port_console.h"
+#endif
 #include "rstl/algorithm.hpp"
 
 static EMaterialTypes ApplyDamageSolidMaterial = kMT_Solid;
@@ -138,6 +141,7 @@ CShriekerData::CShriekerData(
 , mDodgePercentage(dodgePercentage)
 , mVisibilityChangeTime(visibilityChangeTime) {}
 
+// @ fn_69_62C0
 CShrieker::CShrieker(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      const CTransform4f& xf, const CModelData& modelData,
                      const CPatternedInfo& patternedInfo, const CActorParameters& actorParams,
@@ -211,6 +215,7 @@ void CShrieker::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_69_51E0
 void CShrieker::Think(float dt, CStateManager& mgr) {
   for (int i = 0; i < 2; ++i) {
     if (CElementGen* gen = mEffectGens[i].get()) {
@@ -239,6 +244,7 @@ void CShrieker::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
 }
 
+// @ fn_69_5988
 void CShrieker::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId senderId = msg.GetSenderId();
   const EScriptObjectMessage message = msg.GetMessage();
@@ -318,6 +324,7 @@ void CShrieker::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
 
+// @ fn_69_5024
 void CShrieker::Render(const CStateManager& mgr) const {
 #ifdef TARGET_PC
   // Retail reads player 0's state (0x150c).
@@ -363,6 +370,7 @@ const CDamageVulnerability* CShrieker::GetDamageVulnerability(const CVector3f&, 
   return GetDamageVulnerability();
 }
 
+// @ fn_69_333C
 void CShrieker::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                                 float dt) {
   float scale = 1.f;
@@ -410,6 +418,7 @@ void CShrieker::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, E
   }
 }
 
+// @ fn_69_4DA8
 void CShrieker::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   bool callBase = !mBuried;
   mKnockBackController.EnableAnimReaction(CKnockBackMgr::kAR_Hurled, !mAlive);
@@ -468,6 +477,7 @@ void CShrieker::ResetAttackTimer(CStateManager& mgr, int type) {
   }
 }
 
+// @ fn_69_146C
 void CShrieker::ApplySeparation(CStateManager& mgr) {
   CVector3f total = CVector3f::Zero();
   const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
@@ -557,6 +567,7 @@ bool CShrieker::GetHeightAboveMesh(float& height) const {
   return false;
 }
 
+// @ fn_69_1AA4
 void CShrieker::FaceTarget(CStateManager& mgr, float dt) {
   if (const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId))) {
     CVector3f direction = target->GetTranslation() - GetTranslation();
@@ -693,6 +704,7 @@ void CShrieker::DetectPlayer(CStateManager& mgr) {
   }
 }
 
+// @ fn_69_24F4
 void CShrieker::ApplyMeleeDamage(CStateManager& mgr) {
   CElementGen* gen = nullptr;
   const CDamageInfo* damage = nullptr;
@@ -740,6 +752,7 @@ void CShrieker::ApplyMeleeDamage(CStateManager& mgr) {
   }
 }
 
+// @ fn_69_3024
 bool CShrieker::IsFacingTarget(CStateManager& mgr) const {
   if (const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId))) {
     const CTransform4f lctr = GetLctrTransform(mRootSegId);
@@ -759,6 +772,7 @@ bool CShrieker::UpdateTargetPosition(CStateManager& mgr) {
   return false;
 }
 
+// @ fn_69_4970
 void CShrieker::FindTarget(CStateManager& mgr) {
   if (mTargetId == kInvalidUniqueId) {
     float bestDistance = FLT_MAX;
@@ -928,6 +942,7 @@ void CShrieker::UprootShriek(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_69_465C
 void CShrieker::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   const bool hasTarget = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId)) != nullptr;
   switch (msg) {
@@ -1149,6 +1164,7 @@ bool CShrieker::LeavePatrol(CStateManager& mgr, const CTriggerData& data) const 
   return mTargetId != kInvalidUniqueId || CPatterned::InDetectionRange(mgr, data);
 }
 
+// @ fn_69_317C
 bool CShrieker::CloseToStart(CStateManager&, const CTriggerData&) const {
   const CVector3f delta = mStartPosition - GetTranslation();
   bool result = false;
@@ -1186,6 +1202,7 @@ bool CShrieker::ShouldFire(CStateManager& mgr, const CTriggerData&) const {
   return result;
 }
 
+// @ fn_69_2D64
 bool CShrieker::ShouldMelee(CStateManager& mgr, const CTriggerData&) const {
   bool result = false;
   const CTeamAiRole* role = CScriptTeamAiMgr::GetTeamAiRole(mgr, mTeamAiMgrId, GetUniqueId());
@@ -1206,6 +1223,7 @@ bool CShrieker::ShouldMelee(CStateManager& mgr, const CTriggerData&) const {
   return result;
 }
 
+// @ fn_69_2B20
 bool CShrieker::ShouldDodge(CStateManager& mgr, const CTriggerData&) const {
   CShrieker* self = const_cast< CShrieker* >(this);
   if (mDodgeTimer <= 0.f) {
@@ -1242,6 +1260,7 @@ bool CShrieker::ShouldDodge(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_69_2A50
 bool CShrieker::InMaxRange(CStateManager& mgr, const CTriggerData&) const {
   if (const CActor* target = TCastToPtr< CActor >(mgr.ObjectById(mTargetId))) {
     const CVector3f delta = target->GetTranslation() - GetTranslation();
@@ -1275,6 +1294,7 @@ void CShrieker::DeliverCommand(EStateMsg msg, pas::EAnimationState state, const 
   }
 }
 
+// @ fn_69_154
 CEntity* LoadShrieker(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrShrieker sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrShrieker.inc"
@@ -1305,6 +1325,93 @@ CEntity* LoadShrieker(CStateManager& mgr, CInputStream& input, CEntityInfo& info
                           LdrToActorParameters(sldrThis.actorInformation), data);
 }
 
+#ifdef TARGET_PC
+// Host: `var <id> shr.<name> [value]`, the fixtures the coverage runs need for arms no shipped room takes.
+// shr.conn <n> appends a script connection (1 Patrol/Follow, 2 Entered/Increment, 3 Exited/Decrement,
+// 4 Entered/Alert, 5-7 Patrol / Entered / Exited with no message) the next AreaLoaded message reads, 0 clears them all; shr.deflect <n> adds an id to the
+// deflected missiles (1 the first live game projectile, 2 an id with no object), 0 clears; shr.radius <v/10>
+// sets the missile deflection radius; shr.sep <n> runs ApplySeparation (1 with this Shrieker moved onto
+// another Shrieker's position + 1 m, 2 where it stands, 3 with its area id changed); each answers the old value or 0.
+bool CShrieker::PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current) {
+  if (strncmp(name, "shr.", 4) != 0) {
+    return false;
+  }
+  CShrieker* shr = dynamic_cast< CShrieker* >(&ent);
+  if (shr == nullptr) {
+    return false;
+  }
+  CStateManager* mgr = PortConsole::VarManager();
+  current = 0;
+  if (strcmp(name, "shr.conn") == 0) {
+    if (value != nullptr) {
+      static const struct {
+        EScriptObjectState state;
+        EScriptObjectMessage msg;
+      } kConns[] = {{kSS_InvalidState, kSM_None}, {kSS_Patrol, kSM_Follow}, {kSS_Entered, kSM_Increment},
+                    {kSS_Exited, kSM_Decrement}, {kSS_Entered, kSM_Alert}, {kSS_Patrol, kSM_None},
+                    {kSS_Entered, kSM_None}, {kSS_Exited, kSM_None}};
+      if (*value == 0) {
+        shr->ConnectionList().clear();
+      } else if (*value > 0 && *value < 8) {
+        shr->ConnectionList().push_back(
+            SConnection(kConns[*value].state, kConns[*value].msg, kInvalidEditorId));
+      }
+    }
+    current = static_cast< int >(shr->GetConnectionList().size());
+    return true;
+  }
+  if (strcmp(name, "shr.deflect") == 0 && mgr != nullptr) {
+    if (value != nullptr) {
+      if (*value == 0) {
+        shr->mDeflectedIds.clear();
+      } else if (*value == 1) {
+        CObjectList& all = mgr->ObjectListById(kOL_All);
+        for (int i = all.GetFirstObjectIndex(); i != -1; i = all.GetNextObjectIndex(i)) {
+          if (const CGameProjectile* projectile = TCastToConstPtr< CGameProjectile >(all[i])) {
+            shr->mDeflectedIds.push_back(projectile->GetUniqueId());
+            break;
+          }
+        }
+      } else if (*value == 2) {
+        shr->mDeflectedIds.push_back(TUniqueId(63, 3)); // version 63, index 3: no object
+      }
+    }
+    current = static_cast< int >(shr->mDeflectedIds.size());
+    return true;
+  }
+  if (strcmp(name, "shr.radius") == 0) {
+    current = static_cast< int >(shr->mData.mMissileDeflectionRadius * 10.f);
+    if (value != nullptr) {
+      shr->mData.mMissileDeflectionRadius = static_cast< float >(*value) / 10.f;
+    }
+    return true;
+  }
+  if (strcmp(name, "shr.sep") == 0 && mgr != nullptr && value != nullptr) {
+    const CTransform4f saved = shr->GetTransform();
+    if (*value == 1) {
+      CObjectList& list = mgr->ObjectListById(kOL_ListeningAi);
+      for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+        if (const CShrieker* other = dynamic_cast< const CShrieker* >(list[i])) {
+          if (other != shr) {
+            shr->SetTranslation(other->GetTranslation() + CVector3f(1.f, 0.f, 0.f));
+            break;
+          }
+        }
+      }
+    }
+    const TAreaId savedArea = shr->GetCurrentAreaId();
+    if (*value == 3) {
+      shr->SetCurrentAreaId(TAreaId(savedArea.Value() + 1));
+    }
+    shr->ApplySeparation(*mgr);
+    shr->SetCurrentAreaId(savedArea);
+    shr->SetTransform(saved);
+    return true;
+  }
+  return false;
+}
+#endif
+
 #ifndef MONOLITHIC
 // @ fn_69_124
 static void SetFuncPtrs() {
@@ -1316,4 +1423,10 @@ static void SetFuncPtrs() {
 extern "C" void RELMain() { SetFuncPtrs(); }
 
 extern "C" void RELExit() { SetSShrieker_FuncPtrs(nullptr); }
+#endif
+
+#ifdef TARGET_PC
+namespace {
+const bool sShriekerConsoleVars = PortConsole::RegisterVar(&CShrieker::PortConsoleVar);
+} // namespace
 #endif

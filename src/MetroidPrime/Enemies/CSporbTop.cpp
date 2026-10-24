@@ -337,6 +337,7 @@ void CSporbTop::StartFlinch(CStateManager& mgr) {
   mStateMachine->SetState(mgr, *this, rstl::string_l("Flinch"));
 }
 
+// @ fn_76_E48
 void CSporbTop::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                 const CModelFlags& flags) const {
   const CTransform4f savedXf = GetTransform();
@@ -423,6 +424,7 @@ void CSporbTop::Death(CStateManager& mgr, const CVector3f& direction, EScriptObj
   }
 }
 
+// @ fn_76_3B8
 CEntity* LoadSporbTop(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSporbTop sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrSporbTop.inc"

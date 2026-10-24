@@ -507,6 +507,7 @@ CGrenchler::SEffectD::SEffectD(CAssetId effect)
 , mAnchorPosition(CVector3f::Zero())
 , mSplashTimer(0.f) {}
 
+// @ fn_27_11580
 CGrenchler::CGrenchler(
     TUniqueId uid, const rstl::string& name, CEntityInfo& info, const CTransform4f& xf,
     const CModelData& modelData, const CPatternedInfo& patternedInfo, CAssetId fsmId,
@@ -733,6 +734,7 @@ float CGrenchler::GetFacingAngleDiff(const CTransform4f& xf) const {
   return CVector3f::GetAngleDiff(otherForward.AsNormalized(), forward.AsNormalized());
 }
 
+// @ fn_27_FD2C
 void CGrenchler::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Activate:
@@ -972,6 +974,7 @@ float CGrenchler::GetVulnerableAngle() const {
   return mIsGrappleGuardian == true ? 0.7853982f : 1.3089969f;
 }
 
+// @ fn_27_F398
 void CGrenchler::DestroyTail(CStateManager& mgr) {
   mTailDestroyed = 1;
   mFadeActive = 0;
@@ -1320,6 +1323,7 @@ bool CGrenchler::PlayYellowHitReact(CStateManager& mgr, const CTriggerData& data
 // @ fn_27_E188
 bool CGrenchler::CanBeUnPossessed(CStateManager& mgr) const { return false; }
 
+// @ fn_27_DA78
 void CGrenchler::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
   CVector3f target = GetTargetPosition(mgr);
   if (mIsGrappleGuardian == true) {
@@ -1601,6 +1605,7 @@ bool CGrenchler::IsWadingInWater(CStateManager& mgr) {
 // @ fn_27_D10C
 void CGrenchler::FluidFXThink(EFluidState state, CScriptWater& water, CStateManager& mgr) {}
 
+// @ fn_27_C2EC
 void CGrenchler::UpdateEffects(float dt, CStateManager& mgr) {
   const float waterHeight = GetWaterSurfaceHeight(mgr);
   if (mEffectD.mWaterSplash.mGen.get() != nullptr) {
@@ -1853,6 +1858,7 @@ void CGrenchler::ThinkBoneTracking(float dt, CStateManager& mgr) {
   mBoneTracking.Think(dt);
 }
 
+// @ fn_27_BB80
 void CGrenchler::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
   PreRenderBoneTracking(mgr);
@@ -1951,6 +1957,7 @@ void CGrenchler::SetupStateMachineHelper(CStateManager& mgr) {
   mStateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_27_B1F4
 void CGrenchler::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     UnmarkPathRegion(mgr);
@@ -2527,6 +2534,7 @@ void CGrenchler::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   }
 }
 
+// @ fn_27_9018
 void CGrenchler::Jump(CStateManager& mgr, EStateMsg msg, float) {
   SetAttackState(kGA_Jump, msg);
   switch (msg) {
@@ -3172,6 +3180,7 @@ void CGrenchler::TurnToPlayer(CStateManager& mgr, float dt, float turnSpeed) {
   RotateToPoint(mgr.GetPlayer(0)->GetTranslation(), dt, turnSpeed);
 }
 
+// @ fn_27_6358
 void CGrenchler::IssueDeathBodyCommand(CStateManager& mgr, const CVector3f& direction) {
   if (mSubmerged == true) {
     BodyController()->SetLocomotionType(pas::kLT_Internal9);
@@ -3413,6 +3422,7 @@ CVector3f CGrenchler::GetManeuverTarget(CStateManager& mgr) const {
   return bestHint->GetTranslation();
 }
 
+// @ fn_27_533C
 void CGrenchler::Maneuver(CStateManager& mgr, EStateMsg msg, float dt) {
   if (mIsGrappleGuardian == true) {
     return;
@@ -3531,6 +3541,7 @@ void CGrenchler::SReflectInfo::Reset() {
   mJumpPosition = mLandingPosition;
 }
 
+// @ fn_27_4AA4
 bool CGrenchler::FindJumpTarget(CStateManager& mgr, bool ignoreRange) {
   mReflectInfo.Reset();
   mReflectInfo.mLandingPosition = GetTranslation();
@@ -3709,6 +3720,7 @@ bool CGrenchler::AttackPatternOver(CStateManager&, const CTriggerData&) const {
   return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
+// @ fn_27_425C
 void CGrenchler::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   bool submerged = IsDeeplySubmerged(mgr);
   if (msg == kStateMsg_Activate || mSubmerged != submerged) {
@@ -3913,6 +3925,7 @@ void CGrenchler::GrappleLoop(CStateManager& mgr, EStateMsg msg, float dt) {
   BodyController()->CommandMgr().ClearLocomotionCmds();
 }
 
+// @ fn_27_32C4
 void CGrenchler::UpdateBeamTrace(CStateManager& mgr) {
   static const CMaterialFilter skSolidFilter = CMaterialFilter::MakeIncludeExclude(
       CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor));
@@ -4086,6 +4099,7 @@ void CGrenchler::GrappleStruggle(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_2A78
 void CGrenchler::PullPlayer(float dt, CStateManager& mgr, const CVector3f& targetPos) {
   CPlayer* player = mgr.GetPlayer(0);
   CVector3f facing = player->GetTransform().GetForward();
@@ -4115,6 +4129,7 @@ void CGrenchler::PullPlayer(float dt, CStateManager& mgr, const CVector3f& targe
   }
 }
 
+// @ fn_27_24A8
 void CGrenchler::GrapplePull(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(kGA_GrapplePull, msg);
   BodyController()->SetLocomotionType(pas::kLT_Internal12);
@@ -4394,6 +4409,7 @@ void CGrenchler::OnScanStateChange(EScanState state, CStateManager& mgr) {
   CActor::OnScanStateChange(state, mgr);
 }
 
+// @ fn_27_177C
 void CGrenchler::PreRenderAllViewports(CStateManager& mgr) {
   CPatterned::PreRenderAllViewports(mgr);
   if (mIsGrappleGuardian == 1 && mCollisionManager.get()) {
@@ -4423,6 +4439,7 @@ CAABox CGrenchler::GetSortingBounds(const CStateManager& mgr) const {
   return *mGuardianBounds;
 }
 
+// @ fn_27_0168
 CEntity* LoadGrenchler(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrGrenchler sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrGrenchler.inc"
@@ -4451,7 +4468,15 @@ CEntity* LoadGrenchler(CStateManager& mgr, CInputStream& input, CEntityInfo& inf
       sldrThis.tail.character_index, sldrThis.tail.initial_anim,
       sldrThis.tailWhenUnderwater.initial_anim, sldrThis.taillessModel, sldrThis.taillessSkinRules,
       sldrThis.tail_Dark.ancs, sldrThis.tail_Dark.character_index, sldrThis.tail_Dark.initial_anim,
+#ifdef TARGET_PC
+      // Retail passes the light underwater anim twice: 0xCB8 `lwz r26, 0xa08(r1)` (tailWhenUnderwater
+      // .initial_anim) is stored at 0xD84 (`stw r26, 0x20(r1)`, the tailWhenUnderwater argument) and again
+      // at 0xDB0 (`stw r26, 0x38(r1)`, the tailWhenUnderwaterDark argument); 0xa28 (tailWhenUnderwater_Dark
+      // .initial_anim) is never read.
+      sldrThis.tailWhenUnderwater.initial_anim, sldrThis.taillessModel_Dark,
+#else
       sldrThis.tailWhenUnderwater_Dark.initial_anim, sldrThis.taillessModel_Dark,
+#endif
       sldrThis.taillessSkinRules_Dark, tailHitSound, tailDestroyedSound,
       sldrThis.biteAttackMaxPause, sldrThis.biteAttackDamageRadius,
       LdrToDamageInfo(sldrThis.biteDamage), LdrToDamageInfo(sldrThis.beamDamage),
@@ -4823,6 +4848,326 @@ bool CGrenchler::PortConsoleVar(CEntity& ent, const char* name, const int* value
       }
     }
     current = gren->mPlayerGrabbed ? 1 : 0;
+    return true;
+  }
+  // gren6 (FollowAttackPattern 425C, FindJumpTarget 4AA4): `gren.fap <n>` and `gren.jt <n>` build
+  // scripted fixtures (waypoints, AI waypoints, jump points with editor ids), run the body and delete
+  // them again; the result is a bit string in `current`.
+  // fap 1 no attack connection (Activate, Update with the body in Jump, Deactivate, msg 3);
+  // 2 plain waypoint ahead; 3 plain waypoint behind; 4 AI waypoint, body in Jump, no arrived/next
+  // link; 5 AI waypoint with the link; 6 AI waypoint, body not in Jump; 7 Update with mSubmerged
+  // flipped first. jt 1 ignoreRange; 2 plain; 3 self submerged; 4 frustrated; 5 jump too far;
+  // 6 cost above maxCost (a Grenchler in the water triples maxCost: the waypoint is 3D+20 behind); 7 two jump points, second dearer; 8 second cheaper; 9 inactive jump point;
+  // 10 other area; 11 no connection; 12 connection to a non-waypoint; 13 waypoint submerged, player
+  // not; 14 everything submerged; 15 player submerged only.
+  // gren8 (AcceptScriptMsg FD2C): pokes for the members a message arm reads, `var <id> gren.<name> <v>`; each answers
+  // the old value. gren.curaction sets mCurrentAction (12 landing, 8 grapple, 17 ...), gren.fadeactive mFadeActive,
+  // gren.tailtime 1 stamps mTailDestroyedTime now / 0 long ago, gren.alive mAlive, gren.landed bit mask (1 mLanded,
+  // 2 x1c_5_), gren.team 0 no team manager id / 2 a valid one (this Grenchler's id), gren.cm 0 detaches the collision manager (kept
+  // aside) / 1 puts it back, gren.tailflag sets mTailDestroyed raw, gren.fitems 1 sets mHasHealthBar and mIsGrappleGuardian for the Activate arm (restore 0).
+  if (strncmp(name, "gren.", 5) == 0 && (strcmp(name, "gren.curaction") == 0 || strcmp(name, "gren.fadeactive") == 0 ||
+                                           strcmp(name, "gren.tailtime") == 0 || strcmp(name, "gren.alive") == 0 ||
+                                           strcmp(name, "gren.landed") == 0 || strcmp(name, "gren.team") == 0 ||
+                                           strcmp(name, "gren.cm") == 0 || strcmp(name, "gren.healthbar") == 0 ||
+                                           strcmp(name, "gren.tailflag") == 0 || strcmp(name, "gren.damagewait") == 0)) {
+    static CCollisionActorManager* sAsideCm = nullptr;
+    current = 0;
+    if (strcmp(name, "gren.curaction") == 0) {
+      current = static_cast< int >(gren->mCurrentAction);
+      if (value != nullptr) {
+        gren->mCurrentAction = static_cast< EAction >(*value);
+      }
+    } else if (strcmp(name, "gren.fadeactive") == 0) {
+      current = gren->mFadeActive;
+      if (value != nullptr) {
+        gren->mFadeActive = static_cast< uchar >(*value);
+      }
+    } else if (strcmp(name, "gren.tailtime") == 0) {
+      if (value != nullptr) {
+        gren->mTailDestroyedTime = *value != 0 ? gren->mElapsedTime : -1000.f;
+      }
+    } else if (strcmp(name, "gren.alive") == 0) {
+      current = gren->mAlive ? 1 : 0;
+      if (value != nullptr) {
+        gren->mAlive = *value != 0;
+      }
+    } else if (strcmp(name, "gren.landed") == 0) {
+      current = (gren->mReflectInfo.mLanded ? 1 : 0) | (gren->mReflectInfo.x1c_5_ ? 2 : 0);
+      if (value != nullptr) {
+        gren->mReflectInfo.mLanded = (*value & 1) != 0;
+        gren->mReflectInfo.x1c_5_ = (*value & 2) != 0;
+      }
+    } else if (strcmp(name, "gren.team") == 0) {
+      current = gren->mTeamAiMgrId == kInvalidUniqueId ? 0 : 1;
+      if (value != nullptr && *value == 0) {
+        gren->mTeamAiMgrId = kInvalidUniqueId;
+      } else if (value != nullptr && *value == 2) {
+        gren->mTeamAiMgrId = gren->GetUniqueId(); // any valid id: AreaLoaded keeps it
+      }
+    } else if (strcmp(name, "gren.cm") == 0) {
+      current = gren->mCollisionManager.get() != nullptr ? 1 : 0;
+      if (value != nullptr && *value == 0 && gren->mCollisionManager.get() != nullptr) {
+        sAsideCm = gren->mCollisionManager.get();
+        gren->mCollisionManager.release();
+      } else if (value != nullptr && *value != 0 && sAsideCm != nullptr) {
+        gren->mCollisionManager = sAsideCm;
+        sAsideCm = nullptr;
+      }
+    } else if (strcmp(name, "gren.damagewait") == 0) {
+      // mCurDamageRemTime := value / 10 s (HitObject damages the player only once it is <= 0)
+      current = static_cast< int >(gren->mCurDamageRemTime * 10.f);
+      if (value != nullptr) {
+        gren->mCurDamageRemTime = static_cast< float >(*value) / 10.f;
+      }
+    } else if (strcmp(name, "gren.tailflag") == 0) {
+      // mTailDestroyed itself (0 intact / 1 destroyed), without DestroyTail's side effects
+      current = gren->mTailDestroyed;
+      if (value != nullptr) {
+        gren->mTailDestroyed = *value;
+      }
+    } else if (strcmp(name, "gren.healthbar") == 0) {
+      current = gren->mHasHealthBar ? 1 : 0;
+      if (value != nullptr) {
+        gren->mHasHealthBar = *value != 0;
+      }
+    }
+    return true;
+  }
+  // gren8: `gren.sendmsg <m*100 + a*10 + w>` delivers Damage (m 1), ResistedDamage (m 2) or HitObject (m 3) to this
+  // Grenchler from its collision actor index a (0 body, 5/6 crystals, see skCollisionActors), after setting that
+  // actor's last-touched object by a ReflectedDamage message from: w 0 nothing, 1 a live weapon this Grenchler owns
+  // (its electric beam projectile), 2 a live weapon the player owns, 3 the player itself. Answers -1 when the
+  // weapon or actor does not exist, else 0.
+  if (strcmp(name, "gren.sendmsg") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    current = -1;
+    if (value != nullptr && mgr != nullptr && gren->mCollisionManager.get() != nullptr) {
+      const int m = *value / 100, a = (*value / 10) % 10, w = *value % 10;
+      const TUniqueId actorId =
+          gren->mCollisionManager->GetCollisionDescFromIndex(static_cast< uint >(a)).GetCollisionActorId();
+      TUniqueId touched = kInvalidUniqueId;
+      bool found = w == 0;
+      if (w == 3) {
+        touched = mgr->GetPlayer(0)->GetUniqueId();
+        found = true;
+      } else if (w == 1 || w == 2) {
+        CObjectList& all = mgr->ObjectListById(kOL_All);
+        for (int i = all.GetFirstObjectIndex(); i != -1 && !found; i = all.GetNextObjectIndex(i)) {
+          if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(all[i])) {
+            const bool playerOwned = weapon->GetOwnerId() == mgr->GetPlayer(0)->GetUniqueId();
+            if ((w == 2) == playerOwned && weapon->GetOwnerId() != kInvalidUniqueId &&
+                (w == 2 || weapon->GetOwnerId() == gren->GetUniqueId())) {
+              touched = weapon->GetUniqueId();
+              found = true;
+            }
+          }
+        }
+      }
+      if (found && mgr->GetObjectById(actorId) != nullptr) {
+        if (touched != kInvalidUniqueId) {
+          mgr->DeliverScriptMsg(CScriptMsg(touched, actorId, kSM_ReflectedDamage));
+        }
+        mgr->DeliverScriptMsg(CScriptMsg(actorId, gren->GetUniqueId(),
+                                         m == 1 ? kSM_Damage : m == 2 ? kSM_ResistedDamage : kSM_HitObject));
+        current = 0;
+      }
+    }
+    return true;
+  }
+  if (strcmp(name, "gren.fap") == 0 || strcmp(name, "gren.jt") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    current = -1;
+    if (value == nullptr || mgr == nullptr) {
+      return true;
+    }
+    static uint nextEditor = 0x01F60000;
+    const bool fap = strcmp(name, "gren.fap") == 0;
+    const int n = *value;
+    const TAreaId area = gren->GetCurrentAreaId();
+    CPlayer* player = mgr->GetPlayer(0);
+    const CVector3f g = gren->GetTranslation();
+    CVector3f u = player->GetTranslation() - g;
+    if (u.CanBeNormalized()) {
+      u.Normalize();
+    } else {
+      u = CVector3f(1.f, 0.f, 0.f);
+    }
+    const float dist = (player->GetTranslation() - g).Magnitude();
+    rstl::vector< TUniqueId > made;
+    CScriptWater* water = nullptr;
+    {
+      CObjectList& all = mgr->ObjectListById(kOL_All);
+      for (int i = all.GetFirstObjectIndex(); i != -1; i = all.GetNextObjectIndex(i)) {
+        CScriptWater* w = TCastToPtr< CScriptWater >(all[i]);
+        if (w != nullptr) {
+          water = w;
+          break;
+        }
+      }
+    }
+    auto addWaypoint = [&](const CVector3f& pos, bool ai, const CVector3f* nextPos,
+                           TEditorId& eidOut) -> CEntity* {
+      // an arrived/next link from the waypoint when nextPos is given
+      rstl::vector< SConnection > conns;
+      TEditorId nextId(nextEditor++);
+      CScriptWaypoint* next = nullptr;
+      if (nextPos != nullptr) {
+        conns.push_back(SConnection(kSS_Arrived, kSM_Next, nextId));
+        next = rs_new CScriptWaypoint(mgr->AllocateUniqueId(), rstl::string_l("gren6 next"),
+                                      CEntityInfo(area, CEntity::NullConnectionList, true, nextId),
+                                      CTransform4f::Translate(*nextPos));
+        mgr->AddObject(next);
+        made.push_back(next->GetUniqueId());
+      }
+      eidOut = TEditorId(nextEditor++);
+      CEntity* ent = nullptr;
+      if (ai) {
+        ent = rs_new CScriptAIWaypoint(mgr->AllocateUniqueId(), rstl::string_l("gren6 aiwp"),
+                                       CEntityInfo(area, conns, true, eidOut),
+                                       CTransform4f::Translate(pos), 1.f, 0.f, 0, 0, 0);
+      } else {
+        ent = rs_new CScriptWaypoint(mgr->AllocateUniqueId(), rstl::string_l("gren6 wp"),
+                                     CEntityInfo(area, conns, true, eidOut),
+                                     CTransform4f::Translate(pos));
+      }
+      mgr->AddObject(ent);
+      made.push_back(ent->GetUniqueId());
+      return ent;
+    };
+    auto setSub = [&](CActor& actor, bool on, float* savedZ) {
+      if (water == nullptr) {
+        return;
+      }
+      if (on) {
+        CVector3f t = actor.GetTranslation();
+        *savedZ = t.GetZ();
+        t.SetZ(water->GetTriggerBoundsWR().GetMaxPoint().GetZ() - 10.f);
+        actor.SetTranslation(t);
+        actor.SetInFluid(*mgr, true, water->GetUniqueId());
+      } else {
+        actor.SetInFluid(*mgr, false, water->GetUniqueId());
+        CVector3f t = actor.GetTranslation();
+        t.SetZ(*savedZ);
+        actor.SetTranslation(t);
+      }
+    };
+    if (fap) {
+      const bool prevInPosition = gren->mWaypointNavigation.IsInPosition();
+      const TUniqueId prevDest = gren->mWaypointNavigation.GetDestination();
+      const pas::EAnimationState prevBody = gren->BodyController()->GetCurrentStateId();
+      const bool prevSub = gren->mSubmerged;
+      const rstl::vector< SConnection > prevConns = gren->ConnectionList();
+      TEditorId eid(0);
+      CEntity* wp = nullptr;
+      if (n == 2) {
+        wp = addWaypoint(g + gren->GetTransform().GetForward() * 5.f, false, nullptr, eid);
+      } else if (n == 3) {
+        wp = addWaypoint(g - gren->GetTransform().GetForward() * 5.f, false, nullptr, eid);
+      } else if (n >= 4) {
+        const CVector3f nextPos = g + CVector3f(0.f, 8.f, 0.f);
+        wp = addWaypoint(g + gren->GetTransform().GetForward() * 5.f, true,
+                         n == 5 ? &nextPos : nullptr, eid);
+      }
+      if (wp != nullptr) {
+        gren->ConnectionList().push_back(SConnection(kSS_Attack, kSM_Follow, eid));
+      }
+      int bits = 0;
+      gren->FollowAttackPattern(*mgr, kStateMsg_Activate, 0.016f);
+      bits |= gren->mWaypointNavigation.IsInPosition() ? 1 : 0;
+      bits |= gren->mWaypointNavigation.GetDestination() != kInvalidUniqueId ? 2 : 0;
+      if (n != 6) {
+        gren->BodyController()->BodyStateInfo().SetState(pas::kAS_Jump);
+      }
+      if (n == 7) {
+        gren->mSubmerged = !gren->IsDeeplySubmerged(*mgr);
+      }
+      gren->FollowAttackPattern(*mgr, kStateMsg_Update, 0.016f);
+      bits |= gren->mSubmerged == prevSub ? 0 : 4;
+      if (n == 1) {
+        gren->FollowAttackPattern(*mgr, kStateMsg_Deactivate, 0.016f);
+        gren->FollowAttackPattern(*mgr, static_cast< EStateMsg >(3), 0.016f);
+      }
+      gren->BodyController()->BodyStateInfo().SetState(prevBody);
+      gren->mSubmerged = prevSub;
+      gren->mWaypointNavigation.SetDestination(prevDest);
+      gren->mWaypointNavigation.SetInPosition(prevInPosition);
+      gren->ConnectionList() = prevConns;
+      current = bits;
+    } else {
+      // Geometry (u = unit vector from this Grenchler to the player, D the distance, D >= 20): jump
+      // point at 1 along u (jd 1), waypoint 4 short of the player (td 4), so the cost is
+      // 0.3 * (D - 5) + 5, below maxCost = D and past the end check.
+      float savedGz = 0.f, savedPz = 0.f, savedWz = 0.f;
+      if (n == 3 || n == 14) {
+        setSub(*gren, true, &savedGz);
+      }
+      if (n == 15 || n == 14) {
+        setSub(*player, true, &savedPz);
+      }
+      const CVector3f g2 = gren->GetTranslation();
+      CVector3f u2 = player->GetTranslation() - g2;
+      if (u2.CanBeNormalized()) {
+        u2.Normalize();
+      } else {
+        u2 = CVector3f(1.f, 0.f, 0.f);
+      }
+      const CVector3f jPos = g2 + u2 * (n == 5 ? 8.f : 1.f);
+      const CVector3f wPos =
+          n == 6 ? g2 - u2 * (3.f * dist + 20.f) : (player->GetTranslation() - u2 * 4.f);
+      const float prevBlocked = gren->mPathBlockedTime;
+      auto addJump = [&](const CVector3f& pos, const CVector3f& wp, int mode) {
+        TEditorId weid(0);
+        TEditorId jeid(nextEditor++);
+        rstl::vector< SConnection > conns;
+        if (mode != 3) {
+          CEntity* w = nullptr;
+          if (mode == 4) {
+            // an AI hint carries the editor id: a valid object that is no CScriptWaypoint
+            weid = TEditorId(nextEditor++);
+            w = rs_new CScriptAIHint(mgr->AllocateUniqueId(), rstl::string_l("gren6 hint"),
+                                     CEntityInfo(area, CEntity::NullConnectionList, true, weid),
+                                     CTransform4f::Translate(wp), CScriptAIHint::kHT_Maneuver, 10.f,
+                                     0.f, 0.f, 0.f);
+            mgr->AddObject(w);
+            made.push_back(w->GetUniqueId());
+          } else {
+            w = addWaypoint(wp, false, nullptr, weid);
+            if (n == 13 || n == 14) {
+              setSub(*static_cast< CActor* >(w), true, &savedWz);
+            }
+          }
+          conns.push_back(SConnection(kSS_Arrived, kSM_Next, weid));
+        }
+        CScriptAiJumpPoint* jp = rs_new CScriptAiJumpPoint(
+            mgr->AllocateUniqueId(), rstl::string_l("gren6 jump"),
+            CEntityInfo(mode == 2 ? TAreaId(area.Value() + 1) : area, conns, mode != 1, jeid),
+            CTransform4f::Translate(pos), 3.f + n, 0);
+        mgr->AddObject(jp);
+        made.push_back(jp->GetUniqueId());
+      };
+      // mode: 0 plain, 1 inactive, 2 other area, 3 no connection, 4 connection to a non-waypoint
+      const int mode = n == 9 ? 1 : n == 10 ? 2 : n == 11 ? 3 : n == 12 ? 4 : 0;
+      addJump(jPos, wPos, mode);
+      if (n == 7) { // a second jump point, dearer: skipped by the best-cost compare
+        addJump(g2 + u2 * 4.f, wPos, 0);
+      } else if (n == 8) { // a second jump point, cheaper: replaces the first
+        addJump(g2 + u2 * 0.5f, wPos, 0);
+      }
+      gren->mPathBlockedTime = (n == 4 || n == 6 || n == 13 || n == 14) ? 2.f : 0.f;
+      const bool result = gren->FindJumpTarget(*mgr, n == 1);
+      if (n == 3 || n == 14) {
+        setSub(*gren, false, &savedGz);
+      }
+      if (n == 15 || n == 14) {
+        setSub(*player, false, &savedPz);
+      }
+      gren->mPathBlockedTime = prevBlocked;
+      current = (result ? 1 : 0) + (gren->mReflectInfo.mTargetValid ? 2 : 0) +
+                static_cast< int >(gren->mReflectInfo.mApexOffset) * 4;
+    }
+    for (size_t i = 0; i < made.size(); ++i) {
+      mgr->DeleteObjectRequest(made[i]);
+    }
     return true;
   }
   // gren6 coverage vars: field pokes and body calls for the small predicates.

@@ -237,3 +237,109 @@ Forced runs: `tools/cov/specs/grenchler_force4.py` + `grenchler_gren4_ent.con` (
 - FindJumpPoint E634: PathExists forced to 0 (FORCE_INNER, period 1); failure arm taken.
 - SEffectA 127FC / SEffectD 11FCC: invalid-asset arms forced; remaining uncovered arms are null-new/throw edges (dead).
 - CanBeShot 94 / GetSearchPath 0 / SConeVulnerability ctor 13A94: header lines, branch-free. gcov: GetSearchPath ~9000 hits, ctor 2-3 hits, CanBeShot never called (`return true;`, asm read).
+
+## gren5 evidence (branch decomp/gren5b)
+
+Marked (all arms shown, merged gcov of natural + forced runs, caught/reach-stub = 0 everywhere):
+PreRender BB80, PreRenderAllViewports 177C, PullPlayer 2A78, Maneuver 533C, Pursue DA78, DestroyTail F398, Jump 9018.
+Runs: `tools/cov/specs/grenchler_force5.py` (one CALLS group per run via `F5=<label>`; entrance room for
+non-guardian, `08_swamp_grappleguardian_dark` for guardian-only arms). Direct calls with stubbed
+callees; water uid is decimal (u0459). DestroyTail 1001:3/5 and 4/5 are `__nw` null / throw edges (dead arms).
+Not done: FollowAttackPattern (needs waypoint-navigation scenarios), LoadGrenchler, and the ctors/dtors/`__sinit`s.
+
+## gren6 lane (base 494a2ba23, 2026-10-24)
+
+Fixture vars (TARGET_PC, `PortConsoleVar`): `gren.fap <n>` builds scripted waypoints / AI waypoints with editor ids, adds an
+attack/follow connection to the Grenchler, runs FollowAttackPattern Activate+Update (+Deactivate, msg 3 for n 1) and deletes
+the fixtures; `gren.jt <n>` builds jump points + waypoints around the player (the player must be 20+ away: the driver lifts it
+44 up in the same tick) and runs FindJumpTarget. Driver `tools/cov/specs/grenchler_gren6b.con` (01_swamp_entrance, 750 frames);
+gdb arm `tools/cov/specs/grenchler_force6.py` (force_ret CALLS: GetInUse stubbed to 1 for a direct call).
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| FollowAttackPattern 425C | 20/20 | forced (gren.fap 1-7): no connection, waypoint ahead/behind (0x4388 `cror eq,lt,eq; bne` = `<= 0` sets mInPosition 0x4394), AI waypoint with / without arrived-next link, body in Jump (0x43CC cmpwi 0xd = kAS_Jump 13) or not, mSubmerged flipped, msg 2 / 3 |
+| FindJumpTarget 4AA4 | 30/30 | forced (gren.jt 1-15; 6 = waypoint 3D+20 behind: a Grenchler standing in water triples maxCost at 0x4BCC); jump point in use (0x4C58 `beq`): forced (GetInUse stub, grenchler_force6.py) |
+
+Asm checked line by line: Frustrated is vtable +0x1A8 (0xA54 vtable word 106 = fn_27_2084); xa24 bit 0x40 = mStartedSubmerged (0x4B04 rlwimi
+6,25,25), 0x20 = mTargetValid (0x4D9C rlwimi 5,26,26); x6f0 0x80 = CWaypointNavigation::mInPosition (0x4394); object list 0x838 = index 5
+kOL_AiWaypoint; cost compares `blt / bgt / bge` skip = `cost < 0 || cost > maxCost`, `cost < best` (NaN lands the same). No behaviour differences.
+
+LoadGrenchler 0168 (20/20, forced (gdb loc:) in `tools/cov/specs/grenchler_force6b.py`, driver `grenchler_gren6c.con`): the `.inc` property switch is
+covered by the natural loads; the three arms no shipped Grenchler takes are written into the loader's locals: tailDestroyedSound == -1 (0xC58 cmpwi -1),
+tailHitSound == -1 (0xC70 cmpwi -1), and the optional model's m_valid cleared at the compare after `LdrToModelData` (0xBE4 `lbz 0x2e0; cmplwi 0` -> 0xC24
+`li r3,0`, no Grenchler). The loader's `__nw` null test (0xC4C `mr.; beq`) is the usual dead arm.
+Fix (TARGET_PC): the tailWhenUnderwaterDark ctor argument is `tailWhenUnderwater.initial_anim` (0xCB8 `lwz r26,0xa08(r1)` is stored at 0xD84 -> 0x20(r1)
+and 0xDB0 -> 0x38(r1); 0xa28 = tailWhenUnderwater_Dark.initial_anim is never read). All other 55 stack-argument sources match the port's own matching build.
+
+Not marked, arms still untaken (union of every gren drivers + gren6b, build with markers on; line:arm of the gcno lines):
+UpdateBeamTrace 32C4 (99.9% objdiff): 3934:0 (direction not normalisable), 3939:1 + 3958:1 (mTraceState 1/2/3 on entry), 3971:1/3974:1 (vertical beam),
+3990:1 (hitId with no actor), 3995:0 (immune vulnerability: needs an immune dynamic solid in the beam). Plan: force_ret CALLS with a
+`CVector3f::CanBeNormalized(` stub list [0,1,1] / [1,0,1] / [1,1,0] and mTraceState writes; hitId arms need FORCE_INNER on `RayDynamicIntersection` writing `hitId`.
+GrapplePull 24A8 (95%): msg 3 default (statecall 3), CanBeNormalized false (4163), `distance > lastDistance` (4168) with GetBackwardInput > 0.1 (4169/4175)
+(needs a moving player or `$P` writes). Dead B1F4 (99.7%): 15 arms (guardian / ing-possessed / dying-state arms). UpdateEffects C2EC: 12 arms.
+IssueDeathBodyCommand 6358 (85%): 11 arms and not matching; AcceptScriptMsg FD2C (99.4%): ~48 arms. CGrenchler ctor 11580: the 60x/14 arms are
+member-init EH edges; 539:1/2 and 639:1/8 still to check. Dtors / __sinit rows not touched.
+
+## gren7 lane (base 7941a0ddf, 2026-10-24)
+
+Spec `tools/cov/specs/grenchler_force7.py` (force_ret CALLS + spec-local gdb hooks; run with `COV_GDB_SCRIPT=tools/cov/force_ret.py`, driver
+`grenchler_gren6c.con`, 01_swamp_entrance), merged with the natural + forced drivers of earlier slices.
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| UpdateBeamTrace 32C4 | 35/35 minus 2 static-init guard EH edges (`static const CMaterialFilter` x2, arm 3/4 = the init-throws edge, dead) | forced (CALLS): trace state 1 on entry; `CVector3f::CanBeNormalized` stub lists [0,1,1] (0x33B0 beam target on the horn), [1,0,1] (0x3634), [1,1,0] (0x364C); hook `$g7_mode 1` writes hitId = version-63 id after the loop rays (0x37C8 `beq`: no actor); `$g7_mode 2` hitId = this + GetVulnerability rax high half = 3 (0x385C `cmpwi 3`: immune -> state 3) |
+| GrapplePull 24A8 | 28/28 | forced (CALLS): msg 3 default; CanBeNormalized stub 0 (no pull); mLastHornPosition := player (moved away) with mBackwardInput 0 / 0.5; mLastHornPosition far with mBackwardInput 0.5; PullPlayer stubbed |
+
+Asm: UpdateBeamTrace matches (objdiff 99.9%); GrapplePull (95%): only regalloc/scheduling, an extra pair of stack stores and the const vs non-const
+`GetPlayerTargetPosition` symbol (same body); x90c_80 = mTrackPlayer (0x25FC). No behaviour differences.
+
+| IssueDeathBodyCommand 6358 | 20/20 | forced (CALLS, grenchler_force7.py): mSubmerged 1 (0x637C `cmplwi 1`: NextState 0xC, locomotion 9); mPlayDeathAnims 0 (0x63D0 bit 0x8); `CBodyController::HasBodyState` stub lists (0x63D8 state 0xE Hurled, 0x64D0 state 0 Fall); mBodyType 3 (0x63F0 `cmpwi 3` flyer -> inline CBCHurledCmd, id 0x10); `IsIngPossessed` stub (0x64E4); mPendingMassiveDeath (0x6504 bit 0x8) with `CheckConnectedObject` stub 0xFFFF / 1 (0x652C); mWaterId 459 + z -5000 (0x6554 `fcmpo; bge` skip: severity 6). The CommandMgr is Reset after each call (a delivered Hurled command crashed CBSHurled::Start: the Grenchler has no hurled animation) |
+
+IssueDeathBodyCommand objdiff (85%) is the compiler inlining `CBCHurledCmd` / `DeliverCmd`: the retail stores (cmd id 0x10 at 0x22C, -direction at 0x230-0x238, zero vector 0x23C-0x244, flag byte 0x248) are the same fields the port's ctor + `mHurled = cmd` write; the remaining diffs are vtable symbol names and stack offsets. No TARGET_PC change needed.
+
+| Dead B1F4 | 40/40 | forced (CALLS, grenchler_force7.py): entrance room: Activate not submerged (IsDeeplySubmerged 0, CPatterned::Dead stubbed) and Activate with `IsDeeplySubmerged` stubbed 1 and the surface-ring / splash generators nulled (0xB264/0xB290 `cmplwi 0`), mElectricSfx.mID set (RemoveEmitter), Update submerged + surfaced + timer past the fade time (MassiveDeath stubbed) and sinking 20 s (mWaterId 459, z -5000) before and after the fade time; guardian room (`grenchler_gren7g.con`, call at the first PreThink with a collision manager): Update with the player morphed (mMorphBallState 1) with / without a collision manager, and not morphed; `CPatterned::Dead` stubbed there (a living guardian crashes it) |
+
+Dead objdiff 99.2%: the only instruction difference is `fadds f0, f0(-3.3), f1` (0xB574) vs the port's `waterHeight - 3.3f` (bit-identical: a + (-b) == a - b); `xcc8 & 1` = mSpinSeed & 1, x90c_20 = mIsGrappleGuardian.
+
+| UpdateEffects C2EC | 87/87 | forced (CALLS, `grenchler_force7e.py`, guardian room, driver `grenchler_gren7e.con`: `gren.swoosh 3` builds the swoosh / beam-particle generators, the call runs at the first PreThink that sees them): splash / ring generators nulled; `IsWadingInWater` stubbed with dt 0 (0xC4xx `fcmpo dt, 0`); beam projectile id with no object / an inactive entity; mSoundHandle.mID 5 / 0; mTraceState 2 / 3 with mCurrentAction 0 (swoosh target = mHitPosition); `CanBeNormalized` stub 0 (particle step); mFrozen 1 (StopElectricBeam); guardian with a live electric sound handle, with tail gone and mAlive 0, and with the eye glow generator nulled. Do not run `gren.swoosh` on the non-guardian entrance Grenchlers: CElementGen ctor segfaults (no swoosh asset) |
+
+UpdateEffects objdiff 96%: scheduling / rodata hoisting only (checked the tail: `li r4,0` vs `mr r4,r31` is regalloc).
+
+## gren8 lane (base c5169d189, 2026-10-24)
+
+New `PortConsoleVar` pokes (TARGET_PC): `gren.sendmsg <m*100 + a*10 + w>` (Damage 1 / ResistedDamage 2 / HitObject 3 from collision actor index a, last-touched
+object set through a ReflectedDamage message from w: 0 none, 1 a live weapon this Grenchler owns (its electric beam projectile), 2 a live player weapon (`shoot` first,
+send a tick later), 3 the player), `gren.curaction`, `gren.fadeactive`, `gren.tailtime`, `gren.tailflag` (raw mTailDestroyed), `gren.alive`, `gren.landed`, `gren.team`
+(0 none / 2 valid), `gren.cm` (0 detach / 1 reattach the collision manager), `gren.healthbar`, `gren.damagewait`. Plain messages go through `send <id> <Msg>`.
+Drivers `grenchler_gren8.con` (08_swamp_grappleguardian_dark, guardian u052e) and `grenchler_gren8e.con` (01_swamp_entrance, non-guardian u05c4), 700 frames, merged
+with the natural drivers (rebuild first: older gcda do not match).
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| AcceptScriptMsg FD2C | 118/118 | forced (send / gren.sendmsg + pokes): Deactivate, AIUpdateDisabled, InternalMessage0 (alive/active and not), with the collision manager detached (0x10010-region `cmplwi 0`); AreaLoaded with a team id / inactive; ResistedDamage on a crystal (index 5) with a beam-projectile weapon, with the player as last touched (no weapon), flash timer / action 8 / crystal state 0 / 4 / damage over the threshold; Damage: inLanded (action 12, landed bits), fadeactive, non-guardian recent tail break, guardian with tail gone and action 17 / not 17 (0x10 `mTailDestroyed == 1 && action != 17`), weapon owned by another entity (owner != player -> base call, 0x1033C `bne .L_000107B8`), player weapon / no weapon, tail intact with tailhp 0 / 100000 (DestroyTail) and tail destroyed; HitObject as guardian / not, alive / dead, tail intact / destroyed, actions 14 / 3 / 17 |
+
+Asm: OffGround guardian returns without the base call (0xFFFC-0x1000C `b .L_000107C8`, past the `bl CPatterned::AcceptScriptMsg` at 0x107C4); the Damage `break` on a foreign
+weapon owner lands on the base call (0x1033C -> 0x107B8), skipping `SetHP(10000)`; x90c_08/x90c_40 at 0x1079C-0x107B4 are mReturnToPatrol := true / mAlerted := false
+(InternalMessage0), x90c_20 mIsGrappleGuardian. objdiff 99.4%: no behaviour difference.
+
+| CGrenchler ctor 11580 | 54/68 + 14 EH | forced (gdb `loc:` writes into LoadGrenchler's locals, `grenchler_force8.py`, entrance loads 1-3): tailDestroyedHealth -5 (`mTailHealth < 0`), 1e9 (`> HP`, clamped: the only line the natural runs missed), ingPossessionData.isAnEncounter 1 (`0x11 + 0x200` pathfinding flags), shallowWaterRing invalid (SEffectD arm). The last 14 arms are all on the closing brace (line 660): the compiler's member-initialiser unwind edges, never taken without a throw (EH policy). objdiff 89%: the optional token assignment (retail `optional_object::operator=`, upstream constructs in place, gren1 survey) and scheduling; the ctor's bitfield inits (x90c .80 mTrackPlayer, .40 mAlerted, .20 mIsGrappleGuardian, .10 mHasHealthBar, .08 mReturnToPatrol, .04 mScanned, .02 mUsingJumpPoint) match the asm clears/assigns at 0x1180C-0x11854 |
+
+Implicit dtors certified by objdiff (header markers, no run: user's 100% rule): ~SLdrGrenchler 12B0, ~SOwnedParticle 11F50, ~SDamageEffect 12168, ~SEffectB 125B8,
+~SGrappleEffect 12CE0, ~SBeamAttack 13090, ~SReflectInfo 134A4 (all 100%), ~SConeVulnerability 13C10 (99.1%: vtable symbol names only). Not certified: ~SEffectA 1138C
+(87.8%) and ~SEffectC 11494 (93.2%): retail's `addic. r0, r30, off; beq` member-presence checks sit at different member offsets than the port's (0x1c/0x10 vs 0x3c/0x4) and one member
+is destroyed with flag 0 where the port passes -1: not read through yet; SLdrGrenchler ctor 13C8 (58.5%); ~CGrenchlerTail 14F00; the two __sinit rows (static initialisers: scheduling only,
+`skAimOffset` stores, but the host runs its own static init order).
+
+### `gren.swoosh` segfault on the entrance Grenchlers: invalid fixture, not a port bug
+
+`CreateGrappleBeam` (6FD0, objdiff 100%) builds `CElementGen(gpSimplePool->GetObj('PART', mSwooshAssetId))` with no guard in retail either. `grenchler_force8b.py` logs the loader's locals:
+the three entrance Grenchlers (isGrappleGuardian 0) have grappleSwoosh = grappleBeamPart = 0xFFFFFFFF (kInvalidAssetId), the two guardian-room ones (isGrappleGuardian 1) 0x1C19C598 / 0x281FE23E.
+The null token's description dereference (`mLoadedGenDesc->mDFLG`, fault address 0x298) is the crash; retail's callers (the guardian's grapple states, CanGrapple false everywhere else) never build the beam for a
+Grenchler without the asset. `gren.swoosh` / `gren.startbeam` belong to the guardian room.
+
+## gren9 lane (base ed440706f, 2026-10-24): last dtor rows
+
+~SEffectA 1138C: retail destroys the members at 0x3c (mEyeGlow), 0x28 (mExplosion, flag 0x34), 0x1c, 0x10 (CToken x1c_/x10_) and 0x4 (mSurfaceRing): reverse declaration order, the
+same set and order as the port's; the objdiff 87.8% is where MWCC placed the `addic.` member-address checks and the token dtor flag (0 retail / -1 port: only the delete / virtual-base
+bits, CToken has neither). ~SEffectC 11494 the same (0x30 mBeamParticles, 0x24 mSwoosh, 0x14 x14_). Both marked in the header (structural check, no run). ~CGrenchlerTail 14F00: 99.6%,
+vtable symbol name only; marked in CGrenchlerTail.hpp. SLdrGrenchler ctor 13C8 (58%: ~100 property defaults, rodata labels and scheduling) and the `__sinit` rows stay unmarked.

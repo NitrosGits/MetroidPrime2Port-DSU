@@ -139,6 +139,7 @@ public:
 };
 } // namespace
 
+// @ fn_34_5E58
 CIngSpaceJumpGuardian::CIngSpaceJumpGuardian(TUniqueId uid, const rstl::string& name,
                                              const CEntityInfo& info, const CTransform4f& xf,
                                              const CModelData& modelData,
@@ -361,6 +362,7 @@ const CDamageVulnerability* CIngSpaceJumpGuardian::GetDamageVulnerability() cons
   return &CDamageVulnerability::PassThroughVulnerabilty();
 }
 
+// @ fn_34_500C
 CVector3f CIngSpaceJumpGuardian::GetAimPosition(const CStateManager& mgr, float dt) const {
   CVector3f position = CVector3f::Zero();
   if (dt > 0.f) {
@@ -511,6 +513,7 @@ bool CIngSpaceJumpGuardian::PathExists(CStateManager& mgr, const CTriggerData& d
 // @ fn_34_4B34
 void CIngSpaceJumpGuardian::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// @ fn_34_4864
 void CIngSpaceJumpGuardian::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Dead(mgr, msg, dt);
   switch (msg) {
@@ -707,6 +710,7 @@ void CIngSpaceJumpGuardian::MiniPortalAttack(CStateManager& mgr, EStateMsg msg, 
   }
 }
 
+// @ fn_34_3888
 void CIngSpaceJumpGuardian::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -733,6 +737,7 @@ void CIngSpaceJumpGuardian::PathFind(CStateManager& mgr, EStateMsg msg, float dt
   }
 }
 
+// @ fn_34_36B8
 void CIngSpaceJumpGuardian::SteerToDest(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -861,6 +866,7 @@ void CIngSpaceJumpGuardian::SetFaceWaypoint(CStateManager& mgr, float dt) {
   mFaceTarget = mWaypointNavigation.GetDestination();
 }
 
+// @ fn_34_2ED0
 void CIngSpaceJumpGuardian::ComputeJumpVelocity(CStateManager& mgr) {
   if (!mJumping && mJumpTarget != kInvalidUniqueId) {
     if (const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mJumpTarget))) {
@@ -906,6 +912,7 @@ void CIngSpaceJumpGuardian::SetupCollision(CStateManager& mgr) {
       CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor, kMT_AIPassthrough, kMT_Player)));
 }
 
+// @ fn_34_2874
 void CIngSpaceJumpGuardian::UpdateCollisionVulnerabilities(CStateManager& mgr) {
   const CHealthInfo health = *GetHealthInfo();
   for (uint i = 0; i < mCollisionManager->GetNumCollisionActors(); ++i) {
@@ -975,6 +982,7 @@ void CIngSpaceJumpGuardian::CollisionDamage(CStateManager& mgr, TUniqueId sender
   }
 }
 
+// @ fn_34_2498
 void CIngSpaceJumpGuardian::SetCollisionVulnerability(CStateManager& mgr,
                                                       const CDamageVulnerability& vulnerability) {
   for (uint i = 0; i < mCollisionManager->GetNumCollisionActors(); ++i) {
@@ -997,6 +1005,7 @@ void CIngSpaceJumpGuardian::CreateLight(CStateManager& mgr) {
   mgr.AddObject(light);
 }
 
+// @ fn_34_216C
 void CIngSpaceJumpGuardian::UpdateLight(float dt, CStateManager& mgr) {
   if (mAlive) {
     mLightIntensity = CMath::Min(1.f, mLightIntensity + dt);
@@ -1163,6 +1172,7 @@ void CIngSpaceJumpGuardian::SpawnBlobEffect(CStateManager& mgr,
   }
 }
 
+// @ fn_34_ED4
 void CIngSpaceJumpGuardian::UpdateBlob(CStateManager& mgr, float dt) {
   if (CCollisionTracker* effect = static_cast< CCollisionTracker* >(mgr.ObjectById(mBlobId))) {
     const float intensity = mBlobActive ? 1.f : 0.f;
@@ -1176,6 +1186,7 @@ void CIngSpaceJumpGuardian::UpdateBlob(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_34_170
 CEntity* LoadIngSpaceJumpGuardian(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrIngSpaceJumpGuardian sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrIngSpaceJumpGuardian.inc"

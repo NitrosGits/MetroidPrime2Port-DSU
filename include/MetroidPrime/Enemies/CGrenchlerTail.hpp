@@ -6,6 +6,7 @@
 #include "rstl/optional_object.hpp"
 
 // Severed tail of a Grenchler; it is thrown off, bounces and fades out.
+// @ fn_27_14F00 (implicit dtor, objdiff 99.6%: vtable symbol name only)
 class CGrenchlerTail : public CPhysicsActor {
 public:
   CGrenchlerTail(TUniqueId uid, TAreaId areaId, const CModelData& modelData, int animId,

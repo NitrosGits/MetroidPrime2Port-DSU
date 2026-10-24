@@ -1909,6 +1909,7 @@ void CSplinter::UpdateAlignmentMode(EStateMsg msg) {
   }
 }
 
+// @ fn_74_9344
 bool CSplinter::IsNearWall(CStateManager& mgr) const {
   if (IsMega() == true) {
     return false;
@@ -1944,6 +1945,7 @@ bool CSplinter::IsNearWall(CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_74_96C8
 float CSplinter::ScoreJump(const CVector3f& jumpPoint, const CVector3f& waypoint,
                            const CVector3f& playerPosition, bool nearWall, float weight) const {
   CVector3f jumpDelta(jumpPoint - GetTranslation());
@@ -1969,6 +1971,7 @@ float CSplinter::ScoreJump(const CVector3f& jumpPoint, const CVector3f& waypoint
   return gapDelta.Magnitude() * weight + (jumpDistance + playerDistance);
 }
 
+// @ fn_74_99BC
 rstl::pair< CScriptAiJumpPoint*, CScriptWaypoint* >
 CSplinter::FindJumpPoints(CStateManager& mgr) const {
   bool nearWall = IsNearWall(mgr);
@@ -2148,6 +2151,7 @@ bool CSplinter::CanSeePlayer(CStateManager& mgr, const CTriggerData& data) const
   return PlayerSpot(mgr, CTriggerData(0.f));
 }
 
+// @ fn_74_8A7C
 void CSplinter::JumpToPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   UpdateAlignmentMode(msg);
   switch (msg) {
@@ -2310,6 +2314,7 @@ void CSplinter::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_74_78BC
 void CSplinter::FallFromCocoon(CStateManager& mgr, EStateMsg msg, float dt) {
   mUnknown8d8 = 0.f;
   if (HasAnyLandPoints(mgr, CTriggerData(0.f)) == false) {
@@ -2414,6 +2419,7 @@ void CSplinter::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list
   CPatterned::CollidedWith(id, list, mgr);
 }
 
+// @ fn_74_A7C8
 void CSplinter::ApplyLaunchVelocity() {
   if (mJump.mIsHighJump == true) {
     return;
@@ -2435,6 +2441,7 @@ void CSplinter::ApplyLaunchVelocity() {
   mJump.mIsHighJump = true;
 }
 
+// @ fn_74_A928
 void CSplinter::ApplyAmbushVelocity(bool playerMorphed) {
   if (mJump.mIsHighJump == true) {
     return;

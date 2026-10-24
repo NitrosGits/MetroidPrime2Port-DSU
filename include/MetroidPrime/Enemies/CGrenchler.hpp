@@ -55,6 +55,7 @@ public:
   };
 
   // Guessed name; reflected-damage tracking record.
+  // @ fn_27_134A4 (SReflectInfo dtor: implicit, objdiff 100% / vtable names only)
   struct SReflectInfo {
     SReflectInfo();
     void Reset();
@@ -98,6 +99,7 @@ public:
   };
 
   // Guessed name; beam attack descriptor.
+  // @ fn_27_13090 (SBeamAttack dtor: implicit, objdiff 100% / vtable names only)
   struct SBeamAttack : SAttackBase {
     SBeamAttack(const CDamageInfo& damage, const SLdrAudioPlaybackParms& sound, float minRange,
                 float maxRange, float minPause, float maxPause, float maxAngle);
@@ -137,6 +139,7 @@ public:
   };
 
   // Guessed name; grapple effect descriptor.
+  // @ fn_27_12CE0 (SGrappleEffect dtor: implicit, objdiff 100% / vtable names only)
   struct SGrappleEffect {
     explicit SGrappleEffect(CAssetId id);
     int mEffectId;                                              // Guessed name
@@ -144,6 +147,7 @@ public:
   };
 
   // Guessed name; particle generator holder.
+  // @ fn_27_11F50 (SOwnedParticle dtor: implicit, objdiff 100% / vtable names only)
   struct SOwnedParticle {
     SOwnedParticle() {}
     explicit SOwnedParticle(CElementGen* gen) : mGen(gen) {}
@@ -151,6 +155,7 @@ public:
   };
 
   // Guessed name; surface ring, electric and beam effects.
+  // @ fn_27_1138C (SEffectA dtor: implicit; members destroyed in the retail order, objdiff 88-93%: check placement only)
   struct SEffectA {
     SEffectA(CAssetId surfaceRings, CAssetId electric, CAssetId beam, CAssetId hitFx,
              CAssetId eyeGlow);
@@ -168,6 +173,7 @@ public:
   };
 
   // Guessed name; electric effect descriptor.
+  // @ fn_27_125B8 (SEffectB dtor: implicit, objdiff 100% / vtable names only)
   struct SEffectB {
     SEffectB(CAssetId a, CAssetId b, float c);
     uchar x0_0_ : 1;
@@ -189,6 +195,7 @@ public:
   };
 
   // Guessed name; grapple beam descriptor.
+  // @ fn_27_11494 (SEffectC dtor: implicit; members destroyed in the retail order, objdiff 88-93%: check placement only)
   struct SEffectC {
     SEffectC(CAssetId swoosh, CAssetId beamPart, const CDamageInfo& damage,
              const SLdrAudioPlaybackParms& sound);
@@ -210,6 +217,7 @@ public:
   };
 
   // Guessed name; damage plus effect record.
+  // @ fn_27_12168 (SDamageEffect dtor: implicit, objdiff 100% / vtable names only)
   struct SDamageEffect {
     SDamageEffect(const CDamageInfo& damage, CAssetId effect);
     CDamageInfo mDamage;
@@ -574,6 +582,7 @@ public:
   bool IsBodyActor(TUniqueId id);
   void ResetBodyVulnerabilities(CStateManager& mgr);
   // Guessed name; weak spot in front of the head, reflective everywhere else.
+  // @ fn_27_13C10 (SConeVulnerability dtor: implicit, objdiff 100% / vtable names only)
   class SConeVulnerability : public CNonUniformVulnerability {
   public:
     // @ fn_27_13A94

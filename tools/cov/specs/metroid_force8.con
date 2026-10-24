@@ -1,0 +1,27 @@
+# met6: 08_sand_casualpirates layers 6+7 with the first loaded metroid (u0535) a CBabyMetroid (metroid_force8.py); its state table by `fsm`.
+@f300 layer 6
+@f340 layer 7
+@f400 god 1
+@f440 send u0535 Activate
+@f600 place u0535 player 6
+@f700 fsm u0535 Generate
+@f800 fsm u0535 Dodge
+@f810 fsm u0535 Dodge
+@f820 fsm u0535 Dodge
+@f830 fsm u0535 Dodge
+@f840 fsm u0535 Dodge
+@f850 fsm u0535 Dodge
+@f860 fsm u0535 Dodge
+@f900 fsm u0535 PathFind
+@f1000 fsm u0535 Attack
+@f1100 fsm u0535 ExitHive
+@f1200 fsm u0535 AbsorbEnergy
+@f1300 fsm u0535 TurnAround
+@f1400 fsm u0535 SelectTarget
+@f1500 fsm u0535 TelegraphAttack
+@f1600 fsm u0535 Patrol
+@f1700 fsm u0535 TransformIntoMetroid
+@f1800 send u0535 Deactivate
+@f1850 send u0535 Activate
+@f1900 damage u0535 5
+@f2000 status

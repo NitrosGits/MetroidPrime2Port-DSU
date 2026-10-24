@@ -1,0 +1,5 @@
+@f260 layer 2
+@f340 objs SpaceJumpGuardian
+@f400 send u051f Activate
+@f420 tp -75 -110 -8
+@f900 obj u051f

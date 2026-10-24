@@ -86,3 +86,50 @@ UpdateTargetPosition, FindTarget, InMaxRange, ShouldDodge (ray hits nothing), Sh
 ShouldMelee, PathShagged, PlayerLeashReached, LeavePatrol, CloseToStart, PathFind, ReactToDamage
 (weapon-type arms), the CShrieker ctor, LoadShrieker. Uncovered: SetTeamMemberTarget,
 GetTranslationCopy, PlayerLeavesProximity.
+
+## gren9 lane (base ed440706f, 2026-10-24)
+
+Direct-call forcing (force_ret CALLS, `tools/cov/specs/shrieker_force9.py`, driver `shrieker_force9.con`, greatbridge, 700 frames, run with
+`COV_GDB_SCRIPT=tools/cov/force_ret.py`; hook `$g9_h 1` makes GetHeightAboveMesh report 2.0) and loader-local writes (`shrieker_force9b.py`, force.py `loc:`), merged with
+`tools/drivers/shrieker_greatbridge.con` + `shrieker_forced.con` natural/forced runs (cov build; rebuild first, older gcda do not match).
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| IsFacingTarget 3024 | 2/2 | forced (mTargetId := invalid) |
+| InMaxRange 2A50 | 6/6 | forced (no target; mChasing 0/1 natural) |
+| FaceTarget 1AA4 | 14/14 | forced (no target / target = self: zero direction / player with GetHeightAboveMesh stubbed 0, 1, or 2.0 and mChasing 0/1) |
+| ShouldMelee 2D64 | 14/14 | forced (GetTeamAiRole stub null / Initial / other, StartAttack stub 0/1, team id invalid / valid, mMeleeRangeSquared 0 / 1e9, no target, timer) |
+| CloseToStart 317C | 10/10 | forced (mStartPosition moved 1000 in x / y / z / not) |
+| Think 51E0 | 20/20 | forced (mBuried 1, mShriekTriggered 0, scripted proximity / alert 0/0, 1/0, 1/1) |
+| KnockBack 4DA8 | 14/14 | forced (mAlive 0, mDeathKnockBackStarted 1; CPatterned::KnockBack stubbed) |
+| LoadShrieker 154 | 15/17 | forced (model data invalid; the 2 untaken arms are the unwind edge of the `LdrToDamageVulnerability` temporary on the `CShriekerData` call) |
+| CShrieker ctor 62C0 | 36/37 | forced (pART / meleeEffect invalid at the loader; the 1 untaken arm is the `mEffectDescs(2, ...)` vector allocation edge) |
+
+Also marked: GetSearchPath 0 / IsListening 8 (header, 100%, `return`s), the implicit CShriekerData copy ctor 6D08 (header, 100%). The asmcheck tool does not find the
+fn_69 markers of these bodies (`MISSING ... no C++ definition cites it`): its marker-to-body pairing fails on this file, the markers sit directly above each definition.
+Left unmarked, with their untaken arms: FindTarget 4970 (the `distance < bestDistance` compare inside the one-player loop, 3 arms: dead with a single player), ShouldDodge 2B20 (1 arm: a
+non-empty near list), ApplyMeleeDamage 24F4 (a non-actor in the near list), DeflectMissiles 1C2C (6), DoUserAnimEvent 333C (2), PathFind 465C (3), Render 5024 (3),
+ReactToDamage 5554 (14), AcceptScriptMsg 5988 (~15), ApplySeparation 146C (4).
+
+## shr3 lane (base 9558d7424, 2026-10-24)
+
+New TARGET_PC fixtures (`CShrieker::PortConsoleVar`, `var <id> shr.<name> [v]`): shr.conn <1-7> (script connections for AreaLoaded; 0 clears), shr.deflect <0/1/2> (deflected ids: clear / the first
+live game projectile / an id with no object), shr.radius <v/10> (missile deflection radius), shr.sep <1/2/3> (ApplySeparation: onto another Shrieker / in place / with the area id changed).
+Drivers/specs: `tools/cov/specs/shrieker_shr3.con` (greatbridge, 1700 frames), `shrieker_shr3.py` (force_ret CALLS + spec-local gdb hooks: BuildNearList results by caller, LaunchProjectile forced null,
+a Launching message on a dying launched body; run it with `--con tools/drivers/shrieker_greatbridge.con --frames 2600` so the shriek effect exists), `shrieker_shr3b.py` (pART invalid at the loader
+for every Shrieker), plus `shrieker_force9.py` / `shrieker_force9b.py` from gren9; merge with the natural gb / forced drivers (rebuild first: older gcda do not match).
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| AcceptScriptMsg 5988 | 41/41 | forced (shr.conn 1-7 + AreaLoaded; Create on an active body; Launching alive, and a CALLS direct call with mAlive 0, mDying 1, mLaunched 1) |
+| Render 5024 | 12/12 | forced (shr.deflect 1/2, shr.radius 1 / -10; echo visor on a faded body) |
+| DoUserAnimEvent 333C | 13/13 | forced (LaunchProjectile result null at its return; pART invalid at the loader: no shriek effect) |
+| ApplyMeleeDamage 24F4 | 20/20 | forced (BuildNearList from ApplyMeleeDamage returns one id with no object) |
+| ShouldDodge 2B20 | 16/16 | forced (CALLS: PathExists stub, RayCollideWorld stub 0 / 1; BuildNearList from ShouldDodge non-empty) |
+| PathFind 465C | 13/14 | forced (CALLS: no target; PathShagged stub 1). The untaken arm is the EStateMsg switch default (three values, as UprootShriek et al.) |
+| ApplySeparation 146C | 14/15 | forced (shr.sep 1 / 2 / 3). The untaken arm is `other == nullptr` (146C): dead, the list qualifier `CListeningAiList::IsQualified` (GameObjectLists.cpp:29) requires `TCastToConstPtr<CPatterned>` non-null |
+| FindTarget 4970 | 11/14 | forced (no target / id with no object / separating). The 3 untaken arms are the one-player loop's `distance < bestDistance` skip edge (retail 0x4A38 `fcmpo f31, f27(FLT_MAX); bge`) and the second-player iteration (0x4A78 `cmplw r27, mgr+0x14f8; blt`): the port has one player (mNumPlayers 1; two only in retail's split-screen game mode), distances are finite, so `distance >= FLT_MAX` never holds |
+
+Not marked: DeflectMissiles 1C2C (a Power-type shot with the combo attribute: no combo weapon in the port's console / shipped drivers; a missile exactly collinear with the centre for the
+`CanBeNormalized` arm) and ReactToDamage 5554 (weapon types other than power / dark / light / annihilator / bomb / missile for the `scale != 1` arm, the Patrol / ReturnToStart state-name arms with
+a live weapon).

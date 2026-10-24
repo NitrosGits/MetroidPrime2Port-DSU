@@ -264,6 +264,7 @@ void CSporbNeedle::CollidedWith(const TUniqueId& id, const CCollisionInfoList& l
   CPhysicsActor::CollidedWith(id, list, mgr);
 }
 
+// @ fn_76_10D24
 void CSporbNeedle::Render(const CStateManager& mgr) const {
   if (!mExploded && HasModelData()) {
     GetModelData()->Render(mgr, GetTransform(), nullptr, CModelFlags(CModelFlags::kT_Opaque, 1.f));
@@ -304,6 +305,7 @@ void CSporbNeedle::UpdateEffects(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_76_10680
 void CSporbNeedle::Explode(CStateManager& mgr, TUniqueId hitId) {
   if (mExploded) {
     return;
@@ -397,6 +399,7 @@ rstl::optional_object< CAABox > CSporbNeedle::GetTouchBounds() const {
   return GetCollisionPrimitive()->CalculateAABox(GetPrimitiveTransform());
 }
 
+// @ fn_76_FE64
 CEntity* LoadSporbNeedle(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSporbNeedle sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrSporbNeedle.inc"

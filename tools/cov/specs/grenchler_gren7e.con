@@ -1,0 +1,6 @@
+# gren7: 08_swamp_grappleguardian_dark layer 3, an electric beam + swoosh/particle generators on the guardian u052e for the UpdateEffects forcing (grenchler_force7e.py). --frames 700, --fast.
+@f300 layer 3
+@f400 god 1
+@f440 send u052e Activate; send u04fa Activate
+@f450 var u052e gren.swoosh 3
+@f600 status

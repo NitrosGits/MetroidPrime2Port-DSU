@@ -1,0 +1,31 @@
+# gren6 (lane): 01_swamp_entrance layers 4+8, u05c4 standing; FollowAttackPattern 425C / FindJumpTarget 4AA4 fixtures
+# (gren.fap / gren.jt build scripted waypoints and jump points, run the body, delete them). The player is lifted
+# 44 up in the same tick (the fixtures need the player 20+ away). --frames 900, --fast.
+@f300 layer 4
+@f340 layer 8
+@f400 god 1; give morphBall 1
+@f440 send u05c4 Activate
+@f460 tp 160 -84 26
+@f500 tp 160 -84 70; var u05c4 gren.fap 1
+@f506 tp 160 -84 70; var u05c4 gren.fap 2
+@f512 tp 160 -84 70; var u05c4 gren.fap 3
+@f518 tp 160 -84 70; var u05c4 gren.fap 4
+@f524 tp 160 -84 70; var u05c4 gren.fap 5
+@f530 tp 160 -84 70; var u05c4 gren.fap 6
+@f536 tp 160 -84 70; var u05c4 gren.fap 7
+@f542 tp 160 -84 70; var u05c4 gren.jt 1
+@f548 tp 160 -84 70; var u05c4 gren.jt 2
+@f554 tp 160 -84 70; var u05c4 gren.jt 3
+@f560 tp 160 -84 70; var u05c4 gren.jt 4
+@f566 tp 160 -84 70; var u05c4 gren.jt 5
+@f572 tp 160 -84 70; var u05c4 gren.jt 6
+@f578 tp 160 -84 70; var u05c4 gren.jt 7
+@f584 tp 160 -84 70; var u05c4 gren.jt 8
+@f590 tp 160 -84 70; var u05c4 gren.jt 9
+@f596 tp 160 -84 70; var u05c4 gren.jt 10
+@f602 tp 160 -84 70; var u05c4 gren.jt 11
+@f608 tp 160 -84 70; var u05c4 gren.jt 12
+@f614 tp 160 -84 70; var u05c4 gren.jt 13
+@f620 tp 160 -84 70; var u05c4 gren.jt 14
+@f626 tp 160 -84 70; var u05c4 gren.jt 15
+@f632 tp 160 -84 26

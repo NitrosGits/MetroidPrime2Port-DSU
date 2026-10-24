@@ -1,0 +1,5 @@
+# gren7: 08_swamp_grappleguardian_dark layer 3 for the guardian forcing (grenchler_force7.py). --frames 700, --fast.
+@f300 layer 3
+@f400 god 1
+@f440 send u052e Activate; send u04fa Activate
+@f600 status

@@ -59,6 +59,7 @@ public:
 
   // CPatterned
   CProjectileInfo* ProjectileInfo() override;
+  // @ fn_12_0 (0x8): `addi r3, r3, 0x7c0`; mPathFindSearch is the first member after CPatterned (CHECK_SIZEOF 0x7c0), so this + 0x7c0.
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   CDamageInfo GetContactDamage() const override;
   CRagDoll* GetRagDoll() const override;
