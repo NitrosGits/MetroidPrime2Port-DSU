@@ -1,0 +1,25 @@
+# shr3: greatbridge Shriekers e000900c9 (u0528), e0009007b (u0523), e00090071 (u0520), all buried at boot. --frames 1700, --fast.
+# shr.* are the TARGET_PC fixtures of CShrieker::PortConsoleVar.
+@f300 god 1; give missile 50; give echoVisor 1
+# the first one shrieks at the player: DoUserAnimEvent's projectile / effect arms (shrieker_shr3.py, shrieker_shr3b.py)
+@f320 place e000900c9 player 8
+@f330 fsm e000900c9 ShriekAttack
+# AcceptScriptMsg: script connections read by AreaLoaded, Create on an active body, Launching on a live one
+@f400 var e00090071 shr.conn 1; var e00090071 shr.conn 2; var e00090071 shr.conn 3; var e00090071 shr.conn 4; var e00090071 shr.conn 5; var e00090071 shr.conn 6; var e00090071 shr.conn 7; send e00090071 AreaLoaded; var e00090071 shr.conn 0
+@f402 send e00090071 Create; send e0009007b Create; send e0009007b Launching; send e0009007b Increment
+# ApplySeparation: onto another Shrieker, then where it stands
+@f410 var e0009007b shr.sep 1; var e0009007b shr.sep 2; var e0009007b shr.sep 3; var e00090071 shr.sep 1
+# Render: deflected ids with a live missile / with no object, radius small / negative / back (a fresh missile each time)
+@f500 shoot e0009007b missile; var e0009007b shr.deflect 2; var e0009007b shr.deflect 1; var e0009007b shr.radius 1
+@f520 var e0009007b shr.deflect 0; shoot e0009007b missile; var e0009007b shr.deflect 1; var e0009007b shr.radius -10
+@f540 var e0009007b shr.deflect 0; shoot e0009007b missile; var e0009007b shr.deflect 1; var e0009007b shr.radius 80
+@f560 var e0009007b shr.deflect 0
+# death: Launching twice (dying, then launched), faded body under the echo visor
+@f700 damage e0009007b 999 0 darkburst
+@f720 send e0009007b Launching
+@f730 send e0009007b Launching
+@f900 send e0009007b Launching
+@f950 send e0009007b Launching
+@f1100 visor echo
+@f1200 visor combat
+@f1600 status
