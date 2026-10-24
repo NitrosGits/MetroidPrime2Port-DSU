@@ -337,6 +337,7 @@ const CDamageVulnerability* CGrenchler::SConeVulnerability::GetDamageVulnerabili
   return vulnerability;
 }
 
+// @ fn_27_139D4
 bool CGrenchler::SConeVulnerability::GetCollisionResponseType(
     const CVector3f& point, const CVector3f& direction, const CWeaponMode& mode, int attributes,
     EWeaponCollisionResponseTypes& response) {
@@ -353,6 +354,7 @@ CGrenchler::SReflectInfo::SReflectInfo()
   Reset();
 }
 
+// @ fn_27_1320C
 CGrenchler::SBiteAttack::SBiteAttack(const CDamageInfo& damage, float minRange, float maxRange,
                                      float minPause, float maxPause, float damageRadius)
 : mSubmerged(false)
@@ -379,6 +381,7 @@ CGrenchler::SBeamAttack::SBeamAttack(const CDamageInfo& damage, const SLdrAudioP
 , mSoundHandle()
 , mHornXf(CTransform4f::Identity()) {}
 
+// @ fn_27_13034
 CGrenchler::SAttackBase::SAttackBase(const CDamageInfo& damage, float minRange, float maxRange,
                                      float minPause, float maxPause)
 : mDamage(damage)
@@ -387,6 +390,7 @@ CGrenchler::SAttackBase::SAttackBase(const CDamageInfo& damage, float minRange, 
 , mMinPause(minPause)
 , mMaxPause(maxPause) {}
 
+// @ fn_27_12FB4
 CGrenchler::SBurstAttack::SBurstAttack(CAssetId projectile, const CDamageInfo& damage,
                                        float minRange, float maxRange, float minPause,
                                        float maxPause, float damageRadius)
@@ -397,6 +401,7 @@ CGrenchler::SBurstAttack::SBurstAttack(CAssetId projectile, const CDamageInfo& d
 , mDamageRadius(damageRadius)
 , mLastBurstTime(-1000.f) {}
 
+// @ fn_27_12EA8
 CGrenchler::SChargeAttack::SChargeAttack(float minTimeBetweenCharges, float unknown, float minRange,
                                          float maxRange)
 : mStartPosition(CVector3f::Zero())
@@ -455,6 +460,7 @@ CGrenchler::SEffectB::SEffectB(CAssetId a, CAssetId b, float c)
   mStruggleCount = 0;
 }
 
+// @ fn_27_12430
 CGrenchler::SEffectC::SEffectC(CAssetId swoosh, CAssetId beamPart, const CDamageInfo& damage,
                                const SLdrAudioPlaybackParms& sound)
 : mTargetPosition(CVector3f::Zero())
@@ -475,6 +481,7 @@ CGrenchler::SDamageEffect::SDamageEffect(const CDamageInfo& damage, CAssetId eff
                                           gpSimplePool->GetObj(SObjectTag('PART', effect)))
                                     : rstl::optional_object< TToken< CGenDescription > >()) {}
 
+// @ fn_27_12118
 CGrenchler::SVectorTriple::SVectorTriple()
 : mEye(CVector3f::Zero()), mHorn(CVector3f::Zero()), mHead(CVector3f::Zero()) {}
 
@@ -1027,6 +1034,7 @@ bool CGrenchler::Bored(CStateManager& mgr, const CTriggerData& data) const {
   return FacingPlayer(mgr, CTriggerData(0.f)) ? mNoPathTime > mBoredThreshold : mNoPathTime > 1.f;
 }
 
+// @ fn_27_EEE0
 bool CGrenchler::ClearPathToPlayer(CStateManager& mgr, const CTriggerData&) const {
   const CVector3f target = GetTargetPosition(mgr) + CVector3f(0.f, 0.f, 0.5f);
   const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
@@ -1049,6 +1057,7 @@ bool CGrenchler::InChargeRange(CStateManager& mgr, const CTriggerData& data) con
   return InRange(mgr, mChargeAttack.mMinRange, mChargeAttack.mMaxRange);
 }
 
+// @ fn_27_EDB0
 bool CGrenchler::InBeamRange(CStateManager& mgr, const CTriggerData& data) const {
   float maxRange = mBeamAttack.mMaxRange;
   if (mNoPathTime > 2.f) {
@@ -1062,6 +1071,7 @@ bool CGrenchler::InBurstRange(CStateManager& mgr, const CTriggerData& data) cons
   return InRange(mgr, mBurstAttack.mMinRange, mBurstAttack.mMaxRange);
 }
 
+// @ fn_27_EC50
 bool CGrenchler::InBiteRange(CStateManager& mgr, const CTriggerData& data) const {
   const CVector3f target = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
   const float dx = target.GetX() - mBiteAttack.mJawXf.Get03();
@@ -1279,6 +1289,7 @@ bool CGrenchler::PlayYellowHitReact(CStateManager& mgr, const CTriggerData& data
   return mCrystalState == 4;
 }
 
+// @ fn_27_E188
 bool CGrenchler::CanBeUnPossessed(CStateManager& mgr) const { return false; }
 
 void CGrenchler::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1457,6 +1468,7 @@ void CGrenchler::Think(float dt, CStateManager& mgr) {
   UpdateTeammateScan(dt, mgr);
 }
 
+// @ fn_27_D3C4
 void CGrenchler::UpdateMovement(float dt, CStateManager& mgr) {
   const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(CMaterialList(sSolidMaterial),
                                                                      CMaterialList(sFloorMaterial));
@@ -1782,6 +1794,7 @@ CVector3f CGrenchler::GetHornTargetPosition() const {
   return mBeamAttack.mHornXf.GetTranslation();
 }
 
+// @ fn_27_BFF0
 CVector3f CGrenchler::GetPlayerTargetPosition(CStateManager& mgr) const {
   CPlayer* player = mgr.GetPlayer(0);
   CVector3f position = player->GetAimPosition(mgr, 0.f);
@@ -1854,6 +1867,7 @@ void CGrenchler::PreRenderBoneTracking(CStateManager& mgr) {
                           *BodyController());
 }
 
+// @ fn_27_B8F0
 float CGrenchler::GetWaterSurfaceHeight(CStateManager& mgr) {
   if (InFluidId() != kInvalidUniqueId) {
     mWaterId = InFluidId();
@@ -1869,6 +1883,7 @@ float CGrenchler::GetWaterSurfaceHeight(CStateManager& mgr) {
   return water->GetTriggerBoundsWR().GetMaxPoint().GetZ();
 }
 
+// @ fn_27_B824
 bool CGrenchler::IsDeeplySubmerged(CStateManager& mgr, const CActor& actor) const {
   if (actor.InFluidId() == kInvalidUniqueId) {
     return false;
@@ -1881,6 +1896,7 @@ bool CGrenchler::IsDeeplySubmerged(CStateManager& mgr, const CActor& actor) cons
   return water->GetTriggerBoundsWR().GetMaxPoint().GetZ() > actor.GetTranslation().GetZ() + 2.5f;
 }
 
+// @ fn_27_B800
 bool CGrenchler::IsDeeplySubmerged(CStateManager& mgr) const {
   return IsDeeplySubmerged(mgr, *this);
 }
@@ -2185,6 +2201,7 @@ bool CGrenchler::SlideStop(CStateManager& mgr, const CTriggerData& data) const {
   return toTarget.Magnitude() < threshold;
 }
 
+// @ fn_27_A5B8
 bool CGrenchler::SlideOver(CStateManager& mgr, const CTriggerData& data) const {
   return mSlideOver;
 }
@@ -2441,6 +2458,7 @@ void CGrenchler::TurnToJumpEnd(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_94D0
 bool CGrenchler::FacingJumpEnd(CStateManager& mgr, const CTriggerData& data) const {
   return IsFacing(mReflectInfo.mLandingPosition, M_PIF / 12.f);
 }
@@ -2508,6 +2526,7 @@ void CGrenchler::Jump(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_27_8FC0
 void CGrenchler::RestoreDefaultJointVulnerability(CStateManager& mgr) {
 #ifdef TARGET_PC
   // retail 0x8FEC: bl SetupBodyVulnerabilities
@@ -2518,6 +2537,7 @@ void CGrenchler::RestoreDefaultJointVulnerability(CStateManager& mgr) {
   mReflectInfo.mLaunched = false;
 }
 
+// @ fn_27_8FB4
 bool CGrenchler::JumpLanded(CStateManager&, const CTriggerData&) const {
   return mReflectInfo.mLanded;
 }
@@ -2914,6 +2934,7 @@ void CGrenchler::RemoveVisorEffect(CStateManager& mgr) {
   }
 }
 
+// @ fn_27_7798
 void CGrenchler::UpdateBeamTarget(CStateManager& mgr) {
   mBeamAttack.mTargetPosition = GetPlayerBeamTargetPosition(mgr);
 }
@@ -3124,10 +3145,12 @@ bool CGrenchler::PlayerSubmerged(CStateManager& mgr, const CTriggerData& data) c
   return mPlayerSubmerged;
 }
 
+// @ fn_27_6274
 const CScriptTeamAiMgr* CGrenchler::GetTeamAiMgr(const CStateManager& mgr) const {
   return TCastToConstPtr< CScriptTeamAiMgr >(mgr.GetObjectById(mTeamAiMgrId));
 }
 
+// @ fn_27_6240
 CScriptTeamAiMgr* CGrenchler::GetTeamAiMgr(CStateManager& mgr) const {
   return TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId));
 }
@@ -3492,6 +3515,7 @@ void CGrenchler::ChargeFailed(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_4978
 bool CGrenchler::TookDamage(CStateManager&, const CTriggerData&) const {
   return GetHealthInfo()->GetHP() < mChargeAttack.mStartHealth;
 }
