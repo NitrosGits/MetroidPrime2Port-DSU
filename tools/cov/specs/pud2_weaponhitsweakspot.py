@@ -23,9 +23,10 @@
 # CPuddleSpore::GetCollisionResponseType), and only while mState == kPS_Open - the arm's own
 # precondition.  A FinishBreakpoint is armed before the write; at the return the original 4 bytes are
 # written back and read back, and the function's return value ($rax) is recorded, so the skip arm is
-# evidenced by a real return and its result (true), not by the entry alone.  Any other caller or object
-# is refused and logged.  The summary fails closed on: no forced call, forced call returning false,
-# write/readback failure, unrestored obligation, unreturned call, no natural call, install failure.
+# evidenced by a real return and its OBSERVED result (true), not by the entry alone.  Any other caller or
+# object is refused and logged.  The summary fails closed on: no forced call, forced call returning false,
+# a returned call whose bool result is unreadable or not 0/1 (such a call is never evidence), write or
+# readback failure, unrestored obligation, unreturned call, no readable natural return, install failure.
 #
 # Safety correction (offline, not run): the attempted mutation is recorded BEFORE the write and is
 # restored at the return even when the write raised or its readback was unreadable/mismatched; a failed
@@ -111,7 +112,9 @@ class CallReturn(gdb.FinishBreakpoint):
                 problem('forced call: CWeaponMode restore readback %s, wanted %s'
                         % (fmt(back), fmt(orig)))
         log('call %d: returned %s (attempted_mutation=%d caller=%s state=%s type_in=%s)'
-            % (call['id'], 'true' if call['ret'] == 1 else fmt(call['ret']),
+            % (call['id'],
+               'true' if call['ret'] == 1 else ('UNREADABLE' if call['ret'] is None
+                                                else fmt(call['ret'])),
                int(call['mutation_attempted']), call['caller'], fmt(call['mstate']),
                fmt(call['type_in'])))
         return False
@@ -261,13 +264,20 @@ def summarize():
     unrestored = [c['id'] for c in forced if not c['restored']]
     if unrestored:
         problems.append('attempted mutation(s) not restored: %s' % unrestored)
+    # A returned call whose bool result could not be read (or is not 0/1) is NOT evidence: fail closed.
+    returned = [c for c in accepted if c['returned']]
+    bad_ret = [c['id'] for c in returned if c['ret'] not in (0, 1)]
+    if bad_ret:
+        problems.append('accepted call(s) returned without a readable bool result: %s '
+                        '(unreadable/invalid $rax cannot count as evidence)' % bad_ret)
     for c in forced:
-        if c['returned'] and c['ret'] is not None and c['ret'] != 1:
-            problems.append('call %d: forced call returned %s, the skip arm must return true'
-                            % (c['id'], fmt(c['ret'])))
-    natural = [c for c in accepted if c['returned'] and not c['mutation_attempted']]
+        if c['returned'] and c['ret'] != 1:
+            problems.append('call %d: forced call returned %s, the skip arm must be observed to '
+                            'return true' % (c['id'], fmt(c['ret'])))
+    natural = [c for c in returned if not c['mutation_attempted'] and c['ret'] in (0, 1)]
     if not natural:
-        problems.append('no accepted natural call returned (the base/geometric paths need one)')
+        problems.append('no accepted natural call returned a readable bool (the base/geometric paths '
+                        'need one)')
     status = 'OK' if not problems else 'FAIL'
     line = ('status=%s binary=%s installed=%d calls=%d accepted=%d refused=%d armed=%d returned=%d '
             'attempted=%d restored=%d forced_ret=%s natural=%d callers=%s states=%s types=%s reason=%s\n'

@@ -167,11 +167,16 @@ evidence above comes from the earlier fixture version and is unchanged. The corr
 - `summarize` counts **every accepted/armed call** (natural ones included) in the pending/unreturned check
   and every attempted mutation in the unrestored check; a refused (wrong caller or other spore) call is
   counted as refused only and never as completion evidence;
+- a returned call whose bool result could not be read (`$rax` unreadable) or is not 0/1 is **not evidence**:
+  the summary fails with "returned without a readable bool result", and the forced call specifically must
+  be **observed** to return true - an unreadable forced return can never pass (the earlier version's
+  `ret is not None` guard silently accepted it);
 - the mock suite (`pud2_weaponhitsweakspot_selftest.py`, offline) now also covers: successful write with a
   failed post-write readback (restored, memory exact, failure reported), a partial write followed by an
   exception (restored), a rollback that fails (memory keeps the forced value, `restored=0`), an unreturned
-  natural call, plus the earlier both-paths, wrong-caller, wrong-this, restore-mismatch, no-natural and
-  install-failure cases. 0 scenario failures.
+  natural call, an unreadable forced return and an unreadable natural return (both FAIL, exact memory and
+  counters asserted), plus the earlier both-paths, wrong-caller, wrong-this, restore-mismatch, no-natural
+  and install-failure cases. 12 scenarios, 0 failures.
 
 No frame-level identity substitution is used anywhere: the window is the caller frame's name plus the
 tracked `this`, exactly as in the boots.

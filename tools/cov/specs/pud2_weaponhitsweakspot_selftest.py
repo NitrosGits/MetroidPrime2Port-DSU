@@ -11,6 +11,8 @@ recorded BEFORE the write and always restored at the return, whatever the write 
   rollback failure      readback mismatch and the rollback write does not take; memory
                         keeps the forced value, the return restore also fails              -> FAIL, restored=0
   unreturned natural    an accepted natural call never returns                              -> FAIL
+  unreadable forced ret the forced call returns but $rax could not be read                   -> FAIL
+  unreadable natural    a natural call returns an unreadable bool                            -> FAIL
   wrong caller          same this, other caller: refused, never completion evidence         -> FAIL
   wrong this            allowed caller, other spore: refused                                -> FAIL
   restore mismatch      the write-back at the return does not take                          -> FAIL
@@ -252,6 +254,32 @@ def main():
     l = line(out)
     scenario('unreturned natural', 'status=FAIL' in l and 'accepted call(s) without a return: [2]' in l
              and 'returned=1' in l, l)
+
+    # 5b unreadable forced return: $rax could not be read, so the skip arm was never observed
+    out = tmp / 'unreadableforced'
+    g = FakeGdb(str(binary), read_fail_after_write=())
+    ns = load(g, str(out))
+    call(g, ret=None)                   # forced call, return value unreadable
+    call(g, ret=0)                      # natural call with a readable bool
+    ns['summarize']()
+    l, d = line(out), diag(out)
+    scenario('unreadable forced ret', 'status=FAIL' in l
+             and 'returned without a readable bool result: [1]' in l
+             and 'forced call returned' in l and 'forced_ret=None' in l
+             and 'restored=1' in l and g.mem[MODE] == ORIG, l)
+
+    # 5c unreadable natural return: a natural call with no readable bool is not completion evidence
+    out = tmp / 'unreadablenatural'
+    g = FakeGdb(str(binary), read_fail_after_write=())
+    ns = load(g, str(out))
+    call(g, ret=1)                      # forced call observed true
+    call(g, ret=None)                   # natural call, return value unreadable
+    ns['summarize']()
+    l = line(out)
+    scenario('unreadable natural ret', 'status=FAIL' in l
+             and 'returned without a readable bool result: [2]' in l
+             and 'no accepted natural call returned a readable bool' in l
+             and 'restored=1' in l and g.mem[MODE] == ORIG, l)
 
     # 6 same this, wrong caller
     out = tmp / 'wrongcaller'
