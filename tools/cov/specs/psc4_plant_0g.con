@@ -1,0 +1,11 @@
+# Torvus Bog 0g_swamp_hall layer 3: CPlantScarabSwarm e0c1e00b6 (the uid in `obj` varies per boot).
+# psc4: god-mode player stands beside the swarm so real boids take attack slots (the fixture needs a
+# real slot-0 owner), shifts position once, and reports.  1200 frames, fast.
+@f220 layer 3
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; fastmorph 1
+@f380 send e001e00b6 Activate
+@f420 tp -153.0 -66.0 37.0
+@f600 obj e001e00b6
+@f800 tp -150.5 -67.5 36.0
+@f1000 obj e001e00b6
+@f1190 obj e001e00b6
