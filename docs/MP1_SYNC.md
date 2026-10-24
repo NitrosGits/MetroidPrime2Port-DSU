@@ -53,6 +53,32 @@ the work list.
    suit colours, mods/texture-pack loader, update check, Android touch layout editor additions,
    quick resume.
 
+### MP1 after 174975c2c (to `3dde164eb`, 2026-10-25, 172 commits)
+
+About 120 are Remastered/HDR, Dread Samus import or third-person camera (not portable). The rest:
+
+9. **Follow-ups to merged packages** (small, low risk): dynamic resolution UI rework and review
+   fixes (`5cf4ac1f4`, `429fdb7bf`, `278f7923c`, issue #186); Remap Presets button (`ffaa3d4ab`,
+   #196); Morph Ball binding rows split from gameplay, touch bindings only where they work
+   (`7d8840bb4`, `7beb75226`, `3d1f7cbf6`, `9c2baa5e4`, `4b04a4a61`, #167) and the Android Morph
+   Ball touch page (`2034083d7`); lock-on free aim with and without pointer aim (`83ff2ecba`,
+   `1881b35d4`, `1b414b923`, #188; extends inp1's empty-lock path).
+10. **Aurora/pipelines**: failed pipeline reads as unavailable (`8e81db43e`); lazy pipelines kept
+    until memory runs short (`c401d338d`); per-context pipeline use recorded and an area's pipelines
+    prefetched as it streams (`98438c0c6`, `02145b77b`; MP2's CGameArea/CStateManager hooks in
+    TARGET_PC blocks); Compatibility devices under validation (`e452fc3a1`, only the non-HDR parts).
+11. **Game-side fixes, adapted to MP2 code**: fog volumes copy depth, not alpha (`184b9965e`,
+    CCubeRenderer, #191); HUD billboard effects spread past 4:3 instead of stretching (`a7edba309`,
+    `239f95483`, `91b5c12f5`, `c1106efab`; particle headers); scan window follows pointer aim
+    (`312b693c7`, `588b0577e`, `3dc11112f`; MP2's scan visor differs, check first).
+12. **Save states / audio** (merges into 7): restore the playing music (`bf86ab937`, `26d51db53`);
+    a save mid-cinematic resumes it (`7478ebbbd`).
+13. **Game options**: walk speed 50-200% (`62d94159f`); hint delay and Show current hint
+    (`319685eed`; only if MP2's hint system has the same hook).
+
+Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
+fixes (wait for package 8), decomp matches.
+
 Not portable: Remastered import/PBR/HDR, MP1 boss/enemy fixes, MP1 savestate schema (MP2's object
 set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
