@@ -9,12 +9,12 @@ set $rp = $t->mRagDollHolder.mRagDoll.mPtr
 set $pr = $rp->mPrimed
 set $hs = $t->mHeadSegId
 set $dc = $t->mDamageCooldownTimer
-set $al = $t->mAlive
-set $ac = $t->mActive
+set $valive = $t->mAlive
+set $vactive = $t->mActive
 set $tr = $t->mTransitioning
 set $as = $t->mAttackState
-set $si = $t->mAttackScanInfo.mPtr
-printf "rend11: this %p ragdoll %p primed %d scaninfo %p alive %d active %d trans %d state %d\n", $t, $rp, $pr, $si, $al, $ac, $tr, $as
+set $vsi = $t->mAttackScanInfo.mPtr
+printf "rend11: this %p ragdoll %p primed %d scaninfo %p alive %d active %d trans %d state %d\n", $t, $rp, $pr, $vsi, $valive, $vactive, $tr, $as
 set var $rp->mPrimed = 1
 set var $t->mDamageCooldownTimer = 1.0f
 call $t->PreRender(*$m)
@@ -51,11 +51,9 @@ printf "scan plain %p\n", $t->GetScannableObjectInfo()
 # no attack scan info
 set var $t->mAttackScanInfo.mPtr = 0
 printf "scan no info %p\n", $t->GetScannableObjectInfo()
-set var $t->mAttackScanInfo.mPtr = $si
-set var $t->mAlive = $al
-set var $t->mActive = $ac
+set var $t->mAttackScanInfo.mPtr = $vsi
+set var $t->mAlive = $valive
+set var $t->mActive = $vactive
 set var $t->mTransitioning = $tr
 set var $t->mAttackState = $as
-printf "world %p\n", $m->mWorld.mPtr
-call (void)__gcov_dump()
 printf "rend11 done\n"

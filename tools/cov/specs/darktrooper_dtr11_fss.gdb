@@ -38,12 +38,12 @@ set var $t->mSmallShotAttack.mProjectile.m_valid = 1
 set var $t->mRangedAttackMinRange = 0
 set var $t->mRangedAttackMaxRange = 1e9
 # actor facing the target: forward = toward the target xy
-set $dx = $m->mPlayers[0]->mTransform.m03 - $t->mTransform.m03
+set $vdx = $m->mPlayers[0]->mTransform.m03 - $t->mTransform.m03
 set $dy = $m->mPlayers[0]->mTransform.m13 - $t->mTransform.m13
-set $dl = ($dx * $dx + $dy * $dy)
-set $dl = sqrt($dl)
-set var $t->mTransform.m01 = $dx / $dl
-set var $t->mTransform.m11 = $dy / $dl
+set $vdl = ($vdx * $vdx + $dy * $dy)
+set $vdl = sqrt($vdl)
+set var $t->mTransform.m01 = $vdx / $vdl
+set var $t->mTransform.m11 = $dy / $vdl
 set var $t->mTransform.m21 = 0
 # 2: unmorphed (348 true), gun 5 along +x from the target, forward +x: angle 0 -> LaunchProjectile; facing+range true
 set var $pl->mMorphBallState = 0
@@ -82,13 +82,13 @@ printf "step 6 done\n"
 # 7: aligned, not facing the player (actor forward away): 384 facing false -> EndSmallShotAttack
 set $fx = 1.0
 fss_geom
-set var $t->mTransform.m01 = -$dx / $dl
-set var $t->mTransform.m11 = -$dy / $dl
+set var $t->mTransform.m01 = -$vdx / $vdl
+set var $t->mTransform.m11 = -$dy / $vdl
 call $t->FireSmallShot(*$m)
 printf "step 7 done\n"
 # 8: facing, out of range (min above the distance): 384 range false
-set var $t->mTransform.m01 = $dx / $dl
-set var $t->mTransform.m11 = $dy / $dl
+set var $t->mTransform.m01 = $vdx / $vdl
+set var $t->mTransform.m11 = $dy / $vdl
 set var $t->mRangedAttackMinRange = 1e9
 set var $t->mRangedAttackMaxRange = 2e9
 fss_geom

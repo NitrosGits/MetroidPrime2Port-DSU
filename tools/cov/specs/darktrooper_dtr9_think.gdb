@@ -4,7 +4,7 @@ set $t = (CDarkTrooper*)$rdi
 set $m = (CStateManager*)$rsi
 printf "think: this %p mgr %p\n", $t, $m
 set $tr = $t->mTransitioning
-set $al = $t->mAlive
+set $valive = $t->mAlive
 set var $t->mTransitioning = 0
 set var $t->mAlive = 1
 call $t->GetContactDamage()
@@ -14,7 +14,7 @@ set var $t->mTransitioning = 0
 set var $t->mAlive = 0
 call $t->GetContactDamage()
 set var $t->mTransitioning = $tr
-set var $t->mAlive = $al
+set var $t->mAlive = $valive
 printf "contact done\n"
 set $hx = $t->mHeadDirection.mX
 set $hy = $t->mHeadDirection.mY
