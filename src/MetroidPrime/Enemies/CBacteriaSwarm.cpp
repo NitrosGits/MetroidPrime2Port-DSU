@@ -331,6 +331,7 @@ bool CBacteriaSwarm::FindBestSurface(const CAreaCollisionCache& cache, CVector3f
   return found;
 }
 
+// @ fn_6_4734
 void CBacteriaSwarm::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mgr, float dt,
                                 CBoid& boid, int partitionIndex) {
   rstl::reserved_vector< CBoid*, 50 > nearList;
@@ -386,6 +387,7 @@ void CBacteriaSwarm::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mgr, 
           .MultiplyIgnoreTranslation(boid.GetTransform());
 }
 
+// @ fn_6_4500
 void CBacteriaSwarm::ApplySteeringBehaviors(CStateManager& mgr, CBoid& boid, CVector3f& ahead,
                                             const rstl::reserved_vector< CBoid*, 50 >& nearList) {
   boid.mInSafeZone = false;
