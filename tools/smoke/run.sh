@@ -160,10 +160,10 @@ declare -A F=( [swamp1]=2400 [swamp2]=2400 [sandboss]=2400 [sandworm]=2400 [boos
                [darksamus]=4000 [splitter]=2400 [grenchler]=2500 [grenguard]=2500
                [flyingpirate]=2800 [mediuming]=2450 [metroid]=2700 [sporb]=2600 [blogg]=2800
                [swarm]=2600 [gunturret]=2600 [rezbit]=2600 [parasite]=2400 [lumite]=2600
-               [shrieker]=2600 [ingswarm]=2400 [darktrooper]=2400 [bacteriaswarm]=2400
+               [shrieker]=2600 [ingswarm]=2550 [darktrooper]=2400 [bacteriaswarm]=2400
                [tryclops]=2600 [wisptentacle]=6200 [octapede]=3000 [amt]=9400 [dbar]=1200
                [sjguard]=6000 [fishcloud]=2500 [spa]=2000 [wallwalker]=3700 [isbg]=5700 [spp]=1840
-               [mysf]=3200 [spor]=2000 [scriptgui]=700 [kral]=1300 [gbug]=2700 [pssm]=3000
+               [mysf]=3200 [spor]=2000 [scriptgui]=700 [kral]=1360 [gbug]=2700 [pssm]=3160
                [stod]=1500 [pbug]=3600 [szone]=2500 [splinter]=3400 [rptl]=2200 [chog]=1020
                [drkc]=4400 [plac]=2000 [plct]=2200 [ming]=1200 [snak]=1000 [eyeb]=2100 [kroc]=2000
                [atma]=2600 [atmb]=2600 [shrd]=1100 [fsw]=2400 [iss]=3000 [ibs]=2600 [mree]=2400
@@ -256,11 +256,12 @@ declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # widget's state follows the update rate, so the transcript is not a fixed baseline. Capped, the
 # front end's 700 updates take ~25 s.
 FASTENV="MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8"
-declare -A NC=( [emp1]=1 [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1 [wisptentacle]=1
-               [octapede]=1 [amt]=1 [spa]=1 [wallwalker]=1 [isbg]=1 [spor]=1 [scriptgui]=1 [kral]=1
-               [pssm]=1 [stod]=1 [pbug]=1 [szone]=1 [rptl]=1 [chog]=1 [drkc]=1 [plac]=1 [plct]=1 [spp]=1
-               [ming]=1 [snak]=1 [eyeb]=1 [kroc]=1 [atma]=1 [atmb]=1 [shrd]=1 [fsw]=1 [iss]=1
-               [ibs]=1 [mree]=1 [puff]=1 [rubk]=1 [cball]=1 [fobj]=1 [skyr]=1 [isg]=1 )
+declare -A NC=( [emp1]=1 [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1
+               [wisptentacle]=1 [octapede]=1 [amt]=1 [spa]=1 [wallwalker]=1 [isbg]=1 [spor]=1
+               [scriptgui]=1 [kral]=1 [pssm]=1 [stod]=1 [pbug]=1 [szone]=1 [rptl]=1 [chog]=1
+               [drkc]=1 [plac]=1 [plct]=1 [spp]=1 [ming]=1 [snak]=1 [eyeb]=1 [kroc]=1 [atma]=1
+               [atmb]=1 [shrd]=1 [fsw]=1 [iss]=1 [ibs]=1 [mree]=1 [puff]=1 [rubk]=1 [cball]=1
+               [fobj]=1 [skyr]=1 [isg]=1 )
 # Extra environment per family: tools/run_gameplay.sh's variables, not the game's directly. The
 # harness passes them on to the game, and run_gameplay.sh maps a few of its own onto MP2_* names
 # (SKIP_FRONTEND -> MP2_SKIP_FRONTEND, SKIP_INTRO, SKIP_CINEMATICS, FAST_LOAD). scriptgui needs the

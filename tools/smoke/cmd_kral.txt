@@ -25,7 +25,7 @@
 # unpaced, its 1300 updates run from 0.1 s to 0.3 s (~6500 a second) and con.py connects at 0.5 s,
 # i.e. after the run's frame limit is up, so the steps only run in the shutdown window (kral's fast
 # transcript was identical, but nothing guarantees it: an empty transcript still reports 0
-# caught/stub). Capped, its 1300 updates take ~20 s. F=1300, last check f1160.
+# caught/stub). Capped, its 1300 updates take ~20 s. F=1360, last check f1160.
 @f300 god 1; give DarkVisor 1; give EchoVisor 1; objs Kralee; obj e0010008f
 @f340 place e00100090 player 2; send e00100090 Increment; send e00100090 Decrement
 @f380 send e00100090 Decrement; obj e00100090
@@ -36,6 +36,8 @@
 @f800 visor dark
 @f860 send e00100090 Increment; visor combat
 @f900 obj e0010008f
+@f920 damage e0010008f 1
+@f940 obj e0010008f
 @f960 setarea e0010008f 16; obj e0010008f
 @f1000 kill e0010008f
 @f1100 visor dark
