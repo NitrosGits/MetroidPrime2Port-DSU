@@ -1,0 +1,14 @@
+@f300 god 1; give morphBall 1; give missile 50; fastmorph 1; objs Player
+@f400 place e00150015 player 8
+@f500 fsm e00150015 Run
+@f600 status; obj e00150015
+@f700 fsm e00150015 Run; tp 150.69 -33.56 46; shoot e00150015 1 dir 0 0 -1
+@f800 fsm e00150015 Run; beam 3; shoot e00150015
+@f900 fsm e00150015 Run; beam 0; shoot e00150015 1 dir 0 0.2 1
+@f1000 fsm e00150015 Run; damage e00150015 1 sunburst
+@f1100 fsm e00150015 Run; damage e00150015 1 darkburst
+@f1200 fsm e00150015 Run; shoot e00150015 missile
+@f1400 fsm e00150015 Attack
+@f1600 fsm e00150015 Run
+@f1800 send e00150015 Delete
+@f1900 objs PuddleSpore

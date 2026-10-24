@@ -118,7 +118,7 @@ void CPuddleSpore::Render(const CStateManager& mgr) const { CPatterned::Render(m
 // @ fn_51_34BC
 void CPuddleSpore::FluidFXThink(EFluidState state, CScriptWater& water, CStateManager& mgr) {}
 
-// fn_51_330C
+// @ fn_51_330C
 void CPuddleSpore::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   bool handled = false;
   switch (msg.GetMessage()) {
@@ -167,7 +167,7 @@ void CPuddleSpore::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   }
 }
 
-// fn_51_2FB0
+// @ fn_51_2FB0
 void CPuddleSpore::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                    EUserEventType type, float dt) {
   bool handled = false;
@@ -205,7 +205,13 @@ void CPuddleSpore::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
   case 0x1d:
     SendScriptMsgs(kSS_Closed, mgr);
     mOpen = false;
+#ifdef TARGET_PC
+    // fn_51_2FB0: retail does not mark this event handled, so the base handler still runs:
+    // 0x3190..0x31C4 (SendScriptMsgs, then the x85c bit 0x20 clear) leave r30 (handled) at 0,
+    // 0x31C8 clrlwi./bne does not skip and 0x31E4 bl DoUserAnimEvent__10CPatterned runs.
+#else
     handled = true;
+#endif
     break;
   }
   if (!handled) {
@@ -270,7 +276,7 @@ const CDamageVulnerability* CPuddleSpore::GetDamageVulnerability() const {
 
 static CVector3f skKnockOffDirection(-1.f, 0.f, 0.3f); // Guessed name
 
-// fn_51_2B98
+// @ fn_51_2B98
 void CPuddleSpore::KnockOffPlayers(float force, CStateManager& mgr) {
   for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
     CPlayer* player = mgr.GetPlayer(i);
@@ -437,7 +443,7 @@ static EMaterialTypes skFilterMaterial1 = kMT_CollisionActor; // Guessed name
 static EMaterialTypes skFilterMaterial2 = kMT_AIPassthrough;  // Guessed name
 static EMaterialTypes skFilterMaterial3 = kMT_Player;         // Guessed name
 
-// fn_51_19C4
+// @ fn_51_19C4
 void CPuddleSpore::SetupCollisionManager(CStateManager& mgr) {
   const CVector3f& scale = GetModelData()->GetScale();
   const CAnimData* animData = GetModelData()->GetAnimationData();
@@ -491,7 +497,7 @@ bool CPuddleSpore::ShouldAttack(CStateManager& mgr, const CTriggerData& data) co
   return mStateTimer >= mData.mTimeOpen;
 }
 
-// fn_51_1880
+// @ fn_51_1880
 bool CPuddleSpore::ShouldTurn(CStateManager& mgr, const CTriggerData& data) const {
   for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
     const CPlayer* player = mgr.GetPlayer(i);
@@ -548,7 +554,7 @@ void CPuddleSpore::Active(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_51_1574
+// @ fn_51_1574
 void CPuddleSpore::Run(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -581,7 +587,7 @@ void CPuddleSpore::Run(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_51_135C
+// @ fn_51_135C
 void CPuddleSpore::TurnAround(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -672,7 +678,13 @@ CEntity* LoadPuddleSpore(CStateManager& mgr, CInputStream& input, CEntityInfo& i
       CShockWaveInfo(sldrThis.shockWaveInfo));
   return rs_new CPuddleSpore(
       mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
+#ifdef TARGET_PC
+      // fn_51_42C: retail passes the loaded flavor word straight through (0x864 lwz r6,0x4d8(r1),
+      // no compare before the call at 0x868 bl fn_51_37D4); upstream narrows it to 0/1 here.
+      static_cast< CPatterned::EFlavorType >(sldrThis.flavor),
+#else
       sldrThis.flavor != 0 ? CPatterned::kFT_One : CPatterned::kFT_Zero,
+#endif
       LdrToEntityInfo(info, sldrThis.editorProperties), LdrToTransform4f(sldrThis.editorProperties),
       *modelData, LdrToPatternedInfo(sldrThis.patterned, nullptr),
       sldrThis.unknown_0x5cdc877d ? CPatterned::kCT_One : CPatterned::kCT_Zero,

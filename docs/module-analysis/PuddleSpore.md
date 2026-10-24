@@ -54,27 +54,47 @@ What each driver does:
 
 The merged report also counted a fourth run, a plain place-and-observe run. Its driver was not kept.
 
-All 23 marked bodies have every live arm taken. GetUp and Attack miss only the switch default. EStateMsg has three
-values, so that default is dead.
+All of the bodies marked before pud1 have every live arm taken. GetUp and Attack miss only the switch default.
+EStateMsg has three values, so that default is dead.
 
-Open arms (cpp line), so these bodies stay unmarked:
+## Arms after pud1 (2026-10-24, base 4ff52d8e9)
 
-| function | open arms |
-|---|---|
-| Think 34E0 | 97, 99, 104 |
-| AcceptScriptMsg 330C | 136, 141 (null collision manager) |
-| KnockBack 32B0 | 164 |
-| DoUserAnimEvent 2FB0 | 176 (no shock-wave particle) |
-| Touch 2EE4 | 225, 227 |
-| WeaponHitsWeakSpot 2DA4 | 240, 242, 243 |
-| KnockOffPlayers 2B98 | 281 |
-| UpdatePlayerContact 23F0 | 303, 330, 333, 345, 350, 362, 374 |
-| SetCollisionActive 23C4 | 396 |
-| SetupCollisionManager 19C4 | 466 (3/4) |
-| ShouldTurn 1880 | 496-501 |
-| Run 1574 | 558; 568 0/2 (the phase-1 Update never ran: the spore left Run first) |
-| TurnAround 135C | 597 |
-| LoadPuddleSpore 42C | 661, 669, 676 |
+Second pass over the 11 behaviour bodies ps1 left unmarked. Drivers: `puddlespore_pud1.con` (TurnAround at five
+positions around the spore, one morphed and one with the spore on the player, then Run/Attack/GetUp and the two
+script messages) and `puddlespore_pud1c.con` (a long Run window). Force specs: `pud1_force.py`, `pud1_force2.py`.
+Six dirs merge with
+
+    python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/pud1_{d,e,f,g,h,i}/gcov --module PuddleSpore
+
+| run | driver | force |
+|---|---|---|
+| d | puddlespore_pud1.con (first version) | none |
+| f | puddlespore_pud1.con (first version) | pud1_force.py |
+| e | puddlespore_pud1.con | none |
+| g | puddlespore_pud1.con | pud1_force.py |
+| h | puddlespore_morph.con | none (morphed contact: ShouldTurn's morph arm) |
+| i | puddlespore_pud1c.con | pud1_force2.py (mAnimPhase 1 then 2) |
+
+| function | arms | evidence / dead edge |
+|---|---|---|
+| 2FB0 DoUserAnimEvent | ALL-ARMS | no-particle arm `forced (pud1_force.py: mShockWaveEffect = kInvalidAssetId)`; 0x1d fixed, see below |
+| 330C AcceptScriptMsg | ALL-ARMS | null-manager arms `forced (pud1_force.py: mCollisionActorManager.mPtr = 0)` at the AIUpdateDisabled (0x340C) and Delete (0x3424) entries; Activate/Deactivate came from `send` (0x33F4/0x3400) |
+| 1880 ShouldTurn | ALL-ARMS | the morph arm (0x1934 cmpwi 1) needs a morphed player over the box: the morph driver, in Run |
+| 1574 Run | 9/11 → dead | phase-1 body `forced (pud1_force2.py)`; edge 559:3/4 dead: the msg switch only reaches 0x15AC (0), 0x15D8 (1) and 0x16A0 (2), and EStateMsg has three values (StateMachineCommon.hpp:4) |
+| 135C TurnAround | 7/8 → dead | CanIssueCommand false arm `forced (pud1_force.py: mAnimationState kAS_NotReady)`; edge 592:3/4 dead, same three-value msg switch (0x1364/0x1380/0x138C) |
+| 2B98 KnockOffPlayers | 27/28 → dead | edge 289:1/2 dead: 0x2BF0 (`x838 >= player min.z`) implies min.z <= max.z, so 0x2C54 (`min.z - max.z >= 0.2f`) is never taken |
+| 19C4 SetupCollisionManager | 42/43 → dead | edge 475:3/4 (the TCastToPtr null at 0x1D24) dead: those ids are the manager's own, one `rs_new CCollisionActor` per joint in the call that fills them (CCollisionActorManager.cpp:121-196) |
+| 2DA4 WeaponHitsWeakSpot | 9/10 | 248:3/4 open (0x2DF8: WeaponHits false while open — a weapon mode the open vulnerability rejects; power, charge and missile all hit) |
+| 23F0 UpdatePlayerContact | 35/42 | 311:1/2, 338:1/2 (cast null, as 19C4), 341:1/2 (no touch bounds), 353/358/382 (hasGroundCollider false: the player always has kMT_GroundCollider here), 370:1/2 (zero-length push direction) |
+| 34E0 Think | 15/18 | 97:1/2 and 99:1/6 need mShockWaveSfx == 0, but `CSfxHandle(0)` makes mID `(++mRefCount << 14) | 0` (CSfxHandle.cpp:5), never 0; 104:1/2 needs the player exactly at the wave's x/y (0x3678 CanBeNormalized) |
+| 42C LoadPuddleSpore | 12/16 | 670:1/2 (modelData null: the shipped model always loads), 678/692 edges (temporaries' exception clean-up) |
+
+Fixes in this pass (TARGET_PC only):
+
+- DoUserAnimEvent case 0x1d: retail does not set `handled` — 0x3190..0x31C4 (SendScriptMsgs, x85c bit 0x20 clear)
+  leave r30 (handled) at 0, so 0x31C8 clrlwi./bne does not skip and 0x31E4 calls CPatterned::DoUserAnimEvent.
+- LoadPuddleSpore: retail passes the loaded flavor word through (0x864 lwz r6,0x4d8(r1), no compare before
+  0x868 bl fn_51_37D4); upstream narrows it to 0/1.
 
 Not driven arm by arm: the SLdr ctor and dtor, `__sinit`, and the weak copies (H).
 
