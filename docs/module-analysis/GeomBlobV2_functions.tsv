@@ -100,17 +100,17 @@ offset	fn	size	class	name	slice	what	marker
 049D4	fn_25_49D4	4	B	Touch__22CSurfaceParticleEffectFR6CActorR13CStateManager	-	upstream body (CSurfaceParticleEffect); 100% match	no
 049D8	fn_25_49D8	C	B	GetTouchBounds__22CSurfaceParticleEffectCFv	-	upstream body (CSurfaceParticleEffect); 100% match	no
 049E4	fn_25_49E4	208	B	AcceptScriptMsg__22CSurfaceParticleEffectFR13CStateManagerRC10CScriptMsg	gb3	asm rechecked; gcov 21/23 plus EH-only cleanup proof (forced)	yes
-04BEC	fn_25_4BEC	9A8	B	Think__22CSurfaceParticleEffectFfR13CStateManager	gb1	upstream body (CSurfaceParticleEffect); audited gb1: asm equal	no
+04BEC	fn_25_4BEC	9A8	B	Think__22CSurfaceParticleEffectFfR13CStateManager	gb4	asm rechecked; forced private SPE, gcov 113/113 lines, 50/50 arms	yes
 05594	fn_25_5594	8	B	GetEmitterTime__11CElementGenCFv	-	upstream body (CSurfaceParticleEffect); 100% match	no
 0559C	fn_25_559C	3C	H	__dt__Q24rstl23reserved_vector<Ui	-	weak copy / template instance / inline; -	no
 055D8	fn_25_55D8	3C	H	__dt__Q24rstl40reserved_vector<17CCollisionSurface	-	weak copy / template instance / inline; -	no
 05614	fn_25_5614	3C	H	fn_25_5614	gb1	weak copy / template instance / inline; audited gb1: asm equal	no
-05650	fn_25_5650	4B8	B	GatherCollisionSurfaces__22CSurfaceParticleEffectFR13CStateManagerRC6CAABoxRQ24rstl40reserved_vector<17CCollisionSurface	gb1	upstream body (CSurfaceParticleEffect); audited gb1: asm equal	no
+05650	fn_25_5650	4B8	B	GatherCollisionSurfaces__22CSurfaceParticleEffectFR13CStateManagerRC6CAABoxRQ24rstl40reserved_vector<17CCollisionSurface	gb4	asm rechecked; static and forced dynamic fixtures, gcov 54/54 lines, 36/36 arms	yes
 05B08	fn_25_5B08	58	B	__dt__19CAreaCollisionCacheFv	-	upstream body (CSurfaceParticleEffect); 100% match	no
 05B60	fn_25_5B60	50	H	__dt__Q24rstl61reserved_vector<Q220CMetroidAreaCollider16COctreeLeafCache	-	weak copy / template instance / inline; -	no
 05BB0	fn_25_5BB0	84	H	destroy_elements__Q24rstl61reserved_vector<Q220CMetroidAreaCollider16COctreeLeafCache	-	weak copy / template instance / inline; -	no
-05C34	fn_25_5C34	148	B	GatherFromObbTree__FRQ24rstl40reserved_vector<17CCollisionSurface	gb1	upstream body (CSurfaceParticleEffect); audited gb1: asm equal	no
-05D7C	fn_25_5D7C	10C	B	GatherFromBox__FRQ24rstl40reserved_vector<17CCollisionSurface	gb1	upstream body (CSurfaceParticleEffect); audited gb1: asm equal	no
+05C34	fn_25_5C34	148	B	GatherFromObbTree__FRQ24rstl40reserved_vector<17CCollisionSurface	gb4	asm rechecked; forced geometry/filter/capacity, gcov 12/12 lines, 11/11 arms	yes
+05D7C	fn_25_5D7C	10C	B	GatherFromBox__FRQ24rstl40reserved_vector<17CCollisionSurface	gb4	asm rechecked; forced overlap/capacity, gcov 9/9 lines, 6/6 arms	yes
 05E88	fn_25_5E88	54	H	__ct__17CCollisionSurfaceFRC9CVector3fRC9CVector3fRC9CVector3fUx	-	weak copy / template instance / inline; -	no
 05EDC	fn_25_5EDC	6C	B	__ct__4CTriFRC4CTri	-	upstream body (CSurfaceParticleEffect); 100% match	no
 05F48	fn_25_5F48	BC	B	ProjectOntoPlane__FRC9CVector3fffRC9CVector3f	gb3	asm rechecked; forced SPE run, gcov 5/5 lines	yes

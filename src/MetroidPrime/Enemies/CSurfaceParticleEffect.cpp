@@ -130,6 +130,7 @@ static void BuildOrientationFromNormal(const CVector3f& normal, CMatrix3f& orien
                           tangent.GetY(), cross.GetZ(), normal.GetZ(), tangent.GetZ());
 }
 
+// @ fn_25_5D7C
 static void GatherFromBox(rstl::reserved_vector< CCollisionSurface, 256 >& surfaces,
                           rstl::reserved_vector< uint, 256 >& surfaceIds, const CAABox& box,
                           const CVector3f& center, const CVector3f& halfExtent, uint idBits) {
@@ -147,6 +148,7 @@ static void GatherFromBox(rstl::reserved_vector< CCollisionSurface, 256 >& surfa
   }
 }
 
+// @ fn_25_5C34
 static void GatherFromObbTree(rstl::reserved_vector< CCollisionSurface, 256 >& surfaces,
                               rstl::reserved_vector< uint, 256 >& surfaceIds, const COBBTree& tree,
                               const CTransform4f& xf, const CVector3f& center,
@@ -168,6 +170,7 @@ static void GatherFromObbTree(rstl::reserved_vector< CCollisionSurface, 256 >& s
   }
 }
 
+// @ fn_25_5650
 void CSurfaceParticleEffect::GatherCollisionSurfaces(
     CStateManager& mgr, const CAABox& bounds,
     rstl::reserved_vector< CCollisionSurface, 256 >& surfaces,
@@ -246,6 +249,7 @@ void CSurfaceParticleEffect::GatherCollisionSurfaces(
   }
 }
 
+// @ fn_25_4BEC
 void CSurfaceParticleEffect::Think(float dt, CStateManager& mgr) {
   mParticleGen->SetGeneratorRate(mGeneratorRate);
   mSpawnRemainder += mParticleGen->GetGenerationRate();
