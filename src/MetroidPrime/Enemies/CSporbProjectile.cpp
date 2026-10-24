@@ -65,6 +65,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Spit", static_cast< CPatterned::StateMachine::StateFunc >(&CSporbProjectile::Spit)},
 };
 
+// @ fn_76_F494
 CSporbProjectile::CSporbProjectile(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                                    const CTransform4f& xf, const CModelData& modelData,
                                    const CPatternedInfo& patternedInfo,
@@ -93,7 +94,13 @@ CSporbProjectile::CSporbProjectile(TUniqueId uid, const rstl::string& name, cons
 
   const CAABox& baseBox = GetBaseBoundingBox();
   const CVector3f halfExtent = (baseBox.GetMaxPoint() - baseBox.GetMinPoint()) * 0.5f;
+#ifdef TARGET_PC
+  // 0xF6CC/F6D8/F6EC store half X/Z/Y at stack +0x90/+0x94/+0x98.
+  const CVector3f collisionHalfExtent(halfExtent.GetX(), halfExtent.GetZ(), halfExtent.GetY());
+  SetBoundingBox(CAABox(-collisionHalfExtent, collisionHalfExtent));
+#else
   SetBoundingBox(CAABox(-halfExtent, halfExtent));
+#endif
   mDisabledAnimationDeltas = kADF_Translation | kADF_Rotation;
 
   rstl::vector< CAssetId > particles;
@@ -409,6 +416,7 @@ void CSporbProjectile::CollidedWith(const TUniqueId& id, const CCollisionInfoLis
   CPatterned::CollidedWith(id, list, mgr);
 }
 
+// @ fn_76_E4D4
 void CSporbProjectile::PlayBallSpitEffect(CStateManager& mgr) {
   char name[100];
   sprintf(name, "SPORB_TOP_EFFECT%d-%d", mBallSpitEffect, mEffectIndex++);
@@ -421,6 +429,7 @@ void CSporbProjectile::PlayBallSpitEffect(CStateManager& mgr) {
       GetModelData()->GetScale(), &mgr, GetCurrentAreaId(), false, 0);
 }
 
+// @ fn_76_E358
 void CSporbProjectile::PlayBallEscapeEffect(CStateManager& mgr) {
   char name[100];
   sprintf(name, "SPORB_TOP_EFFECT%d-%d", mBallEscapeEffect, mEffectIndex++);

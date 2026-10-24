@@ -28,6 +28,7 @@ struct SLdrSporbNeedle {
   int explosionSound;                    // 0x6028d1cc
 };
 
+// @ fn_76_102CC
 inline SLdrSporbNeedle::SLdrSporbNeedle()
 : editorProperties()
 , actorInformation()

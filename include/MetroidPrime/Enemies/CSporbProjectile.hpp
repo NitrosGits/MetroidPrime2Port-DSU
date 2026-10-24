@@ -48,12 +48,14 @@ public:
   rstl::optional_object< CAABox > GetTouchBounds() const override;
 
   // CPhysicsActor
+  // @ fn_76_DE50
   const CCollisionPrimitive* GetCollisionPrimitive() const override { return &mSphere; }
   void CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                     CStateManager& mgr) override;
 
   // CPatterned
   void SetupStateMachine(CStateManager& mgr) override;
+  // @ fn_76_DE58
   bool IsScanVisorSelfRender() const override { return true; }
   CAABox GetScanVisorRenderBounds(const CStateManager& mgr) const override;
   void ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,

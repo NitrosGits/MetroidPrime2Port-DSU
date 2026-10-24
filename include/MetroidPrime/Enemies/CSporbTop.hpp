@@ -49,6 +49,7 @@ public:
   void Freeze(CStateManager& mgr, const CVector3f& position, CUnitVector3f direction,
               float duration, float intoFreezeDuration) override;
   void SetupStateMachine(CStateManager& mgr) override;
+  // @ fn_76_2E8
   bool IsScanVisorSelfRender() const override { return true; }
   CAABox GetScanVisorRenderBounds(const CStateManager& mgr) const override;
   void ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,

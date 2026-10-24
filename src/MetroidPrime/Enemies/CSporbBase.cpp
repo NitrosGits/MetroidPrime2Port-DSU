@@ -86,6 +86,7 @@ const char* const CSporbBase::skConnectLocator = "Skeleton_Root_2_SDK";
 // Guessed class: the tendril particle system, which carries its own bounds.
 class CTendrilGen : public CElementGen {
 public:
+  // @ fn_76_3C50
   CTendrilGen(const TToken< CGenDescription >& description)
   : CElementGen(description, kMOT_Normal, kOSF_One), mBounds(CAABox::MakeMaxInvertedBox()) {}
 
@@ -1973,6 +1974,7 @@ CVector3f CSporbBase::GetTopAttachPosition(const CStateManager& mgr) const {
   return CVector3f::Zero();
 }
 
+// @ fn_76_4D70
 CSporbPowerBomb* CSporbBase::CreatePowerBomb(CStateManager& mgr,
                                              const TToken< CWeaponDescription >& token,
                                              const CTransform4f& xf, const CDamageInfo& damage) {
@@ -2060,6 +2062,7 @@ CProjectileInfo* CSporbBase::ProjectileInfo() {
   return mIsPowerBombGuardian ? &mProjectileInfo : nullptr;
 }
 
+// @ fn_76_44BC
 void CSporbBase::ShootPowerBomb(float height, const CVector3f& from, CStateManager& mgr, int count,
                                 const CVector3f& to) {
   static float sTickTime = CProjectileWeapon::GetTickTime(); // Guessed name
@@ -2119,6 +2122,7 @@ CAABox CSporbBase::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   return bounds;
 }
 
+// @ fn_76_403C
 void CSporbBase::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                  const CModelFlags& flags) const {
   const CTransform4f savedXf = GetTransform();
@@ -2210,6 +2214,7 @@ CEntity* LoadSporbBase(CStateManager& mgr, CInputStream& input, CEntityInfo& inf
 }
 
 #ifndef MONOLITHIC
+// @ fn_76_2804
 static void SetFuncPtrs() {
   static SSporb_FuncPtrs funcPtrs;
   funcPtrs.mLoadNeedle = &LoadSporbNeedle;
