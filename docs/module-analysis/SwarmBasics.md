@@ -128,3 +128,39 @@ Left unmarked (15):
 **Next attempt for the boid bodies**: a swarm area whose data actually generates boids (mNumBoids >
 0 with generation on) - the note's Agon 08_sand_casualpirates_dark / Temple 0e_temple_hive_hall
 (CIngBlobSwarm) rows are the candidates; the two entrance areas used here never spawn one.
+
+## Coverage (swb2: the boid path, unblocked)
+
+swb1 ran the two *entrance* areas, whose swarms have `mNumBoids == 0`: `kSM_Create` fills no boid
+list, the generation loop has nothing to activate, and CreateBoid/UpdateBoid stayed at 0 lines. The
+areas the spawn table gives counts for do work:
+
+    BUILD=$PWD/build-port-cov tools/cov/run.sh tools/cov/specs/swarmbasics.py <out> \
+      3dfd2249,0g_swamp_hall --con tools/cov/specs/swarmbasics_swamp.con --fast --frames 3000
+    BUILD=$PWD/build-port-cov tools/cov/run.sh tools/cov/specs/swarmbasics.py <out> \
+      1baa96c2,0a_cliff_hall --con tools/cov/specs/swarmbasics_cliff.con --fast --frames 3000
+    # then the same two with tools/cov/specs/swarmbasics_force2.py (force.sh)
+
+merged: CreateBoid **33/36** (7/10 arms), UpdateBoid **45/85** (15/44), Think 70/88 (52/80),
+Render 37/53 (32/56), PreRenderBoid 8/8 (6/8), RenderBoid 6/6 (4/6), all four runs 0
+caught/reach-stub and 0 failed writes.
+
+Marked: **4038 DrawBoidSkinnedModel** (ALL-ARMS: `mFreezeTimer = 1` on the boid and
+`mEnableLighting = false` forced at the two entry breakpoints).
+
+Still open, with what is left:
+
+| fn | untaken | next step |
+|---|---|---|
+| 76F4 CreateBoid | 437:1/2, 440:1/2, 446:0/2 | 437/440 are the waypoint-null arms: stub `GetWaypointForState` / `CScriptWaypoint::NextWaypoint` to kInvalidUniqueId with force_ret FORCE_INNER (`$rax`); 446 is the upside-down-surface (`dot(normal, z) == -1`) arm |
+| 6104 UpdateBoid | 15/44 arms (589-641) | the freeze/launched/safe-zone/stuck arms: `mFreezeTimer`, `mLaunched`, the partition cache and `mBoidRadius` writes at the entry |
+| 5024 UpdateAllBoidMovement | 0/7 in these areas, 4/6 in the entrance one | never entered here: `mBoids.size()` is 0 or `mAnimated` is false for the swamp/cliff swarms; force `mAnimated` or use the entrance swarm merged with this one |
+| 4538 HardwareLight | 0/8 | only from Render's light-combo arms (0x3DA8, 0x3F3C): needs `mLightCombo` state, or a Sunburst/light-weapon driver |
+| 3B34 Render | 1163, 1172-1177, 1190-1204, 1214-1236 | the light-combo arms above plus the outlier-boid and boid-draw arms |
+| 220C Touch | 1463-1554 (45 arms) | the light-combo arm, the boid-box arms and the >10 death queue |
+| 07E4 UpdateEffects | 1997-2008 | the boid history/animation arms |
+| 0168 UpdateSeekerTargets, 1978 AssignSeekerBoids | 2091-2129, 1669-1687 | the seeker launcher: needs a seeker weapon fired at the swarm |
+| 4194 PreRenderBoid | 1069:1/2, 1072:1/2 | 1072 is the TARGET_PC `idx < 32` guard (needs mModelDatas.size() > 32, which the shipped swarms do not have) |
+| 1C78 FindBestLockOnIndex | 1634:1/3 | `!delta.CanBeNormalized()`, a boid exactly at the camera |
+| 50B8 Think | 754, 764-772 (occlusion timer) and 785-857 | the occlusion arms need the player to leave the area with the swarm still loaded (a door walk-out); 785-857 are the boid loops |
+| A1BC GetModelDataForAnimRes | inlined | the invalid-asset-id arm |
