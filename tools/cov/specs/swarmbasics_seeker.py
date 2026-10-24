@@ -234,14 +234,25 @@ class _WindowClose(gdb.FinishBreakpoint):
         super().__init__(frame, internal=True)
         self.tag = tag
 
-    def stop(self):
+    def _close(self, how):
         _st['window'] = False
         bp = _st.get('nullBp')
         if bp is not None:
             bp.enabled = False
-        if _st['windowOpens'] <= 3:
-            _log('WINDOW-CLOSE %s (nullHits so far %d)' % (self.tag, _st['nullHits']))
+        if how != 'return':
+            _st['windowUnwound'] = _st.get('windowUnwound', 0) + 1
+            _log('WINDOW-UNWOUND %s: the frame went out of scope without a normal return; the'
+                 ' window is closed and the null-answer breakpoint disabled' % self.tag)
+        elif _st['windowOpens'] <= 3:
+            _log('WINDOW-CLOSE %s (nullHits logged so far %d)' % (self.tag, _st['nullHits']))
+
+    def stop(self):
+        self._close('return')
         return False
+
+    def out_of_scope(self):
+        # gdb calls this when the frame is discarded abnormally (an exception unwinding through it)
+        self._close('unwind')
 
 
 class _NullAnswer(gdb.Breakpoint):
@@ -531,6 +542,22 @@ def assign_fixture(g):
                          for it in wrote),
                 cam[0][0] if cam else 0.0, cam[0][1] if cam else 0.0, cam[0][2] if cam else 0.0,
                 taken_first))
+
+
+def _summary(event=None):
+    """Exact fixture counters when the inferior exits (the per-hit log lines are capped)."""
+    st = _st
+    _log('SUMMARY exit: callerCalls=%d gunWrites=%d gunSkips=%d nullArmed=%d nullHits=%d'
+         ' windowOpens=%d windowUnwound=%d assignCalls=%d applies=%d restoreFail=%d err=%d'
+         % (st['gunCalls'], st['gunWrites'], st['gunSkipPick'], st['nullArmed'], st['nullHits'],
+            st['windowOpens'], st.get('windowUnwound', 0), st['assignCalls'], st['apply'],
+            st['restoreFail'], st['err']))
+
+
+try:  # a stub gdb (static tests) has no events; the summary is best-effort either way
+    gdb.events.exited.connect(_summary)
+except Exception:
+    pass
 
 
 FORCE = [
