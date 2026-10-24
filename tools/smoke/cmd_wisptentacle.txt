@@ -15,7 +15,7 @@
 # Its health is deliberately 1,000,000 (CWispTentacle.cpp:560), so `damage` cannot show a hit and
 # `obj` keeps hp 1000000/5; the hurt path shows in the state instead. The tail kills it for the
 # Death (`objs Wisp` losing u040e).
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds: F=6200 (the script's last
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds: F=6400 (the script's last
 # step is @f6150), so the family is the longest of the capped ones.
 # WispTentacle (REL 86) in Temple Grounds 0t_temple_hall_dark (3bfa3eff,0t_temple_hall_dark), layer 0.
 # Tentacle e00240036 at (8.4 -39.3 -33.4): wake 30 / search 22 / attack 13, hurt-sleep delay 7.
@@ -81,5 +81,5 @@
 @f5910 damage e00240036 1 dark
 @f6000 obj e00240036
 # Kill: the Death and the tentacle gone from `objs`.
-@f6100 kill e00240036
+@f6100 kill e00240036; obj e00240036
 @f6150 objs Wisp

@@ -70,8 +70,8 @@
 @f2050 shoot e000500f0 missile; shoot e000500f0 missile
 @f2070 obj e000500f0
 @f2200 objs Glowbug
-@f2280 damage e000500f0 5; obj e000500f0
-@f2290 fsm e000500f0 Patrol; obj e000500f0
+@f2280 damage e000500f9 5; obj e000500f9
+@f2290 fsm e000500f9 AttackTelegraph; obj e000500f9
 @f2300 send e000500f9 Deactivate
 @f2400 send e000500f9 Delete
 @f2500 objs Glowbug
