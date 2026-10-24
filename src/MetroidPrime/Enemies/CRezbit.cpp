@@ -907,6 +907,7 @@ void CRezbit::JoinTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_53_141C
 void CRezbit::CheckVerticalClearance(CStateManager& mgr,
                                      rstl::reserved_vector< bool, 4 >& available) {
   const CVector3f position = GetTranslation();
