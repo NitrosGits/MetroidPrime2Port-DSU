@@ -63,6 +63,15 @@ the `TOTAL` line sums the tables that exist. A table's `class` column carries `B
 a table with no class column falls back to its `kind` column (`behaviour` -> B, `host-copy` -> H,
 `vtable`/`unreferenced`/`rel-runtime`/`rel-entry` -> T, anything else -> B).
 
+Matched bodies need no coverage run: a body objdiff reports 100% against retail is retail's code
+(user's call, 2026-10-24). After each batch merge, refresh `build/G2ME01/report.json`
+(`python3 configure.py && $T/ninja`), then run `tools/bulk_mark_matched.py --write`. It marks every
+unmarked REL function that is at 100%, has one definition in its unit's source, has no TARGET_PC in
+or around the body, and that symbols.txt places at the same offset. The script is idempotent, and
+its dry run lists the skips. `port_progress` also prints the H/T rows at 100% as `copies`, plus a
+`behaviour + copies` total. Lane slices go to the functions still unmarked after that; smoke-only
+slices are not lane work.
+
 ## Done means verified
 
 A lane reports `STATUS: DONE` only with all of these pasted (one line each):
