@@ -1618,6 +1618,7 @@ int CSwarmBasics::GetLockOnIndex(CStateManager& mgr) const {
   return FindBestLockOnIndex(mgr);
 }
 
+// @ fn_80_1C78
 int CSwarmBasics::FindBestLockOnIndex(CStateManager& mgr) const {
   float maxDot = 0.5f;
   int index = 0;
