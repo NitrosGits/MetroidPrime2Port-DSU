@@ -205,7 +205,13 @@ void CPuddleSpore::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
   case 0x1d:
     SendScriptMsgs(kSS_Closed, mgr);
     mOpen = false;
+#ifdef TARGET_PC
+    // fn_51_2FB0: retail does not mark this event handled, so the base handler still runs:
+    // 0x3190..0x31C4 (SendScriptMsgs, then the x85c bit 0x20 clear) leave r30 (handled) at 0,
+    // 0x31C8 clrlwi./bne does not skip and 0x31E4 bl DoUserAnimEvent__10CPatterned runs.
+#else
     handled = true;
+#endif
     break;
   }
   if (!handled) {
@@ -672,7 +678,14 @@ CEntity* LoadPuddleSpore(CStateManager& mgr, CInputStream& input, CEntityInfo& i
       CShockWaveInfo(sldrThis.shockWaveInfo));
   return rs_new CPuddleSpore(
       mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
+#ifdef TARGET_PC
+      // fn_51_42C: retail passes the loaded flavor word straight through (0x864 lwz r6,0x4d8(r1),
+      // no compare before the call at 0x868 bl fn_51_37D4); upstream narrows it to 0/1 here.
+      static_cast< CPatterned::EFlavorType >(sldrThis.flavor),
+#else
       sldrThis.flavor != 0 ? CPatterned::kFT_One : CPatterned::kFT_Zero,
+#endif
+
       LdrToEntityInfo(info, sldrThis.editorProperties), LdrToTransform4f(sldrThis.editorProperties),
       *modelData, LdrToPatternedInfo(sldrThis.patterned, nullptr),
       sldrThis.unknown_0x5cdc877d ? CPatterned::kCT_One : CPatterned::kCT_Zero,
