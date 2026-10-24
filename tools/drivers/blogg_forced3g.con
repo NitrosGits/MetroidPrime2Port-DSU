@@ -1,0 +1,9 @@
+# Blogg rez6, 08_swamp_grappleguardian layers 2/4/7 (eight Bloggs, a team manager): same hook as blogg_forced3.con.
+@f300 layer 2
+@f320 layer 4
+@f340 layer 7
+@f400 god 1; give morphBall 1; give morphBallBombs 1; give missile 50; fastmorph 1
+@f440 send u0654 Activate; send u0651 Activate; send u064d Activate; send u0649 Activate; send u0646 Activate; send u0641 Activate; send u05c5 Activate; send u05be Activate
+@f460 tp -165 32 -34
+@f1850 covdump
+@f1860 objs Blogg

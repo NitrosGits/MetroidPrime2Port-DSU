@@ -1,0 +1,11 @@
+# Blogg rez6 (spec tools/cov/specs/blogg_force3.py): Torvus Bog 07_swamp_shaft layers 2/3/5, the six Bloggs awake and the
+# player among them; the spec's hook calls the leaf bodies from gdb at the BLG_AT-th live Think.
+@f300 layer 2
+@f320 layer 3
+@f340 layer 5
+@f400 god 1; give morphBall 1; give morphBallBombs 1; give missile 50; fastmorph 1
+@f440 send u05fc Activate; send u05f1 Activate; send u05da Activate; send u05c5 Activate; send u0598 Activate; send u0589 Activate
+@f460 tp -160 -120 -48
+@f470 face 0
+@f1850 covdump
+@f1860 objs Blogg
