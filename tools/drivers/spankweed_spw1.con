@@ -1,0 +1,7 @@
+@f300 god 1
+@f330 spawn SPNK ancs u04d0 1 34
+@f350 spawn SPNK ancs 41e770c2 0 0
+@f370 spawn SPNK ancs 41e770c2 0 0
+@f390 spawn SPNK ancs 2f490dd9 0 0
+@f400 objs Spank; objs CollisionActor
+@f1250 status

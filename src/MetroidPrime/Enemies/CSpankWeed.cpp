@@ -148,6 +148,7 @@ void CSpankWeedCollisionActor::UpdateBounds(CStateManager& mgr) {
       rstl::optional_object< CAABox >(localBounds.GetTransformedAABox(owner->GetTransform()));
 }
 
+// @ fn_73_2A84
 CSpankWeed::CSpankWeed(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                        const CTransform4f& xf, const CModelData& modelData,
                        const CActorParameters& actorParams, const CPatternedInfo& patternedInfo,
@@ -203,6 +204,7 @@ CSpankWeed::CSpankWeed(TUniqueId uid, const rstl::string& name, const CEntityInf
   KnockBackController().EnableKnockBackPhysics(false);
 }
 
+// @ fn_73_1EE4
 void CSpankWeed::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const bool oldActive = GetActive();
   const TUniqueId senderId = msg.GetSenderId();
@@ -535,6 +537,7 @@ void CSpankWeed::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_73_F14
 CVector3f CSpankWeed::GetAimPosition(const CStateManager& mgr, float dt) const {
   CVector3f position = CVector3f::Zero();
   if (dt > 0.f) {
@@ -579,6 +582,7 @@ bool CSpankWeed::Attacked(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::Attacked(mgr, data);
 }
 
+// @ fn_73_C8C
 void CSpankWeed::Render(const CStateManager& mgr) const {
   CPatterned::Render(mgr);
 
