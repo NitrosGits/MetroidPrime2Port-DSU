@@ -35,6 +35,9 @@
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "MetroidPrime/ScriptObjects/CHUDBillboardEffect.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
+#endif
 #include "MetroidPrime/ScriptObjects/CScriptAIWaypoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAiJumpPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
@@ -301,6 +304,10 @@ static const SCollisionActorDesc skCollisionActors[] = {
     {"R_knee", 0.9f, 0.9f, 2, 105, true},       {"L_knee", 0.9f, 0.9f, 2, 105, true},
 };
 
+// @ fn_27_13CA8
+// @ fn_27_13DB4
+// @ fn_27_13ED0
+// @ fn_27_13FDC
 template < typename T >
 void CGrenchler::DeliverCommand(EStateMsg msg, pas::EAnimationState state, const T& cmd) {
   switch (msg) {
@@ -2217,6 +2224,7 @@ void CGrenchler::ResolveCollision(CStateManager& mgr) {
                                     0.f);
 }
 
+// @ fn_27_A114
 void CGrenchler::GrappleSlide(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(kGA_GrappleSlide, msg);
   BodyController()->SetLocomotionType(pas::kLT_Internal5);
@@ -2253,6 +2261,7 @@ void CGrenchler::GrappleSlide(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_A02C
 void CGrenchler::GrappleSlideBonk(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -3050,6 +3059,7 @@ void CGrenchler::UpdateChargeSteering() {
   BodyController()->CommandMgr().SetSteeringSpeedRange(ratio, ratio);
 }
 
+// @ fn_27_67C0
 void CGrenchler::Charge(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(kGA_Charge, msg);
   switch (msg) {
@@ -3413,6 +3423,7 @@ void CGrenchler::SetLastActionAsBeam(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_27_4EA8
 float CGrenchler::GetJumpCost(float weight, const CVector3f& jumpPos, const CVector3f& waypointPos,
                               const CVector3f& targetPos, bool skipEndCheck) const {
   const CVector3f toJump(jumpPos - GetTranslation());
@@ -3582,6 +3593,7 @@ void CGrenchler::TurnToFaceTarget(CStateManager& mgr) {
   BodyController()->CommandMgr().DeliverCmd(CBCLocomotionCmd(CVector3f::Zero(), faceVec, 1.f));
 }
 
+// @ fn_27_45D4
 void CGrenchler::PauseBetweenBites(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     float minPause = mBiteAttack.mMinPause;
@@ -3709,6 +3721,7 @@ void CGrenchler::PlayTailHitSound() {
 // @ fn_27_4000
 bool CGrenchler::CanGrapple(CStateManager&, const CTriggerData&) const { return false; }
 
+// @ fn_27_3EEC
 bool CGrenchler::IsNearAvoidHint(CStateManager& mgr) {
   CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
@@ -3725,6 +3738,7 @@ bool CGrenchler::IsNearAvoidHint(CStateManager& mgr) {
   return false;
 }
 
+// @ fn_27_3C1C
 bool CGrenchler::IsBeamBlockedByHint(CStateManager& mgr) {
   CVector3f start = mBeamAttack.mHornXf.GetTranslation();
   const CVector3f& end = GetPlayerTargetPosition(mgr);
@@ -3945,6 +3959,7 @@ bool CGrenchler::BeamHitWall(CStateManager& mgr, const CTriggerData& data) const
   return mEffectC.mTraceState == 2;
 }
 
+// @ fn_27_2E08
 bool CGrenchler::BeamBadAngle(CStateManager& mgr, const CTriggerData& data) const {
   if (mEffectB.x24_ > 4.f) {
     return true;
@@ -4277,6 +4292,7 @@ void CGrenchler::EndMorphballCapture(CStateManager& mgr) {
   }
 }
 
+// @ fn_27_1A68
 CDamageInfo CGrenchler::GetContactDamage() const {
   if (mIsGrappleGuardian == 1 && GetAlive() == 1 && mTailDestroyed == 1) {
     return mDamageEffect.mDamage;
@@ -4433,6 +4449,152 @@ bool CGrenchler::PortConsoleVar(CEntity& ent, const char* name, const int* value
   // gren.hitzero puts the grapple hit point on the horn (no slide direction), gren.attach attaches
   // the player to this Grenchler as GrabPlayer does (value 0 runs ReleasePlayer), gren.slideold backdates the
   // slide start by 100 s, gren.elapsed (read) the attack clock.
+  // gren5 coverage vars. gren.hint <n> adds a CScriptAIHint at this Grenchler (1 type 12 radius 10,
+  // 2 type 12 far away, 3 type 12 inactive, 4 type 12 in another area, 5 type 7, 6 type 13 radius 10,
+  // 7 type 13 far away, 8 a cover point, which is no hint); gren.hintcall <n> runs 1 IsNearAvoidHint, 2 IsBeamBlockedByHint, 3 the same
+  // with the horn put on the player target (no beam direction) and reads the result;
+  // gren.jumpcost <n> runs GetJumpCost on case n (1 jump too far, 2 waypoint too near, 3 end check
+  // fails, 4 the same skipping it, 5 end check passes) and reads 100 * the cost.
+  if (strcmp(name, "gren.hint") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    if (value != nullptr && mgr != nullptr) {
+      const int kind = *value;
+      if (kind == 8) {
+        mgr->AddObject(rs_new CScriptCoverPoint(
+            mgr->AllocateUniqueId(), rstl::string_l("gren5 cover"),
+            CEntityInfo(gren->GetCurrentAreaId(), CEntity::NullConnectionList, true),
+            gren->GetTransform(), 0, false, 0.f, 0.f, 0.f));
+        current = 0;
+        return true;
+      }
+      const bool far = kind == 2 || kind == 7;
+      const int type = (kind == 5) ? 7 : (kind >= 6 ? 13 : 12);
+      const TAreaId area =
+          kind == 4 ? TAreaId(gren->GetCurrentAreaId().Value() + 1) : gren->GetCurrentAreaId();
+      const CTransform4f xf = CTransform4f::Translate(
+          gren->GetTranslation() + (far ? CVector3f(1000.f, 0.f, 0.f) : CVector3f::Zero()));
+      CScriptAIHint* hint = rs_new CScriptAIHint(
+          mgr->AllocateUniqueId(), rstl::string_l("gren5 hint"),
+          CEntityInfo(area, CEntity::NullConnectionList, kind != 3), xf,
+          static_cast< CScriptAIHint::EHintType >(type), far ? 1.f : 10.f, 0.f, 0.f, 0.f);
+      mgr->AddObject(hint);
+    }
+    current = 0;
+    return true;
+  }
+  if (strcmp(name, "gren.hintcall") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    current = -1;
+    if (value != nullptr && mgr != nullptr) {
+      if (*value == 1) {
+        current = gren->IsNearAvoidHint(*mgr) ? 1 : 0;
+      } else if (*value == 2 || *value == 3) {
+        if (*value == 3) {
+          gren->mBeamAttack.mHornXf.SetTranslation(
+              gren->GetPlayerTargetPosition(*mgr));
+        }
+        current = gren->IsBeamBlockedByHint(*mgr) ? 1 : 0;
+      }
+    }
+    return true;
+  }
+  if (strcmp(name, "gren.jumpcost") == 0) {
+    current = -1;
+    if (value != nullptr) {
+      const CVector3f t = gren->GetTranslation();
+      float cost = 0.f;
+      switch (*value) {
+      case 1:
+        cost = gren->GetJumpCost(0.3f, t + CVector3f(6.f, 0.f, 0.f), t + CVector3f(10.f, 0.f, 0.f),
+                                 t + CVector3f(20.f, 0.f, 0.f), false);
+        break;
+      case 2:
+        cost = gren->GetJumpCost(0.3f, t + CVector3f(1.f, 0.f, 0.f), t + CVector3f(2.f, 0.f, 0.f),
+                                 t + CVector3f(20.f, 0.f, 0.f), false);
+        break;
+      case 3:
+      case 4:
+        cost = gren->GetJumpCost(0.3f, t + CVector3f(0.f, 1.f, 0.f), t + CVector3f(10.f, 0.f, 0.f),
+                                 t + CVector3f(30.f, 0.f, 0.f), *value == 4);
+        break;
+      default:
+        cost = gren->GetJumpCost(0.3f, t + CVector3f(4.f, 0.f, 0.f), t + CVector3f(10.f, 0.f, 0.f),
+                                 t + CVector3f(11.f, 0.f, 0.f), false);
+        break;
+      }
+      current = static_cast< int >(cost * 100.f);
+    }
+    return true;
+  }
+  // gren.slidestart <v> puts the slide start v seconds after now; gren.hitzero 2 puts the hit point
+  // 5 m from the horn; gren.swoosh <n> builds the grapple beam's generators (n 1 target as the
+  // player, 2 on the horn, 3 straight ahead, 4 straight behind) or drops them (0);
+  // gren.contact <n> reads 100 * the contact damage on case n (0 not a guardian, 1 guardian with
+  // the tail gone, 2 tail kept, 3 dead); gren.path <n> reads 2 * PathShagged + IsOver after
+  // n = 1 searching to the player, 2 advancing a waypoint, 3 searching a point out of reach,
+  // 4 searching a point 3 m off.
+  if (strcmp(name, "gren.slidestart") == 0) {
+    if (value != nullptr) {
+      gren->mSlideStartTime = gren->mElapsedTime + static_cast< float >(*value);
+    }
+    current = 0;
+    return true;
+  }
+  if (strcmp(name, "gren.swoosh") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    if (value != nullptr && mgr != nullptr) {
+      if (*value == 0) {
+        gren->DestroyGrappleBeam(*mgr);
+      } else {
+        gren->CreateGrappleBeam(*mgr);
+        const CVector3f horn = gren->mBeamAttack.mHornXf.GetTranslation();
+        const CVector3f fwd = gren->GetTransform().GetForward();
+        if (*value == 2) {
+          gren->mEffectC.mTargetPosition = horn;
+        } else if (*value == 3) {
+          gren->mEffectC.mTargetPosition = horn + 10.f * fwd;
+        } else if (*value == 4) {
+          gren->mEffectC.mTargetPosition = horn - 10.f * fwd;
+        }
+      }
+    }
+    current = gren->mEffectC.mSwoosh.mGen.get() != nullptr ? 1 : 0;
+    return true;
+  }
+  if (strcmp(name, "gren.contact") == 0) {
+    current = -1;
+    if (value != nullptr) {
+      const bool guardian = gren->mIsGrappleGuardian;
+      const int tail = gren->mTailDestroyed;
+      const uint alive = gren->mAlive;
+      gren->mIsGrappleGuardian = *value != 0;
+      gren->mTailDestroyed = *value == 2 ? 0 : 1;
+      gren->mAlive = *value != 3;
+      current = static_cast< int >(gren->GetContactDamage().GetDamage() * 100.f);
+      gren->mIsGrappleGuardian = guardian;
+      gren->mTailDestroyed = tail;
+      gren->mAlive = alive;
+    }
+    return true;
+  }
+  if (strcmp(name, "gren.path") == 0) {
+    CStateManager* mgr = PortConsole::VarManager();
+    if (value != nullptr && mgr != nullptr) {
+      if (*value == 1) {
+        gren->mPathFindSearch.Search(gren->GetTranslation(),
+                                     gren->GetPlayerTargetPosition(*mgr));
+      } else if (*value == 2) {
+        gren->mPathFindSearch.Advance();
+      } else if (*value == 3) {
+        gren->mPathFindSearch.Search(gren->GetTranslation(), CVector3f(1.0e6f, 1.0e6f, 1.0e6f));
+      } else if (*value == 4) {
+        gren->mPathFindSearch.Search(gren->GetTranslation(),
+                                     gren->GetTranslation() + CVector3f(3.f, 0.f, 0.f));
+      }
+    }
+    current = (gren->mPathFindSearch.IsShagged() ? 2 : 0) + (gren->mPathFindSearch.IsOver() ? 1 : 0);
+    return true;
+  }
   if (strcmp(name, "gren.submerged") == 0) {
     if (value != nullptr) {
       gren->mSubmerged = *value != 0;
@@ -4456,7 +4618,8 @@ bool CGrenchler::PortConsoleVar(CEntity& ent, const char* name, const int* value
   }
   if (strcmp(name, "gren.hitzero") == 0) {
     if (value != nullptr && *value != 0) {
-      gren->mEffectC.mHitPosition = gren->mBeamAttack.mHornXf.GetTranslation();
+      gren->mEffectC.mHitPosition = gren->mBeamAttack.mHornXf.GetTranslation() +
+                                    (*value == 2 ? CVector3f(5.f, 0.f, 0.f) : CVector3f::Zero());
     }
     current = 0;
     return true;

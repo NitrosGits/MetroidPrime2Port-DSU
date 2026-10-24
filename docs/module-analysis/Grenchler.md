@@ -162,4 +162,23 @@ IsNearAvoidHint, GetJumpCost, StruggleOver, StopStruggling). They need new `.con
 
 Marked with all arms taken (arms marked F need forced vars/statecall msg 3; driver `tools/cov/specs/grenchler_gren4.con`, new `gren.*` console vars in `PortConsoleVar`): StartElectricBeam (F), CreateCollisionManager (F), ReleasePlayer (F), GrappleStruggle (F), GrappleBreak (F), Patrol (F), BeamHitWall (F), PickGrappleSide (F), StruggleOver (F), StopStruggling (F).
 
-Still open (not marked): GrappleSlide 2236, GrappleSlideBonk 2261, Charge 3073 (PathShagged/IsOver arms), GetContactDamage 4271, BeamBadAngle 3948 (swoosh gen), PauseBetweenBites 3585 (tail-destroyed arm), DeliverCommand<ProjectileAttack/Step/Taunt>, IsBeamBlockedByHint/IsNearAvoidHint/GetJumpCost (zero coverage: no AI hint or jump-point objects in the tested maps).
+Still open at gren4 close: see gren5 below.
+
+## gren5 (hints, jump cost, slide, charge)
+
+Marked with all arms taken (driver `tools/cov/specs/grenchler_gren5.con` in 08_swamp_grappleguardian_dark, plus `grenchler_gren5_ent.con` in 01_swamp_entrance for Charge's path-over arm; gcov of both unioned). New `PortConsoleVar` vars: `gren.hint`, `gren.hintcall`, `gren.jumpcost`, `gren.slidestart`, `gren.swoosh`, `gren.contact`, `gren.path`; `gren.hitzero 2`. No behaviour differences found against the asm.
+
+| function | arms | forced (cmd) |
+|---|---|---|
+| GetContactDamage 1A68 | 6/6 | forced (gren.contact 0-3) |
+| BeamBadAngle 2E08 | 6/6 | forced (gren.swoosh 1-4) |
+| IsBeamBlockedByHint 3C1C | 20/20 | forced (gren.hint 1-8, gren.hintcall 2/3) |
+| IsNearAvoidHint 3EEC | 12/12 | forced (gren.hint, gren.hintcall 1) |
+| PauseBetweenBites 45D4 | 6/6 | forced (statecall, tail destroyed/kept) |
+| GetJumpCost 4EA8 | 8/8 | forced (gren.jumpcost 1-5) |
+| Charge 67C0 | 8/8 | forced (gren.path 1-4; path found and run out only in 01_swamp_entrance) |
+| GrappleSlideBonk A02C | 6/6 | forced (statecall, gren.slidestart) |
+| GrappleSlide A114 | 10/10 | forced (gren.hitzero 2, gren.slidestart) |
+| DeliverCommand<ProjectileAttack/Step/MeleeAttack/Taunt> 13CA8/13DB4/13ED0/13FDC | 6/6 each | forced (statecall msg 0-3) |
+
+asmcheck leftovers are tool limits: unported-callee notes (DestroyGrappleBeam, SetSubmerged, CLineSeg ctor are cited elsewhere or inlined), bitfield NOPOS/BIT (MSB-first, checked by hand), Charge BRANCH count (inlined helpers).

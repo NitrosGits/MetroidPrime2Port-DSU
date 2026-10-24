@@ -32,7 +32,7 @@ offset	fn	size	class	name	slice	what	marker
 0177C	fn_27_177C	274	B	CGrenchler::PreRenderAllViewports	-	upstream body (CGrenchler) 99.9%	no
 019F0	fn_27_19F0	3C	H	rstl::optional_object<CAABox>::~optional_object	-	weak copy / template instance	no
 01A2C	fn_27_1A2C	3C	B	CGrenchler::OnScanStateChange	-	upstream body (CGrenchler)	no
-01A68	fn_27_1A68	B4	B	CGrenchler::GetContactDamage	-	upstream body (CGrenchler)	no
+01A68	fn_27_1A68	B4	B	CGrenchler::GetContactDamage	-	upstream body (CGrenchler)	yes
 01B1C	fn_27_1B1C	58	B	CGrenchler::EndMorphballCapture	-	upstream body (CGrenchler)	yes
 01B74	fn_27_1B74	5C	B	CGrenchler::BeginMorphballCapture	-	upstream body (CGrenchler)	no
 01BD0	fn_27_1BD0	114	B	CGrenchler::UpdateCapturedPlayer	-	upstream body (CGrenchler) 67.1%	yes
@@ -59,7 +59,7 @@ offset	fn	size	class	name	slice	what	marker
 02CB4	fn_27_2CB4	12C	B	CGrenchler::GrappleStruggle	-	upstream body (CGrenchler) 100.0%	yes
 02DE0	fn_27_2DE0	14	B	CGrenchler::BeamHitSticky	-	upstream body (CGrenchler)	yes
 02DF4	fn_27_2DF4	14	B	CGrenchler::BeamHitPlayer	-	upstream body (CGrenchler)	yes
-02E08	fn_27_2E08	114	B	CGrenchler::BeamBadAngle	-	upstream body (CGrenchler)	no
+02E08	fn_27_2E08	114	B	CGrenchler::BeamBadAngle	-	upstream body (CGrenchler)	yes
 02F1C	fn_27_2F1C	30	B	CGrenchler::BeamHitWall	-	upstream body (CGrenchler)	yes
 02F4C	fn_27_2F4C	60	B	CGrenchler::RemoveExplosion	-	upstream body (CGrenchler)	yes
 02FAC	fn_27_2FAC	9C	B	CGrenchler::UpdateExplosionHeight	-	upstream body (CGrenchler)	no
@@ -73,9 +73,9 @@ offset	fn	size	class	name	slice	what	marker
 03944	fn_27_3944	228	B	CGrenchler::GrappleLoop	-	upstream body (CGrenchler)	no
 03B6C	fn_27_3B6C	A8	B	CGrenchler::PickGrappleSide	-	upstream body (CGrenchler)	yes
 03C14	fn_27_3C14	8	B	CGrenchler::BreakGrappleLoop	-	upstream body (CGrenchler)	no
-03C1C	fn_27_3C1C	1FC	B	CGrenchler::IsBeamBlockedByHint	-	upstream body (CGrenchler) 87.0%	no
+03C1C	fn_27_3C1C	1FC	B	CGrenchler::IsBeamBlockedByHint	-	upstream body (CGrenchler) 87.0%	yes
 03E18	fn_27_3E18	D4	H	CLineSeg::CLineSeg	-	weak copy / template instance	no
-03EEC	fn_27_3EEC	114	B	CGrenchler::IsNearAvoidHint	-	upstream body (CGrenchler)	no
+03EEC	fn_27_3EEC	114	B	CGrenchler::IsNearAvoidHint	-	upstream body (CGrenchler)	yes
 04000	fn_27_4000	8	B	CGrenchler::CanGrapple	-	upstream body (CGrenchler)	yes
 04008	fn_27_4008	48	B	CGrenchler::PlayTailHitSound	-	upstream body (CGrenchler)	yes
 04050	fn_27_4050	48	B	CGrenchler::PlayTailDestroyedSound	-	upstream body (CGrenchler)	yes
@@ -88,7 +88,7 @@ offset	fn	size	class	name	slice	what	marker
 044C8	fn_27_44C8	58	B	CGrenchler::HasAttackPattern	gren1	upstream body (CGrenchler)	yes
 04520	fn_27_4520	18	B	CGrenchler::PauseOver	-	upstream body (CGrenchler)	yes
 04538	fn_27_4538	9C	B	CGrenchler::PauseBetweenBeams	gren1	upstream body (CGrenchler)	yes
-045D4	fn_27_45D4	D4	B	CGrenchler::PauseBetweenBites	-	upstream body (CGrenchler)	no
+045D4	fn_27_45D4	D4	B	CGrenchler::PauseBetweenBites	-	upstream body (CGrenchler)	yes
 046A8	fn_27_46A8	100	B	CGrenchler::TurnToFaceTarget	gren1	upstream body (CGrenchler)	yes
 047A8	fn_27_47A8	58	B	CGrenchler::JustBurstAttacked	-	upstream body (CGrenchler)	no
 04800	fn_27_4800	70	B	CGrenchler::JustBeamAttacked	-	upstream body (CGrenchler)	no
@@ -101,7 +101,7 @@ offset	fn	size	class	name	slice	what	marker
 04DD0	fn_27_4DD0	A8	B	CGrenchler::SReflectInfo::Reset	gren1	upstream body (CGrenchler)	yes
 04E78	fn_27_4E78	24	B	CGrenchler::PickJumpTarget	-	upstream body (CGrenchler)	yes
 04E9C	fn_27_4E9C	C	B	CGrenchler::HasValidJumpTarget	-	upstream body (CGrenchler)	yes
-04EA8	fn_27_4EA8	230	B	CGrenchler::GetJumpCost	-	upstream body (CGrenchler) 80.9%	no
+04EA8	fn_27_4EA8	230	B	CGrenchler::GetJumpCost	-	upstream body (CGrenchler) 80.9%	yes
 050D8	fn_27_50D8	54	B	CGrenchler::SetLastActionAsBeam	-	upstream body (CGrenchler)	no
 0512C	fn_27_512C	6C	B	CGrenchler::PushAttackHistory	gren1	upstream body (CGrenchler)	yes
 05198	fn_27_5198	74	H	rstl::reserved_vector<CGrenchler::EAction, 3>::erase	-	weak copy / template instance	no
@@ -130,7 +130,7 @@ offset	fn	size	class	name	slice	what	marker
 06684	fn_27_6684	5C	H	CBCHurledCmd::~CBCHurledCmd	-	weak copy / template instance	no
 066E0	fn_27_66E0	28	B	CGrenchler::TurnToPlayer	-	upstream body (CGrenchler)	yes
 06708	fn_27_6708	B8	B	CGrenchler::ChargeFinished	gren1	upstream body (CGrenchler)	yes
-067C0	fn_27_67C0	310	B	CGrenchler::Charge	-	upstream body (CGrenchler) 95.6%	no
+067C0	fn_27_67C0	310	B	CGrenchler::Charge	-	upstream body (CGrenchler) 95.6%	yes
 06AD0	fn_27_6AD0	A8	B	CGrenchler::UpdateChargeSteering	-	upstream body (CGrenchler)	yes
 06B78	fn_27_6B78	40	B	CGrenchler::ResetSteering	-	upstream body (CGrenchler)	yes
 06BB8	fn_27_6BB8	EC	B	CGrenchler::ApplyBiteDamage	gren1	upstream body (CGrenchler)	yes
@@ -192,8 +192,8 @@ offset	fn	size	class	name	slice	what	marker
 09C28	fn_27_9C28	2C	B	CGrenchler::IsGuardianCharging	-	upstream body (CGrenchler)	yes
 09C54	fn_27_9C54	34C	B	CGrenchler::Turn	-	upstream body (CGrenchler)	no
 09FA0	fn_27_9FA0	8C	B	CGrenchler::AbortCharge	-	upstream body (CGrenchler)	no
-0A02C	fn_27_A02C	E8	B	CGrenchler::GrappleSlideBonk	-	upstream body (CGrenchler)	no
-0A114	fn_27_A114	284	B	CGrenchler::GrappleSlide	-	upstream body (CGrenchler) 92.2%	no
+0A02C	fn_27_A02C	E8	B	CGrenchler::GrappleSlideBonk	-	upstream body (CGrenchler)	yes
+0A114	fn_27_A114	284	B	CGrenchler::GrappleSlide	-	upstream body (CGrenchler) 92.2%	yes
 0A398	fn_27_A398	F4	B	CGrenchler::ResolveCollision	-	upstream body (CGrenchler)	no
 0A48C	fn_27_A48C	58	H	CAreaCollisionCache::~CAreaCollisionCache	-	weak copy / template instance	no
 0A4E4	fn_27_A4E4	50	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::~reserved_vect	-	weak copy / template instance	no
@@ -352,10 +352,10 @@ offset	fn	size	class	name	slice	what	marker
 13C08	fn_27_13C08	8	H	CNonUniformVulnerability::GetCollisionResponseType	-	weak copy / template instance	no
 13C10	fn_27_13C10	5C	B	CGrenchler::SConeVulnerability::~SConeVulnerability	-	upstream body (CGrenchler)	no
 13C6C	fn_27_13C6C	3C	H	rstl::optional_object<CAABox>::optional_object	-	weak copy / template instance	no
-13CA8	fn_27_13CA8	10C	B	CGrenchler::DeliverCommand<CBCProjectileAttackCmd>	-	upstream body (CGrenchler)	no
-13DB4	fn_27_13DB4	11C	B	CGrenchler::DeliverCommand<CBCStepCmd>	-	upstream body (CGrenchler)	no
-13ED0	fn_27_13ED0	10C	B	CGrenchler::DeliverCommand<CBCMeleeAttackCmd>	-	upstream body (CGrenchler)	no
-13FDC	fn_27_13FDC	CC	B	CGrenchler::DeliverCommand<CBCTauntCmd>	-	upstream body (CGrenchler)	no
+13CA8	fn_27_13CA8	10C	B	CGrenchler::DeliverCommand<CBCProjectileAttackCmd>	-	upstream body (CGrenchler)	yes
+13DB4	fn_27_13DB4	11C	B	CGrenchler::DeliverCommand<CBCStepCmd>	-	upstream body (CGrenchler)	yes
+13ED0	fn_27_13ED0	10C	B	CGrenchler::DeliverCommand<CBCMeleeAttackCmd>	-	upstream body (CGrenchler)	yes
+13FDC	fn_27_13FDC	CC	B	CGrenchler::DeliverCommand<CBCTauntCmd>	-	upstream body (CGrenchler)	yes
 140A8	fn_27_140A8	C0	H	rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
 14168	fn_27_14168	68	H	rstl::uninitialized_copy<rstl::pointer_iterator<CJointCollisionDescription, rstl	-	weak copy / template instance	no
 141D0	fn_27_141D0	64	H	rstl::rc_ptr<CNonUniformVulnerability>::ReleaseData	-	weak copy / template instance	no
