@@ -1,6 +1,8 @@
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2400, last check f2250.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2480, last check f2280.
 @f910 tp 0 -27 11
 @f1210 status
 @f1520 objs turret
 @f1880 status
 @f2250 objs turret
+@f2260 send u040d Delete
+@f2280 objs turret

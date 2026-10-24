@@ -22,7 +22,7 @@
 # module is registered, not that it ran.
 # Checks are game updates (@f<n>), never wall seconds. The family runs fast like the rest: both PLCTs
 # are layer 0 of the booted area, so no layer step can trail the fast updates, and its transcript is
-# identical capped and uncapped. F=1700, last check f1600.
+# identical capped and uncapped. F=1840, last check f1640.
 @f300 god 1; give echoVisor 1; give darkVisor 1; give scanVisor 1
 @f340 objs ScriptPlayerProxy
 @f360 obj e00230084
@@ -39,3 +39,5 @@
 @f1000 obj e00230084
 @f1100 objs ScriptPlayerProxy
 @f1600 obj e00230084
+@f1620 send e00230084 Delete
+@f1640 objs ScriptPlayerProxy
