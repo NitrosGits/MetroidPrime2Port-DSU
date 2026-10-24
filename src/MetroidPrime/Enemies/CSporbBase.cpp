@@ -1111,16 +1111,26 @@ void CSporbBase::UpdateAttack(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_76_71AC
 void CSporbBase::UpdateGrabber(float dt, CStateManager& mgr) {
   bool attached = false;
+#ifndef TARGET_PC
   CAABox tendrilBounds = CAABox::MakeMaxInvertedBox();
   const CTransform4f connectXf =
       GetTransform() * GetScaledLocatorTransform(rstl::string_l(skConnectLocator));
   const CVector3f connectPos = connectXf.GetTranslation();
+#endif
 
   if (mProjectileId != kInvalidUniqueId) {
     if (CSporbProjectile* projectile =
             TCastToPtr< CSporbProjectile >(mgr.ObjectById(mProjectileId))) {
+#ifdef TARGET_PC
+      // 0x722C/0x7230 and 0x724C/0x7250 skip the locator work when no projectile exists.
+      CAABox tendrilBounds = CAABox::MakeMaxInvertedBox();
+      const CTransform4f connectXf =
+          GetTransform() * GetScaledLocatorTransform(rstl::string_l(skConnectLocator));
+      const CVector3f connectPos = connectXf.GetTranslation();
+#endif
       switch (mGrabberState) {
       case kGS_Idle:
         projectile->SetSolidPhase(CSporbProjectile::kSP_Solid);
@@ -1214,7 +1224,12 @@ void CSporbBase::UpdateGrabber(float dt, CStateManager& mgr) {
           const CVector3f direction = projectile->GetTranslation() - connectPos;
           const CTransform4f lookXf =
               CTransform4f::LookAt(CVector3f::Zero(), direction, CVector3f::Up());
+#ifdef TARGET_PC
+          // 0x7C2C/0x7C30: fcmpo length,range; bge selects range, including unordered.
+          const float distance = rstl::min_val(mMaxGrabRange, direction.Magnitude());
+#else
           const float distance = rstl::min_val(direction.Magnitude(), mMaxGrabRange);
+#endif
           mTendrilParticleCount = static_cast< uint >(distance / 0.15f) + 2;
           float maxSize = 0.f;
           for (int i = 0; i < mTendrilParticleCount; ++i) {
@@ -1237,7 +1252,12 @@ void CSporbBase::UpdateGrabber(float dt, CStateManager& mgr) {
                      tendrilBounds.GetMaxPoint() + CVector3f(maxSize, maxSize, maxSize));
 
           const CTransform4f xf = BuildLookAtTransform(mgr, connectPos);
+#ifdef TARGET_PC
+          // 0x7E74/0x7E78: fcmpo next,0; bge keeps next, including unordered (rodata C4 = 0).
+          mGrabberOutSpeed = rstl::max_val(mGrabberOutSpeed + mGrabberOutAcceleration * dt, 0.f);
+#else
           mGrabberOutSpeed = rstl::max_val(0.f, mGrabberOutSpeed + mGrabberOutAcceleration * dt);
+#endif
           projectile->SetVelocityWR(xf * CVector3f(0.f, mGrabberOutSpeed, 0.f));
           const CVector3f step = dt * CVector3f(0.f, mGrabberInSpeed, 0.f);
           if ((projectile->GetTranslation() + step - connectPos).MagSquared() >
@@ -1252,11 +1272,21 @@ void CSporbBase::UpdateGrabber(float dt, CStateManager& mgr) {
         }
         break;
       case kGS_Hold: {
+#ifdef TARGET_PC
+        // 0x7F90/0x7F94: fcmpo duration,next; bge selects next, including unordered.
+        mHoldTimer = rstl::min_val(mHoldTimer + dt, mHoldDuration);
+#else
         mHoldTimer = rstl::min_val(mHoldDuration, mHoldTimer + dt);
+#endif
         const CVector3f direction = projectile->GetTranslation() - connectPos;
         const CTransform4f lookXf =
             CTransform4f::LookAt(CVector3f::Zero(), direction, CVector3f::Up());
+#ifdef TARGET_PC
+        // 0x8008/0x800C: fcmpo length,range; bge selects range, including unordered.
+        const float distance = rstl::min_val(mMaxGrabRange, direction.Magnitude());
+#else
         const float distance = rstl::min_val(direction.Magnitude(), mMaxGrabRange);
+#endif
         mTendrilParticleCount = static_cast< uint >(distance / 0.15f) + 2;
         const float amplitude = 1.f - mHoldTimer / mHoldDuration;
         const float last = 0.15f * (mTendrilParticleCount - 1);
@@ -1288,7 +1318,12 @@ void CSporbBase::UpdateGrabber(float dt, CStateManager& mgr) {
           }
         }
 
+#ifdef TARGET_PC
+        // 0x83B8/0x83BC: fcmpo duration,next; bge selects next, including unordered.
+        mAttachTimer = rstl::min_val(mAttachTimer + dt, mAttachDuration);
+#else
         mAttachTimer = rstl::min_val(mAttachDuration, mAttachTimer + dt);
+#endif
         if (mAttachTimer >= mAttachDuration) {
           mGrabberState = kGS_Retract;
           if (projectile->GetSolidPhase() == CSporbProjectile::kSP_BallInside) {
@@ -1341,7 +1376,12 @@ void CSporbBase::UpdateGrabber(float dt, CStateManager& mgr) {
         const CVector3f direction = projectile->GetTranslation() - connectPos;
         const CTransform4f lookXf =
             CTransform4f::LookAt(CVector3f::Zero(), direction, CVector3f::Up());
+#ifdef TARGET_PC
+        // 0x86F8/0x86FC: fcmpo length,range; bge selects range, including unordered.
+        const float distance = rstl::min_val(mMaxGrabRange, direction.Magnitude());
+#else
         const float distance = rstl::min_val(direction.Magnitude(), mMaxGrabRange);
+#endif
         mTendrilParticleCount = static_cast< uint >(distance / 0.15f) + 2;
         float maxSize = 0.f;
         for (int i = 0; i < mTendrilParticleCount; ++i) {
@@ -1367,7 +1407,12 @@ void CSporbBase::UpdateGrabber(float dt, CStateManager& mgr) {
           }
         }
 
+#ifdef TARGET_PC
+        // 0x8A4C/0x8A50: fcmpo 0,next; bge selects next, including unordered (rodata C4 = 0).
+        mGrabberInSpeed = rstl::min_val(mGrabberInSpeed + mGrabberInAcceleration * dt, 0.f);
+#else
         mGrabberInSpeed = rstl::min_val(0.f, mGrabberInSpeed + mGrabberInAcceleration * dt);
+#endif
         const CVector3f velocity(0.f, mGrabberInSpeed, 0.f);
         if (direction.MagSquared() < (dt * velocity).MagSquared()) {
           projectile->Stop();
