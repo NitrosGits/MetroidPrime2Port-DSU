@@ -516,6 +516,7 @@ void CRezbit::BecomeRezzed(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_5A78
 void CRezbit::BecomeDeRezzed(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
