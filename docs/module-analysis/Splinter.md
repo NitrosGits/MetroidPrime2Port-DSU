@@ -117,3 +117,27 @@ Marked from natural gcov (every arm ran, checked against asm; asmcheck BIT/NOPOS
 Left unmarked (arms not run): FallFromCocoon 78BC, JumpToPoint 8A7C, IsNearWall 9344, ScoreJump 96C8,
 FindJumpPoints 99BC (ScoreJump never passes its >6 return), ApplyLaunchVelocity A7C8 (needs a found jump
 point), ApplyAmbushVelocity A928 (Mega+Ing-possessed arm; not dead). These need forced runs.
+
+## spl5 (2026-10-24)
+
+Marked, all seven, from natural gcov plus the forced run `tools/cov/specs/splinter_spl5_calls.py`
+(breakpoint at the 1500th live `CSplinter::Think` in 02_temple_exploration; gdb calls the functions with the
+splinter, a jump point, its waypoint and the player moved by `setpos`, which writes `mTransform` and
+`mPosition`/`mTranslation` because `GetTranslation()` reads the latter; `IsNearWall` is forced through a
+FinishBreakpoint). Command: `COV_GDB_SCRIPT=<spec> tools/cov/force.sh <spec> <out> 3bfa3eff,02_temple_exploration
+--con tools/cov/specs/splinter_te_fight.con --fast --frames 1800`, merged with the earlier runs by
+`gcov_report.py ... --module Splinter`. Do not add gdb breakpoints that log inside the called functions: an
+exception in `stop()` leaves the inferior call stopped and the run never exits (no gcov).
+
+| fn | arms | evidence |
+|---|---|---|
+| IsNearWall 9344 | 9/9 | mega (forced), plain, vertical-forward (forced); filter masks 3B,1E,30 / 1F,1C = Solid,Wall,AIBlock / Floor,AIPassthrough |
+| ScoreJump 96C8 | 10/10 | forced (6 direct gdb calls) |
+| FindJumpPoints 99BC | 24/24 | forced (12 jump-point scenarios) |
+| JumpToPoint 8A7C | 12/12 | forced (Activate/Update/Deactivate/default, los 0/1) |
+| FallFromCocoon 78BC | 25/26 | forced (0/1/mixed/12 land points); the other arm, `landPoints.size() != 0` false, is unreachable: HasAnyLandPoints true means a matching connection was pushed |
+| ApplyLaunchVelocity A7C8 | 2/2 | forced |
+| ApplyAmbushVelocity A928 | 12/12 | forced (height x morph x mega x ing) |
+
+Asm comparison found no mismatch (constants 6, -1, 0.3, 10000, 0, 2, 0.5, 1, 2.5, 1.4, 0.8, 7.5, 15; NaN
+branches ble/bge/bgt as in the source).
