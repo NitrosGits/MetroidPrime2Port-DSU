@@ -791,3 +791,73 @@ in Weapons/CImpactVisorEffect.hpp. SLdrSporbNeedle's XSTORE findings misread pro
 as member offsets; every actual store is mapped in the102CC audit. Its three constructor
 CALL findings are ordinary member initializers. retail_diff reports only the two visor
 effect aliases. No unexplained finding and no production probes.
+
+### sporb6 projectile constructor checkpoint
+
+`F494` is now audited and certified: **166 → 167/173** (six remain). This checkpoint
+corrects the host collision box's Y/Z half-extents under TARGET_PC. All other constructor
+behavior remains as upstream; in particular `mCarryingBall` is a separate byte, not part
+of retail's `stb r0,0x7ec(r29)` passable initialization.
+
+| blocks | full retail correspondence |
+|---|---|
+| F494–F51C | CPatterned(AI0x49,uid,name,flavor0,info,xf,model,patterned,movement1,collider1,body5,actorParams). |
+| F520–F5D8 | Derived vtable; state-1, solid phase0. Radius chooses halfExtent unless it is strictly less than height*.5 (F550 `fcmpo`, F558 `bge`; unordered selects halfExtent). Sphere origin=patterned+AC/B0/B4; material=actor+68. Escape radius=2*radius; passable0, two effect ids, byte index0, invalid top uid; shadowfalse. |
+| F5DC–F684 | Include clears Character33/Player32, adds ProjectilePassthrough20/CameraPassthrough21 (`lis r4,0x30` gives0x300000); exclude=Character33/Player32/AIPassthrough28, filter type3; sphere material gets resulting include mask. |
+| F688–F6F4 | Base box deltas X=max+C-min+0, Z=max+14-min+8, Y=max+10-min+4, each*.5. `F6CC stfs f4,0x90(r1)`, `F6D8 stfs f5,0x94(r1)`, `F6EC stfs f2,0x98(r1)` store **X/Z/Y**, with negatives at84/88/8C; SetBoundingBox. Upstream used X/Y/Z: corrected only for TARGET_PC. |
+| F6F8–F77C | DisabledAnimationDeltas=3 via +422 mask30. Reserve2 asset vector. Independently append each effect id unlessFFFFFFFF (`addis1; cmplwiFFFF`). |
+| F77C–F878 | ParticleResData(particles,five empty vectors); AnimationData's ParticleDB::CacheParticleDesc, destroy resource data and all six vectors, return this. |
+
+Forced evidence: `tools/cov/specs/sporb_projectile_ctor_arms.py` observes **natural** loader
+constructors. After the real CPatterned ctor it temporarily supplies halfExtent/height;
+GetBaseBoundingBox temporarily supplies asymmetric half-extents(1,2,3). The finish
+breakpoint checks radius and all six bound coordinates, then restores original finite
+gameplay inputs and the corrected original box. No duplicate model ownership or mocked
+constructor. Every actual particle cache call executes.
+
+| case | halfExtent,height | spit,escape valid | expected radius | outcome |
+|---|---|---|---|---|
+| 0 | 2,6 | yes,yes | 3 | 2/2 PASS |
+| 1 | 4,6 | no,yes | 4 | 2/2 PASS |
+| 2 | 3,6 | yes,no | 3 | 2/2 PASS |
+| 3 | 2,6 | no,no | 3 | 2/2 PASS |
+| 4 | NaN,6 | no,no | NaN | 2/2 PASS |
+| 5 | 2,NaN | no,no | 2 | 2/2 PASS |
+
+All cases require box min(-1,-3,-2), max(1,3,2). The clean pre-fix case0 run returned
+(-1,-2,-3)/(1,2,3) and failed both assertions. Fixed runs0–5 each exit normally after1200
+frames in `3dfd2249,0e_swamp_hall`, caught/reach-stub0. Combined gcov **34/34 lines,
+25/25 edges ALL-ARMS**, including both radius arms and each independent asset guard.
+
+Reproduce each case (wait for a game slot first):
+
+```sh
+SPORB6_CTOR_CASE=<0..5> BUILD=$PWD/build-port-cov \
+  COV_GDB_SCRIPT=$PWD/tools/cov/force_ret.py SECS=300 \
+  tools/cov/force.sh tools/cov/specs/sporb_projectile_ctor_arms.py <out> \
+  3dfd2249,0e_swamp_hall --fast --frames 1200
+```
+
+Evidence has `F494.asm`,
+`coverage-ctor.txt`, six `ctor-*-summary.log`, and `profiles-and-run-logs.tar.gz` containing
+the Sporb gcno/gcda files and complete final run logs, including the failing pre-fix run.
+
+Remaining uncertified bodies (no markers added): `2858 LoadSporbBase`, `C130 CSporbBase`
+constructor, `FE64 LoadSporbNeedle`, `DE60 LoadSporbProjectile`, `3B8 LoadSporbTop`,
+`26A8 CTendrilGen` destructor. All six full assembly listings are saved; Base constructor
+and Base loader still need complete audit. Loader early returns/optional paths, Base
+constructor branches and implicit destructor still need complete runtime certification.
+
+Final gates: direct host/coverage links rc0, 0 FAILED; manifest rc0; matching configure+
+ninja unchanged percentages, explicit dtk shasum **87 files OK**. All eight touched
+upstream files pass non-PC byte comparison after removing markers and selecting the new
+TARGET_PC block's original else path. Final builds differ from the six passing constructor
+runs only by the marker and corrected assembly-offset comment; no repeat smoke needed.
+
+F494 static findings are accounted for: `mDisabledAnimationDeltas` NOPOS is the explicit
++422 mask30 in F700; CCollisionPrimitive is CCollidableSphere's base initializer
+(`include/Collision/CCollidableSphere.hpp:9`). FAE4 reserves a four-byte-element vector;
+F910 constructs six consecutive vectors, F87C destroys those six, and FA90 frees a vector.
+They are the existing `rstl::vector<CAssetId>` and `CCECharacterInfo::CParticleResData`
+implementations, not missing callees (all four full listings saved). Final review has
+16 MARK lines, all justified in the two audit/coverage tables, with no other findings.
