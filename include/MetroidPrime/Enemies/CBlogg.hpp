@@ -149,6 +149,7 @@ public:
   CProjectileInfo* ProjectileInfo() override { return &mProjectileInfo; }
   // @ fn_7_2A08
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
+  // @ fn_7_4B00
   CDamageInfo GetContactDamage() const override { return mContactDamage; }
   void SetupStateMachine(CStateManager& mgr) override;
   void SetIngPossessed(bool possessed, CStateManager& mgr) override;
