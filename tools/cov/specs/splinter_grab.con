@@ -1,0 +1,12 @@
+# 0e_temple_hive_hall (layers 3 4), cable workers u048d/u048a/u0487: the forced-mGrabbedId arms
+# (splinter_grab_force.py).  Everything runs right after Activate, while the sac is still unpopped
+# (their FSMs reach Drop by ~f330).  Rise Deactivate deletes the splinter (end of tick), so each one
+# gets its Rise 2 calls in a single tick.
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f302 layer 3; layer 4
+@f303 tp 88 -349 -89; send u048d Activate; send u048a Activate; send u0487 Activate
+@f304 statecall u048d GrabMBall 0; statecall u048d GrabSac 0; statecall u048d GrabSac 1; statecall u048d GrabSac 2
+@f305 statecall u048d GrabSac 1; statecall u048d Rise 0; statecall u048d Rise 1; trigcall u048d MBallMoved; trigcall u048d SacPresent
+@f306 statecall u048d GrabSac 1; statecall u048d GrabSac 0; statecall u048d GrabSac 1; statecall u048d GrabSac 2; statecall u048d GrabSac 1; statecall u048d Rise 2; statecall u048d Rise 2
+@f308 statecall u048a GrabSac 0; statecall u048a GrabSac 2; statecall u048a Rise 0; statecall u048a Rise 2
+@f310 statecall u0487 GrabMBall 0; statecall u0487 Rise 1; statecall u0487 DropAndExplode 0; statecall u0487 DropAndExplode 1; statecall u0487 Rise 2

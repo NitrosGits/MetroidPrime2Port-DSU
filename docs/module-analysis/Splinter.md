@@ -96,8 +96,13 @@ findings are tool limits (unported callee CALLs, the xab0_40 bitfield, inline-he
 Not marked, with reason:
 - MBallMoved: arms for an inactive player, a player in another area and the not-morphed case (730, 731,
   733) did not all run. The first two cannot happen in play.
-- DetachMorphBall, IsGrabbingPlayer, ExplodeSac, the Rise detach arm, GrabSac holding arms: need
-  `mSac.mGrabbedId` set, which only FindConnectedId does for a `mSacOnCable` splinter with a connected
-  grabbed object; no spawn has one. Needs a FORCE spec (not written).
+- Forced arms (spl2): `tools/cov/specs/splinter_grab_force.py` with `splinter_grab.con`/`splinter_grab_mb.con`
+  (`SPL_GRAB`, `SPL_TOP`, `SPL_CARRY`, `SPL_MB` env variants; `statecall` since `fsm` cannot enter GrabMBall).
+  IsGrabbingPlayer, DetachMorphBall (forced (statecall Rise + SPL_GRAB, attached-actor set)) and Rise (all 22
+  arms, forced (statecall Rise)) are marked; asmcheck findings are unported callees, the xab0_40 bitfield, and
+  ReachedTop inlined in the asm. gcov kept in /tmp/opencode/spl2_gcov/<run>/.
+- Still not marked: ExplodeSac (mParticle.mEffect invalid in hive_hall, body past line 827 unreachable),
+  GrabSac (905 Update arm untaken: HasUnpoppedSac false on those calls), MBallMoved (745:1/4 and line 749
+  need a really morphed player; 9/10 arms).
 - RunAndHide/FindHideHint, FacingPlayerExactly, SetUnhideTime, ReachedMBall, ProjectileInfo,
   MegaSplinterSpit (no Mega splinter), CSplinterAcidSac::HealthInfo/GetDamageVulnerability: never reached.

@@ -1,0 +1,6 @@
+# MBallMoved arms (splinter_grab_force.py with SPL_MB=inactive|area|same; none: the not-morphed arm; the player morphs at f300, so a run with SPL_MB=moved (no force) takes the morphed arm and `same` forces mMorphBallPos = the player position).
+@f300 god 1; give morphBall 1; fastmorph 1; press x 30
+@f302 layer 3; layer 4
+@f305 send u048d Activate
+@f420 trigcall u048d MBallMoved
+@f450 trigcall u048d MBallMoved
