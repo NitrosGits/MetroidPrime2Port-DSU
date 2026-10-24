@@ -59,10 +59,16 @@ for mode in ('plain', 'norandom', 'inner'):
         if left == 0:
             break
 # Hop Update: a launched, not landed, non-sunlight hop whose direction is forced degenerate
-run('set var $t->mHop.mAborted = 0'); run('set var $t->mHop.mLaunched = 1'); run('set var $t->mHop.mLanded = 0'); run('set var $t->mHop.mSunlightHop = 0')
+run('set var $t->mAnimationState.mState = CAnimationState::kAS_Ready'); run('set var $t->mHop.mAborted = 0'); run('set var $t->mHop.mLaunched = 1'); run('set var $t->mHop.mLanded = 0'); run('set var $t->mHop.mSunlightHop = 0')
 arm(1, 'hopdir')
 run('call $t->Hop(*$m, kStateMsg_Update, 0.016f)')
 disarm(); restore()
+# Hop Update: the clamp of the flight time (before the start, long after it)
+for off in (10.0, -100.0):
+    run('set var $t->mAnimationState.mState = CAnimationState::kAS_Ready'); run('set var $t->mHop.mAborted = 0'); run('set var $t->mHop.mLaunched = 1')
+    run('set var $t->mHop.mLanded = 0'); run('set var $t->mHop.mSunlightHop = 0')
+    run('set var $t->mHop.mStartTime = $t->mElapsedTime + %r' % off)
+    run('call $t->Hop(*$m, kStateMsg_Update, 0.016f)'); restore()
 print('cbn done')
 end
 set var $t->mHop = $lm_hop

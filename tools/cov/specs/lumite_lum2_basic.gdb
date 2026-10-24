@@ -69,4 +69,5 @@ call $t->DoUserAnimEvent(*$m, *(CInt32POINode*)$m, kUE_EffectOff, 0.0f)
 set var $t->mAttackState = $lm_as
 printf "events done\n"
 printf "kneename7 %d\n", $t->GetKneeName(7).mSize
+printf "gravity %f\n", $t->GetGravityConstant()
 printf "basic done\n"

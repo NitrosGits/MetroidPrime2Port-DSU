@@ -35,7 +35,7 @@ gdb.execute('set $lm_busy = 0')
 gdb.execute('set $lm_done = 0')
 gdb.execute('set $lm_team = -1')
 
-STEPS = os.environ.get('LUM2_STEPS', 'basic,sun,zone,trig,knee,hop,cbn,more,team2,msg,collide,dead').split(',')
+STEPS = os.environ.get('LUM2_STEPS', 'cbn,basic,sun,zone,trig,knee,hop,more,team2,msg,collide,dead').split(',')
 
 bp = gdb.Breakpoint(addr('CLumite::Think('))
 bp.condition = ('$lm_busy == 0 && $lm_done == 0 && ((CLumite*)$rdi)->mActive && ((CLumite*)$rdi)->mAlive '
@@ -173,6 +173,8 @@ class CbnForce(gdb.Breakpoint):
         try:
             fr = gdb.newest_frame().older()
             line = fr.find_sal().line
+            if os.environ.get('LUM2_DBG') and any(int(gdb.convenience_variable('lm_cbn_cnt_%d' % k)) > 0 for k in (1, 2, 3)):
+                open(OUT + '/cbn.log', 'a').write('cbn call from %s line %d\n' % (fr.name(), line))
             for k in (1, 2, 3):
                 if int(gdb.convenience_variable('lm_cbn_cnt_%d' % k)) > 0 and \
                         int(gdb.convenience_variable('lm_cbn_line_%d' % k)) == line:
@@ -193,4 +195,4 @@ for _name, _txt in (('while', 'while (!cross.CanBeNormalized()'), ('inner', 'if 
                     ('tozone', 'if (!toZone.CanBeNormalized())'), ('normal', 'if (!normal.CanBeNormalized())'),
                     ('hopdir', 'if (direction.CanBeNormalized())')):
     _ln = [i for i, l in enumerate(_srcl, 1) if _txt in l]
-    gdb.execute('set $lm_L_%s = %d' % (_name, _ln[0] if _ln else 0))
+    gdb.execute('set $lm_L_%s = %d' % (_name, (max(_ln) if _name == 'hopdir' else _ln[0]) if _ln else 0))

@@ -991,6 +991,7 @@ void CLumite::TurnToHopPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_39_262C
 void CLumite::Hop(CStateManager& mgr, EStateMsg msg, float dt) {
 #ifndef TARGET_PC
   SetAttackState(0, msg);
@@ -1075,6 +1076,7 @@ void CLumite::Hop(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_39_15F4
 void CLumite::SelectHopTarget(CStateManager& mgr, const TUniqueId& hintId) {
   if (mHop.mHintId != kInvalidUniqueId) {
     if (CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(mHop.mHintId))) {
@@ -1147,6 +1149,7 @@ void CLumite::SelectHopTarget(CStateManager& mgr, const TUniqueId& hintId) {
   mHop.mDistance = (mHop.mTarget - GetTranslation()).Magnitude();
 }
 
+// @ fn_39_1AA0
 bool CLumite::TrySunlightHop(CStateManager& mgr, const CVector3f& hintPosition, CPlane& outPlane) {
   outPlane = CPlane(0.f, CUnitVector3f(0.f, 0.f, 1.f, CUnitVector3f::kN_Yes));
   CScriptSafeZone* zone = FindSafeZone(mgr, hintPosition);
@@ -1346,6 +1349,7 @@ void CLumite::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_39_190
 CEntity* LoadLumite(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrLumite sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrLumite.inc"
