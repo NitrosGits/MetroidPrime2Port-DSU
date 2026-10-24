@@ -2238,6 +2238,7 @@ void CBlogg::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_7_108
 CEntity* LoadBlogg(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrBlogg sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrBlogg.inc"
