@@ -68,3 +68,30 @@ Every write is one call, restored at the next entry.
 | 2924 Think | 62/72 | nothing landed: `mBouncesRemaining = 0` with `mPlayerObstructed` set/clear did not reach 0x312/0x313 (they read the tick's own values) | 308:1/2, 309:1/4, 309:2/4, 313:0/2 (the occlusion-state arms: `area.GetOcclusionState() != kOS_Visible`), 324:5/6, 348:1/4, 348:2/4, 356:3/4, 371:3/6, 371:5/6 |
 | 1D64 Cross | - | - | the inlined `CVector3f::Cross` helper: no standalone instrumented body, so no coverage evidence and no marker |
 | D28/DA4 SLdrOctapedeSegment dtor and ctor | - | - | inline in the header; the ctor's retail defaults are oct1's fix |
+
+## Third pass (oct2, 2026-10-24): FORCE_INNER does not apply here
+
+`tools/cov/specs/oct2_force.py` (run with `COV_GDB_SCRIPT=tools/cov/force_ret.py`) targets the oct1
+table's open arms through the inlined callees' answers. The run reported `no symbol` for every
+FORCE_INNER entry, and the binary confirms why: the coverage build has **no** standalone symbol for
+`CGameArea::GetOcclusionState`, `CCollisionInfoList::GetCount` or `TCastToConstPtr<COctapedeSegment>`
+(`nm` on build-port-cov has zero `TCastToConstPtr` symbols and no `GetOcclusionState`), so there is no
+return to hook - all three are inlined into their callers in this build.
+
+The routes that remain for the oct1 arms:
+
+- Think 308/309/313 (occlusion): write the *area's* occlusion member from the Think entry (the area
+  comes from `mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId())`, an inferior call or a hand-walk of
+  the world's area array), or force `mPlayerObstructed` after line 311 - the oct1 attempt set it at the
+  entry and line 307 cleared it again, so it must be written after that line (`loc:` on 310 or 313).
+- Think 324/348/356/371: member writes (`mSegmentState`, `mBrokenApart`, `mAlignToFloor`,
+  `mFollowedSegmentId`, `mElectric`) at a `loc:` after 307, plus the health value behind
+  `GetHealthInfo()->GetHP()` (inline) written through the health member.
+- CollidedWith 582/584/585: a real collision with an empty `CCollisionInfoList` (the list is built by
+  the collision system, not by a member), and 571:3/4 is the function-static bounce mask's guard.
+- AcceptScriptMsg 236/239/248: the cast is inlined (no symbol); 248 needs a follower with Action
+  children (the shipped heads have them, the followers not) or a `loc:` write of `mChildSegmentIds`
+  after the `reserve(16)`/loop so `clear()` is safe.
+
+The forced run also hit the render watchdog ("no frame for 5.0 s (frame 200)"), so it produced no gcov
+data; the FORCE_RET writes it did make are the oct1 ones.
