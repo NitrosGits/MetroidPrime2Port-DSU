@@ -122,7 +122,7 @@ private:
     uint mHopFailed : 1;
     uint mLaunched : 1;
     uint mFinished : 1;
-    uint mLanded : 1;
+    uint mLanded : 1; // 0x950 0x04
     uint mDidSideTaunt : 1;
     uint mAborted : 1;
     uint mSunlightHop : 1;
@@ -191,8 +191,8 @@ private:
   SSurfaceTarget mSurface;
   uchar mKneeMask;
   SHopPlan mHop;
-  bool mInSunlight : 1;
-  bool mTransitioning : 1;
+  bool mInSunlight : 1; // 0x954 0x80
+  bool mTransitioning : 1; // 0x954 0x40
   CVector3f mLastSunlightPosition;
   float mAlphaFactor;
   float x968_;

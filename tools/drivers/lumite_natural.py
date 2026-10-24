@@ -82,6 +82,10 @@ if os.environ.get("LUM2_FILES"):
     def uids(kind):
         return [str(int(l.split()[0][1:], 16)) for l in cmd("objs %s" % kind).split("\n") if l.startswith("u")]
     open(os.environ["LUM2_FILES"] + ".team", "w").write("\n".join(uids("Team")))
+    open(os.environ["LUM2_FILES"] + ".trigs", "w").write("\n".join(
+        str(int(l.split()[0][1:], 16)) for l in cmd("objs Trigger").split("\n")
+        if l.startswith("u") and " CScriptTrigger " in l))
+    open(os.environ["LUM2_FILES"] + ".hints", "w").write("\n".join(uids("AIHint")))
     open(os.environ["LUM2_FILES"] + ".zones", "w").write("\n".join(uids("SafeZone")))
 # wake every safe zone and AI hint so sunlight hops / zone damage can happen
 for kind in ("SafeZone", "AIHint"):

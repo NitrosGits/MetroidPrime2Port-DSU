@@ -215,6 +215,7 @@ CScannableObjectInfo* CLumite::GetScannableObjectInfo() const {
   return CPatterned::GetScannableObjectInfo();
 }
 
+// @ fn_39_5AE8
 CProjectileInfo* CLumite::ProjectileInfo() {
   if (mAttackState == 1) {
     return &mSmallShot.mProjectile;
@@ -225,6 +226,7 @@ CProjectileInfo* CLumite::ProjectileInfo() {
   return nullptr;
 }
 
+// @ fn_39_52C0
 void CLumite::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -262,6 +264,7 @@ void CLumite::DisableGroundCollision(CStateManager& mgr) {
   RemoveMaterial(kMT_GroundCollider, mgr);
 }
 
+// @ fn_39_5074
 void CLumite::StickToSurface(float dt) {
   mSurface.mClosestPoint = mSurface.mPlane.GetClosestPoint(GetTranslation());
   if (mSurface.mKind == 2) {
@@ -294,6 +297,7 @@ void CLumite::PlaySound(CStateManager& mgr, ushort sfx) {
                           CSfxManager::kMedPriority);
 }
 
+// @ fn_39_4A5C
 void CLumite::UpdateSunlight(CStateManager& mgr, float dt) {
   if (!mAlive) {
     return;
@@ -404,6 +408,7 @@ void CLumite::DamageSafeZoneOccupant(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_39_2518
 void CLumite::SpawnZoneImpact(CStateManager& mgr, const CVector3f& position, float scale) {
   if (mSurface.mKind == 2 && mSurface.mZoneId != kInvalidUniqueId) {
     const CVector3f closest = mSurface.mPlane.GetClosestPoint(position);
@@ -417,6 +422,7 @@ void CLumite::SpawnZoneImpact(CStateManager& mgr, const CVector3f& position, flo
   }
 }
 
+// @ fn_39_5B78
 void CLumite::PreRender(CStateManager& mgr) {
   if (!mTransitioning) {
     UpdateSunlight(mgr, 100.f);
@@ -434,6 +440,7 @@ void CLumite::PreRender(CStateManager& mgr) {
   }
 }
 
+// @ fn_39_554C
 int CLumite::GetKneeIndex(const rstl::string& name) const {
   if (name.size() > 0 && name[0] == 'L') {
     if (name == rstl::string_l("L_front_knee")) {
@@ -459,6 +466,7 @@ int CLumite::GetKneeIndex(const rstl::string& name) const {
   return -1;
 }
 
+// @ fn_39_58BC
 rstl::string CLumite::GetKneeName(int index) const {
   switch (index) {
   case 0:
@@ -478,6 +486,7 @@ rstl::string CLumite::GetKneeName(int index) const {
   }
 }
 
+// @ fn_39_59A4
 void CLumite::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                               float dt) {
   switch (type) {
@@ -610,6 +619,7 @@ void CLumite::JoinTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_39_FF8
 void CLumite::QuitTeam(CStateManager& mgr) {
   if (mTeamAiMgrId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId))) {
@@ -675,6 +685,7 @@ bool CLumite::FacingPlayer(CStateManager& mgr, const CTriggerData& data) const {
   return FacingHint(mgr.GetPlayer(0)->GetTranslation());
 }
 
+// @ fn_39_32F8
 bool CLumite::CanAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (IsHeckler(mgr, data)) {
     return false;
@@ -711,6 +722,7 @@ bool CLumite::IsHeckler(CStateManager& mgr, const CTriggerData& data) const {
   return GetTeamRole(mgr) == CTeamAiRole::kTAR_Unknown;
 }
 
+// @ fn_39_1174
 bool CLumite::CanTaunt(CStateManager& mgr, const CTriggerData& data) const {
   if (IsHeckler(mgr, data)) {
     return mLastTauntTime + 2.5f < mElapsedTime;
@@ -742,6 +754,7 @@ float CLumite::DistanceToPlayer(const CStateManager& mgr) const {
   return (GetTranslation() - mgr.GetPlayer(0)->GetTranslation()).Magnitude();
 }
 
+// @ fn_39_3E4C
 bool CLumite::FacingHint(const CVector3f& point) const {
   const CVector3f closest = mSurface.mPlane.GetClosestPoint(point);
   CVector3f direction = closest - GetTranslation();
@@ -770,6 +783,7 @@ void CLumite::SetAttackState(int state, EStateMsg msg) {
   }
 }
 
+// @ fn_39_48C4
 void CLumite::ResetAttackTimer(CStateManager& mgr) {
   mNextAttackTime = mElapsedTime;
   if (mgr.IsRandomAvailable()) {

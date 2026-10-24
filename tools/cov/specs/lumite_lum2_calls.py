@@ -35,7 +35,7 @@ gdb.execute('set $lm_busy = 0')
 gdb.execute('set $lm_done = 0')
 gdb.execute('set $lm_team = -1')
 
-STEPS = os.environ.get('LUM2_STEPS', 'basic,sun,zone,knee,team2,dead').split(',')
+STEPS = os.environ.get('LUM2_STEPS', 'basic,sun,zone,trig,knee,hop,more,team2,msg,collide,dead').split(',')
 
 bp = gdb.Breakpoint(addr('CLumite::Think('))
 bp.condition = ('$lm_busy == 0 && $lm_done == 0 && ((CLumite*)$rdi)->mActive && ((CLumite*)$rdi)->mAlive '
@@ -104,6 +104,24 @@ class RetForce(gdb.Breakpoint):
 
 
 for _sym, _var in (('CScriptTeamAiMgr::GetTeamRole(', 'lm_rf_role'), ('CScriptTeamAiMgr::IsPartOfTeam(', 'lm_rf_part'),
-                   ('CScriptTeamAiMgr::GetTeamActionCount(', 'lm_rf_acts')):
+                   ('CScriptTeamAiMgr::GetTeamActionCount(', 'lm_rf_acts'),
+                   ('CScriptSafeZone::IsHurtful(', 'lm_rf_hurt')):
+    gdb.execute('set $%s = -1' % _var)
+    RetForce(_sym, _var)
+
+
+class RetForceAll(RetForce):
+    # every copy of an inline-expanded function (the REL modules each carry their own CBodyState::IsDead)
+    def __init__(self, address, var):
+        gdb.Breakpoint.__init__(self, '*' + address, internal=True)
+        self.var = var
+
+
+for _m, _d in syms:
+    if _d.startswith('CBodyState::IsDead(') or _d.startswith('CBSDie::IsDead('):
+        RetForceAll(_m, 'lm_rf_dead')
+gdb.execute('set $lm_rf_dead = -1')
+for _sym, _var in (('CCollisionSurface::IsDegenerate(', 'lm_rf_degen'), ('CAABox::DoBoundsOverlap(', 'lm_rf_ovl'),
+                   ('CSafeZoneManager::SphereTouchingWhichSafeZone(', 'lm_rf_szm')):
     gdb.execute('set $%s = -1' % _var)
     RetForce(_sym, _var)
