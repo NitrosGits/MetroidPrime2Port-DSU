@@ -109,6 +109,7 @@ CScriptGuiFrontEndScreen::CScriptGuiFrontEndScreen(TUniqueId uid, const rstl::st
 // @ fn_60_6060
 CScriptGuiFrontEndScreen::~CScriptGuiFrontEndScreen() { CGameOptions::SetFrontEndActive(false); }
 
+// @ fn_60_4714
 void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
   TUniqueId defaultId = FindConnectedObject(mgr, kSS_XDamage, kSM_None);
   mDefaultTeleporter = TCastToPtr< CScriptWorldTeleporter >(mgr.ObjectById(defaultId));
@@ -359,6 +360,7 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_4544
 void CScriptGuiFrontEndScreen::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
 
@@ -596,6 +598,7 @@ void CScriptGuiFrontEndScreen::RefreshSaveSlots(CStateManager& mgr) {
   UpdateUnlocks(mgr);
 }
 
+// @ fn_60_2B78
 void CScriptGuiFrontEndScreen::UpdateSaveSlots(CStateManager& mgr) {
   CSaveGameScreen* saveScreen = mgr.mSaveGameScreen.get();
   const bool normalCompleted = gpGameState->SystemOptions()
@@ -1111,6 +1114,7 @@ void CScriptGuiFrontEndScreen::SetPercentText(CScriptTextPane* pane, float value
   pane->TextSupport().SetText(rstl::string(buf));
 }
 
+// @ fn_60_CEC
 void CScriptGuiFrontEndScreen::ShowSlideShow(CStateManager& mgr) {
   CArchitectureQueue& queue = mgr.ArchQueue();
 #ifdef TARGET_PC
