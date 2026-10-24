@@ -80,6 +80,7 @@ inline SLdrIngSnatchingSwarm::SLdrIngSnatchingSwarm()
 #endif
 }
 
+// @ fn_33_6D4
 inline SLdrIngSnatchingSwarm::~SLdrIngSnatchingSwarm() {}
 
 #endif

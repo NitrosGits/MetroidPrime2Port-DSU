@@ -71,3 +71,21 @@ Unmarked:
 
 Proposed `amt`: area `42b935e4,06_sand_alamofront` with the driver above. Pass when the console log
 shows the Start/Attack/Patrol cycle (status lines) with no caught or reach-stub hits.
+
+## Coverage (iss2: the 8 rows left)
+
+Counted with port_progress.py's marker rule at 04852528f: 8 B rows have no `// @ fn_1_*` marker. Runs:
+amt1's driver (`tools/drivers/aimannedturret_alamofront.con`, 14000 f) natural, then two forcing runs
+(`aimannedturret_force.py` with force.sh, `aimannedturret_force2.py` with force_ret.py), all
+`caught/reach-stub: 0`.
+
+| fn | state |
+|---|---|
+| 6D8 LoadTypedefAIMannedTurretData | marked: objdiff 100% (the compare tree is the Data property ids) |
+| A18 ~SLdrAIMannedTurretData | marked: objdiff 100% |
+| A88 SLdrAIMannedTurretData ctor | marked: objdiff 100% (0xA88 stfs/stw defaults) |
+| 5B0 ~SLdrAIMannedTurret | not byte-identical (objdiff 74.2%): GCC inlines sub-object dtors MWCC called; same order as retail (0x5B0 chain) |
+| 4964 SLdrAIMannedTurretData (copy) | implicit copy ctor: 100% objdiff but compiler-generated, no source line to mark |
+| 1F28 UpdateAim | 45/56. Forced and taken: the `snap` arm (`$rdx = 1` at the body entry; both callers pass 0) closed 410/411/412/444. Still open: 402/403/404 and 417/418/419 (`|dot| >= 1e-4` false), 422/426 (the horizontal rotation limits, 179 deg) and 451/453/458 (the elevation animations). The `loc:` writes of `mAimDirection` failed - force.py binds `$this` to `$rdi`, which no longer holds the object mid-function; the fix is to capture `$rdi` at the body entry into a convenience variable and cast it back in the `loc:` set |
+| 2C6C Attack | 21/22: only 278:0/2 (the inlined `CMath::Limit(dot, 1)` clamp, needs a non-unit `mAimDirection`) |
+| 0CF0 Fire | 8/10: 585:1/2 (`mWeaponToken.IsLoaded()` false - the token streams in before the driver's first shot; `CObjectReference::IsLoaded` is inlined so FORCE_INNER found no symbol) and 596:1/2 (`projectile != nullptr` false, needs a failed allocation) |

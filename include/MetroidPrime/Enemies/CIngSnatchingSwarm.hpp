@@ -76,6 +76,7 @@ public:
   void PreRender(CStateManager& mgr) override;
   void AddToRenderer(const CStateManager& mgr) const override;
   void Render(const CStateManager& mgr) const override;
+// @ fn_33_0
   CHealthInfo* HealthInfo() override { return &mHealthInfo; }
   const CDamageVulnerability* GetDamageVulnerability() const override;
   rstl::optional_object< CAABox > GetTouchBounds() const override;

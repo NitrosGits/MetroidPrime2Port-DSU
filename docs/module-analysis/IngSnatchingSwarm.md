@@ -54,3 +54,21 @@ for the Damage arm/IsDead). One run covers all 27 marks; caught/reach-stub 0. No
 | Dead | two arms (356, 368) untaken in this run; not investigated |
 | CalculateArcLength, FollowArc | arc without 4 points, speed/duration <= 0, tiny step |
 | UpdateParticles | one history arm |
+
+## Coverage (iss2: the 8 rows left)
+
+The TSV's marker column is stale; the 8 B rows without a `// @ fn_33_*` marker (counted with
+port_progress.py's own marker rule) are the ones below. One natural run (iss1's driver, 2400 f) plus
+one forcing run (`tools/cov/specs/ingsnatchingswarm_force.py` with `COV_GDB_SCRIPT=tools/cov/force_ret.py`,
+same driver), both `caught/reach-stub: 0`.
+
+| fn | state |
+|---|---|
+| 0 HealthInfo | marked: objdiff 100% (`li r3,0x10(r3) / blr` = `&mHealthInfo`) |
+| 6D4 ~SLdrIngSnatchingSwarm | marked: objdiff 100% |
+| 1908 CalculateArcLength | marked: **ALL-ARMS** after forcing `mArcPoints.mCount = 0` on every other call (size != 4) |
+| F7C UpdateParticles | marked: **ALL-ARMS** after stubbing `CMain::IsMaxSpeed()` to 1 for half the calls (FORCE_INNER, `$rax`) |
+| 17C8 FollowArc | 7/8: only 670:1/2 (`return t < 1.f` false) left. Two forcing runs: size != 4, speed <= 0 and duration <= 0 all taken, but neither `$xmm0 = 1e6` (time) nor `mArcLength = 0.001` (a tiny duration, so t = time/duration >> 1) took the arc-end arm - it also needs the body to reach the return, which the arc-end hit apparently does not |
+| 29A8 SelectTarget | 35/40: 475:1/6, 475:5/6, 476:3/6, 499:1/2, 506:3/4. The `CanBeIngPossessed` -> 0 and `IsIngPossessed` -> 1 FORCE_INNER stubs fired (`forced.log`) but the arms they gate stayed untaken, and the best-candidate arms need two candidates with different swarm counts - next attempt: a second swarm (GENR) or a `loc:` write of `candidates[j].mSwarmCount` |
+| 41CC ctor | 29/38: 143/145/147 (the `mExplosionEffect != kInvalidAssetId` ternary, data: the shipped GENR always sets it) and 183 (the mStateMachineToken setup) |
+| 744 SLdrIngSnatchingSwarm ctor | not byte-identical (objdiff 72.9%): GCC inlines the sub-struct ctors MWCC kept out of line; the defaults are the ones swsldr1 fixed |
