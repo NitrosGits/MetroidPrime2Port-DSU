@@ -219,4 +219,4 @@ That Lock reports the CSplinter ctor frame as its caller, at the visor copy's re
 Dead arms: in ABA0, the null-this branch (only the vtable references it, data.s:933), the D2 / flag <= 0 path
 (no subclass, no other construction) and the unrolled block for more than 8 evade checks (AddEvadeCheck caps at 4). In
 AF50, `beq 0xAF6C` and `ble` (the only caller is ABA0 0xAC9C, with this = r30+0x948 non-null and r4 = -1), and
-CSurfaceAlignmentHelper mCache, which only the filter ctor (CSurfaceAlignmentHelper.cpp:25) sets and which is always null here.
+CSurfaceAlignmentHelper mCache, which the filter ctor (CSurfaceAlignmentHelper.cpp:25, the only one CSplinter.cpp:153/155 uses) sets to null; only the default ctor allocates it.
