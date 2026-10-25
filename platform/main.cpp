@@ -85,6 +85,7 @@ extern void* gPortGameHeapHi;
 #include "port_overlay.h"
 #include "port_overlay_internal.h"
 #include "port_prompts.h"
+#include "port_mods.h"
 #include "port_textures.h"
 #include "port_touch.h"
 #include "port_tweaks.h"
@@ -1038,6 +1039,9 @@ int main(int argc, char** argv) {
 #endif
   }
   std::printf("metroid_prime2_port: disc mounted: %s\n", discImage.c_str());
+  // The mods folder layers over the disc through Aurora's overlays; the game caches PAK tables
+  // when it boots, so this runs after the mount and before anything reads the disc.
+  PortMods::Initialize(touchUser != nullptr ? touchUser : std::string());
 
   // Prime the window and event state so the game's first frame can succeed: the
   // console build submits GX during early initialization, before its main loop.

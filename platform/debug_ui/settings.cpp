@@ -7,6 +7,7 @@
 
 #include "port_env.h"
 #include "port_livesplit.h"
+#include "port_mods.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
 #include "port_photo.h"
@@ -384,6 +385,11 @@ const SettingKey kSettingKeys[] = {
     {"livesplit_split_upgrades",
      [](const std::string& value) { PortLiveSplit::SetSplitUpgrades(ParseBool(value)); },
      [](std::ostream& out) { WriteBool(out, PortLiveSplit::SplitUpgrades()); }, false, "1", "0"},
+    // Mods folder (port_mods.h): read at startup only.
+    {"mods", [](const std::string& value) { PortMods::SetEnabled(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortMods::Enabled()); }, false, "1", "0"},
+    {"mods_disabled", [](const std::string& value) { PortMods::SetDisabled(value); },
+     [](std::ostream& out) { out << PortMods::Disabled(); }, true, "a/b", "c"},
     {"photo_supersample", [](const std::string& value) {
        int parsed = 0;
        if (ParseInt(value, parsed)) {

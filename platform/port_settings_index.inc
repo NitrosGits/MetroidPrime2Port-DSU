@@ -18,6 +18,7 @@
 {"Game", "", "Speedrun", "LiveSplit", "timer splits autosplitter tcp"},
 {"Game", "", "Speedrun", "Server (host:port)", "livesplit address ip"},
 {"Game", "", "Speedrun", "Split on upgrades", "livesplit items autosplit"},
+{"Game", "", "Mods", "Load mods", "mods folder texture pack override"},
 {"Controls", "Options", "Buttons", "Toggle Lock-On", "lock on target latch hold l trigger"},
 {"Controls", "Options", "Buttons", "Sticky Charge", "charge beam hold a"},
 {"Controls", "Options", "Buttons", "Remastered charge (rapid fire)", "rapid fire charge beam power"},
