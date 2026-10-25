@@ -19,6 +19,18 @@
 template <>
 TStateMachineStateBase< CPatterned >::~TStateMachineStateBase();
 
+// Retail `__sinit_CIngPuddle_cpp` (0x31F4-0x32F8) writes exactly these two tables and nothing else:
+// `lis` 0x31F8 and 0x3238 take the table addresses, then 21 word copies (`stw` 0x3298-0x32E8) put
+// each entry's member pointer at +4/+8/+0xC as {adjust 0, vtoff -1 (non-virtual), fn = address}.
+// Values read from the REL's module-32 relocation list: names .rodata 0x34/0x3E/0x45 and
+// 0x53/0x59/0x60/0x65, functions .text 0x177C StateOver, 0x175C IsDead, 0x1704 HasPatrolPath,
+// 0x1700 Start, 0x1154 Patrol, 0x1628 Idle, 0x1490 Dead - the same names, order and targets as
+// below; the name words are static relocations already in the file. No call, no branch; the only
+// other store is the register save stmw r20 0x3204 (frame 0x40, restored lmw 0x32EC).
+// Host note: this unit casts with `reinterpret_cast`, which is not a constant expression, so the
+// linked arrays hold zeros and `_GLOBAL__sub_I_CIngPuddle.cpp` writes the same {&CIngPuddle::x}
+// pointer into each entry at load - retail's sinit writes those same values, statically.
+// @ fn_32_31F4
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"StateOver",
      reinterpret_cast< CPatterned::StateMachine::TriggerFunc >(&CIngPuddle::StateOver)},
