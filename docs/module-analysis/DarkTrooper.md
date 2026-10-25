@@ -117,3 +117,47 @@ placements: `tools/scan_darktrooper_props.py` (firesMissiles=1 only hive01 L6 e0
 - Ragdoll crash (dtr11 render/scan force run): force-script artifact, not a port bug. gdb convenience vars `$al/$si/$dl/...` write real x86 registers; scripts renamed to `$v...` (726587f29). Natural run and a no-breakpoint control never crash.
 - fn_12_0 GetSearchPath marked: asm `addi r3,r3,0x7c0; blr`; 0x7c0 = CHECK_SIZEOF(CPatterned) = offset of first CDarkTrooper member mPathFindSearch.
 - Not done (still unmarked): LoadDarkTrooper null-model arm, ctor 5A48 sleeper/no-scan/flotsam arms, dtor 5520, DeliverCommand instances 1199/1202.
+
+## dct1 (offline closure of three rows; one run plan)
+
+Base `234139ed2`, branch `decomp/dct1`. **No game launched.** Three of the four open B rows are
+closed from the retail asm plus the shipped data; the fourth (the main ctor) has live arms and
+keeps a run plan. Retail source: `auto_00_00000000_text.s` / `CDarkTrooper.s` of a matching
+build; the loader-struct offsets below come from `build/G2ME01/asm/MetroidPrime/ScriptLoader.s`.
+
+| fn | row | what settled it |
+|---|---|---|
+| fn_12_B28 | SLdrDarkTrooper ctor | MARKED. Branch-free body 0xB28-0xD38: seven sub-struct ctors at +0x0/+0x3C/+0x280/+0x2F8/+0x480/+0x49C/+0x4BC then 21 stores, each matched one for one by the host ctor (same field, same value). Field identity derived, not assumed: LoadDarkTrooper's frame fixes the struct base at +0x478 (patterned +0x3C and actorInformation +0x280 agree with its r26/r27 bases), `patterned+n` is LoadTypedefPatternedAITypedef's own store offset (0x3FAE47EB leashRadius -> +0x28, 0x8A6AB139 collisionRadius -> +0x1AC, 0x3011B5DF collisionHeight -> +0x1B0, 0xD9355674 stepUpHeight -> +0x1C0, 0x4BC4C4D9 creatureSize -> +0x22C, 0x4476BED8 echo set -> +0x230, 0xCF90D15E health -> +0x48 so +0x4 is hI_KnockBackResistance), and `actorInformation+n` from LoadTypedefActorParameters (lighting at +0, ambient sixth = +0x14; 0x05AD250E visor set at +0x60, so visorFlags +0x64). Values: rodata 0x4C/50/54/58/5C/60/64/68 = 100/2/0.5/1.6/1/0/5/18. dt1's four PC defaults (0x4B0 -1, 0x88 2.0, 0x26C 1, 0x294 CColor, 0x2E4 0xF) are five of those stores. No branch, so no arm. |
+| fn_12_5520 | `~CDarkTrooper` | MARKED. The module's only reference to `__dt__12CDarkTrooperFv` is the deleting-destructor vtable slot (`.data` 0x2BC + 0x8; the single `.4byte` in the asm) - no call site, no other address-taken use - so the 0x553C/0x5540 null-this guard and the 0x5630-0x5638 `extsh. r0,r30; ble` non-deleting arm are dead for every lifetime. Body = teardown only: 0x5554 vtable, 0x5558/0x5564/0x5570 the +0xA50/+0xA10/+0x9D0 member dtors, 0x5584-0x5598 the +0x9C4 token + engaged byte, 0x55AC-0x55F4 the +0x9A8 element-destructor loop, 0x5600-0x5620 the +0x904 scan-info token + Free, 0x562C base `fn_12_5660`, Free when r4 > 0. Same shape as the accepted dc4 destructor proofs. Taken lines came from the dtr6/dtr8 kill drivers; the untaken gcov lines are host EH cleanup edges. |
+| fn_12_12C | LoadDarkTrooper | MARKED. The only arm dtr11 left untaken is the null-model return (0x4FC-0x504 `lbz r0,0x1C0(r1); cmplwi 0; bne 0x574`, `li r3,0` at 0x56C), and it is dead by the shipped data: LdrToModelData gets kInvalidAssetId as the model, so an empty optional also needs the ancs id to resolve to no resource type. New scanner `tools/scan_darktrooper_loader.py` walks every MLVL of every pak (all areas, all layers): **35 DKTR placements, 35 with an ancs that exists with FourCC ANCS** (0xA2CC5B52 in Metroid1.pak for 33, 0x6735E3CA for the two 05_temple_federationsite L9 ones), so the CAnimRes path at 0x4D8/0x4DC always runs. `__nw`'s null return (0x590-0x594) stays the throwing-new OOM ABI limitation (dc4). Caveat: the arm would be reachable on an install whose paks lack that ANCS (missing-pak reading), which is the port's documented "missing paks read as empty" case, not shipped data. |
+| fn_12_5A48 | `CDarkTrooper` ctor | **OPEN, needs a run.** Arms still unexercised are live in the shipped data, so no offline proof can close them: (a) the sleeper test at :149/:155 (`FindBestAnimation(kAS_Locomotion, 0, 7/9).second == initialAnim`) - shipped `initial_anim` values are 1/9/11/12/13 and the PAS best-match index needs the ANCS's PAS database, which is not parsed yet; (b) `scannableInfoWhenAttacking != kInvalidAssetId` (:161) - 33 of 35 placements have a SCAN id, the two federationsite L9 ones have 0xFFFFFFFF; (c) `if (flotsam)` (:166) - 11 of 35 have flotsam = 1. |
+
+### Run plan for fn_12_5A48 (not spent in this slice)
+
+One coverage/force run covers (b) and (c); (a) needs a force or the hanging troopers to be sleepers.
+
+    tools/games_running.sh --wait
+    MP2_FAST_LOAD=1 BUILD=build-port-link tools/cov/force.sh <spec> <out> \
+      3bfa3eff,05_temple_federationsite --driver 'python3 tools/drivers/con.py {port} @f600 layer 9' \
+      --frames 2400 --fast
+
+- Area `3bfa3eff,05_temple_federationsite`, layer 9: u<b>0242 and u<b>0259, both flotsam = 1 **and**
+  `scannableInfoWhenAttacking = 0xFFFFFFFF` - one spawn takes the :166 true arm and the :161 false arm.
+  Sites: `loc:CDarkTrooper.cpp:161` and `loc:CDarkTrooper.cpp:166` (the ctor is unchanged by dct1's
+  markers, which were added after it), plus `ret`-less key checks on `$this->x928_40` and
+  `$this->x9c4_...`-free assertions; the spec should assert `SetDrawShadow`/
+  `SetHighlightedInDarkVisor(false)` ran and no `mAttackScanInfo` allocation happened.
+- Sleeper arm (:149/:155): the shipped "hanging" troopers are the candidates -
+  `3bfa3eff,01_temple_hive02` layer 0 (u001300e8 "hanging by b", flotsam 1) and layer 3
+  (u0c1301d9 "Hanging Trooper 001", flotsam 1); run the same spec there and read the cov key on the
+  `FindBestAnimation` line. If neither takes it, force the dependency output in the spec
+  (`gdb` write of the returned anim index at the `FindBestAnimation` return) rather than faking
+  `mIsSleeper`, so the real comparison executes.
+- Needs a `tools/cov/specs/darktrooper_dct1.py` + driver (a `layer 9` console step is enough; no new
+  driver command).
+
+### Not touched
+
+`fn_12_FC` (SetFuncPtrs, marked) and the five H rows are outside this slice. No source probes, no
+TARGET_PC changes: every dct1 change is a marker comment (code lines identical to base after
+stripping `//`).

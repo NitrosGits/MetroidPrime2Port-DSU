@@ -369,3 +369,34 @@ header coverage must be inspected in raw JSON; the CPP-only summary omits them.
 - `review_decomp_diff.sh <base>`: the 26 MARK entries are resolved by the per-body table and
   qualifications above. No gameplay code added/removed. The script's ASM pass selects only
   Port*.cpp; explicit upstream-named CPP/header checks above supply the required review.
+
+## dct1 offline survey (the four open B rows are compiler-generated copies)
+
+Base `234139ed2`, branch `decomp/dct1`. **No game launched, no code changed.** dc4 left four B
+rows open — `fn_3_7880`, `fn_3_797C`, `fn_3_7D40`, `fn_3_7DDC` — and the TSV calls them
+`SLdr*Data (copy)`. They are not missing bodies: each is the compiler-generated copy constructor
+of a loader struct the module instantiates, and the port gets the same constructor implicitly.
+Retail source: `CDarkCommando.s` of a matching build.
+
+| fn_3_ | struct | retail body | calls |
+|---|---|---|---|
+| 7DDC | `SLdrDarkCommandoEMPData` | 0x7DDC-0x7E6F, branch-free. Copies +0x00-0x44 word by word: three floats, the four `grenadeDamage` words (0xC/0x10/0x14/0x18: `dI_WeaponType` as a word, damage/radius/knockback as `stfs`), the three CAssetIds 0x1C/0x20/0x24, four floats 0x28-0x34, 0x38 int, 0x3C `stfs` (eMPDuration), 0x40/0x44 the two sound ids — the 15 declared members of `SLdrDarkCommando.hpp:14`, in declaration order, ending at sizeof 0x48. | called from the grenade ctor 0x9094 |
+| 7D40 | `SLdrDarkCommandoChargeBeamData` | 0x7D40-0x7DDB, branch-free. Plain words +0x00-0x48 ending in the bool at 0x48 (sizeof 0x4C): 3 floats, `damage` 0xC-0x18, `projectile` 0x1C, `moldEffect` 0x20, `moldDamage` 0x24-0x30, `sound_Mold` 0x34-0x48 (int, float, three words, bool) — the 8 declared members. | copies go through the main copy at +0x98 |
+| 797C | `SLdrDarkCommandoShadowDashData` | 0x797C-0x7A83. Plain words +0x00-0x58 (4 floats, `shadowDecoyFx` 0x10, the three `SLdrAudioPlaybackParms` at 0x14/0x2C/0x44 with their trailing bools at 0x28/0x40/0x58), then two `SLdrDamageVulnerability` copy calls at +0x5C and +0x1B8 (so that member is 0x15C and non-trivial). | main copy at +0xE4 |
+| 7880 | `SLdrDarkCommandoData` | 0x7880-0x797B. Plain words +0x00-0x4C (4 chance floats, `bladeDamage` 0x10-0x1C, `sound_ImpactRagDoll` 0x20, `sound_HurledDeath` 0x38), then the three nested copies at +0x50 (EMPData), +0x98 (ChargeBeamData), +0xE4 (ShadowDashData) — exactly the 10 declared members. | `CDarkCommando` ctor 0x7018 copies the loader data into the actor |
+
+Why this is offline-settled: each retail body contains no branch at all — it is the memberwise copy
+in declaration order, with the same load/store width per member and the same nested-copy calls for
+the members that have non-trivial copy constructors. That is exactly what the host compiler emits
+for the same member list (which the already-marked ctors `fn_3_B14`/`E3C`/`10E8`/`14B8` and the
+loader property tables establish), since none of the four structs declares a copy constructor of
+its own. There is therefore no arm to run and no new runtime evidence can add anything: the rows
+are complete once someone decides what a "marker" means for a body nobody wrote.
+
+**Open decision (for the orchestrator).** No `// @` marker can sit above these bodies: there is no
+source function to mark, and the marker convention is "one line above the body". Options:
+(a) leave the four rows unmarked and record in the TSV that they are compiler-generated copies of
+verified structs (the dc4 note's own proposal, and the same shape as the H rows);
+(b) authorize a small non-comment change — e.g. four `SLdrXData(const SLdrXData&) = default;`
+declarations — so a marker has something to sit above. That is a code change, so dct1 did not make
+it. dct1 verified the asm above and changed nothing in this module.
