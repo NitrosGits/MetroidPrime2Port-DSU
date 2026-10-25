@@ -32,6 +32,25 @@ static rstl::string skTelegraphLocator4 = rstl::string_l("can04_LCTR");
 
 static CColor skDamageFlashColor(0.5f, 0.f, 0.f, 1.f);
 
+// Retail `__sinit_CAIMannedTurret_cpp` (0x4E08-0x5130) accounts for exactly three tables, five
+// rstl::string statics and one CColor. Tables: 30 word copies (`stw` 0x504C-0x5118, the only .data
+// writes) put each entry's member pointer at +4/+8/+0xC as {adjust 0, vtoff -1 (non-virtual),
+// fn = address}; `lis` 0x4FE8/0x4FD4/0x4FEC take .data 0x30 (4 states), 0xAC (5 triggers), 0x108
+// (1 code func). Targets .text 0x2FA0 Start, 0x2AA8 Patrol, 0x2C6C Attack, 0x2AA4 Dead;
+// 0x2A98/0x298C/0x28A4/0x2A8C/0x2A78 CheckReady..CheckAlive; 0x2890 TookDamage (names .rodata
+// 0x68/0x6E/0x75/0x7C, 0x81/0x8C/0x98/0xA4/0xAE, 0xB9) - same names, order, targets as below.
+// Strings, .bss 0x0C/0x28/0x44/0x60/0x7C, each built by the same four calls - rstl::string_l
+// (0x4E28/0x4E68/0x4EA8/0x4EE8/0x4F28), string copy ctor (0x4E38/.../0x4F38),
+// __register_global_object (0x4E4C/.../0x4F4C), internal_dereference (0x4E54/.../0x4F54) - over
+// .rodata 0xDF "muzzleend_LCTR", 0xEE "can01_LCTR", 0xF9 "can02_LCTR", 0x104 "can03_LCTR",
+// 0x10F "can04_LCTR": the host's five skMuzzle/skTelegraphLocator statics with the same literals.
+// CColor, retail .bss 0x8C (4 B, the one non-.data store): `lfs` 0x4F64 reads .rodata 0x2C
+// (0x3F000000 = 0.5f), 0x4F68 .rodata 0x10 (0.0f), 0x4F70 .rodata 0x0C (0x3F800000 = 1.0f), f3 = f2,
+// then __ct__6CColorFffff (DOL 0x803207FC) at 0x4F7C -> CColor(0.5f, 0.f, 0.f, 1.f), the host's
+// `skDamageFlashColor(0.5f, 0.f, 0.f, 1.f)` (same four values; host ctor call passes 0.5/0/0/1).
+// No other store, no branch; frame stmw r14 0x4E20 (0xC0, lmw 0x511C). `Attack` (0x2C6C) is still
+// without a `// @` marker yet; the other nine targets carry theirs.
+// @ fn_1_4E08
 static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Start", reinterpret_cast< CPatterned::StateMachine::StateFunc >(&CAIMannedTurret::Start)},
     {"Patrol", reinterpret_cast< CPatterned::StateMachine::StateFunc >(&CAIMannedTurret::Patrol)},
