@@ -1,0 +1,13 @@
+# DarkTrooper (REL 12), Temple Grounds 05_temple_federationsite layer 9 (dct3, fn_12_5A48).
+# The only two shipped placements with flotsam=1 AND scannableInfoWhenAttacking = kInvalidAssetId
+# (editor ids 0x242b0242 / 0x242b0259, tools/scan_darktrooper_loader.py), i.e. the ctor's E4true
+# and E3false arms. Only construction matters here, so this activates the layer and reports the
+# objects; the damage steps keep the two from just standing there.
+# Run: tools/cov/force.sh tools/cov/specs/darktrooper_dct3.py <out> 3bfa3eff,05_temple_federationsite \
+#        --con tools/drivers/darktrooper_federationsite.con --fast --frames 1800 --env MP2_GODMODE=1
+@f300 god 1
+@f302 layer 9
+@f600 obj u0242; obj u0259
+@f900 objs DarkTrooper
+@f1200 damage u0242 999; damage u0259 999
+@f1500 objs DarkTrooper
