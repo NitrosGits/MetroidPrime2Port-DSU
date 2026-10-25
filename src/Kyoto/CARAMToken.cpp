@@ -2,10 +2,26 @@
 
 #include "Kyoto/Alloc/CMemorySys.hpp"
 #include "Kyoto/CARAMManager.hpp"
+#ifdef TARGET_PC
+#include "Kyoto/CFrameDelayedKiller.hpp"
+#endif
 
 #include "rstl/construct.hpp"
 
 #include "dolphin/os/OSCache.h"
+
+#ifdef TARGET_PC
+namespace {
+// GX commands retain raw MRAM pointers until Aurora's FIFO worker consumes them. EndScene drains
+// that worker before flushing delayed allocations, so the free waits one frame. ScheduleDeletion
+// frees by address (game heap or host malloc) and frees at once while the killer is not running.
+void ReleaseMRAM(void* ptr) {
+  if (ptr != nullptr) {
+    CFrameDelayedKiller::ScheduleDeletion(CFrameDelayedKiller::kWhichFrame_NextFrame, ptr);
+  }
+}
+} // namespace
+#endif
 
 CARAMToken* CARAMToken::sLists[7];
 CARAMToken::CARAMToken() {
@@ -60,7 +76,11 @@ CARAMToken::~CARAMToken() {
   }
 
   RemoveFromList();
+#ifdef TARGET_PC
+  ReleaseMRAM(mMramPtr);
+#else
   CMemory::Free(mMramPtr);
+#endif
   CARAMManager::Free(mAramPtr);
 }
 
@@ -174,7 +194,11 @@ bool CARAMToken::RefreshStatus() {
   }
   case kS_Two:
   case kS_Five: {
+#ifdef TARGET_PC
+    ReleaseMRAM(mMramPtr);
+#else
     delete[] mMramPtr;
+#endif
     mMramPtr = nullptr;
     MoveToList(kS_Zero);
     break;
