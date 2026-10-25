@@ -280,7 +280,7 @@ def render_body(g):
         frame = g.newest_frame()
         fname = _frame_name(frame)
         context = _context(g)
-        if not fname.startswith(_RENDER):
+        if not fname.startswith(_RENDER.rstrip('(')):
             raise RuntimeError('not a Render frame')
         this = _i(g, '$rdi')
         for other in st['open'].values():
@@ -420,7 +420,7 @@ def prb_body(g):
         return
     try:
         frame = g.newest_frame()
-        if not _frame_name(frame).startswith(_PRB):
+        if not _frame_name(frame).startswith(_PRB.rstrip('(')):
             raise RuntimeError('not a PreRenderBoid frame')
         context = _context(g)
         boid = _i(g, '$rsi')
