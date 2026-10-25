@@ -119,6 +119,11 @@ void CMysteryFlyer::Think(float dt, CStateManager& mgr) {
 }
 
 // fn_45_23B8
+// @ fn_45_23B8
+// Proof (mfly4, binary e7c9ce37a0af, runs mfly4_n1+f1+f2, gcov 24/24 lines, 9/9 arms): natural kSM_Create/
+// AreaLoaded/Damage/Alert; HasBodyState is naturally true, so tools/cov/specs/mfly4_forced.py forces on one
+// wasp its result at the return (original al recorded, readback): call 2 plus ZF=1 at the `jne` after
+// `cmpl $6,0x4e0` (state == KnockBack, skip arm), call 3 al=0 (no KnockBack state). Retail 0x23B8 same shape.
 void CMysteryFlyer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CPatterned::AcceptScriptMsg(mgr, msg);
