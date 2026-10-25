@@ -161,3 +161,63 @@ One coverage/force run covers (b) and (c); (a) needs a force or the hanging troo
 `fn_12_FC` (SetFuncPtrs, marked) and the five H rows are outside this slice. No source probes, no
 TARGET_PC changes: every dct1 change is a marker comment (code lines identical to base after
 stripping `//`).
+
+## dct3 runtime closure of fn_12_5A48 (the main ctor)
+
+Base `dbc01feef`, branch `decomp/dct1`. **fn_12_5A48 is marked.** Two runs on one frozen binary
+(`build-port-link`, sha256 `c5c36656f51a810451ca5d7a149e0718e6bcb6b8cbe1a9be32326a70e5d5b5cb`;
+`MP_PORT_COVERAGE=OFF`, so there are no `.gcda`/`.gcno` - the evidence is the gdb spec's own tables).
+Fixture committed before the first launch: `tools/cov/specs/darktrooper_dct3.py` +
+`darktrooper_dct3_selftest.py` (0 failures) in `ed3603a27`, with
+`tools/drivers/darktrooper_federationsite.con`.
+
+### Arms and where they ran
+
+| edge | retail | host site (frozen binary) | run 1 (hive02) | run 2 (federationsite L9) |
+|---|---|---|---|---|
+| E1 true | 0x5EC4/0x5EC8 first sleeper compare | cmp at ctor+0x53E, arm line 150 | 4 (anim 11 == index 11) | 0 |
+| E1 false | same | second FindBestAnimation call follows | 18 | 2 |
+| E2 true | 0x5F7C/0x5F80 second compare | cmp at ctor+0x7CA, arm line 156 | 3 (anim 12 == index 12) | 0 |
+| E2 false | same | - | 15 | 2 |
+| E3 true | 0x5FA0/0x5FA4 scan id != invalid | cmpl at ctor+0x55C, arm line 162 | 22 | 0 |
+| E3 false | same | - | 0 | 2 (id 0xFFFFFFFF) |
+| E4 true | 0x605C/0x6060 flotsam | cmpb at ctor+0x56A, arm line 167 | 8 | 2 |
+| E4 false | same | - | 14 | 0 |
+
+E5 (`__nw`'s null return, retail 0x5FC0-0x5FC8) is a **written argument**: the host `rs_new` is
+throwing `new`, so the null path does not exist (dc4's ABI limitation). The other retail branches,
+the 0x6024/0x602C ownership guards and 0x6044's `extsb.`, are the `TLockedToken` temporary's
+cleanup landing pads - host exception cleanup, no ordinary path.
+
+Nothing was forced. The `FindBestAnimation` index turned out to be a per-ANCS constant and the
+shipped `initial_anim` values hit it: `11`/`12` for ANCS 0xA2CC5B52 (best indices 11 and 12), `1`
+against indices 0/0 for 0x6735E3CA, and `13` for the both-false path. The spec's forced-write path
+(`DCT3_FORCE='<uid>:E1|E2'`, one word at the real call's return, restored at ctor return) is
+selftested but was not needed; no run used it.
+
+### Per-object assertions (all PASS)
+
+At the ctor's return, for each of the 24 constructed objects: `mIsSleeper` (0xBDC bit 0x01) and
+`mLocomotionType` (0xBD8) are `true`/7 or `true`/9 exactly when the matching compare matched (and
+stay `false`/1 otherwise), `mAttackScanInfo` (0x9F8) is non-null exactly when the scan id is valid,
+and the dark-visor bit (0x178 bit 0x02) is clear for every flotsam object. 67/67 checks in run 1 and
+7/7 in run 2.
+
+### Reproduction and retained evidence
+
+    tools/games_running.sh --wait
+    BUILD=build-port-link tools/cov/run.sh tools/cov/specs/darktrooper_dct3.py <out1> \
+      3bfa3eff,01_temple_hive02 --con tools/drivers/darktrooper_hive02.con --frames 1500 --fast
+    BUILD=build-port-link tools/cov/run.sh tools/cov/specs/darktrooper_dct3.py <out2> \
+      3bfa3eff,05_temple_federationsite --con tools/drivers/darktrooper_federationsite.con \
+      --frames 1500 --fast
+
+Both exited normally (game exit 0, `[port] caught` / reach-stub **0**). Evidence kept:
+`/tmp/opencode/dct3-run1` (22 objects: dct3_table.txt, dct3_checks.txt, dct3.log, drive.log,
+game.log) and `/tmp/opencode/dct3-run2` (2 objects, same set), frozen copies and hashes in
+`/tmp/opencode/dct3-frozen` (`binary.sha256`, `fixtures.sha256`, `static-dry-run.txt`, `nm.dem`).
+Spec offsets are PIE-safe (line breakpoints and real symbols only); the static dry run records the
+resolution of every site on the exact binary. No run failed, so no launch was repeated.
+
+The earlier dtr11 gap list for this body ("sleeper-animation, no-scan-info and flotsam arms") is
+closed; the remaining untaken gcov lines there were the exception-cleanup edges described above.

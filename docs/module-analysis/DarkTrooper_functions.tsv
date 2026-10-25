@@ -135,7 +135,7 @@ FFC	fn_12_FFC	84	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk
 592C	fn_12_592C	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 5980	fn_12_5980	74	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 59F4	fn_12_59F4	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
-5A48	fn_12_5A48	76C	B	"__ct__12CDarkTrooperF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4fRC10CModelDataRC14CPatternedInfoUifffffbbiRC11CDamageInfoUiRC11CDamageInfobUiRC11CDamageInfoUsUiRC16CActorParameters"	dct1	OPEN: sleeper/scan-absent/flotsam arms are live in data; run plan in note	no
+5A48	fn_12_5A48	76C	B	"__ct__12CDarkTrooperF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4fRC10CModelDataRC14CPatternedInfoUifffffbbiRC11CDamageInfoUiRC11CDamageInfobUiRC11CDamageInfoUsUiRC16CActorParameters"	dct3	8/8 arms ran on the frozen binary (hive02 22 objects + federationsite 2); OOM arm written argument	yes
 61B4	fn_12_61B4	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 6208	fn_12_6208	3C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 6244	fn_12_6244	184	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no

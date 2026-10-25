@@ -95,6 +95,25 @@ static const char* const skBossName = "BossMissileTrooper";
 static const float skRagDollParticleRadii[] = {0.23f, 0.23f, 0.15f, 0.15f, 0.23f, 0.15f, 0.15f,
                                                0.1f,  0.15f, 0.17f, 0.2f,  0.15f, 0.17f, 0.2f};
 
+// @ fn_12_5A48
+// Four decision sites in the retail body (0x5A48-0x61B4): E1 first sleeper compare 0x5EC4/0x5EC8,
+// E2 second 0x5F7C/0x5F80, E3 scannableInfoWhenAttacking != kInvalidAssetId 0x5FA0/0x5FA4, E4
+// flotsam 0x605C/0x6060. All eight outcomes ran on one frozen binary (build-port-link, sha256
+// c5c36656f51a810451ca5d7a149e0718e6bcb6b8cbe1a9be32326a70e5d5b5cb, frozen under
+// /tmp/opencode/dct3-frozen together with tools/cov/specs/darktrooper_dct3.py and its mocked
+// selftest): 22 constructions in 3bfa3eff,01_temple_hive02 (/tmp/opencode/dct3-run1, 67/67 checks)
+// took E1true 4x (anim 11 == the returned index 11), E1false 18x, E2true 3x (anim 12 == index 12),
+// E2false 15x, E3true 22x, E4true 8x, E4false 14x; 2 constructions in
+// 3bfa3eff,05_temple_federationsite layer 9 (/tmp/opencode/dct3-run2, 7/7 checks) took E3false 2x
+// with flotsam 1. The indices are per-ANCS constants seen in the same runs (11/12 for 0xA2CC5B52,
+// 0/0 for 0x6735E3CA) and shipped initial_anim 11/12/1/13 reaches every arm, so nothing was forced.
+// E5, retail __nw's null return at 0x5FC0-0x5FC8, is a written argument and not a run: the host
+// uses throwing new (dc4's ABI note), so its null path does not exist. The other retail branches -
+// the 0x6024/0x602C ownership guards and 0x6044's extsb - are the temporary-cleanup landing pads of
+// the TLockedToken temporary, i.e. host exception cleanup with no ordinary path. Per object the
+// consequence was asserted at the ctor's return: mIsSleeper (0xBDC bit 0x01) and mLocomotionType
+// (0xBD8) 7/9 iff the matching compare matched, mAttackScanInfo (0x9F8) non-null iff the scan id is
+// valid, and the dark-visor bit (0x178 bit 0x02) cleared for every flotsam object.
 CDarkTrooper::CDarkTrooper(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                            const CTransform4f& xf, const CModelData& modelData,
                            const CPatternedInfo& patternedInfo, CAssetId stateMachine2,
