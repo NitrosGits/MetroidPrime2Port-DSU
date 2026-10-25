@@ -1818,6 +1818,18 @@ bool CFlyingPirate::FireProjectile(CStateManager& mgr, float dt) {
   return result;
 }
 
+// Behaviour-checked fp4 (frozen binary sha256 7be93176...2666 = build-port-cov, evidence
+// /tmp/opencode/fp4-evidence/): DoUserAnimEvent 23/23 lines, 18/18 branches ALL-ARMS from merged
+// runs run1-3, run4-pre, run5-8, run12, run15, run16 (gcov_report --module FlyingPirate).
+//  - Natural runs (cliff, casual pirates) cover the attack events; force_ret fixtures
+//    flyingpirate_fp4c.py (run7, run16, committed before launch, copies + sha256 in each run dir)
+//    force the rest: IsLoaded false on mAltProjectileInfo1/2 (mItem/mObjRef->mObject zeroed),
+//    mItem-cached arm (left operand of `||` true, never cached at any natural call),
+//    mIsAttackingObject both ways, and CanCreateProjectile stubbed false (NOCREATE).
+//  - 1796 is the ternary at 1795 duplicated by the compiler into two copies of the
+//    IsLoaded() && CanCreateProjectile tail; each copy's four edges ran on its own copy.
+// Every other zero edge is an exception landing pad.
+// @ fn_22_2738
 void CFlyingPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                     EUserEventType type, float dt) {
   bool handled = false;

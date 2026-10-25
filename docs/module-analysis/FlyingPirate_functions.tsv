@@ -43,7 +43,7 @@ offset	fn	size	class	name	slice	what	marker
 02634	fn_22_2634	A8	B	AddToRenderer	fp1	upstream body (CFlyingPirate)	yes
 026DC	fn_22_26DC	3C	H	~optional_object	-	rstl weak copy	no
 02718	fn_22_2718	20	B	PreRenderAllViewports	fp1	upstream body (CFlyingPirate)	yes
-02738	fn_22_2738	2A8	B	DoUserAnimEvent	-	upstream body (CFlyingPirate) (92.1%)	no
+02738	fn_22_2738	2A8	B	DoUserAnimEvent	-	upstream body (CFlyingPirate) (92.1%)	yes
 029E0	fn_22_29E0	48	H	None	-	CImpactVisorEffect weak copy	no
 02A28	fn_22_2A28	B4	H	fn_22_2A28	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
 02ADC	fn_22_2ADC	40	H	fn_22_2ADC	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
