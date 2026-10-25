@@ -77,8 +77,8 @@ offset	fn	size	class	name	slice	what	marker
 04D80	fn_80_4D80	C	H	rstl::vector<unsigned int, rstl::rmemory_allocator>::clear	-	weak copy / template instance	no
 04D8C	fn_80_4D8C	174	B	CSwarmBasics::MoveBoid	-	upstream body (CSwarmBasics)	no
 04F00	fn_80_4F00	124	B	CSwarmBasics::UpdateSwarmAnimations	-	upstream body (CSwarmBasics)	no
-05024	fn_80_5024	94	B	CSwarmBasics::UpdateAllBoidMovement	-	upstream body (CSwarmBasics)	no
-050B8	fn_80_50B8	768	B	CSwarmBasics::Think	-	upstream body (CSwarmBasics)	no
+05024	fn_80_5024	94	B	CSwarmBasics::UpdateAllBoidMovement	swb16	upstream body (CSwarmBasics)	yes
+050B8	fn_80_50B8	768	B	CSwarmBasics::Think	swb16	upstream body (CSwarmBasics)	yes
 05820	fn_80_5820	7C	H	CAreaCollisionCache::CAreaCollisionCache	-	weak copy / template instance	no
 0589C	fn_80_589C	50	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::~reserved_vector	-	weak copy / template instance	no
 058EC	fn_80_58EC	84	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::destroy_elements	-	weak copy / template instance	no
