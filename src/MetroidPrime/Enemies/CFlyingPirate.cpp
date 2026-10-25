@@ -1825,7 +1825,7 @@ bool CFlyingPirate::FireProjectile(CStateManager& mgr, float dt) {
 //    flyingpirate_fp4c.py (run7, run16, committed before launch, copies + sha256 in each run dir)
 //    force the rest: IsLoaded false on mAltProjectileInfo1/2 (mItem/mObjRef->mObject zeroed),
 //    mItem-cached arm (left operand of `||` true, never cached at any natural call),
-//    mIsAttackingObject both ways, and CanCreateProjectile stubbed false (NOCREATE).
+//    mIsAttackingObject both ways, and CanCreateProjectile forced false (NOCREATE).
 //  - 1796 is the ternary at 1795 duplicated by the compiler into two copies of the
 //    IsLoaded() && CanCreateProjectile tail; each copy's four edges ran on its own copy.
 // Every other zero edge is an exception landing pad.
@@ -1920,7 +1920,7 @@ void CFlyingPirate::PreThink(float dt, CStateManager& mgr) {
 // run1-3, run4-pre, run5-8, run12, run15, run16.
 //  - flyingpirate_fp4b.py (23 scenarios on the cliff) forces mAlive/special state/timers etc.
 //  - 1922-1923 water arm: flyingpirate_fp4d.py on 08_sand_casualpirates (run12) writes
-//    mPosition.mZ +-1e6 and stubs CActor::InFluidId to the water uid, both ways ok. (fp3 wrote
+//    mPosition.mZ +-1e6 and forces CActor::InFluidId to return the water uid, both ways ok. (fp3 wrote
 //    mTransform.m23, which GetTranslation() does not read; the member is CActor::mPosition.mZ.)
 //  - 1975 burst arm: flyingpirate_fp4e.py (run15): mBurstTimer 5.0 (-1 let Start() replace the
 //    forced table, run8), calloc'd SBurst in mCurBursts, mAngleIdx -1, mTimeToNextShot -1.0.
