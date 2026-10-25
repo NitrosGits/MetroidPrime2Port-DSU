@@ -48,6 +48,19 @@ static const char* skJointNameList[] = {
 static const char* const skPirateSuckJoint = "Head_1";
 static const char* const skPirateRootJoint = "Skeleton_Root";
 
+// Retail `__sinit_CMetroid_cpp` (0x8630-0x8A6C) accounts for these three tables and the one
+// `skFaceHugOverrides` element. Tables: `lis` 0x86B4/0x8828/0x8984 take .data 0xD0 (17 triggers),
+// 0x24C (9 states), 0x2F4 (2 code funcs); 84 word copies (`stw` 0x8738-0x8A54 = 28 entries x 3) put
+// each entry's member pointer at +4/+8/+0xC (three are virtual mfps resolved through
+// __vt__8CMetroid at .data 0x364, the rest direct with vtoff -1) - same names, order and targets as
+// the host. `skFaceHugOverrides` (.bss 0x0, 16 B = 1 element): `lfs` 0x8644 reads .rodata 0x84
+// (0x3F800000 = 1.0f), `li r4,0` / `li r5,0`, then __ct__24CWeaponTypeVulnerabilityFfQ224...
+// 7EEffectb (DOL 0x800DC02C) at 0x8658 on a stack temporary, copied out at 0x8728-0x8734 as
+// {5, 1.0f, 0, 0} - weapon 5 = kWT_PowerBomb, damage 1.f, effect 0 = kE_Normal, flag false, exactly
+// the host's `TWeaponVulnerability(kWT_PowerBomb, CWeaponTypeVulnerability(1.f, kE_Normal, false))`
+// below. Host `ShouldDodge`/`SpotPlayer` are ICF-folded to one address (0xcf0130), so that trigger
+// reads back under the second name. Frame stmw r14 0x864C (0x90, lmw 0x8A58); no branch.
+// @ fn_40_8630
 static CDamageVulnerability::TWeaponVulnerability skFaceHugOverrides[] = {
     CDamageVulnerability::TWeaponVulnerability(
         kWT_PowerBomb, CWeaponTypeVulnerability(1.f, CWeaponTypeVulnerability::kE_Normal, false)),
