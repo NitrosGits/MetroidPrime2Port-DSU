@@ -116,3 +116,10 @@ Evidence `/tmp/opencode/sz2-evidence/run4`, `run5` (jsonl, trace, procdump, fixt
 - Not determined: whether it reproduces without gdb (ptrace/futex interaction), or is a libstdc++ atomic-wait or scheduling problem.
 - 20 cases never ran (moved-*, mobile-notdirty, notmobile-dirty, echo-zone, hurtful-zone, emitter-*, inside-*, fog-*, enter-*). `fn_66_3A40` stays UNMARKED. Next: fix or bypass the Aurora worker wait, then re-run with a new launch grant.
 - Evidence: /tmp/opencode/sz2-evidence/run{6,7,8}.
+
+## sz2e: Think (fn_66_3A40) — MARKED (73e4ba56b)
+
+- The sz2d stall was a fixture bug, not Aurora: the inferior call made inside the `stop()` handler (scratch-page mmap) left every other thread stopped, so the FIFO worker starved and main spun in `EnsureAllocation`. The scratch page is now taken from an idle MusyX/SDLAudio thread's stack (sp from /proc/<pid>/task/<tid>/syscall). The timed `wait_for` (1 ms) in extern/aurora/lib/gx/fifo.cpp (a166c5b1b; GOTCHAS re-vendor list) stays as a hardening and was not the cause.
+- Run 18 (evidence /tmp/opencode/sz2-evidence/run18, frozen binary + fixture copies + sha256.txt): 37/37 forced cases ran and match the model (fields, ordered mocked calls, dt written), 37 restores with readbacks, 0 pending/failed. Natural: 26891 calls, 181 skipped-emitter windows.
+- Arms executed: dark grow/clamp/shell decay, non-dark clear, lifetime tick/expiry (Deactivate, RemoveSafeZone, DeleteObjectRequest), inactive fade/end (+echo), moved block (obstruction x2, light cast hit/null/wrong type, SetTransform), mobile/dirty guards, echo InformListeners, emitter live/zero/inactive-fade (emitter_off judged by the mActive bit), camera enter/leave with cinematic query, fog-dirty. Branch table: all forced (forced-arm rule), except the dark-grow/full-shell/inactive no-op arms (natural).
+- asmcheck: only inline-accessor bit-name (x24a/x150) and NOPOS/unported-callee notes; no structural mismatch read.
