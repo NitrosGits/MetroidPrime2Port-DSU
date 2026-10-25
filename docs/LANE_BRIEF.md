@@ -60,9 +60,11 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   `shoot`, `boost` (morphed), `noise <type> [x y z]` (InformListeners; 6 = safe zone), `grapple <id> [d]`, `objs <type>`, `status`. `a; b; c` runs in one tick. `kill` alone kills the
   player; `kill <id>` zeroes a patterned actor's health and runs its Death (actors that reflect every weapon).
 - Kill only pids you launched (save `$!`, `kill <pid>`) and any Xvfb you started. Never `pkill`/`killall`
-  the game binary, gdb or Xvfb: a dozen lanes run them at once and you kill their runs. Delete your run
-  outputs from `/tmp` (a 31 GB tmpfs) before you report, as `rm -rf /tmp/opencode/<dir>` with the
-  literal absolute path (a variable, `cd` + relative path or a loop is denied by the permissions).
+  the game binary, gdb or Xvfb: a dozen lanes run them at once and you kill their runs. Before you report, delete
+  only bulky scratch (Xvfb logs, extra gcda trees, intermediate copies) from `/tmp` (a 31 GB tmpfs), as
+  `rm -rf /tmp/opencode/<dir>` with the literal absolute path (a variable, `cd` + relative path or a
+  loop is denied by the permissions). Never delete evidence: the frozen executed binary, its
+  gcda/gcno, the executed fixture with sha256 and the run's jsonl/logs stay in a named evidence dir.
 - Never end your turn with a run in flight: nothing wakes you. Wait for it in the foreground
   (`timeout`, or `wait <pids>` in one foreground command); background-shell notifications do not
   reliably wake a lane whose turn has ended. Your last message is always the report. Run independent runs
