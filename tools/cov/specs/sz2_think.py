@@ -334,7 +334,7 @@ def write_dt(value):
 
 def read_bit(base, typ, name):
     byte, bit, size = bit_field(typ, name)
-    return (int(gdb.selected_inferior().read_memory(base + byte, 1)[0]) >> bit) & 1
+    return (bytes(gdb.selected_inferior().read_memory(base + byte, 1))[0] >> bit) & 1
 
 
 class Window(gdb.FinishBreakpoint):
