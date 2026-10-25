@@ -42,18 +42,23 @@ if hints:
     gdb.execute('set var %s->mHintType = 2' % hq)
     for z in zones:
         zq = ptr(z, 'CScriptSafeZone')
+        za = int(gdb.parse_and_eval(zq + '->mActive'))
+        gdb.execute('set var %s->mActive = 1' % zq)
+        print('lum4 zone', z, 'active as shipped', za)
+        run('print %s->GetScale().MagSquared()' % zq)
         c = [getf('%s->mPosition.m%s' % (zq, a)) for a in 'XYZ']
         for dx in (0.0, 1.0, 2.0):
             setpos(hq, [c[0] + dx, c[1], c[2]])
             gdb.execute('set var $t->mHop.mMinDistance = 0.0f'); gdb.execute('set var $t->mHop.mMaxDistance = 1e9f')
             gdb.execute('set var $lm_v[0] = %r' % (c[0] + dx)); gdb.execute('set var $lm_v[1] = %r' % c[1]); gdb.execute('set var $lm_v[2] = %r' % c[2])
-            run('print (long)$t->FindSafeZone(*$m, *(CVector3f*)$lm_v)')
+            print('lum4 find zone', z, 'dx', dx, int(gdb.parse_and_eval('(long)$t->FindSafeZone(*$m, *(CVector3f*)$lm_v)')) == int(zq.strip('()').split(')')[-1]))
             for hv in (-1, 0, 1):
                 gdb.execute('set $lm_rf_hurt = %d' % hv)
                 run('call $t->BuildHopCandidates(*$m)')
                 print('lum4 build zone', z, 'dx', dx, 'hurt', hv, 'candidates', int(gdb.parse_and_eval('$t->mHop.mCandidates.mCount')))
                 gdb.execute('set var $t->mHop.mMinDistance = 0.0f'); gdb.execute('set var $t->mHop.mMaxDistance = 1e9f')
             gdb.execute('set $lm_rf_hurt = -1')
+        gdb.execute('set var %s->mActive = %d' % (zq, za))
     setpos(hq, p0)
     gdb.execute('set var %s->mHintType = %d' % (hq, ht0))
     restore()
