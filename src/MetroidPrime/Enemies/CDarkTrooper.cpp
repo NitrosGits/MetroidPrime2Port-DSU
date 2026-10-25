@@ -177,6 +177,18 @@ CDarkTrooper::CDarkTrooper(TUniqueId uid, const rstl::string& name, const CEntit
   KnockBackController().SetPhysicsImpulseMagnitude(0.8f);
 }
 
+// @ fn_12_5520
+// The module's only reference to __dt__12CDarkTrooperFv is the deleting-destructor vtable slot
+// (.data 0x2BC + 0x8); no direct call site and no other address-taken use in the module's text or
+// data, so retail's null-this guard (0x553C/0x5540 `mr. r29,r3; beq`) and its `extsh. r0,r30;
+// ble` non-deleting arm (0x5630-0x5638, r4 = -1 from the slot contract) are dead for every live
+// lifetime. The body proper is member teardown only - vtable store 0x5554, fn_12_59F4 at +0xA50
+// (0x5558), fn_12_58D8 at +0xA10 (0x5564), fn_12_C78 at +0x9D0 (0x5570), the state-machine token at
+// +0x9C4 with its engaged byte (0x5584-0x5598), the +0x9A8 array's element destructor loop
+// (0x55AC-0x55F4), the +0x904 scan-info token and its Free (0x5600-0x5620), then base
+// fn_12_5660 and Free - which the compiler generates for the same member list in the same
+// reverse-declaration order; there is no gameplay decision in it. Taken lines were covered by the
+// dtr6/dtr8 kill drivers; the untaken gcov lines are host exception-cleanup edges.
 CDarkTrooper::~CDarkTrooper() {}
 
 // @ fn_12_549C
