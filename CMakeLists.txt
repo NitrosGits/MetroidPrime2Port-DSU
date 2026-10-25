@@ -329,6 +329,8 @@ add_library(mp_platform OBJECT
     platform/sdk_stubs.cpp
     platform/port_reset.cpp
     platform/port_settings.cpp
+    platform/port_mods.cpp
+    platform/port_mods_pak.cpp
     platform/input/port_input_engine.cpp
     platform/input/port_input_bindings.cpp
     platform/glibc_compat.c)
@@ -541,6 +543,10 @@ if(AURORA_SDL3_TARGET)
     set_tests_properties(port_settings_roundtrip PROPERTIES TIMEOUT 30 LABELS port
         ENVIRONMENT "MP2_USER_PATH=${CMAKE_CURRENT_BINARY_DIR}/settings-selftest/")
     # F1 > System > Settings > Reset configuration (platform/include/port_config_reset.h). Header-only.
+    add_executable(port_mods_tests tests/port_mods.cpp platform/port_mods_pak.cpp)
+    target_include_directories(port_mods_tests PRIVATE platform/include)
+    add_test(NAME port_mods_tests COMMAND port_mods_tests)
+    set_tests_properties(port_mods_tests PROPERTIES TIMEOUT 15 LABELS port)
     add_executable(port_config_reset_tests tests/port_config_reset.cpp)
     target_include_directories(port_config_reset_tests PRIVATE platform/include)
     add_test(NAME port_config_reset_tests COMMAND port_config_reset_tests
