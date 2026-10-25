@@ -158,11 +158,12 @@ void CGuiCamera::Draw(const CGuiWidgetDrawParms& parms) const {
 }
 
 #ifdef TARGET_PC
-// The middle ends past the visor frame's U brackets beside the energy bar; the band out to the
+// The curve band ends before the housings and side struts (about 0.62), so they slide whole with the
+// compact clusters they hold; the middle ends past the visor frame's U brackets beside the energy bar; the band out to the
 // outer fraction is the frame's ledge running to the side struts.
 const float CGuiCamera::kSpreadSliceInner = 0.46f;
 const float CGuiCamera::kSpreadSliceOuter = 0.585f;
-const float CGuiCamera::kSpreadCurveOuter = 0.85f;
+const float CGuiCamera::kSpreadCurveOuter = 0.62f;
 
 float CGuiCamera::GetSpreadSliceOffset(float t, bool curved) const {
   const float inner = kSpreadSliceInner * mSpreadHalfWidth;
