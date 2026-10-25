@@ -10,6 +10,7 @@
 #include "port_input_map.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
+#include "port_pointer.h"
 #include "port_savestate.h"
 #include "port_touch.h"
 #include "MetroidPrime/Player/CGameState.hpp"
@@ -481,7 +482,8 @@ void FillRawState(PortInput::RawState& raw, unsigned mouseHeld, bool focused) {
   const unsigned menuMask = PortInputMap::MouseButtonsFor(actions, menuPad);
   static PortMouse::ButtonGate sMenuGate;
   const bool menuLive =
-      PortMouse::Enabled() && (contexts & PortInput::kCtxGameplay) == 0 && !PortOverlay::Visible() && focused;
+      PortMouse::Enabled() && (contexts & PortInput::kCtxGameplay) == 0 && !PortOverlay::Visible() &&
+      !(PortPointer::Enabled() && PortPointer::ScreenActive()) && focused;
   mouse |= (sMenuGate.Poll(menuLive, mouseHeld & menuMask) & PortInputMap::kMouseButtonMask) << kMouseMenu;
   mouse |= (ReadMouseButtons(mouseHeld) & PortInputMap::kMouseButtonMask) << kMouseGameplay;
   raw.mouseButtons = mouse;

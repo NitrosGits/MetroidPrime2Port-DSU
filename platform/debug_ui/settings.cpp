@@ -167,6 +167,8 @@ const SettingKey kSettingKeys[] = {
     IntKey< &sWorldNameCard, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off >(
         "world_name_card", "0", "2"),
     BoolKey< &sFastMorph >("fast_morph"),
+    BoolKey< &sPointerMenus >("pointer_menus"),
+    BoolKey< &sMapSwapFingers >("map_swap_fingers"),
     IntKey< &sWalkSpeed, PortOverlay::kWalkSpeedMin, PortOverlay::kWalkSpeedMax >("walk_speed", "50",
                                                                                   "200"),
     IntKey< &sHintDelay, PortOverlay::kHintDelayMin, PortOverlay::kHintDelayMax >("hint_delay", "0",

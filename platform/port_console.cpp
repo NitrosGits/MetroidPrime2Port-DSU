@@ -19,6 +19,7 @@
 #include "port_input.h"
 #include "port_logfile.h"
 #include "port_overlay.h"
+#include "port_pointer.h"
 #include "port_save.h"
 #include "port_savestate.h"
 #include "port_env.h"
@@ -1028,6 +1029,69 @@ void CmdWalkSpeed(CStateManager&, const Args& args, std::string& out) {
     PortOverlay::SetWalkSpeed(value);
   }
   out += "walkspeed " + std::to_string(PortOverlay::WalkSpeed()) + "\n";
+}
+
+// pointer <x> <y> move|click|dclick|tap|dtap|down|up|drag|wheel|pinch ... | back | where | hits:
+// scripted mouse/touch input for the pointer menus, in GUI (EFB) pixels as screenshots show them.
+void CmdPointer(CStateManager&, const Args& args, std::string& out) {
+  static const char* const kUsage =
+      "usage: pointer <x> <y> move|click|dclick|tap|dtap|down|up [l|r|touch]|drag <x1> <y1> "
+      "[l|r|touch]|wheel <n>|pinch <ratio> | pointer back | pointer where | pointer hits";
+  const std::string verb = args.size() > 1 ? Lower(args[1]) : std::string();
+  if (verb == "back") {
+    PortPointer::ScriptBack();
+    return;
+  }
+  if (verb == "hits") {
+    out += PortGuiHit::Describe(-1.f, -1.f) + "\n";
+    return;
+  }
+  if (verb == "where") {
+    float gx = 0.f, gy = 0.f;
+    const bool has = PortPointer::Position(gx, gy);
+    char line[160];
+    std::snprintf(line, sizeof(line), "pointer %s %.1f %.1f last=%s screen=%d enabled=%d\n",
+                  has ? "at" : "none", gx, gy,
+                  PortPointer::MouseIsLast()   ? "mouse"
+                  : PortPointer::TouchIsLast() ? "touch"
+                                               : "other",
+                  PortPointer::ScreenActive() ? 1 : 0, PortPointer::Enabled() ? 1 : 0);
+    out += line;
+    out += PortGuiHit::Describe(gx, gy) + "\n";
+    return;
+  }
+  if (args.size() < 4) {
+    Fail(kUsage);
+    return;
+  }
+  const float x = static_cast< float >(std::atof(std::string(args[1]).c_str()));
+  const float y = static_cast< float >(std::atof(std::string(args[2]).c_str()));
+  const std::string action = Lower(args[3]);
+  if (action == "move") {
+    PortPointer::ScriptMove(x, y);
+  } else if (action == "click" || action == "dclick") {
+    PortPointer::ScriptClick(x, y, action == "dclick", false);
+  } else if (action == "tap" || action == "dtap") {
+    PortPointer::ScriptClick(x, y, action == "dtap", true);
+  } else if (action == "down" || action == "up") {
+    const std::string how = args.size() > 4 ? Lower(args[4]) : std::string("l");
+    PortPointer::ScriptPress(x, y, action == "down",
+                             how == "r" ? PortPointer::kButtonRight : PortPointer::kButtonLeft,
+                             how == "touch");
+  } else if (action == "drag" && args.size() >= 6) {
+    const std::string how = args.size() > 6 ? Lower(args[6]) : std::string("l");
+    PortPointer::ScriptDrag(x, y, static_cast< float >(std::atof(std::string(args[4]).c_str())),
+                            static_cast< float >(std::atof(std::string(args[5]).c_str())),
+                            how == "r" ? PortPointer::kButtonRight : PortPointer::kButtonLeft,
+                            how == "touch");
+  } else if (action == "wheel" && args.size() >= 5) {
+    PortPointer::ScriptMove(x, y);
+    PortPointer::ScriptWheel(static_cast< float >(std::atof(std::string(args[4]).c_str())));
+  } else if (action == "pinch" && args.size() >= 5) {
+    PortPointer::ScriptPinch(x, y, static_cast< float >(std::atof(std::string(args[4]).c_str())));
+  } else {
+    Fail(kUsage);
+  }
 }
 
 // boost: start a boost-ball charge release on the morphed player (what releasing a held A does), so
@@ -4137,6 +4201,9 @@ const CommandSpec kCommands[] = {
       "                            damage stop spawn; value: float for damage, state for generic)\n"},
     {"fastmorph", CmdFastMorph,
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"},
+    {"pointer", CmdPointer,
+      "pointer <x> <y> move|click|dclick|tap|dtap|down|up|drag <x1> <y1>|wheel <n>|pinch <r> | back | where | hits\n"
+      "                            scripted mouse/touch input for the pointer menus (GUI pixels)\n"},
     {"hintshow", CmdHintShow,
       "hintshow                    show the hint the game would show next (F1 Show current hint)\n"},
     {"walkspeed", CmdWalkSpeed,

@@ -58,6 +58,8 @@ bool sLogFile = true;
 // The gameplay tweaks (`MP2_FAST_MORPH`, `MP2_SPRING_BALL`, `MP2_LOCK_ON_TOGGLE`,
 // `MP2_STICKY_CHARGE`), saved in settings.cfg.
 bool sFastMorph = false;
+bool sPointerMenus = true;
+bool sMapSwapFingers = false;
 int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
 int sHintDelay = 0;
 bool sSpringBall = false;
@@ -717,6 +719,28 @@ bool FastMorph() {
 void SetFastMorph(bool enabled) {
   ReadEnv();
   sFastMorph = enabled;
+  Persist();
+}
+
+bool PointerMenus() {
+  ReadEnv();
+  return EnvBool("MP2_POINTER_MENUS", sPointerMenus);
+}
+
+void SetPointerMenus(bool enabled) {
+  ReadEnv();
+  sPointerMenus = enabled;
+  Persist();
+}
+
+bool MapSwapFingers() {
+  ReadEnv();
+  return EnvBool("MP2_MAP_SWAP_FINGERS", sMapSwapFingers);
+}
+
+void SetMapSwapFingers(bool swap) {
+  ReadEnv();
+  sMapSwapFingers = swap;
   Persist();
 }
 

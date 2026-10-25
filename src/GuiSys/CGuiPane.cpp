@@ -3,6 +3,9 @@
 #include "GuiSys/CGuiWidgetDrawParms.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
 #include "Kyoto/Streams/CInputStream.hpp"
+#ifdef TARGET_PC
+#include "port_pointer.h"
+#endif
 #include "Kyoto/Streams/COutputStream.hpp"
 
 CGuiWidget* CGuiPane::Create(CGuiFrame* frame, CInputStream& in, CSimplePool* pool, uint version) {
@@ -45,6 +48,10 @@ CGuiPane::~CGuiPane() {
 void CGuiPane::Draw(const CGuiWidgetDrawParms& parms) const {
   CGraphics::SetModelMatrix(GetWorldTransform() * CTransform4f::Translate(mScaleCenter));
   if (GetIsVisible()) {
+#ifdef TARGET_PC
+    // Port: where the pane lands on screen, for mouse and touch menus.
+    PortGuiHit::RecordPoints(this, CGraphics::GetModelMatrix(), mPanePoints, 4);
+#endif
     CGraphics::SetTevOp(kTS_Stage0, CGraphics::kEnvPassthru);
     const CColor color = GetModifiedColor().WithAlphaModulatedBy(parms.GetAlpha());
     CGraphics::DrawPrimitive(kP_TriangleStrip, mPanePoints, CVector3f(0.f, -1.f, 0.f), color, 4);

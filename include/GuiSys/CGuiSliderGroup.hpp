@@ -28,6 +28,11 @@ public:
 
   EState GetState() const { return mState; }
 
+#ifdef TARGET_PC
+  // Pointer menus (port_pointer.h): jump to a fraction of the range.
+  void PortSetFraction(float fraction);
+#endif
+
 private:
   // Guessed names: native operations only select direction and mark held input.
   void Decrement();
