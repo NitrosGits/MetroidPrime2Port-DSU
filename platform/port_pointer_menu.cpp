@@ -197,6 +197,12 @@ bool TakeClickPoint(float& gx, float& gy, int& count) {
   return true;
 }
 
+bool PeekClickPoint(float& gx, float& gy) {
+  PortPointer::Click click;
+  return PortPointer::Gestures().PeekClick(click) && click.button == PortPointer::kButtonLeft &&
+         ClickToGui(click, gx, gy);
+}
+
 bool TakeClick() {
   PortPointer::Click click;
   if (!PortPointer::Gestures().TakeClick(click)) {

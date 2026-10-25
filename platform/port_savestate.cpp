@@ -11,6 +11,8 @@
 //    new state's constructor and the warp both stash every pak but the destination's.
 #include "port_savestate.h"
 
+#include <SDL3/SDL_mouse.h>
+
 #include "port_overlay.h"
 #include "port_resume_logic.h"
 #include "port_save.h"
@@ -1232,12 +1234,15 @@ bool ResumePromptTick() {
   case kPromptAsk: {
     ++sPromptTicks;
     int answer = sPromptAnswer.exchange(-1);
+    // A real mouse button held is a click on the window, whose Yes/No buttons answer: one that
+    // also reaches the pad as A must not accept the highlighted Yes first (MP1 6ab7c1e15).
+    const bool mouseHeld = SDL_GetMouseState(nullptr, nullptr) != 0;
     if (sPromptTicks > kPromptIgnoreTicks && gpController != nullptr) {
       const auto& pad = gpController->GetGamepadData(0);
       if (pad.GetButton(kBU_Left).GetPressEvent() || pad.GetButton(kBU_Right).GetPressEvent()) {
         sPromptYes.store(!sPromptYes.load());
       }
-      if (answer < 0 && (pad.GetButton(kBU_A).GetPressEvent() ||
+      if (answer < 0 && !mouseHeld && (pad.GetButton(kBU_A).GetPressEvent() ||
                          pad.GetButton(kBU_Start).GetPressEvent())) {
         answer = sPromptYes.load() ? 1 : 0;
       }
