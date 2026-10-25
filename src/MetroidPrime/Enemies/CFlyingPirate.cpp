@@ -78,6 +78,17 @@ const float CFlyingPirate::skAquaGravityConstant = 5.f;
 
 static EMaterialTypes skSolidMaterial = kMT_Solid;
 
+// Retail `__sinit_CFlyingPirate_cpp` (0xAA84-0xB25C) writes exactly these two tables plus six
+// `rstl::string` statics. Tables: `lis` 0xAAA0/0xADFC take .data 0x118 (23 triggers) and 0x384
+// (21 states); 132 word copies (`stw` 0xAB60-0xB0D4) put each entry's member pointer at +4/+8/+0xC
+// as {adjust 0, vtoff -1 (non-virtual), fn = address} - same names, order and targets as below (all
+// but `CoverFind` 0x6040 already carry their `// @ fn_22_*` marker). The strings, .bss
+// 0x5C/0x6C/0x7C/0x8C/0x9C/0xAC, are built by the usual four-call sequence - rstl::string_l
+// (0xB0D8/0xB118/0xB158/0xB198/0xB1D8/0xB218), copy ctor, __register_global_object,
+// internal_dereference - over .rodata "JetPack", "ScubaGear", "ScubaBubbles", "Sparks",
+// "LandingSmoke", "Eyes", the host's skJetPack..skEyes (CFlyingPirate.cpp:152-157). No other store;
+// frame stmw r14 0xAA90 (0x110, lmw 0xB248); no branch.
+// @ fn_22_AA84
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"HearShot", static_cast< CPatterned::StateMachine::TriggerFunc >(&CFlyingPirate::HearShot)},
     {"HearPlayer",
