@@ -681,7 +681,7 @@ void CFishCloud::KillBoid(CBoid& boid) {
   CSfxManager::AddEmitter(parms, areaId, true, false);
 }
 
-// @ fn_20_22EC
+// @ fn_20_22EC forced (tools/cov/specs/fishcloud_touch_force.py, fishcloud_touch_norm_force.py: zero flat/delta/velocity at CanBeNormalized)
 void CFishCloud::Touch(CActor& other, CStateManager& mgr) {
   CActor::Touch(other, mgr);
   if (CWeapon* weapon = TCastToPtr< CWeapon >(other)) {
