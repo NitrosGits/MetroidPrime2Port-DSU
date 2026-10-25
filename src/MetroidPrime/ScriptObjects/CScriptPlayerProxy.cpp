@@ -331,6 +331,7 @@ void CScriptPlayerProxy::SetVisorFromProxyType() {
   }
 }
 
+// @ fn_62_1C44 (forced: SPP_RUN=M)
 void CScriptPlayerProxy::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -573,6 +574,7 @@ void CScriptPlayerProxy::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& m
   CActor::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_62_2644 (forced: SPP_RUN=M/N, gameevent as N)
 void CScriptPlayerProxy::OnGameEvent(CStateManager& mgr, uint sourceIndex, uint targetIndex,
                                      uint event, const void* value) {
   if (!GetActive()) {
@@ -768,6 +770,7 @@ CScriptPlayerProxy::CScriptPlayerProxy(
 , mDamageActive(false)
 , mFollowing(false) {}
 
+// @ fn_62_188
 CEntity* LoadPlayerController(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrPlayerController sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrPlayerController.inc"

@@ -1,0 +1,50 @@
+# M06_ShootingGallery (7e19ed26,06_ShootingGallery), ppx3 run M (launch 1): run L (spp_m06_J.con) plus follower e0800032e
+# on/off (Increment/Decrement) and e080000a8 inactive for a while (Think/OnGameEvent inactive returns).
+@f200 god 1
+@f420 objs ScriptPlayerProxy
+@f430 send e0800032e Increment
+@f500 gameevent spawn 0 0
+@f515 gameevent generic 0 0 0x454e5452
+@f530 gameevent generic 0 0 0x57414b45
+@f545 gameevent scan 0 0
+@f560 gameevent kill 0 0
+@f575 gameevent damage 0 0 5.0
+@f590 gameevent stop 0 0
+@f605 gameevent score 0 0
+@f620 gameevent score 0 0 1 as 2
+@f635 gameevent kill 0 0 1 as 4
+@f650 gameevent kill 0 0 1 as 0
+@f665 gameevent damage 0 0 5.0 as 0
+@f680 gameevent spawn 0 0 1 as 0
+@f695 gameevent score 0 0 1 as 0
+@f710 gameevent scan 0 0 1 as 10
+@f725 gameevent stop 0 0 1 as 10
+@f740 gameevent generic 0 0 0x454e5452 as 9
+@f755 gameevent spawn 0 0 1 as 9
+@f770 gameevent spawn 0 0
+@f785 gameevent generic 0 0 0x454e5452
+@f800 gameevent generic 0 0 0x57414b45
+@f815 gameevent scan 0 0
+@f830 gameevent kill 0 0
+@f845 gameevent damage 0 0 5.0
+@f860 gameevent stop 0 0
+@f875 gameevent score 0 0
+@f890 gameevent score 0 0 1 as 2
+@f905 gameevent kill 0 0 1 as 4
+@f920 gameevent kill 0 0 1 as 0
+@f935 gameevent damage 0 0 5.0 as 0
+@f950 gameevent spawn 0 0 1 as 0
+@f965 gameevent score 0 0 1 as 0
+@f980 gameevent scan 0 0 1 as 10
+@f995 gameevent stop 0 0 1 as 10
+@f1010 gameevent generic 0 0 0x454e5452 as 9
+@f1025 gameevent spawn 0 0 1 as 9
+@f1040 send e0800032e Decrement
+@f1050 send e080000a8 Deactivate
+@f1060 gameevent damage 0 0 5.0
+@f1080 send e080000a8 Activate
+@f1085 objs ScriptPlayerProxy
+@f1100 send e080000a8 Delete
+@f1130 layer off 3
+@f1160 layer off 2
+@f1190 objs ScriptPlayerProxy

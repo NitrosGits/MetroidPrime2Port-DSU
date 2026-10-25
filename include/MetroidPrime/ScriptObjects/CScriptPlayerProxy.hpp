@@ -64,6 +64,7 @@ private:
   public:
     CListener(CStateManager& mgr, uint playerMask, CScriptPlayerProxy* owner)
     : CPlayerListener(mgr, playerMask), mOwner(owner) {}
+    // @ fn_62_2F10 (out-of-line entry dead; the body runs inline in fn_62_0)
     ~CListener() override {}
     void OnGameEvent(CStateManager& mgr, uint sourceIndex, uint targetIndex, uint event,
                      const void* value) override;
