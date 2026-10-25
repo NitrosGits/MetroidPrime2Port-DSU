@@ -933,6 +933,9 @@ int main(int argc, char** argv) {
       .mem1Size = MEM1_DEFAULT_SIZE,
       .mem2Size = ARAM_DEFAULT_SIZE,
   };
+  // MP2_PIPELINE_LAZY=1: build pipelines on first use and prefetch an area's recorded ones as it
+  // streams in (MP1 sync package 10); off by default, as on desktop MP1.
+  config.pipelineCacheLazy = port::EnvFlag("MP2_PIPELINE_LAZY");
 
   // F1 > Video > Compatibility (PortVideo, f1b): OpenGL ES, the storage clamp, the low-power
   // adapter and the driver workarounds' Dawn toggles, all read when the GPU device is made.
