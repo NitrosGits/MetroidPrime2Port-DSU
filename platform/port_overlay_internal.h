@@ -34,6 +34,8 @@ extern bool sSpringBall;
 extern bool sSpringFlick;
 extern float sSpringFlickRate;
 extern bool sQuickResume;
+extern bool sSaveStateHotkeys;
+extern bool sSaveStateRoomState;
 extern bool sLockOnToggle;
 extern bool sStickyCharge;
 extern bool sRapidCharge;

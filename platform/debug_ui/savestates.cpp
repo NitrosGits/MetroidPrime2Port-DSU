@@ -36,9 +36,25 @@ void DrawSaveStatesTab() {
   }
   const std::string saveKeys = PortInputRemap::BindingsText(PortInput::Action::SaveState, " / ");
   const std::string loadKeys = PortInputRemap::BindingsText(PortInput::Action::LoadState, " / ");
-  ImGui::TextDisabled("%s saves, %s loads the selected slot",
-                      saveKeys.empty() ? "Save state binding" : saveKeys.c_str(),
-                      loadKeys.empty() ? "Load state binding" : loadKeys.c_str());
+  bool hotkeys = sSaveStateHotkeys;
+  const std::string hotkeysLabel = (saveKeys.empty() ? std::string("Save state binding") : saveKeys) +
+                                   " saves, " +
+                                   (loadKeys.empty() ? std::string("Load state binding") : loadKeys) +
+                                   " loads the selected slot###savestate-hotkeys";
+  if (ImGui::Checkbox(hotkeysLabel.c_str(), &hotkeys)) {
+    sSaveStateHotkeys = hotkeys;
+    Changed(true);
+  }
+  ItemHelp("Off, the bindings do nothing, so a stray key cannot save over or load a slot. The "
+           "buttons below still work.");
+  bool roomState = sSaveStateRoomState;
+  if (ImGui::Checkbox("Keep enemies and room objects###savestate-room-state", &roomState)) {
+    sSaveStateRoomState = roomState;
+    Changed(true);
+  }
+  ItemHelp("Save states and quick resume also store the loaded rooms' enemies, doors and objects, "
+           "so a killed enemy stays dead. Off, the room starts over as after a memory card load. "
+           "Applies to states saved from now on.");
 
   const int selected = PortSaveState::SelectedSlot();
   if (ImGui::BeginTable("##savestates", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {

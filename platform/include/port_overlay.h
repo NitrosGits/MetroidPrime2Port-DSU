@@ -166,6 +166,12 @@ bool ConsumeShowHintRequest();
 // and the next launch offers "Resume where you left off?" (PortSaveState::Resume*).
 bool QuickResume();
 void SetQuickResume(bool enabled);
+// `savestate_hotkeys` (`MP2_SAVESTATE_HOTKEYS`, default on): the Save state / Load state bindings act.
+// Off, they do nothing; the Save states tab and the console `state` command still work.
+bool SaveStateHotkeys();
+// `savestate_room_state` (`MP2_SAVESTATE_ROOM_STATE`, default on): states and quick resume keep the
+// loaded rooms' enemies and objects. Off, a load rebuilds the room as a memory card load does.
+bool SaveStateRoomState();
 bool SpringBall();
 void SetSpringBall(bool enabled);
 // Spring Ball on a gyro flick (`MP2_SPRING_BALL_FLICK`, MP1's `spring_ball_flick`): the pad or phone
@@ -354,6 +360,9 @@ void SetFullscreen(bool enabled);
 // loop sleeps to a 60 Hz deadline in PortPaceFrame (platform/port_events.cpp).
 bool FrameLimit();
 void SetFrameLimit(bool enabled);
+// The time one main-loop iteration spent working, before PortPaceFrame's sleep; feeds the F1
+// Frame rate row "Throughput" (frames per second with the pacing wait left out).
+void NoteFrameWork(uint64_t ns);
 // MP1's smooth frames (`MP2_SMOOTH_FRAMES=0|1`, F1 > Video > Frame rate, console `interp`); on by
 // default. With the cap off, the camera is drawn between the last two 60 Hz ticks.
 bool SmoothFrames();

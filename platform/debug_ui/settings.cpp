@@ -212,6 +212,8 @@ const SettingKey kSettingKeys[] = {
      "2",
      "20"},
     BoolKey< &sQuickResume >("quick_resume"),
+    BoolKey< &sSaveStateHotkeys >("savestate_hotkeys"),
+    BoolKey< &sSaveStateRoomState >("savestate_room_state"),
     BoolKey< &sLockOnToggle >("lockon_toggle"),
     BoolKey< &sStickyCharge >("sticky_charge"),
     BoolKey< &sRapidCharge >("rapid_charge"),

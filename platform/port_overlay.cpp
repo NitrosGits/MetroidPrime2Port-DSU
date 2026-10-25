@@ -74,6 +74,8 @@ bool sSpringBall = false;
 bool sSpringFlick = false;
 float sSpringFlickRate = PortOverlay::kSpringFlickRateDefault;
 bool sQuickResume = true;
+bool sSaveStateHotkeys = true;
+bool sSaveStateRoomState = true;
 bool sLockOnToggle = false;
 bool sStickyCharge = false;
 bool sAutoAim = true;
@@ -196,6 +198,8 @@ int sLayersArea = -1;
 std::atomic< int > sShowPage{-1};
 // Frames per second, averaged over a second, from the presented-frame clock.
 float sFps = 0.f;
+// Frames per second of the work alone, the pacing sleep left out: what the machine could sustain.
+float sThroughputFps = 0.f;
 
 } // namespace PortDebug
 
@@ -216,6 +220,8 @@ void ClearRooms() {
 
 uint64_t sFpsWindowStart = 0;
 int sFpsFrames = 0;
+// CPU time of the iterations in the current window, measured before PortPaceFrame sleeps.
+uint64_t sFpsWorkNs = 0;
 
 // Handed to aurora_set_graphics_quality only when they change; 0 means "never applied yet".
 int sAppliedMsaa = 0;
@@ -330,6 +336,10 @@ void TickFps() {
   const uint64_t elapsed = now - sFpsWindowStart;
   if (elapsed >= 1000000000ull) {
     sFps = static_cast< float >(sFpsFrames) / (static_cast< float >(elapsed) / 1e9f);
+    sThroughputFps = sFpsWorkNs > 0
+                         ? static_cast< float >(sFpsFrames) / (static_cast< float >(sFpsWorkNs) / 1e9f)
+                         : 0.f;
+    sFpsWorkNs = 0;
     sFpsFrames = 0;
     sFpsWindowStart = now;
   }
@@ -374,6 +384,11 @@ std::string PlainWorldName(const wchar_t* text) {
 } // namespace PortDebug
 
 namespace PortOverlay {
+
+void NoteFrameWork(uint64_t ns) {
+  sFpsWorkNs += ns;
+}
+
 
 void SetAreaLayers(const CWorldLayerState* layers, int areaId) {
   if (layers == nullptr || areaId < 0 ||
@@ -837,6 +852,16 @@ bool SpringBall() {
 bool QuickResume() {
   ReadEnv();
   return EnvBool("MP2_QUICK_RESUME", sQuickResume);
+}
+
+bool SaveStateHotkeys() {
+  ReadEnv();
+  return EnvBool("MP2_SAVESTATE_HOTKEYS", sSaveStateHotkeys);
+}
+
+bool SaveStateRoomState() {
+  ReadEnv();
+  return EnvBool("MP2_SAVESTATE_ROOM_STATE", sSaveStateRoomState);
 }
 
 void SetQuickResume(bool enabled) {

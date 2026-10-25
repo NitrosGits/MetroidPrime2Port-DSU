@@ -32,6 +32,7 @@ extern bool sGodMode; // never saved: a cheat must not persist, so it is not a s
 extern uint32_t sWorldId;
 extern int sAreaId;
 extern float sFps;
+extern float sThroughputFps;
 // The room list, taken from the live world at SetGameState time (on the game thread, while the
 // world is alive) and never a pointer kept across frames: a world teleport frees the outgoing
 // world, and the overlay still draws the frames before the restart replaces it.

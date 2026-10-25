@@ -426,7 +426,9 @@ bool Capture(CStateManager& mgr, State& s, std::string& error) {
     gpGameState->PutTo(writer);
   }
   worldState.SetDesiredAreaAssetId(desired);
-  CaptureRoomState(mgr, s.roomState);
+  if (PortOverlay::SaveStateRoomState()) {
+    CaptureRoomState(mgr, s.roomState);
+  }
   return true;
 }
 
@@ -835,7 +837,7 @@ void TickPlacement(CStateManager& mgr) {
     ResumeMarkResumed(sResumingSavedAt);
     SetMessage("resume: Samus is back in " + s.room);
   }
-  if (!s.roomState.areas.empty()) {
+  if (PortOverlay::SaveStateRoomState() && !s.roomState.areas.empty()) {
     sRoom = RoomRestore();
     sRoom.active = true;
     sRoom.state = s.roomState;

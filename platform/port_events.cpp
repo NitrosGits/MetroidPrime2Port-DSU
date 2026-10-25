@@ -16,6 +16,7 @@
 #include "port_overlay.h"
 #include "port_pointer.h"
 #include "port_prompts.h"
+#include "port_pipeline_trim.h"
 #include "port_savestate.h"
 #include "port_textures.h"
 #include "port_touch.h"
@@ -322,6 +323,16 @@ void PortRearmPad0() {
 // the 60 FPS cap, sleeps to the next 60 Hz deadline. A frame that overran by more than a period
 // resets the deadline instead of racing to catch up.
 void PortPaceFrame() {
+  // The iteration's work ends here, before any sleep; its start is where the last call returned.
+  static uint64_t sWorkStartNs = 0;
+  const uint64_t workEndNs = SDL_GetTicksNS();
+  if (sWorkStartNs != 0 && workEndNs - sWorkStartNs < 1000000000ull) { // not across a max-speed run
+    PortOverlay::NoteFrameWork(workEndNs - sWorkStartNs);
+  }
+  struct Restart {
+    uint64_t& start;
+    ~Restart() { start = SDL_GetTicksNS(); }
+  } restart{sWorkStartNs};
   if (!PortOverlay::FrameLimit() || PortHarness::Unpaced()) {
     sNextFrameDeadline = 0;
     return;
@@ -374,6 +385,7 @@ bool PortPumpEvents() {
   // never returns here is the one the watchdog reports (phase and stack).
   static unsigned sFrame = 0;
   PortWatchdog::Heartbeat(++sFrame);
+  PortPipelineTrim::Tick(SDL_GetTicksNS());
   static const bool sWatching = SDL_AddEventWatch(ResumeEventWatch, nullptr);
   (void)sWatching;
   PortWarp::ApplyEnvOnce();

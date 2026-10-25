@@ -181,6 +181,7 @@
 {"Cheats", "", "Teleport", "Reload", "room reload warp"},
 {"Save states", "", "", "Undo last load", "save state undo"},
 {"Save states", "", "", "Quick resume", "quick resume background quit continue"},
+{"Save states", "", "", "Keep enemies and room objects", "save state room enemies doors objects"},
 #if !defined(__ANDROID__)
 {"System", "", "Overlay", "Overlay as a floating window", "window detach float desktop"},
 #endif
