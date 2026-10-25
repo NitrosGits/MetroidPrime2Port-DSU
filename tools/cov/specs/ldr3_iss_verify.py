@@ -32,11 +32,11 @@ SITES = [
     # 0x79 testb $0x1,0x30(%rax) / 0x7d je: patterned->GetActive() false (line 475).
     ('select inactive', SEL, 0x79, 0x7d, 'mem:rax+0x30:1', 'clear1', 2, None),
     # 0x9f cmp %eax,0x8(%r15) / 0xa3 je: area ids differ (line 476).
-    ('select other area', SEL, 0x9f, 0xa3, '$rax', 'plus1', 2, None),
+    ('select other area', SEL, 0x9f, 0xa3, '$rax', 'plus1', 0, None),
     # 0x378 test %al,%al / 0x37a jne: IsIngPossessed() true -> count 1 (line 477).
-    ('select possessed', SEL, 0x378, 0x37a, '$rax', 'al1', 2, 'al0'),
+    ('select possessed', SEL, 0x378, 0x37a, '$rax', 'al1', 0, 'al0'),
     # 0x246 test %rax,%rax / 0x249 je: GetObjectById null (line 499).
-    ('select entity null', SEL, 0x246, 0x249, '$rax', 0, 2, None),
+    ('select entity null', SEL, 0x246, 0x249, '$rax', 0, 0, None),
     # 0x29a comiss %xmm0,%xmm3 / 0x29d jbe: distance < bestDistance (line 506, first term).
     ('select closer', SEL, 0x29a, 0x29d, '$xmm0.f', -1.0, 0, None),
     # 0x2a8 cmp %ebx,%eax / 0x2aa jne: bestCount != count (line 506, second term).
@@ -50,6 +50,11 @@ SITES = [
     # 0x126 comiss .LC0(1.1920929e-7),%xmm0 / 0x13b jbe: length <= epsilon (line 671).
     ('arc tiny step', ARC, 0x126, 0x13b, '$xmm0.f', 0.0, 80, None),
 ]
+
+# LDR3_ONLY=<label>,<label>: arm only these sites (later runs for sites a run did not reach).
+ONLY = [x for x in os.environ.get('LDR3_ONLY', '').split(',') if x]
+if ONLY:
+    SITES = [s for s in SITES if s[0] in ONLY]
 
 state = {'hits': {}, 'done': set(), 'pending': {}}
 
