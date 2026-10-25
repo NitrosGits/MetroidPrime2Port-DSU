@@ -30,7 +30,10 @@ import os
 
 state = {'ctor': 0, 'forced': 0, 'restored': 0, 'restore_fail': 0, 'touch': 0,
          'touch_log': 0, 'keys': {}, 'err': '', 'pending': None, 'done': False,
-         'ticks': 0, 'vuln': []}
+         'ticks': 0, 'vuln': [], 'repair': None, 'glue': {}, 'glue_applied': 0,
+         'glue_restored': 0, 'glue_fail': 0, 'mgr': 0}
+GLUE_START = int(os.environ.get('SWB19_GLUE_START', '1200'))
+GLUE_END = int(os.environ.get('SWB19_GLUE_END', '2100'))
 
 COV_OUT = os.environ.get('COV_OUT', '/var/tmp/swb19')
 LOG = os.path.join(COV_OUT, 'swb19.jsonl')
@@ -137,9 +140,23 @@ class CtorReturn(gdb.FinishBreakpoint):
         models = iv('((CSwarmBasics*)%d)->mModelDatas.mCount' % self.swarm)
         editor = iv('((CEntity*)%d)->mEditorId.value' % self.swarm)
         uid = iv('((CEntity*)%d)->mUniqueId.value' % self.swarm)
+        animated = iv('((CSwarmBasics*)%d)->mAnimated' % self.swarm)
+        if models == 0 and animated:
+            # The invalid arm's null model then reaches AllocateSkinnedModels (kSM_Create), whose
+            # `mModelData->PickAnimatedModel` has no null test in the port (retail's model is by
+            # value): run 2 crashed there (SIGSEGV, this=0x0).  A real non-animated swarm skips
+            # that body (`if (mAnimated)`), so clear the flag for this actor only, log it, and put
+            # it back later.  The arm itself has already run and been counted.
+            write('((CSwarmBasics*)%d)->mAnimated' % self.swarm, '0')
+            state['repair'] = dict(swarm=self.swarm, until=GLUE_START + 40, animated=animated,
+                                   readback=iv('((CSwarmBasics*)%d)->mAnimated' % self.swarm))
+            log('REPAIR', swarm=self.swarm, animated_was=animated,
+                animated_now=state['repair']['readback'],
+                why='null model + mAnimated would deref a null CModelData in AllocateSkinnedModels')
         log('RESTORE', site=self.site, address=self.address, original=self.original.hex(),
             readback=bytes(inf.read_memory(self.address, len(self.original))).hex(),
-            errors=errors, swarm=self.swarm, model_datas=models, editor_id=editor, uid=uid)
+            errors=errors, swarm=self.swarm, model_datas=models, editor_id=editor, uid=uid,
+            animated=animated)
         check(not errors, 'ctor fixture restore: ' + str(errors))
         return False
 
@@ -204,6 +221,82 @@ class CtorSite(gdb.Breakpoint):
 
 # ------------------------------------------------------------------- boid position sampling
 
+def write(lv, rhs):
+    gdb.execute('set var %s = %s' % (lv, rhs), to_string=True)
+
+def player_position(mgr):
+    try:
+        player = iv('((CStateManager*)%d)->mPlayers[0]' % mgr)
+        if player:
+            base = '((CActor*)%d)->mPosition' % player
+            return tuple(float(ev(base + '.m' + axis)) for axis in 'XYZ'), player
+    except gdb.error:
+        pass
+    return None, 0
+
+def glue(this):
+    """Stand-in-boid: keep one live boid of every swarm in the area on the player during the
+    window, so the real collision system's player-vs-swarm Touch reaches Touch's own per-boid box
+    test (run 1: the player was inside the swarm's box 3215 times and never inside a boid's).  The
+    boid is a real live object, its translation is snapshotted before the first write and restored
+    at the window's end with a readback; the player is never written."""
+    if state['ticks'] < GLUE_START or state['ticks'] > GLUE_END:
+        if state['ticks'] > GLUE_END and state['glue']:
+            restore_glue()
+        if state['repair'] and state['ticks'] >= state['repair']['until']:
+            write('((CSwarmBasics*)%d)->mAnimated' % state['repair']['swarm'], '1')
+            log('REPAIR-UNDO', swarm=state['repair']['swarm'],
+                readback=iv('((CSwarmBasics*)%d)->mAnimated' % state['repair']['swarm']))
+            state['repair'] = None
+        return
+    pos, _player = player_position(state['mgr'])
+    if pos is None:
+        return
+    record = state['glue'].get(this)
+    if record is None:
+        try:
+            base = '((CSwarmBasics*)%d)->mBoids.mItems[0]' % this
+            if iv('((CSwarmBasics*)%d)->mBoids.mCount' % this) < 1:
+                return
+            inf = gdb.selected_inferior()
+            addresses = [iv('(long)&' + base + '.mTransform.m%d3' % axis) for axis in range(3)]
+            original = [bytes(inf.read_memory(a, 4)) for a in addresses]
+            record = dict(addresses=addresses, original=original)
+            state['glue'][this] = record
+            log('GLUE-ARM', swarm=this, n=state['ticks'],
+                original=[b.hex() for b in original], boid=0)
+        except gdb.error as error:
+            log('GLUE-ERR', swarm=this, error=str(error)[:100])
+            return
+    try:
+        for axis in range(3):
+            write('((CSwarmBasics*)%d)->mBoids.mItems[0].mTransform.m%d3' % (this, axis),
+                  repr(pos[axis]))
+        state['glue_applied'] += 1
+        if state['glue_applied'] % 200 == 1:
+            log('GLUE', swarm=this, n=state['ticks'], position=pos)
+    except gdb.error as error:
+        log('GLUE-ERR', swarm=this, error=str(error)[:100])
+
+def restore_glue():
+    inf = gdb.selected_inferior()
+    for swarm, record in state['glue'].items():
+        errors = []
+        for address, original in zip(record['addresses'], record['original']):
+            try:
+                inf.write_memory(address, original)
+                if bytes(inf.read_memory(address, 4)) != original:
+                    errors.append(address)
+            except Exception as error:
+                errors.append(str(error))
+        state['glue_restored'] += 1
+        if errors:
+            state['glue_fail'] += 1
+        log('GLUE-RESTORE', swarm=swarm, errors=errors,
+            readback=[bytes(inf.read_memory(a, 4)).hex() for a in record['addresses']])
+    state['glue'] = {}
+
+
 class PartitionTick(gdb.Breakpoint):
     """Every 250th UpdatePartition of a swarm: log its live boid translations, so a later driver can
     `tp` the player onto a real boid (the player's box overlap is what the Touch arms need)."""
@@ -214,6 +307,7 @@ class PartitionTick(gdb.Breakpoint):
         if this not in state['vuln']:
             state['vuln'].append(this)
             vulnerability(this, len(state['vuln']))
+        glue(this)
         if state['ticks'] % 250:
             return False
         try:
@@ -246,6 +340,7 @@ class TouchLog(gdb.Breakpoint):
     def stop(self):
         try:
             this, mgr = iv('$rdi'), iv('$rdx')
+            state['mgr'] = mgr
             actor = iv('$rsi')
             name = dyn(actor)
             state['touch'] += 1
@@ -297,9 +392,11 @@ class TouchLog(gdb.Breakpoint):
 # ---------------------------------------------------------------------------- install / summary
 
 def finished(event):
-    summary = ('SUMMARY exit: ctor_sites=%d forced=%d restored=%d restore_fail=%d touch=%d err=%s'
+    summary = ('SUMMARY exit: ctor_sites=%d forced=%d restored=%d restore_fail=%d touch=%d '
+               'glue_applied=%d glue_restored=%d glue_fail=%d err=%s'
                % (state['ctor'], state['forced'], state['restored'], state['restore_fail'],
-                  state['touch'], state['err'] or '-'))
+                  state['touch'], state['glue_applied'], state['glue_restored'],
+                  state['glue_fail'], state['err'] or '-'))
     log('EXIT', summary=summary)
     with open(os.path.join(COV_OUT, 'swb19_summary.txt'), 'w') as f:
         f.write(summary + '\n')
