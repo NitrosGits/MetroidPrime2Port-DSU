@@ -265,7 +265,13 @@ void CPFArea::LoadHost() {
   mHostOctreeRegions = rs_new uchar[numRegionPtrs * sizeof(CPFRegion*)];
   CPFRegion** regionPtrs = reinterpret_cast< CPFRegion** >(mHostOctreeRegions.get());
   for (int i = 0; i < numRegionPtrs; ++i, cur += 4) {
-    regionPtrs[i] = &mRegions[BigS32(cur)];
+    // Stream data: an index past the region table (bad or mod-edited PATH) would
+    // point outside mRegions; fall back to region 0.
+    int regionIndex = BigS32(cur);
+    if (regionIndex < 0 || regionIndex >= numRegions) {
+      regionIndex = 0;
+    }
+    regionPtrs[i] = &mRegions[regionIndex];
   }
   mOctreeRegions.set_size(numRegionPtrs);
   mOctreeRegions.set_data(regionPtrs);
