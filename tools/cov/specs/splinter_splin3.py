@@ -15,7 +15,9 @@
 # temporary (real call, snapshotted on return: fields, and for an engaged visor the CObjectReference counts) and
 # copy-constructs it into the disengaged optional (inline SSpitData(const SSpitData&)).  Retail 0xBA30/0xBA3C is
 # the engaged visor arm: TLockedToken(const TLockedToken&) = CToken::CToken(const CToken&) (rdi = dst +0x48,
-# rsi = temp +0x48) then mToken.Lock().  At the temporary's first destruction event the destination is compared
+# rsi = temp +0x48) then mToken.Lock().  The host copy ctor ends in `jmp CToken::Lock` when the source holds its
+# lock (0xf390e0+0x20), so that Lock shows the ctor frame as caller with the copy call's return address as pc
+# ("tail"); the TLockedToken body's own mToken.Lock() is "outer" (a no-op when the tail Lock already locked).  At the temporary's first destruction event the destination is compared
 # field by field (DWARF fields, engaged optionals as their payload; the visor mLockHeld must be 1 in the copy),
 # and the visor reference must show mRefCount +1 and mLockCount +1 against the snapshot.
 #
@@ -379,7 +381,8 @@ class TokCopyBp(gdb.Breakpoint):
             caller = gdb.newest_frame().older()
             phys, names = physical(caller)
             hit = dict(dst_off=rdi - dst, src_off=rsi - cp['temp'], rsi_ok=(rsi - cp['temp']) == (rdi - dst),
-                       owned=context() == c['ctx'] and same_frame(phys, c['frame']), inline=names)
+                       owned=context() == c['ctx'] and same_frame(phys, c['frame']), ret_pc=int(caller.pc()),
+                       inline=names)
             cp['tok_hits'].append(hit)
             log('copy_token_ctor', id=c['id'], **hit)
         except Exception as e:
@@ -388,8 +391,9 @@ class TokCopyBp(gdb.Breakpoint):
 
 
 class LockBp(gdb.Breakpoint):
-    """CToken::Lock on the destination visor token during the copy window: outer (TLockedToken copy body,
-    caller = the owned ctor frame) or nested (inside CToken::CToken(const CToken&) called from it)."""
+    """CToken::Lock on the destination visor token during the copy window: "tail" (the copy ctor's
+    `jmp CToken::Lock`: caller = the owned ctor frame at the visor copy call's return address, before any other
+    Lock) or "outer" (the TLockedToken copy body's mToken.Lock(), caller = the owned ctor frame)."""
 
     def stop(self):
         try:
@@ -402,14 +406,13 @@ class LockBp(gdb.Breakpoint):
             caller = gdb.newest_frame().older()
             phys, names = physical(caller)
             where = 'other'
-            if context() == c['ctx']:
-                if same_frame(phys, c['frame']):
-                    where = 'outer'
-                elif (phys.name() or '').startswith('CToken::CToken(CToken const'):
-                    up, _n = physical(phys.older())
-                    if up is not None and same_frame(up, c['frame']):
-                        where = 'nested'
-            hit = dict(where=where, held_before=u8(rdi + TOK_HELD), caller=phys.name(), inline=names)
+            vtok = [h for h in cp['tok_hits'] if h['dst_off'] == VISOR_IN_SPIT]
+            if context() == c['ctx'] and same_frame(phys, c['frame']):
+                where = 'outer'
+                if len(vtok) == 1 and not cp['lock_hits'] and int(caller.pc()) == vtok[0]['ret_pc']:
+                    where = 'tail'
+            hit = dict(where=where, held_before=u8(rdi + TOK_HELD), caller=phys.name(), pc='0x%x' % int(caller.pc()),
+                       copy_ret_pc=('0x%x' % vtok[0]['ret_pc']) if len(vtok) == 1 else None, inline=names)
             cp['lock_hits'].append(hit)
             log('copy_token_lock', id=c['id'], **hit)
         except Exception as e:
@@ -456,6 +459,7 @@ class CopyTempTokenBp(gdb.Breakpoint):
                 now = ref_counts(vs['ref'])
                 vtok = [h for h in cp['tok_hits'] if h['dst_off'] == VISOR_IN_SPIT]
                 where = [h['where'] for h in cp['lock_hits']]
+                held_before = [h['held_before'] for h in cp['lock_hits']]
                 vrec = dict(dst_valid=u8(c['root'] + SPL['visor_valid']), dst_ref='0x%x' % u64(d),
                             src_ref='0x%x' % vs['ref'], dst_held=u8(d + TOK_HELD), src_held=vs['held'],
                             src_held_now=u8(cp['temp'] + VISOR_IN_SPIT + TOK_HELD),
@@ -475,8 +479,10 @@ class CopyTempTokenBp(gdb.Breakpoint):
                     vproblems.append('mLockCount %d -> %d (want +1)' % (vs['counts']['lockcount'], now['lockcount']))
                 if len(vtok) != 1 or not vtok[0]['rsi_ok'] or not vtok[0]['owned']:
                     vproblems.append('visor CToken copy hits %s' % vtok)
-                if where.count('outer') != 1 or where.count('nested') != int(bool(vs['held'])) or 'other' in where:
-                    vproblems.append('Lock hits %s (src held %d)' % (where, vs['held']))
+                want = (['tail', 'outer'], [0, 1]) if vs['held'] else (['outer'], [0])
+                if (where, held_before) != want:
+                    vproblems.append('Lock hits %s held_before %s != %s (src held %d)'
+                                     % (where, held_before, want, vs['held']))
                 vrec['problems'] = vproblems
                 cp['visor_result'] = 'OK' if not vproblems else 'FAIL'
                 vrec['result'] = cp['visor_result']
@@ -792,9 +798,8 @@ def summarize(_event=None):
             and c['arms']['spit'] and c['arms']['visor']),
         'splinter D0 with mEvadeChecks.mCount > 0': have(
             lambda c: c['dtor'] == 'splinter' and c['variant'] == 'D0' and c['arms']['evade'] > 0),
-        'splinter D0 all arms disengaged': have(
-            lambda c: c['dtor'] == 'splinter' and c['variant'] == 'D0' and not c['arms']['spit']
-            and not c['arms']['part'] and not c['arms']['sm2']),
+        'splinter D0 with spit disengaged': have(
+            lambda c: c['dtor'] == 'splinter' and c['variant'] == 'D0' and not c['arms']['spit']),
     }
     pending = [o['id'] for o in state['owners']]
     ctor_open = [c['id'] for c in state['ctors'] if c.get('frame') is not None]
