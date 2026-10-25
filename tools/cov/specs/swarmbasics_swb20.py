@@ -35,7 +35,7 @@ LOG = os.path.join(COV_OUT, 'swb20.jsonl')
 WH_AT = int(os.environ.get('SWB20_WH_AT', '40'))
 EN_FROM = int(os.environ.get('SWB20_EN_FROM', '4'))
 EN_COUNT = int(os.environ.get('SWB20_EN_COUNT', '80'))
-EX_AT = int(os.environ.get('SWB20_EX_AT', '6'))
+EX_AT = int(os.environ.get('SWB20_EX_AT', '2'))
 CR_AT = int(os.environ.get('SWB20_CR_AT', '2'))
 # Run 1's tick window (mPlayerTouchRadius := mTouchRadius); off by default since the per-frame
 # player write below covers line 1527 too.
