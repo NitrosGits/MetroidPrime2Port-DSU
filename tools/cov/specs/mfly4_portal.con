@@ -16,5 +16,6 @@
 @f2200 damage e081202de 1 0 power
 @f2250 damage e081202df 1 0 power
 @f2300 damage e081202df 1 0 power
-@f2400 kill e081202de
-@f2500 objs MysteryFlyer
+@f2350 fsm e081202de Hover; fsm e081202df Hover; fsm e08120329 Hover; fsm e0812032a Hover; fsm e0812032b Hover; fsm e081201cc Hover
+@f2700 kill e081202de
+@f2800 objs MysteryFlyer

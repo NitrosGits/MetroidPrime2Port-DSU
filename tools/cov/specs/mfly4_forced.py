@@ -9,14 +9,15 @@
 # HasBodyState(kAS_KnockBack) is never true.  The fixture changes only RESULTS of calls, at the return,
 # on ONE wasp (the first object whose call reaches the hook = single-object filter), nothing else:
 #  (1) JoinTeam: at the return of GetAssociatedTeamId (static, rdi=CAi*, rsi=mgr; result in ax) called
-#      from CMysteryFlyer::JoinTeam / AcceptScriptMsg, the first MFORCE_TEAM_CALLS (default 3) calls of the
+#      from CMysteryFlyer::JoinTeam / AcceptScriptMsg, the first MFORCE_TEAM_CALLS (default 2) calls of the
 #      target wasp get ax = MFORCE_TEAM_UID (the uid of the real TMAI on layer 3, from `objs`).  JoinTeam
 #      then runs ObjectById/TCastToPtr/JoinTeam on the REAL team; a later JoinTeam entry with the id still
-#      set takes the retail "bne -> end" arm naturally.  The original ax is recorded and the write read back.
+#      set takes the retail "bne -> end" arm (a Hover Activate JoinTeam, driven by `fsm Hover`).  The 2nd
+#      and 3rd distinct wasps get an existing non-team uid / a uid no object has (TCastToPtr-null arm).  The original ax is recorded and the write read back.
 #  (2) AcceptScriptMsg kSM_Damage: at the return of CBodyController::HasBodyState called from
 #      AcceptScriptMsg, the target wasp's 1st call gets al=1 (state != KnockBack naturally -> DeliverCmd
 #      arm), the 2nd call gets al=1 AND, at the `jne` after `cmpl $6,0x4e0(%rbp)`, ZF=1 (state == KnockBack
-#      -> skip arm).  Original al / eflags recorded, writes read back.  No memory write, no inferior call.
+#      -> skip arm), the 3rd gets al=0 (no KnockBack state -> skip all).  Original al / eflags recorded, writes read back.  No memory write, no inferior call.
 import hashlib
 import os
 
@@ -26,12 +27,14 @@ OUT = os.environ.get('COV_OUT', '/tmp')
 LOG = os.path.join(OUT, 'diag.log')
 TABLE = os.path.join(OUT, 'fixture.txt')
 TEAM_UID = int(os.environ.get('MFORCE_TEAM_UID', '0x70b'), 0)
-TEAM_CALLS = int(os.environ.get('MFORCE_TEAM_CALLS', '3'))
+TEAM_CALLS = int(os.environ.get('MFORCE_TEAM_CALLS', '2'))
+# 2nd distinct wasp: an existing non-team object (a War Wasp, uid 0x71d); 3rd: a uid no object has.
+OTHER_UIDS = [int(x, 0) for x in os.environ.get('MFORCE_OTHER_UIDS', '0x71d,0x7ffe').split(',')]
 GAT = '_ZN16CScriptTeamAiMgr19GetAssociatedTeamIdERK3CAiR13CStateManager'
 HBS = '_ZNK15CBodyController12HasBodyStateEN3pas15EAnimationStateE'
 ASM = '_ZN13CMysteryFlyer15AcceptScriptMsgER13CStateManagerRK10CScriptMsg'
 JT = '_ZN13CMysteryFlyer8JoinTeamER13CStateManager'
-state = {'binary': 'unchecked', 'target_team': None, 'team_calls': [], 'target_hbs': None, 'hbs_calls': [],
+state = {'binary': 'unchecked', 'target_team': None, 'team_calls': [], 'others': {}, 'target_hbs': None, 'hbs_calls': [],
          'flip_pending': None, 'flips': [], 'jt_entries': [], 'problems': [], 'installed': 0}
 
 
@@ -68,12 +71,12 @@ class TeamRet(gdb.FinishBreakpoint):
             orig = ev('$ax') & 0xffff
             c['orig'] = orig
             if c['force']:
-                gdb.execute('set $ax = %d' % TEAM_UID)
+                gdb.execute('set $ax = %d' % c['uid'])
                 back = ev('$ax') & 0xffff
                 c['back'] = back
                 log('team call %d (%s this=%#x): ORIGINAL ax=%#x -> forced %#x, readback %#x'
-                    % (c['id'], c['caller'], c['this'], orig, TEAM_UID, back))
-                if back != TEAM_UID:
+                    % (c['id'], c['caller'], c['this'], orig, c['uid'], back))
+                if back != c['uid']:
                     problem('team call %d: ax readback %#x' % (c['id'], back))
             else:
                 log('team call %d (%s this=%#x): natural ax=%#x' % (c['id'], c['caller'], c['this'], orig))
@@ -101,10 +104,16 @@ class TeamBp(gdb.Breakpoint):
                 state['target_team'] = this
                 log('team target wasp this=%#x (first call, from %s)' % (this, who))
             call = {'id': len(state['team_calls']) + 1, 'caller': who.split('(')[0], 'this': this,
-                    'force': False, 'returned': False}
+                    'force': False, 'returned': False, 'uid': TEAM_UID}
             mine = [c for c in state['team_calls'] if c['this'] == this]
+            if not mine and this != state['target_team'] and len(state['others']) < len(OTHER_UIDS):
+                state['others'][this] = OTHER_UIDS[len(state['others'])]
+                log('other-uid wasp this=%#x gets uid %#x' % (this, state['others'][this]))
             if this == state['target_team'] and len(mine) < TEAM_CALLS:
                 call['force'] = True
+            elif this in state['others'] and len(mine) < TEAM_CALLS:
+                call['force'] = True
+                call['uid'] = state['others'][this]
             state['team_calls'].append(call)
             TeamRet(frame, call)
         except Exception as e:
@@ -123,12 +132,12 @@ class HbsRet(gdb.FinishBreakpoint):
             orig = ev('$al') & 0xff
             c['orig'] = orig
             if c['force']:
-                gdb.execute('set $al = 1')
+                gdb.execute('set $al = %d' % c['val'])
                 back = ev('$al') & 0xff
                 c['back'] = back
-                log('hbs call %d (this=%#x): ORIGINAL al=%d -> forced 1, readback %d, flip=%d'
-                    % (c['id'], c['this'], orig, back, int(c['flip'])))
-                if back != 1:
+                log('hbs call %d (this=%#x): ORIGINAL al=%d -> forced %d, readback %d, flip=%d'
+                    % (c['id'], c['this'], orig, c['val'], back, int(c['flip'])))
+                if back != c['val']:
                     problem('hbs call %d: al readback %d' % (c['id'], back))
                 if c['flip']:
                     state['flip_pending'] = c['this']
@@ -160,9 +169,10 @@ class HbsBp(gdb.Breakpoint):
             mine = [c for c in state['hbs_calls'] if c['this'] == this]
             call = {'id': len(state['hbs_calls']) + 1, 'this': this, 'force': False, 'flip': False,
                     'returned': False}
-            if this == state['target_hbs'] and len(mine) < 2:
+            if this == state['target_hbs'] and len(mine) < 3:
                 call['force'] = True
                 call['flip'] = len(mine) == 1
+                call['val'] = 0 if len(mine) == 2 else 1
             state['hbs_calls'].append(call)
             HbsRet(frame, call)
         except Exception as e:
@@ -219,8 +229,8 @@ def summarize():
     if not forced_team:
         p.append('no forced team call returned')
     hb = [c for c in state['hbs_calls'] if c['force'] and c.get('returned')]
-    if len(hb) < 2:
-        p.append('forced HasBodyState calls returned: %d (<2)' % len(hb))
+    if len(hb) < 3:
+        p.append('forced HasBodyState calls returned: %d (<3)' % len(hb))
     if not state['flips']:
         p.append('no ZF flip happened')
     if any(not c.get('returned') for c in state['team_calls'] + state['hbs_calls']):
