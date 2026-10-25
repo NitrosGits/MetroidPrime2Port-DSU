@@ -273,7 +273,11 @@ struct ChangeLog {
 };
 
 // Returns whether a visible part of the object's state (active flag, health, door) differed.
-bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, ChangeLog& log) {
+// `holdTimers`: a running timer is restored stopped and listed in `held` (RoomApplyProgress), to be
+// started once the last saved area has loaded - a timer firing early would message objects of an
+// area that is not there yet.
+bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, ChangeLog& log,
+                 bool holdTimers, std::vector< uint32_t >& held) {
   bool changed = false;
   if (ent.GetActive() != obj.active) {
     // Through the message, as a relay does: an object's own kSM_Activate sets up what its Think
@@ -319,7 +323,11 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
       const float time = r.F32();
       const bool timing = r.U32() != 0;
       if (r.ok && time == time) {
-        PortRoomState::SetTimer(*timer, time, timing);
+        const bool hold = timing && holdTimers;
+        PortRoomState::SetTimer(*timer, time, timing && !hold);
+        if (hold) {
+          held.push_back(obj.editorId);
+        }
       }
     }
   }
@@ -410,7 +418,12 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out) {
   for (int i = 0; i < world->GetNumAreas(); ++i) {
     if (const CGameArea* a = ReadyArea(*world, i)) {
       areas.insert(i);
-      out.areas.push_back({i, static_cast< uint32_t >(a->GetAreaAssetId())});
+      RoomArea ra;
+      ra.area = i;
+      ra.assetId = static_cast< uint32_t >(a->GetAreaAssetId());
+      ra.fingerprint = AreaFingerprint(*a);
+      ra.known = true;
+      out.areas.push_back(ra);
     }
   }
   ForEachObject(mgr, [&](CEntity& ent) {
@@ -449,12 +462,29 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
       progress.done.push_back(ra.area);
       continue;
     }
+    if (const char* why = RoomAreaSkipReason(ra, AreaFingerprint(*a))) {
+      // The loaded scripts are not the ones the state was made against (another disc build or a
+      // mod): its editor ids would land on other objects, so the area is left as loaded.
+      std::fprintf(stderr, "[savestate] room: area %d %s; left as loaded\n", ra.area, why);
+      ++stats.skipped;
+      progress.done.push_back(ra.area);
+      continue;
+    }
     if (!Contains(progress.seen, ra.area)) {
       progress.seen.push_back(ra.area);
       ++waiting;
       continue;
     }
     now.insert(ra.area);
+  }
+  if (waiting == 0 && !progress.held.empty()) {
+    for (uint32_t editorId : progress.held) {
+      if (CScriptTimer* timer = TCastToPtr< CScriptTimer >(
+              mgr.ObjectById(mgr.GetIdForScript(TEditorId(editorId))))) {
+        PortRoomState::SetTimer(*timer, PortRoomState::TimerTime(*timer), true);
+      }
+    }
+    progress.held.clear();
   }
   if (now.empty()) {
     return waiting;
@@ -500,7 +530,7 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
       ++unmatchedLayers[LayerKey(obj.editorId)];
       continue;
     }
-    if (ApplyObject(mgr, *ent, obj, log)) {
+    if (ApplyObject(mgr, *ent, obj, log, waiting > 0, progress.held)) {
       ++stats.changed;
     }
     ++stats.applied;
@@ -524,70 +554,16 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
     progress.done.push_back(area);
     std::fprintf(stderr, "[savestate] room: area %d restored\n", area);
   }
+  if (waiting == 0) {
+    for (uint32_t editorId : progress.held) {
+      if (CScriptTimer* timer = TCastToPtr< CScriptTimer >(
+              mgr.ObjectById(mgr.GetIdForScript(TEditorId(editorId))))) {
+        PortRoomState::SetTimer(*timer, PortRoomState::TimerTime(*timer), true);
+      }
+    }
+    progress.held.clear();
+  }
   return waiting;
-}
-
-void EncodeRoomState(const RoomState& room, std::string& out) {
-  BlockWriter w;
-  w.U32(static_cast< uint32_t >(room.areas.size()));
-  for (const RoomArea& a : room.areas) {
-    w.U32(static_cast< uint32_t >(a.area));
-    w.U32(a.assetId);
-  }
-  w.U32(static_cast< uint32_t >(room.objects.size()));
-  for (const RoomObject& obj : room.objects) {
-    w.U32(obj.editorId);
-    w.U32(obj.active ? 1 : 0);
-    w.U32(static_cast< uint32_t >(obj.blocks.size()));
-    for (const RoomBlock& b : obj.blocks) {
-      w.U32(b.tag);
-      w.Bytes(b.data);
-    }
-  }
-  out = std::move(w.bytes);
-}
-
-bool DecodeRoomState(const std::string& in, RoomState& room) {
-  room = RoomState();
-  BlockReader r(in);
-  const uint32_t areas = r.U32();
-  if (!r.ok || areas > kMaxCount) {
-    return false;
-  }
-  for (uint32_t i = 0; i < areas && r.ok; ++i) {
-    RoomArea a;
-    a.area = static_cast< int32_t >(r.U32());
-    a.assetId = r.U32();
-    room.areas.push_back(a);
-  }
-  const uint32_t objects = r.U32();
-  if (!r.ok || objects > kMaxCount) {
-    room = RoomState();
-    return false;
-  }
-  room.objects.reserve(objects);
-  for (uint32_t i = 0; i < objects && r.ok; ++i) {
-    RoomObject obj;
-    obj.editorId = r.U32();
-    obj.active = r.U32() != 0;
-    const uint32_t blocks = r.U32();
-    if (blocks > 64) {
-      r.ok = false;
-      break;
-    }
-    for (uint32_t b = 0; b < blocks && r.ok; ++b) {
-      RoomBlock block;
-      block.tag = r.U32();
-      block.data = r.Bytes();
-      obj.blocks.push_back(std::move(block));
-    }
-    room.objects.push_back(std::move(obj));
-  }
-  if (!r.ok) {
-    room = RoomState();
-    return false;
-  }
-  return true;
 }
 
 } // namespace PortSaveState
