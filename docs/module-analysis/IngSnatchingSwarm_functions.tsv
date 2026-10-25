@@ -7,7 +7,7 @@ offset	fn	size	class	name	slice	what	marker
 000A8	fn_33_A8	5D4	B	LoadIngSnatchingSwarm	iss1	upstream body (CIngSnatchingSwarm)	yes
 0067C	fn_33_67C	58	H	SIngSnatchingSwarmData::~SIngSnatchingSwarmData	-	implicit copy / dtor	no
 006D4	fn_33_6D4	70	B	SLdrIngSnatchingSwarm::~SLdrIngSnatchingSwarm	-	SLdr loader (SLdrIngSnatchingSwarm.hpp, swsldr1)	no
-00744	fn_33_744	14C	B	SLdrIngSnatchingSwarm::SLdrIngSnatchingSwarm	-	SLdr loader (SLdrIngSnatchingSwarm.hpp, swsldr1)	no
+00744	fn_33_744	14C	B	SLdrIngSnatchingSwarm::SLdrIngSnatchingSwarm	-	SLdr loader (SLdrIngSnatchingSwarm.hpp, swsldr1)	yes
 00890	fn_33_890	9C	B	CIngSnatchingSwarm::CreateParticle	iss1	upstream body (CIngSnatchingSwarm)	yes
 0092C	fn_33_92C	4C	B	CIngSnatchingSwarm::RemoveSfxEmitter	iss1	upstream body (CIngSnatchingSwarm)	yes
 00978	fn_33_978	A8	B	CIngSnatchingSwarm::UpdateSfxEmitter	iss1	upstream body (CIngSnatchingSwarm)	yes

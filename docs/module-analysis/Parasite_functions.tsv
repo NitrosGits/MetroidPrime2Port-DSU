@@ -16,7 +16,7 @@ offset	fn	size	class	name	slice	what	marker
 000BC	fn_47_BC	24	T	RELExit	-	REL runtime	no
 000E0	fn_47_E0	20	T	RELMain	-	REL runtime	no
 00100	fn_47_100	48	B	SetFuncPtrs__Fv	para1	upstream body (CParasite)	yes
-00148	fn_47_148	618	B	LoadCrystallite__FR13CStateManagerR12CInputStreamR11CEntityInfo	para1	upstream loader; para1 defaults fix	no
+00148	fn_47_148	618	B	LoadCrystallite__FR13CStateManagerR12CInputStreamR11CEntityInfo	para1	upstream loader; para1 defaults fix	yes
 00760	fn_47_760	5C	H	__ct__20CDamageVulnerabilityFRC20CDamageVulnerability	-	weak copy / template instance	no
 007BC	fn_47_7BC	54	H	__dt__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
 00810	fn_47_810	130	H	__ct__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>FRCQ24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
@@ -29,7 +29,7 @@ offset	fn	size	class	name	slice	what	marker
 00BC4	fn_47_BC4	64	H	__dt__Q24rstl20auto_ptr<9CAnimData>Fv	-	weak copy / template instance	no
 00C28	fn_47_C28	60	H	__dt__Q24rstl29optional_object<10CModelData>Fv	-	weak copy / template instance	no
 00C88	fn_47_C88	70	H	__dt__15SLdrCrystalliteFv	-	weak copy / template instance	no
-00CF8	fn_47_CF8	6AC	B	LoadBrizgee__FR13CStateManagerR12CInputStreamR11CEntityInfo	para1	upstream loader; para1 defaults fix	no
+00CF8	fn_47_CF8	6AC	B	LoadBrizgee__FR13CStateManagerR12CInputStreamR11CEntityInfo	para1	upstream loader; para1 defaults fix	yes
 013A4	fn_47_13A4	94	H	__dt__11SLdrBrizgeeFv	-	weak copy / template instance	no
 01438	fn_47_1438	130	H	__ct__11SLdrBrizgeeFv	para1	loader defaults (SLdr ctor); para1 fix	no
 01568	fn_47_1568	69C	B	LoadParasite__FR13CStateManagerR12CInputStreamR11CEntityInfo	para1	upstream loader; para1 defaults fix	no
@@ -111,7 +111,7 @@ offset	fn	size	class	name	slice	what	marker
 065CC	fn_47_65CC	5C	H	__dt__20CBCAdditiveFlinchCmdFv	-	weak copy / template instance	no
 06628	fn_47_6628	C4	B	__dt__9CParasiteFv	para1	upstream body (CParasite)	yes
 066EC	fn_47_66EC	84	H	__dt__Q24rstl57vector<Q29CParasite9CRepulsor,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
-06770	fn_47_6770	7B0	B	__ct__9CParasiteF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Q210CPatterned11EFlavorTypeR11CEntityInfoRC12CTransform4fRC10CModelDataRC14CPatternedInfo9EBodyTypeffffffffffffffffffbQ29CParasite13EParasiteTypeRC20CDamageVulnerabilityRC11CDamageInfoUsUsUsUiUiffRC11CDamageInfoRC16CActorParameters	-	upstream body (CParasite)	no
+06770	fn_47_6770	7B0	B	__ct__9CParasiteF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Q210CPatterned11EFlavorTypeR11CEntityInfoRC12CTransform4fRC10CModelDataRC14CPatternedInfo9EBodyTypeffffffffffffffffffbQ29CParasite13EParasiteTypeRC20CDamageVulnerabilityRC11CDamageInfoUsUsUsUiUiffRC11CDamageInfoRC16CActorParameters	-	upstream body (CParasite)	yes
 06F20	fn_47_6F20	48	H	__ct__29TLockedToken<13CSkinnedModel>FP13CSkinnedModel	-	weak copy / template instance	no
 06F68	fn_47_6F68	54	H	__dt__23TToken<13CSkinnedModel>Fv	-	weak copy / template instance	no
 06FBC	fn_47_6FBC	74	H	__ct__23TToken<13CSkinnedModel>FP13CSkinnedModel	-	weak copy / template instance	no
