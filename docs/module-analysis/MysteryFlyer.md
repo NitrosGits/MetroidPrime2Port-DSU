@@ -140,3 +140,16 @@ run 1 pass. Both frozen profile hashes, gcno and source hash verify. The current
 was rebuilt after evidence capture and no longer matches the recorded run hash; the original binary
 is not frozen. Caller-name attribution is sufficient for these single-entry runs, not proof of
 frame ownership under nesting. The fixture's forced mode still requires a natural call in that run.
+
+## mfly3 (2026-10-25)
+
+- fn_45_A08 / fn_45_7C4: the REL symbol names are swapped. 0xA08 (`__dt__16SLdrMysteryFlyer`) is the
+  `SLdrMysteryFlyerData` constructor, 0x7C4 (`__ct__16SLdrMysteryFlyer`) the `SLdrMysteryFlyer`
+  destructor. Both marked with a store-by-store proof in `SLdrMysteryFlyer.hpp`; no runtime needed.
+- fn_45_170 `LoadMysteryFlyer`: the `!modelData` return and the property-switch default are dead by
+  data (`tools/scan_mysteryflyer_loader.py`: 9 MYSF placements, ANCS present in the area's own pak,
+  0 unknown property or top-level ids). Left unmarked: the other arms still lack a coverage run.
+- fn_45_C10 `JoinTeam`: the port joined on every call; retail skips when the id is already set
+  (`bne` at 0xC40). Fixed under `TARGET_PC`. Unmarked: needs 05_portalpuzzle layers 2+3 (wasps and
+  a TeamAiMgr) driven with coverage, including a second call with the id already set.
+- fn_45_23B8 `AcceptScriptMsg`: KnockBack arms need a forced body-state setup; not attempted.
