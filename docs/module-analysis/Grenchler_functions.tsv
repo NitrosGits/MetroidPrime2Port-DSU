@@ -17,7 +17,7 @@ offset	fn	size	class	name	slice	what	marker
 000F4	fn_27_F4	24	H	RELExit	-	weak copy / template instance	no
 00118	fn_27_118	20	H	RELMain	-	weak copy / template instance	no
 00138	fn_27_138	30	H	SetFuncPtrs	-	weak copy / template instance	no
-00168	fn_27_168	E00	B	LoadGrenchler	-	upstream body (CGrenchler) 96.4%	no
+00168	fn_27_168	E00	B	LoadGrenchler	ldr1	upstream body (CGrenchler) 96.4%; 63/63 case arms + data scan	yes
 00F68	fn_27_F68	40	H	rstl::optional_object<CModelData>::optional_object	-	weak copy / template instance	no
 00FA8	fn_27_FA8	20	H	rstl::construct<CModelData>	-	weak copy / template instance	no
 00FC8	fn_27_FC8	28	H	rstl::construction_policy<CModelData, 0>::construct	-	weak copy / template instance	no
@@ -27,7 +27,7 @@ offset	fn	size	class	name	slice	what	marker
 011EC	fn_27_11EC	64	H	rstl::auto_ptr<CAnimData>::~auto_ptr	-	weak copy / template instance	no
 01250	fn_27_1250	60	H	rstl::optional_object<CModelData>::~optional_object	-	weak copy / template instance	no
 012B0	fn_27_12B0	118	B	SLdrGrenchler::~SLdrGrenchler	-	upstream body (CGrenchler)	no
-013C8	fn_27_13C8	338	B	SLdrGrenchler::SLdrGrenchler	-	upstream body (CGrenchler) 59.6%	no
+013C8	fn_27_13C8	338	B	SLdrGrenchler::SLdrGrenchler	ldr1	upstream body (CGrenchler) 59.6%; 67 stores mapped, echo emitter fixed	yes
 01700	fn_27_1700	7C	B	CGrenchler::GetSortingBounds	-	upstream body (CGrenchler)	no
 0177C	fn_27_177C	274	B	CGrenchler::PreRenderAllViewports	-	upstream body (CGrenchler) 99.9%	no
 019F0	fn_27_19F0	3C	H	rstl::optional_object<CAABox>::~optional_object	-	weak copy / template instance	no

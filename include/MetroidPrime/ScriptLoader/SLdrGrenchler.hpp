@@ -82,6 +82,7 @@ struct SLdrGrenchler {
   SLdrIngPossessionData ingPossessionData;        // 0xe61748ed
 };
 
+// @ fn_27_13C8 (branch-free; every store and member ctor mapped to the asm)
 inline SLdrGrenchler::SLdrGrenchler()
 : editorProperties()
 , patterned()
@@ -138,6 +139,8 @@ inline SLdrGrenchler::SLdrGrenchler()
   // fn_27_13C8: the REL's sound defaults are -1 (0x1438/0x143C: 0x49C/0x4A0).
   tailHitSound = -1;
   tailDestroyedSound = -1;
+  // fn_27_13C8: retail makes the Grenchler an echo emitter (0x1530 li r0,1; 0x1558 stb r0,0x26c).
+  patterned.echoParameters.isEchoEmitter = true;
 #else
   tailHitSound = 0;
   tailDestroyedSound = 0;
