@@ -177,6 +177,18 @@ CDarkTrooper::CDarkTrooper(TUniqueId uid, const rstl::string& name, const CEntit
   KnockBackController().SetPhysicsImpulseMagnitude(0.8f);
 }
 
+// @ fn_12_5520
+// The module's only reference to __dt__12CDarkTrooperFv is the deleting-destructor vtable slot
+// (.data 0x2BC + 0x8); no direct call site and no other address-taken use in the module's text or
+// data, so retail's null-this guard (0x553C/0x5540 `mr. r29,r3; beq`) and its `extsh. r0,r30;
+// ble` non-deleting arm (0x5630-0x5638, r4 = -1 from the slot contract) are dead for every live
+// lifetime. The body proper is member teardown only - vtable store 0x5554, fn_12_59F4 at +0xA50
+// (0x5558), fn_12_58D8 at +0xA10 (0x5564), fn_12_C78 at +0x9D0 (0x5570), the state-machine token at
+// +0x9C4 with its engaged byte (0x5584-0x5598), the +0x9A8 array's element destructor loop
+// (0x55AC-0x55F4), the +0x904 scan-info token and its Free (0x5600-0x5620), then base
+// fn_12_5660 and Free - which the compiler generates for the same member list in the same
+// reverse-declaration order; there is no gameplay decision in it. Taken lines were covered by the
+// dtr6/dtr8 kill drivers; the untaken gcov lines are host exception-cleanup edges.
 CDarkTrooper::~CDarkTrooper() {}
 
 // @ fn_12_549C
@@ -1151,6 +1163,18 @@ CRagDoll* CDarkTrooper::GetRagDoll() const {
   return nullptr;
 }
 
+// @ fn_12_12C
+// The only arm dtr11 left untaken is the null-model return (`!modelData` at 0x4FC-0x504: `lbz
+// r0,0x1C0(r1); cmplwi 0; bne 0x574` then `li r3,0` at 0x56C), and it is dead by the shipped data:
+// LdrToModelData (ScriptLoader.cpp:446-459) is given kInvalidAssetId as the model, so it returns an
+// empty optional only when the ancs id also resolves to no resource type. tools/
+// scan_darktrooper_loader.py walks every MLVL of every pak (all areas, all layers) and finds 35
+// DKTR placements, every one with an ANCS that exists in a pak with FourCC ANCS (0xA2CC5B52 in
+// Metroid1.pak for 33, 0x6735E3CA for the two federationsite L9 ones), so the CAnimRes path always
+// runs and the arm cannot be reached. The remaining retail branch, `__nw`'s null return
+// (0x590-0x594 `beq 0x6A8`), is the OOM path of throwing `new` (dc4's ABI limitation, not a
+// gameplay arm). Every other line ran in the dtr6/dtr11 loader runs: property switch, the model
+// copy/destroy guards at 0x4E4-0x518, ctor argument marshalling and the destructor tail.
 CEntity* LoadDarkTrooper(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrDarkTrooper sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrDarkTrooper.inc"

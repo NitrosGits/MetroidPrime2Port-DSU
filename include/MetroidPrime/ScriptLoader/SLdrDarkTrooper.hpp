@@ -35,6 +35,31 @@ struct SLdrDarkTrooper {
   CAssetId scannableInfoWhenAttacking;     // 0x8b6f9b43
 };
 
+// @ fn_12_B28
+// Branch-free retail body (0xB28-0xD38): the seven sub-struct ctors at +0x0/+0x3C/+0x280/+0x2F8/
+// +0x480/+0x49C/+0x4BC, then exactly these 21 stores, same field, same value (field offsets:
+// SLdrDarkTrooper base = LoadDarkTrooper's frame+0x478; patterned at +0x3C, actorInformation at
+// +0x280, so patterned+n = the patterned loader's own store offsets and lighting/visor+n = the
+// actor-parameter loader's). 0xB70/0xB74/0xB78/0xB90 stw -1 -> +0x4AC rangedAttackProjectile,
+// +0x4B0 ragdollImpactSound (property 0x49727753), +0x4B8 missileProjectile, +0x4CC
+// scannableInfoWhenAttacking (all three CAssetId members init to kInvalidAssetId). 0xBA8 stfs
+// rodata_4C (100) -> +0x64 patterned.leashRadius. 0xBB8 stfs rodata_50 (2.0) -> +0x88
+// patterned.health (base +0x84, 0xCF90D15E loads it at +0x48) +0x4 =
+// hI_KnockBackResistance. 0xBC8 stfs rodata_54 (0.5) -> +0x1E8 collisionRadius (0x8A6AB139 ->
+// patterned+0x1AC). 0xBD8 stfs rodata_58 (1.6) -> +0x1EC collisionHeight (0x3011B5DF ->
+// patterned+0x1B0). 0xBE0 stfs rodata_5C (1.0) -> +0x1FC stepUpHeight (0xD9355674 ->
+// patterned+0x1C0). 0xBE8 stw 1 -> +0x268 creatureSize (0x4BC4C4D9 -> patterned+0x22C). 0xBF4
+// stb 1 -> +0x26C echoParameters.isEchoEmitter (0x4476BED8 loads the echo set at patterned+0x230,
+// isEchoEmitter is its first member). 0xC0C stw CColor(1,1,1,1) (ctor call at 0xBF8) -> +0x294
+// actorInformation.lighting.ambientColor (lighting at actorInformation+0, ambient sixth, +0x14).
+// 0xC1C stw 0xF -> +0x2E4 actorInformation.visor.visorFlags (0x05AD250E loads the visor at
+// actorInformation+0x60; visorFlags is the second member, +0x4). 0xC2C/0xC3C stb 0 -> +0x474
+// flotsam, +0x475 avoidDownFrames. 0xC44 stfs rodata_60 (0) -> +0x478 meleeAttackMinRange, 0xC4C
+// stfs rodata_64 (5) -> +0x47C meleeAttackMaxRange, 0xC54 stfs rodata_5C (1) -> +0x490
+// unknown_0x2dca199d (0x2DCA199D stores there), 0xC58 stfs rodata_64 (5) -> +0x494
+// rangedAttackMinRange, 0xC5C stfs rodata_68 (18) -> +0x498 rangedAttackMaxRange, 0xC60 stb 0 ->
+// +0x4B4 firesMissiles. rodata 0x4C/50/54/58/5C/60/64/68 = 100/2/0.5/1.6/1/0/5/18. No branch, no
+// arm: the whole body is these stores, so no runtime evidence beyond the loader running is needed.
 inline SLdrDarkTrooper::SLdrDarkTrooper()
 : editorProperties()
 , patterned()

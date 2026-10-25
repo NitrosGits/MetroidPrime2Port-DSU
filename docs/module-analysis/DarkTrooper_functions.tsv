@@ -15,7 +15,7 @@ offset	fn	size	class	name	slice	what	marker
 B8	fn_12_B8	24	T	RELExit	-	rel-runtime	no
 DC	fn_12_DC	20	T	RELMain	-	rel-runtime	no
 FC	fn_12_FC	30	T	SetFuncPtrs__Fv	-	rel-runtime	no
-12C	fn_12_12C	614	B	LoadDarkTrooper__FR13CStateManagerR12CInputStreamR11CEntityInfo	-	upstream body (CDarkTrooper)	no
+12C	fn_12_12C	614	B	LoadDarkTrooper__FR13CStateManagerR12CInputStreamR11CEntityInfo	dct1	null-model arm dead by shipped data (35/35 ancs ANCS); OOM ABI limit	yes
 740	fn_12_740	40	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 780	fn_12_780	20	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 7A0	fn_12_7A0	28	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
@@ -25,7 +25,7 @@ FC	fn_12_FC	30	T	SetFuncPtrs__Fv	-	rel-runtime	no
 9C4	fn_12_9C4	64	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 A28	fn_12_A28	60	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 A88	fn_12_A88	A0	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
-B28	fn_12_B28	150	B	SLdrDarkTrooper::SLdrDarkTrooper	-	loader defaults (SLdrDarkTrooper.hpp, TARGET_PC fix)	no
+B28	fn_12_B28	150	B	SLdrDarkTrooper::SLdrDarkTrooper	dct1	branch-free; 21 retail stores matched field by field offline	yes
 C78	fn_12_C78	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 CCC	fn_12_CCC	58	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 D24	fn_12_D24	B8	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
@@ -128,14 +128,14 @@ FFC	fn_12_FFC	84	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk
 5024	fn_12_5024	444	B	AcceptScriptMsg__12CDarkTrooperFR13CStateManagerRC10CScriptMsg	-	upstream body (CDarkTrooper)	no
 5468	fn_12_5468	34	B	ProjectileInfo__12CDarkTrooperFv	-	upstream body (CDarkTrooper)	no
 549C	fn_12_549C	84	B	GetScannableObjectInfo__12CDarkTrooperCFv	-	upstream body (CDarkTrooper)	no
-5520	fn_12_5520	140	B	__dt__12CDarkTrooperFv	-	upstream body (CDarkTrooper)	no
+5520	fn_12_5520	140	B	__dt__12CDarkTrooperFv	dct1	teardown only; vtable-slot-only reference, null/non-deleting arms dead	yes
 5660	fn_12_5660	1E4	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 5844	fn_12_5844	94	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 58D8	fn_12_58D8	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 592C	fn_12_592C	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 5980	fn_12_5980	74	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 59F4	fn_12_59F4	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
-5A48	fn_12_5A48	76C	B	"__ct__12CDarkTrooperF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4fRC10CModelDataRC14CPatternedInfoUifffffbbiRC11CDamageInfoUiRC11CDamageInfobUiRC11CDamageInfoUsUiRC16CActorParameters"	-	upstream body (CDarkTrooper)	no
+5A48	fn_12_5A48	76C	B	"__ct__12CDarkTrooperF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4fRC10CModelDataRC14CPatternedInfoUifffffbbiRC11CDamageInfoUiRC11CDamageInfobUiRC11CDamageInfoUsUiRC16CActorParameters"	dct1	OPEN: sleeper/scan-absent/flotsam arms are live in data; run plan in note	no
 61B4	fn_12_61B4	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 6208	fn_12_6208	3C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
 6244	fn_12_6244	184	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
