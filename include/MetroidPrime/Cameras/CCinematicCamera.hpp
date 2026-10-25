@@ -30,6 +30,11 @@ public:
   void SetFlags(uint flags) { mFlags = flags; }
   void SetPaused(bool paused) { mPaused = paused; }
   float GetSlowMotionScale() const { return mSlowMotionScale; } // Guessed name
+#ifdef TARGET_PC
+  // Save states: seconds into the shot.
+  float PortElapsed() const { return mTime; }
+  void PortSetElapsed(float time) { mTime = time; }
+#endif
 
 private:
   float mTime;

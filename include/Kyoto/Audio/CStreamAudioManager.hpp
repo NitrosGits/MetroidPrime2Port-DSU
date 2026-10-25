@@ -46,6 +46,12 @@ public:
                                 float fadeOut, int volume, bool music);
   static void StopSoftwareAudio(ESoftwareChannel chan, const rstl::string& fileName);
   static rstl::string GetSoftwareAudioFileName(ESoftwareChannel chan);
+#ifdef TARGET_PC
+  // Save states: whether this stream (queued or playing, not fading out) is on the channel, and
+  // whether this DTK track is the current one.
+  static bool PortIsPlaying(ESoftwareChannel chan, const rstl::string& fileName);
+  static bool PortIsCurrentTrack(const rstl::string& fileName);
+#endif
 
   static void SetDefaultAudio(const rstl::string& fileName, float fadeIn, float fadeOut,
                               unsigned char volume);

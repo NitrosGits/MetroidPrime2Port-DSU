@@ -11,6 +11,7 @@
 #include "Kyoto/Math/CTransform4f.hpp"
 #include "Kyoto/Math/CVector3f.hpp"
 #include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/CEntity.hpp"
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
@@ -18,9 +19,12 @@
 #include "MetroidPrime/CPhysicsActor.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/Cameras/CCinematicCamera.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptCamera.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCounter.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptStreamedMusic.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTimer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
@@ -52,6 +56,8 @@ enum : uint32_t {
   kTagTimer = 5,
   kTagCounter = 6,
   kTagDoor = 7,
+  kTagMusic = 8,     // u32 playing: a CScriptStreamedMusic
+  kTagCinematic = 9, // f32 seconds into the shot: the CScriptCamera driving the cinematic camera
 };
 
 // Per-object lines a restore logs, at most; the summary line always follows.
@@ -193,7 +199,7 @@ bool IsGone(CEntity& ent) {
   return patterned != nullptr && !patterned->GetAlive();
 }
 
-void CaptureObject(CEntity& ent, RoomObject& obj) {
+void CaptureObject(CStateManager& mgr, CEntity& ent, RoomObject& obj) {
   obj.editorId = ent.GetEditorId().value;
   obj.active = ent.GetActive();
 
@@ -236,6 +242,24 @@ void CaptureObject(CEntity& ent, RoomObject& obj) {
     w.U32(door->IsOpen() ? 1 : 0);
     w.U32(static_cast< uint32_t >(PortRoomState::DoorLock(*door)));
     obj.blocks.push_back({kTagDoor, w.bytes});
+  }
+  // Music: only whether it plays; a load rebuilds the world, which stops everything.
+  // (CScriptMidi has no type id to cast by, so it is not covered.)
+  if (const CScriptStreamedMusic* music = TCastToConstPtr< CScriptStreamedMusic >(&ent)) {
+    BlockWriter w;
+    w.U32(music->PortPlaying() ? 1 : 0);
+    obj.blocks.push_back({kTagMusic, w.bytes});
+  }
+  // A cinematic: how far into the shot the camera is.
+  if (TCastToPtr< CScriptCamera >(&ent) != nullptr) {
+    const CCameraManager* cameras = mgr.CameraManager(0);
+    const CCinematicCamera* cine = cameras != nullptr ? cameras->GetCinematicCamera() : nullptr;
+    if (cine != nullptr && cameras->IsInCinematicCamera() &&
+        cine->GetScriptCameraId() == ent.GetUniqueId()) {
+      BlockWriter w;
+      w.F32(cine->PortElapsed());
+      obj.blocks.push_back({kTagCinematic, w.bytes});
+    }
   }
 }
 
@@ -338,6 +362,35 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
       }
     }
   }
+  if (CScriptStreamedMusic* streamed = TCastToPtr< CScriptStreamedMusic >(&ent)) {
+    if (const RoomBlock* b = FindBlock(obj, kTagMusic)) {
+      BlockReader r(b->data);
+      const bool wasPlaying = r.U32() != 0;
+      // The music that played at the save starts again; it was playing under its own message.
+      if (r.ok && wasPlaying && !streamed->PortPlaying() && ent.GetActive()) {
+        mgr.SendScriptMsg(&ent, kInvalidUniqueId, kSM_Play);
+        log.Note(obj.editorId, "music restarted");
+        changed = true;
+      }
+    }
+  }
+  if (TCastToPtr< CScriptCamera >(&ent) != nullptr) {
+    if (const RoomBlock* b = FindBlock(obj, kTagCinematic)) {
+      BlockReader r(b->data);
+      const float elapsed = r.F32();
+      CCameraManager* cameras = mgr.CameraManager(0);
+      if (r.ok && elapsed == elapsed && elapsed >= 0.f && elapsed < 1e5f && cameras != nullptr &&
+          cameras->IsInCinematicCamera()) {
+        // The activation above restarted the shot at 0; move it to where it was.
+        CCinematicCamera* cine = const_cast< CCinematicCamera* >(cameras->GetCinematicCamera());
+        if (cine != nullptr && cine->GetScriptCameraId() == ent.GetUniqueId()) {
+          cine->PortSetElapsed(elapsed);
+          log.Note(obj.editorId, "cinematic resumed");
+          changed = true;
+        }
+      }
+    }
+  }
   return changed;
 }
 
@@ -365,7 +418,7 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out) {
       return;
     }
     RoomObject obj;
-    CaptureObject(ent, obj);
+    CaptureObject(mgr, ent, obj);
     out.objects.push_back(std::move(obj));
   });
   std::fprintf(stderr, "[savestate] room: captured %zu objects in %zu areas\n", out.objects.size(),

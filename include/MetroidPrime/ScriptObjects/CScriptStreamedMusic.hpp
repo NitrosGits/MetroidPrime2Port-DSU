@@ -19,6 +19,15 @@ public:
   void PlayAudio();
 
   static bool IsDSPFile(const rstl::string& fileName);
+#ifdef TARGET_PC
+  // Save states: whether this object's music is what plays now (a looping stream, or the
+  // current DTK track).
+  bool PortPlaying() const {
+    return mFileIsDsp ? (mLoop && CStreamAudioManager::PortIsPlaying(
+                                      CStreamAudioManager::kSC_Default, mFileName))
+                      : CStreamAudioManager::PortIsCurrentTrack(mFileName);
+  }
+#endif
 
 private:
   static CStreamAudioManager::ESoftwareChannel IsOneShot(bool loop);
