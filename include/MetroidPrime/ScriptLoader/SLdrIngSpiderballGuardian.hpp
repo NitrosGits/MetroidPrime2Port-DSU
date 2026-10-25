@@ -85,6 +85,15 @@ inline void LoadTypedefIngSpiderballGuardianStruct(SLdrIngSpiderballGuardianStru
   }
 }
 
+// @ fn_35_3D1C (implicit copy ctor; retail 0x3D1C-0x40B0 __ct__29SLdrIngSpiderballGuardianDataFRC...)
+// Retail copies, in offset order and branch-free: 0x00-0xBF six 8-float structs (stfs at every 4);
+// 0xC0 stfs -> damageRadius; 0xC4 lwz/stw -> proximityDamage.dI_WeaponType, 0xC8/0xCC/0xD0 stfs ->
+// dI_Damage/dI_Radius/dI_KnockBackPower; 0xD4 stfs -> unknown_0x32133b39; then six
+// SLdrAudioPlaybackParms at 0xD8/0xF0/0x108/0x120/0x138/0x150, each stfs +0x0/+0x4 (maximumDistance,
+// fallOff), stw +0x8/+0xC/+0x10 (sound_Id, maxVolume, minVolume), stb +0x14 (useRoomAcoustics); the
+// 3 pad bytes are not copied. Host layout checked with a -fsyntax-only static_assert TU
+// (/tmp/opencode/isg3-frozen/layout_static_assert.cpp): sizeof 0x168, every offset above, Struct
+// 0x20, DamageInfo 0x10, AudioPlaybackParms 0x18 all equal retail's.
 struct SLdrIngSpiderballGuardianData {
   SLdrIngSpiderballGuardianData();
   ~SLdrIngSpiderballGuardianData();
