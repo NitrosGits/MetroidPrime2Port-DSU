@@ -1,0 +1,38 @@
+# spa3: Agon Wastes 03_sand_temple_dark (42b935e4) layer 10; both chain actors cycle Deactivate/Activate
+# many times (each Activate reaches GetNextSuitCharIdx, each Deactivate/Activate SetIntoStateManager/SetupEnvFx).
+@f260 layer 10
+@f300 god 1; give darkSuit 1; give lightSuit 1; give grappleBeam 1; give gravityBoost 1
+@f330 obj e0024022f
+@f400 send e0024022f Activate
+@f440 send e00240396 Activate
+@f480 send e0024022f Deactivate
+@f520 send e00240396 Deactivate
+@f560 send e0024022f Activate
+@f600 send e00240396 Activate
+@f640 send e0024022f Increment
+@f660 send e0024022f Deactivate
+@f700 send e00240396 Deactivate
+@f740 send e0024022f Activate
+@f780 send e00240396 Activate
+@f820 send e0024022f Deactivate
+@f860 send e00240396 Deactivate
+@f900 send e0024022f Increment
+@f920 send e0024022f Activate
+@f960 send e00240396 Activate
+@f1000 send e0024022f Deactivate
+@f1040 send e00240396 Deactivate
+@f1080 send e0024022f Activate
+@f1120 send e00240396 Activate
+@f1160 send e0024022f Increment
+@f1180 send e0024022f Deactivate
+@f1220 send e00240396 Deactivate
+@f1260 send e0024022f Activate
+@f1300 send e00240396 Activate
+@f1340 send e0024022f Deactivate
+@f1380 send e00240396 Deactivate
+@f1420 send e0024022f Increment
+@f1440 send e00240396 Reset
+@f1480 send e0024022f Activate
+@f1520 send e0024022f Delete
+@f1560 send e00240396 Delete
+@f1620 obj e0024022f

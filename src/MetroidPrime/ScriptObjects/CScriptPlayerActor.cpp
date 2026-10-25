@@ -483,6 +483,7 @@ void CScriptPlayerActor::PumpGrappleModel(CStateManager& mgr) {
   }
 }
 
+// @ fn_61_103C forced (mFlags bit 2 / mSuit per call via tools/cov/specs/spa3_force.py)
 int CScriptPlayerActor::GetNextSuitCharIdx(const CStateManager& mgr) const {
   CPlayerState::EPlayerSuit nextSuit = CPlayerState::kPS_Light;
   if (mFlags & 2) {
@@ -506,6 +507,7 @@ int CScriptPlayerActor::GetNextSuitCharIdx(const CStateManager& mgr) const {
   return GetSuitCharIdx(mgr, nextSuit);
 }
 
+// @ fn_61_FDC forced (suit / mCharacterCount pairs, give gravityBoost, via tools/cov/specs/spa3_force.py)
 int CScriptPlayerActor::GetSuitCharIdx(const CStateManager& mgr,
                                        CPlayerState::EPlayerSuit suit) const {
   int charIdx = CPlayerState::GetRenderSuit(mgr, *mgr.GetPlayerState(0), suit);
@@ -592,6 +594,7 @@ void CScriptPlayerActor::SetIntoStateManager(CStateManager& mgr, bool set) {
   }
 }
 
+// @ fn_61_C0 forced (unknown-ACS arm: SPA3_ACS=1 tools/cov/specs/spa3_force.py)
 CEntity* LoadPlayerActor(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrPlayerActor sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrPlayerActor.inc"

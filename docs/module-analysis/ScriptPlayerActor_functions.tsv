@@ -3,7 +3,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x2C	0x24	REL runtime	RELExit	runtime	T	-	the REL linker's entry/exit	not-port	RELExit
 0x50	0x20	REL runtime	RELMain	runtime	T	-	the REL linker's entry/exit	not-port	RELMain
 0x70	0x50	CScriptPlayerActor	SetFuncPtrs	func	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_70
-0xC0	0x660	CScriptPlayerActor	LoadPlayerActor	func	B	-	LoadPlayerActor: missing-ACS return arm untaken (data-dead)	upstream	fn_61_C0
+0xC0	0x660	CScriptPlayerActor	LoadPlayerActor	func	B	-	LoadPlayerActor: missing-ACS return arm untaken (data-dead) (marked spa3, forced)	upstream	fn_61_C0
 0x720	0x20	CScriptPlayerActor	-	func	H	-	`None__10CModelDataFv`: a host copy of DOL/template code	not-port	fn_61_720
 0x740	0x58	CScriptPlayerActor	-	func	T	-	dead: a CToken-holder destructor with no `bl` and no table naming it	not-port	fn_61_740
 0x798	0x54	CScriptPlayerActor	-	func	H	-	`__dt__27TToken<17CCharacterFactory>Fv`: a host copy of DOL/template code	not-port	fn_61_798
@@ -16,8 +16,8 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xE54	0xC8	CScriptPlayerActor	-	func	H	-	`__as__Q24rstl48optional_object<29TLockedToken<13CSkinnedModel>>FRCQ24rstl48optio`: a host copy of DOL/template code	not-port	fn_61_E54
 0xF1C	0x54	CScriptPlayerActor	-	func	H	-	`__dt__23TToken<13CSkinnedModel>Fv`: a host copy of DOL/template code	not-port	fn_61_F1C
 0xF70	0x6C	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl48optional_object<29TLockedToken<13CSkinnedModel>>Fv`: a host copy of DOL/template code	not-port	fn_61_F70
-0xFDC	0x60	CScriptPlayerActor	GetSuitCharIdx	func	B	-	GetSuitCharIdx: charIdx >= character count arms untaken (data: every ANCS has enough characters)	upstream	fn_61_FDC
-0x103C	0x78	CScriptPlayerActor	GetNextSuitCharIdx	func	B	-	GetNextSuitCharIdx: 0x2 with mSuit Light and the switch's Varia arm untaken	upstream	fn_61_103C
+0xFDC	0x60	CScriptPlayerActor	GetSuitCharIdx	func	B	-	GetSuitCharIdx: charIdx >= character count arms untaken (data: every ANCS has enough characters) (marked spa3, forced)	upstream	fn_61_FDC
+0x103C	0x78	CScriptPlayerActor	GetNextSuitCharIdx	func	B	-	GetNextSuitCharIdx: 0x2 with mSuit Light and the switch's Varia arm untaken (marked spa3, forced)	upstream	fn_61_103C
 0x10B4	0xA0	CScriptPlayerActor	PumpGrappleModel	func	B	-	PumpGrappleModel: null-token arm untaken (only called while loading)	upstream	fn_61_10B4
 0x1154	0xA0	CScriptPlayerActor	PumpBeamModel	func	B	-	PumpBeamModel: null-token arm untaken (only called while loading)	upstream	fn_61_1154
 0x11F4	0x1B0	CScriptPlayerActor	PumpSuitModel	func	B	-	PumpSuitModel: null-token and not-loaded arms untaken	upstream	fn_61_11F4
