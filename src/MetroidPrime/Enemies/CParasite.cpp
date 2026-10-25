@@ -93,6 +93,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
 
 static TUniqueId lastParasite = TUniqueId(0, 0);
 
+// @ fn_47_6770
 CParasite::CParasite(TUniqueId uid, const rstl::string& name, EFlavorType flavor, CEntityInfo& info,
                      const CTransform4f& xf, const CModelData& mData, const CPatternedInfo& pInfo,
                      EBodyType bodyType, float maxTelegraphReactDist, float advanceWpRadius,
@@ -1316,6 +1317,7 @@ CEntity* LoadParasite(CStateManager& mgr, CInputStream& input, CEntityInfo& info
       LdrToActorParameters(sldrThis.actorInformation));
 }
 
+// @ fn_47_CF8
 CEntity* LoadBrizgee(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrBrizgee sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrBrizgee.inc"
@@ -1342,6 +1344,7 @@ CEntity* LoadBrizgee(CStateManager& mgr, CInputStream& input, CEntityInfo& info)
       LdrToActorParameters(sldrThis.actorInformation));
 }
 
+// @ fn_47_148
 CEntity* LoadCrystallite(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrCrystallite sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrCrystallite.inc"

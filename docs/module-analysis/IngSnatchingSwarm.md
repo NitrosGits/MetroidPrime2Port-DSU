@@ -71,4 +71,26 @@ same driver), both `caught/reach-stub: 0`.
 | 17C8 FollowArc | 7/8: only 670:1/2 (`return t < 1.f` false) left. Two forcing runs: size != 4, speed <= 0 and duration <= 0 all taken, but neither `$xmm0 = 1e6` (time) nor `mArcLength = 0.001` (a tiny duration, so t = time/duration >> 1) took the arc-end arm - it also needs the body to reach the return, which the arc-end hit apparently does not |
 | 29A8 SelectTarget | 35/40: 475:1/6, 475:5/6, 476:3/6, 499:1/2, 506:3/4. The `CanBeIngPossessed` -> 0 and `IsIngPossessed` -> 1 FORCE_INNER stubs fired (`forced.log`) but the arms they gate stayed untaken, and the best-candidate arms need two candidates with different swarm counts - next attempt: a second swarm (GENR) or a `loc:` write of `candidates[j].mSwarmCount` |
 | 41CC ctor | 29/38: 143/145/147 (the `mExplosionEffect != kInvalidAssetId` ternary, data: the shipped GENR always sets it) and 183 (the mStateMachineToken setup) |
-| 744 SLdrIngSnatchingSwarm ctor | not byte-identical (objdiff 72.9%): GCC inlines the sub-struct ctors MWCC kept out of line; the defaults are the ones swsldr1 fixed |
+| 744 SLdrIngSnatchingSwarm ctor | **marked in ldr2** (see below): 26 stores + 3 member ctors, no branch; ran 15x |
+
+### ldr2: fn_33_744 SLdrIngSnatchingSwarm ctor
+
+Branch-free: retail 0x744..0x890 has 26 member stores (`stw`/`stfs`/`stb`) and three calls
+(`__ct__20SLdrEditorPropertiesFv` 0x758, `__ct__14SLdrDamageInfoFv` 0x774,
+`__ct__23SLdrDamageVulnerabilityFv` 0x78C) and no compare or conditional branch. Store map (all
+verified against the port's member order):
+
+`+0x38`=3 (SLdrEditorProperties' own default: the DOL ctor 0x8023F0E4 stores `li r0,3` at
+0x8023F124, so the port's `editorProperties()` covers it) - `+0x3c/+0x40/+0x48/+0x7c` = -1
+(kInvalidAssetId: stateMachine, swarmParticleSystem, secondarySwarmParticleSystem, pART) -
+`+0x44`=0.5, `+0x4c`=0.35, `+0x50`=15, `+0x54`=25, `+0x58`=10, `+0x5c`=2000, `+0x64`=0.5,
+`+0x68`=4, `+0x6c`=10, `+0x70`=3, `+0x74`=2, `+0x78`=5, `+0x84`=20, `+0x8c`=10, `+0x9c`=50
+(rodata_0/4/8/C/10/14/18/1C/20/24/28/2C = 0.5/0.35/15/25/10/2000/4/3/2/5/20/50) -
+`+0x60`/`+0x61` = 0 (useSteeringForMovement, ignorePlayer) - `+0x80`=11 (impactDamage.dI_WeaponType)
+- `+0x90/+0x94/+0x98` = -1 (sound_Impact/Idle/Move; swsldr1's `#ifdef TARGET_PC` fix).
+
+Run: `tools/cov/run.sh tools/cov/specs/ingsnatchingswarm.py 3bfa3eff,10_temple_pathofeyes --con
+ingsnatchingswarm_pathofeyes.con --fast --frames 2400` on the cov build; gcov
+`SLdrIngSnatchingSwarm.hpp`: the ctor called 15, every statement line 15/15, the only branches are
+the exception-table edges (`throw`) and the cleanup `call 0/1 never executed` at 0x890.
+

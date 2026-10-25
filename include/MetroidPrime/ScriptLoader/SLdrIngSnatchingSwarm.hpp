@@ -39,6 +39,7 @@ struct SLdrIngSnatchingSwarm {
   SLdrDamageVulnerability swarmVulnerability; // 0x8792a2b0
 };
 
+// @ fn_33_744
 inline SLdrIngSnatchingSwarm::SLdrIngSnatchingSwarm()
 : editorProperties()
 , stateMachine(kInvalidAssetId)
