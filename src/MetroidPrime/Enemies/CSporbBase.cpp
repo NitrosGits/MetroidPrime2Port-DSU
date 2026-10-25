@@ -39,6 +39,14 @@
 
 static EMaterialTypes skDamageSolid = kMT_Solid; // Guessed name
 
+// Retail `__sinit_CSporbBase_cpp` (0xDA30-0xDDE0) writes exactly these two tables and one
+// 2-byte id. Tables: `lis` 0xDA5C/0xDADC take .data 0x3C8 (9 triggers) and 0x518 (16 states);
+// 75 word copies (`stw` 0xDB30-0xDDD0 = 25 entries x {adjust 0, vtoff -1, fn}) - same names, order
+// and targets as the host, all 25 marked. The extra store is `lhz` 0xDA6C (a halfword read from the
+// DOL's .sbss kInvalidUniqueId, 0x80419124) written to .bss 0x58 at 0xDB24: the host's
+// `sGrabbingSporb = kInvalidUniqueId` below. Frame stmw r14 0xDA34 (0x80, lmw 0xDDD4); no call,
+// no branch.
+// @ fn_76_DA30
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"ShouldPatrol",
      static_cast< CPatterned::StateMachine::TriggerFunc >(&CSporbBase::ShouldPatrol)},
