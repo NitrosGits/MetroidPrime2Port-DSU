@@ -14,6 +14,10 @@
 #include "rstl/reserved_vector.hpp"
 #include "rstl/single_ptr.hpp"
 
+#ifdef TARGET_PC
+#include "port_tick_pair.h"
+#endif
+
 class CAnimCharacterSet;
 class CActorLights;
 class CInt32POINode;
@@ -178,6 +182,14 @@ private:
   bool mBeamActive : 1;
   bool mGrappleHit : 1;
   bool mDependenciesLoading : 1;
+#ifdef TARGET_PC
+  // Port: the beam's gun and air ends at the last two ticks, so frames drawn between ticks can
+  // place the segment particles where the swoosh is drawn.
+  CVector3f mPortBeamGunPos{0.f, 0.f, 0.f};
+  CVector3f mPortBeamAirPos{0.f, 0.f, 0.f};
+  mutable PortTickPair< CVector3f > mPortBeamGunEnd{CVector3f(0.f, 0.f, 0.f)};
+  mutable PortTickPair< CVector3f > mPortBeamAirEnd{CVector3f(0.f, 0.f, 0.f)};
+#endif
 };
 CHECK_SIZEOF(CGrappleArm, 0x2c8)
 

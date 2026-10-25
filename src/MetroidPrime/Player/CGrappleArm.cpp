@@ -26,6 +26,13 @@
 #include "MetroidPrime/Weapons/WeaponCommon.hpp"
 #include "MetroidPrime/Weapons/WeaponSound.hpp"
 
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/CGraphics.hpp"
+#include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/Player/CPlayerGun.hpp"
+#include "port_overlay.h"
+#endif
+
 #include <string.h>
 
 static const TStateMachineState< CGrappleArm >::STriggerFunction kTriggerFunctions[] = {
@@ -222,8 +229,46 @@ void CGrappleArm::RenderGrappleBeam(const CStateManager& mgr, const CVector3f& p
     mClawGenerator->Render();
     if (firstPerson) {
       mSwooshGenerator->Render();
+#ifdef TARGET_PC
+      // Port: the segment particles are emitted along the beam each tick, so between ticks the
+      // newest ones are moved by the ends' blend, as the swoosh's own segments are. The gun end
+      // follows the gun's presented pose (CPlayerGun::PortGunView), the air end its world blend.
+      {
+        const CTransform4f worldView(CGraphics::GetViewMatrix());
+        const CTransform4f gunView = GetPlayer(const_cast< CStateManager& >(mgr))
+                                         ->GetPlayerGun()
+                                         ->PortGunView(mgr, worldView);
+        const uint gen = CActor::PortTickGeneration();
+        mPortBeamGunEnd.Note(mPortBeamGunPos, gen);
+        const bool airValid = mPortBeamAirEnd.Note(mPortBeamAirPos, gen);
+        const float t = CCameraManager::GetPresentationInterpolation();
+        if (t >= 0.f && t <= 1.f && PortOverlay::ParticleInterpolation()) {
+          // Where the gun-space point lands under the world view.
+          const CVector3f gunShift =
+              worldView.GetInverse() * (gunView * mPortBeamGunPos) - mPortBeamGunPos;
+          CVector3f airShift = CVector3f::Zero();
+          if (airValid && t < 1.f) {
+            airShift = (mPortBeamAirEnd.prev - mPortBeamAirEnd.cur) * (1.f - t);
+          }
+          if (gunShift.MagSquared() <= 256.f && airShift.MagSquared() <= 256.f) {
+            mSegmentGenerator->PortSetNewbornLineShift(mPortBeamGunPos, mPortBeamAirPos, gunShift,
+                                                       airShift);
+          }
+        }
+      }
+#endif
       mSegmentGenerator->Render();
+#ifdef TARGET_PC
+      // Port: the muzzle sits on the drawn nozzle, so it takes the gun's view.
+      const CTransform4f portMuzzleView(CGraphics::GetViewMatrix());
+      CGraphics::SetViewPointMatrix(GetPlayer(const_cast< CStateManager& >(mgr))
+                                        ->GetPlayerGun()
+                                        ->PortGunView(mgr, portMuzzleView));
       mMuzzleGenerator->Render();
+      CGraphics::SetViewPointMatrix(portMuzzleView);
+#else
+      mMuzzleGenerator->Render();
+#endif
     } else {
       mMultiplayerSwooshGenerator->Render();
       mMultiplayerSegmentGenerator->Render();
@@ -461,6 +506,12 @@ void CGrappleArm::UpdateGrappleBeamFX(CStateManager& mgr, const CVector3f& gunPo
       firstPerson ? mSegmentGenerator : mMultiplayerSegmentGenerator;
   rstl::single_ptr< CParticleSwoosh >& swoosh =
       firstPerson ? mSwooshGenerator : mMultiplayerSwooshGenerator;
+#ifdef TARGET_PC
+  if (firstPerson) {
+    mPortBeamGunPos = gunPos;
+    mPortBeamAirPos = beamPos;
+  }
+#endif
   generator->SetParticleEmission(true);
   CVector3f delta = beamPos - gunPos;
   const int segmentCount = static_cast< int >(2.f * delta.Magnitude() + 1.f);
