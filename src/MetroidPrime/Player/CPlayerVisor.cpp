@@ -23,6 +23,7 @@
 #include <dolphin/gx/GXManage.h>
 #include <dolphin/gx/GXTexture.h>
 #ifdef TARGET_PC
+#include "port_mouse.h"
 #include "port_overlay.h"
 #endif
 
@@ -356,7 +357,26 @@ void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
                                  round_up_to_tile(layoutScale * (vpW / divisor)), vpWidth);
   const int height = CMath::Clamp(skPixelsPerTileDimension16Bit,
                                   round_up_to_tile(layoutScale * (vpH / divisor)), vpHeight);
+#ifdef TARGET_PC
+  // Pointer aim: the scan window is the pointer's cursor. It magnifies the screen around the
+  // pointer (half-view units, +y down) and the scan zone moves with it (CPlayerOrbit.cpp). Locked,
+  // the pointer is held at the centre and so is the window.
+  float pointerX = 0.f;
+  float pointerY = 0.f;
+  const bool portPointer = PortMouse::PointerAimPosition(pointerX, pointerY);
+  // The window's centre in pixels from the view's centre (+y down).
+  const float portShiftX = portPointer ? pointerX * 0.5f * static_cast< float >(vpWidth) : 0.f;
+  const float portShiftY = portPointer ? pointerY * 0.5f * static_cast< float >(vpHeight) : 0.f;
+  // The copy is centred on the window, kept inside the view.
+  GXSetTexCopySrc(
+      CMath::Clamp(vpLeft, (vpLeft + (vpWidth - width) / 2 + static_cast< int >(portShiftX)) & ~1,
+                   vpLeft + vpWidth - width),
+      CMath::Clamp(vpTop, (vpTop + (vpHeight - height) / 2 + static_cast< int >(portShiftY)) & ~1,
+                   vpTop + vpHeight - height),
+      width, height);
+#else
   GXSetTexCopySrc(vpLeft + (vpWidth - width) / 2, vpTop + (vpHeight - height) / 2, width, height);
+#endif
 #ifdef TARGET_PC
   // The scan window's pane samples these bytes as a texture, so the console's copy wrote them to
   // main memory too - and this copy shares the spare buffer with the visor overlay's viewport copy
@@ -374,6 +394,11 @@ void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
   GXPixModeSync();
   mScanDim.Draw();
   gpRender->SetViewportOrtho(true, -1.f, 1.f);
+#ifdef TARGET_PC
+  // Moving the view the other way draws the window and its frame around the pointer.
+  if (portPointer)
+    CGraphics::SetViewPointMatrix(CTransform4f::Translate(-portShiftX, 0.f, portShiftY));
+#endif
   const CTransform4f windowScale = CTransform4f::Scale(windowX, 1.f, windowY);
   const CTransform4f seventeenScale =
       CTransform4f::Scale(14.f * layoutScale, 1.f, 14.f * layoutScale);
@@ -462,6 +487,10 @@ void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
     gpRender->SetModelMatrix(modelXf);
     model->Draw(flags);
   }
+#ifdef TARGET_PC
+  if (portPointer)
+    CGraphics::SetViewPointMatrix(CTransform4f::Identity());
+#endif
   CGraphics::SetCullMode(kCM_Front);
 }
 
