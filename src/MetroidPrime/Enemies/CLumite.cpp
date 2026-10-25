@@ -1225,10 +1225,21 @@ bool CLumite::ChooseHop(CStateManager& mgr) {
       if (score > mHop.mChosenScore) {
         const CVector3f start = GetTranslation() + 0.5f * GetTransform().GetUp();
         const CVector3f toHint = hint->GetTranslation() - start;
+#ifdef TARGET_PC
+        // Retail (fn_39_1EA0): bne after CanBeNormalized, ble after fcmpo(Magnitude()-1.0, 1.0)
+        // (lfsu/lfs of lbl_39_rodata_14 = 1.0 twice) and beq after the LOS call all skip the accept
+        // path, so a hint is taken only when all three pass.
+        bool clear = false;
+#else
         bool clear = true;
+#endif
         if (toHint.CanBeNormalized()) {
           const float length = toHint.Magnitude() - 1.f;
+#ifdef TARGET_PC
+          if (length > 1.f) {
+#else
           if (length > 0.f) {
+#endif
             static const CMaterialFilter filter =
                 CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
             clear = CGameCollision::RayStaticLineOfSightTest(mgr, start, toHint.AsNormalized(),
