@@ -918,6 +918,8 @@ CSafeZoneFog LdrToSafeZoneFog(const SLdrSafeZoneFog& data) {
                       LdrToVector2f(data.distanceRate));
 }
 
+// @ fn_66_CC (offline: 31 property ids -> field offsets, ctor arg order, fade sum and flash swap vs retail
+// asm; disc scan tools/scan_safezone_props.py: 304 SAFE, 0 hit the nullptr shell-asset path)
 CEntity* LoadSafeZone(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSafeZone sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrSafeZone.inc"

@@ -87,7 +87,21 @@ Specs (all `42b935e4,02_sand_sandfalls_dark`; rebuild and rerun the three natura
 | LoadSafeZoneCrystal 5730 | 18/18 | forced (each of the four crystal models invalid on successive crystals) |
 
 Header / loader rows marked without a run (objdiff 100%, user rule): ~SLdrSafeZoneAttributes 14A0, LoadTypedefSafeZoneAttributes 181C, ~SLdrSafeZoneFog 143C, LoadTypedefSafeZoneFog 16A4, ~SLdrSafeZone F40,
-~SLdrSafeZoneCrystal 6408, CDarkWorldInfo copy ctor B00 / dtor D80 / LoadOptionalTexture 5400, and the CDarkWorldInfo ctor 51A8 (98.6%, regalloc). Not marked: the `__sinit` row 8B18 (82%).
+~SLdrSafeZoneCrystal 6408, CDarkWorldInfo copy ctor B00 / dtor D80 / LoadOptionalTexture 5400, and the CDarkWorldInfo ctor 51A8 (98.6%, regalloc). Not marked: the `__sinit` row 8B18 (82%) until szl1.
+
+## szl1: loader and property-struct ctors (base b4cbc0d9b, 2026-10-25), marked offline, 0 GPU launches
+
+fn_66_CC, 1008, 14DC, 6478, 8B18 marked. Evidence:
+- Ctors 14DC / 1008 / 6478: every direct `this` store in the retail asm (113 stores after last-store dedupe) was
+  emulated and compared with the host struct, offsets mapped by field name (host layout differs); 0 mismatches.
+  The TARGET_PC defaults (sounds -1, `CColor` 255-truncation, flashSound -1, fog colour, crystal visorFlags) equal retail.
+- CC: the 31 property ids dispatch to the same field offsets as the host SLdrSafeZone (0x3e0.. activation, 0x51c.. fade,
+  0x528 flashTime, 0x52c flashBrightness, 0x530 flashSound ...); ctor float args f1-f4 = 0x3e0-0x3ec, f6 = fadeStart + fadeTime,
+  f8 = 0x52c (flash swap). The infos[] loop matches (normal, hurtful, echo).
+- 8B18: the asm builds Normal(1,Normal,true), PassThrough(0,PassThrough,true) and the two override tables
+  (Power/Annihilator/Light/Dark, then Dark), identical to the host static initialisers (WeaponTypes/EEffect enum values checked).
+- `tools/scan_safezone_props.py` (read-only disc scan): 304 SAFE and 184 SFZC placements parse; 0 SAFE hit the
+  nullptr shell-asset path; ctor flashTime/flashBrightness are 0.5/1, 0.5/0.25, 0.25/0.25 -- all finite and non-zero.
 
 ## sz2: Think (fn_66_3A40) — NOT marked
 

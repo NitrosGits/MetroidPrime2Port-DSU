@@ -39,6 +39,7 @@ struct SLdrSafeZoneAttributes {
   CColor unknown_0xe68b1fa8;     // 0xe68b1fa8
 };
 
+// @ fn_66_14DC (offline: tools/scan_safezone_props.py data + 113-store ctor comparison vs retail asm)
 inline SLdrSafeZoneAttributes::SLdrSafeZoneAttributes()
 : darkVisorSpotTexture(kInvalidAssetId)
 , shellEnvironmentMap(kInvalidAssetId)
@@ -276,6 +277,7 @@ struct SLdrSafeZone {
   SLdrEchoParameters echoParameters;        // 0x4476bed8
 };
 
+// @ fn_66_1008 (offline: every direct this-store compared by field name vs retail asm)
 inline SLdrSafeZone::SLdrSafeZone()
 : editorProperties()
 , trigger()

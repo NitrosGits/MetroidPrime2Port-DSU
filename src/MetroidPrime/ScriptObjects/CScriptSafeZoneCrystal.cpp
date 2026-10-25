@@ -17,6 +17,8 @@
 
 #include "rstl/math.hpp"
 
+// @ fn_66_8B18 (__sinit; offline: asm builds Normal(1,0,true), PassThrough(0,2,true), Dark table
+// Power/Annihilator/Light/Dark = Normal, Light table Dark = Normal, same as these initialisers)
 static const CWeaponTypeVulnerability
     skNormalVulnerability(1.f, CWeaponTypeVulnerability::kE_Normal, true);
 static CDamageVulnerability::TWeaponVulnerability skDarkCrystalOverrides[4] = {
