@@ -10,12 +10,17 @@
 #include "port_input_bindings.h"
 #include "port_overlay.h"
 #include "port_pointer.h"
+#include "port_textures.h"
 #include "port_touch.h"
 
 #include <jni.h>
 
 #include <string>
 #include <vector>
+
+namespace PortDebug {
+void SetTexturePackStatus(std::string status); // platform/debug_ui/game_sections.cpp
+}
 
 extern "C" {
 
@@ -329,6 +334,22 @@ JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeSetTo
     PortTouch::SetLayout(chars);
     env->ReleaseStringUTFChars(layout, chars);
   }
+}
+
+// The texture pack picker (MetroidPrime2Activity.pickTexturePack): progress text from the Java
+// copy thread, and the signal that <user root>.new is ready for the next frame to swap in.
+JNIEXPORT void JNICALL Java_org_metroidprime2_port_MetroidPrime2Activity_nativeTexturePackStatus(
+    JNIEnv* env, jclass, jstring status) {
+  const char* chars = env->GetStringUTFChars(status, nullptr);
+  if (chars != nullptr) {
+    PortDebug::SetTexturePackStatus(chars);
+    env->ReleaseStringUTFChars(status, chars);
+  }
+}
+
+JNIEXPORT void JNICALL Java_org_metroidprime2_port_MetroidPrime2Activity_nativeTexturePackReady(JNIEnv*,
+                                                                                               jclass) {
+  PortTextures::RequestUserPackReload();
 }
 
 } // extern "C"

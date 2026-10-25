@@ -141,6 +141,11 @@ void DrawCutscenesSection();
 void DrawGameAudio();
 void DrawSpeedrunSection();
 void DrawModsSection();
+#if defined(__ANDROID__)
+std::string TexturePackStatus();
+void PickTexturePack();
+void SetTexturePackStatus(std::string status);
+#endif
 void DrawOverlaySection();
 void DrawSettingsSection();
 void DrawMemoryCard();
