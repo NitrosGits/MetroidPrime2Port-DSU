@@ -8,7 +8,8 @@ word is the property 0x20daf45e (an int32 that becomes CFlyingPirateData::mType:
 mIsFlyingPirate, bit 1 = mIsAquaPirate, bit 1 also picks the path-find type 4 over 3 in the
 CFlyingPirate ctor). For every area with a FPRT placement it counts, over all layers of the
 area (a cover point on any layer is in the object list once the layer is on): COVR cover
-points, CINE cinematic cameras, WATR water and, per layer, the FPRT placements. Printed last:
+points, CINE cinematic cameras, WATR water and, per layer, the FPRT placements, plus each placement's
+animationInformation ANCS id and the kind of pak resource it names. Printed last:
 the set of types seen and the number of areas with cover points / cinematic cameras / water.
 """
 import struct
