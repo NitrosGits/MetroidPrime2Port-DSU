@@ -147,7 +147,7 @@ CWispTentacle::CWispTentacle(TUniqueId uid, const rstl::string& name, const CEnt
 // @ fn_86_0
 CWispTentacle::~CWispTentacle() {}
 
-// @ fn_86_2A18
+// @ fn_86_2A18 forced (tools/cov/specs/wisp3_force.py, wisp3_hall.con: Create tests, last-touched player/bomb for HitObject/Damage)
 void CWispTentacle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId senderId = msg.GetSenderId();
   switch (msg.GetMessage()) {
