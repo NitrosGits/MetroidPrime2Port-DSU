@@ -103,6 +103,12 @@ float sFirstPersonFov = 0.f;
 // screenshots of an area, and for looking at what a visor effect covers.
 bool sHideHelmet = false;
 bool sHideVisorEffects = false;
+// `cinema_bars`, `secondary_crosshairs`: the game's own on both. `hud_opacity_*`: -1 follows Visor Opacity.
+bool sCinemaBars = true;
+bool sSecondaryCrosshairs = true;
+int sHudOpacityEcho = PortOverlay::kHudOpacityVisor;
+int sHudOpacityDark = PortOverlay::kHudOpacityVisor;
+int sHudOpacityScan = PortOverlay::kHudOpacityVisor;
 // `aim_crosshair`: draw the reticle while the port's own aim owns the body heading (see
 // PortOverlay::AimCrosshair). On by default: without it the reticle never appears under mouse,
 // twin-stick or touch aim, which is the only way the phone plays.
@@ -590,6 +596,42 @@ bool HideHelmet() {
 bool HideVisorEffects() {
   ReadEnv();
   return EnvBool("MP2_NO_VISOR_FX", sHideVisorEffects);
+}
+
+bool CinemaBars() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return true;
+  }
+  return EnvBool("MP2_CINEMA_BARS", sCinemaBars);
+}
+
+bool SecondaryCrosshairs() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return true;
+  }
+  return EnvBool("MP2_SECONDARY_CROSSHAIRS", sSecondaryCrosshairs);
+}
+
+int HudOpacity(HudOpacityPart part) {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return kHudOpacityVisor;
+  }
+  const int value = part == kHudOpacityEcho   ? sHudOpacityEcho
+                    : part == kHudOpacityDark ? sHudOpacityDark
+                                              : sHudOpacityScan;
+  return value < kHudOpacityMin ? kHudOpacityVisor : std::min(value, kHudOpacityMax);
+}
+
+void SetHudOpacity(HudOpacityPart part, int percent) {
+  ReadEnv();
+  const int value =
+      percent < kHudOpacityMin ? kHudOpacityVisor : std::min(percent, kHudOpacityMax);
+  (part == kHudOpacityEcho ? sHudOpacityEcho : part == kHudOpacityDark ? sHudOpacityDark
+                                                                       : sHudOpacityScan) = value;
+  Persist();
 }
 
 bool AimCrosshair() {

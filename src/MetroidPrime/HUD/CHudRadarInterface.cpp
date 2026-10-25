@@ -79,7 +79,12 @@ void CHudRadarInterface::Draw(const CStateManager& mgr, float alpha) const {
       visorAlpha = playerState.GetVisorTransitionFactor();
     }
   }
+#ifdef TARGET_PC
+  const float radarAlpha =
+      alpha * visorAlpha * gpGameState->GameOptions().GetVisorHudAlpha(mPlayerIndex);
+#else
   const float radarAlpha = alpha * visorAlpha * gpGameState->GameOptions().GetHudAlpha();
+#endif
   const CPlayer& player = *mgr.GetPlayer(mPlayerIndex);
   const float xyRadius = player.IsOverrideRadarRadius() ? player.GetRadarXYRadiusOverride()
                                                         : gpTweakGui->GetRadarWorldRadius();

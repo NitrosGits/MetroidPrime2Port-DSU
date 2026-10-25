@@ -1215,6 +1215,12 @@ void CCompoundTargetReticle::DrawSeeker(const CMatrix3f& rotation, const CStateM
     }
   }
 
+#ifdef TARGET_PC
+  // Port: F1 "Secondary crosshairs" off hides the next-target reticle; the scan box above stays.
+  if (!PortOverlay::SecondaryCrosshairs()) {
+    return;
+  }
+#endif
   if (factor > 0.f) {
     const_cast< TCachedToken< CModel >& >(mSeeker).TryCache();
     if (CModel* const model = mSeeker.GetObject()) {

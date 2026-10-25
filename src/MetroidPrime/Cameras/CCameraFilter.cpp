@@ -2,6 +2,7 @@
 #include "MetroidPrime/Cameras/CCameraBlurPass.hpp"
 #ifdef TARGET_PC
 #include "MetroidPrime/PortEfbCopy.hpp"
+#include "port_overlay.h"
 #endif
 #include "MetroidPrime/Cameras/CCameraFilterPass.hpp"
 
@@ -446,6 +447,13 @@ void CCameraFilterPass::DrawCinematicPlaceholderLabel(const CColor& color, const
 }
 
 void CCameraFilterPass::Draw() const {
+#ifdef TARGET_PC
+  // Port: F1 > HUD and view > Cutscene black bars off drops the letterbox (GetHeightScale keeps
+  // the viewport whole to match).
+  if (mShape == kFS_CinemaBars && !PortOverlay::CinemaBars()) {
+    return;
+  }
+#endif
   float t = GetT(mNextType == kFT_Passthru);
   CTexture* tex = mTexture.null() ? nullptr : **mTexture;
   DrawFilter(mCurrentType, mShape, mCurrentColor, tex, t);
@@ -506,6 +514,11 @@ void CCameraFilterPass::DrawFilter(EFilterType type, EFilterShape shape, const C
 float CCameraFilterPass::GetWidthScale() const { return 1.f; }
 
 float CCameraFilterPass::GetHeightScale() const {
+#ifdef TARGET_PC
+  if (mShape == kFS_CinemaBars && !PortOverlay::CinemaBars()) {
+    return 1.f;
+  }
+#endif
   if (mShape == kFS_CinemaBars && mCurrentType != kFT_Passthru) {
     const float t = GetT(mNextType == kFT_Passthru);
     return (1.f - 88.f / 448.f) * t + (1.f - t);

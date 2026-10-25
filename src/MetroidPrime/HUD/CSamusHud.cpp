@@ -2506,8 +2506,13 @@ void CSamusHud::Draw(const CStateManager& mgr, float alpha, uint helmetVisibilit
       mTargetingManager.Draw(mgr, false);
     }
   }
+#ifdef TARGET_PC
+  const float hudAlpha = (mPreviousState == kHS_Ball ? mTransitionFactor : mHudBootAlpha) *
+                         gpGameState->GameOptions().GetVisorHudAlpha(mPlayerIndex);
+#else
   const float hudAlpha = (mPreviousState == kHS_Ball ? mTransitionFactor : mHudBootAlpha) *
                          gpGameState->GameOptions().GetHudAlpha();
+#endif
   if (helmetVisibility != 0 && helmetVisibility < 5) {
     if (alpha < 1.f) {
       CCameraFilterPass::DrawFilter(CCameraFilterPass::kFT_NoColor,

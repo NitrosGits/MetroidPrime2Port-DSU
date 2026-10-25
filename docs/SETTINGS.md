@@ -177,6 +177,15 @@ Video > Display:
   no overlay row yet.
 - `no_helmet`, `no_visor_fx`: HUD and view > Hide helmet, Hide visor effects; env
   `MP2_NO_HELMET`, `MP2_NO_VISOR_FX`.
+- `cinema_bars` (default on, env `MP2_CINEMA_BARS`): HUD and view > Cutscene black bars; off drops
+  the cutscene letterbox and its viewport shrink. Original experience keeps them.
+- `secondary_crosshairs` (default on, env `MP2_SECONDARY_CROSSHAIRS`): HUD and view > Secondary
+  crosshairs; off hides the next-target reticle (lock-on and the scan box stay).
+- `hud_opacity_echo`, `hud_opacity_dark`, `hud_opacity_scan` (`-1` = the game's Visor Opacity,
+  default; else 0-100): HUD and view > Echo/Dark/Scan HUD opacity. Applies to that visor's HUD, its
+  visor/beam menu, the radar and the map; the energy readout is part of the HUD frame and has no
+  separate opacity. Console `hudopacity <echo|dark|scan> <visor|0..100>`. Original experience
+  ignores them.
 - `fov`: HUD and view > Field of view (30..120; 0, the **Retail** button, keeps the game's own);
   env `MP2_FOV`.
 - `gun_offset`: HUD and view > Arm cannon right/forward/up, written `right,forward,up`; env

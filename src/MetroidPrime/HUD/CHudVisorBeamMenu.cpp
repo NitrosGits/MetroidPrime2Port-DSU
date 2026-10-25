@@ -159,7 +159,11 @@ void CHudVisorBeamMenu::SetPlayerHas(const rstl::reserved_vector< bool, 4 >& ena
 }
 
 void CHudVisorBeamMenu::UpdateHudAlpha(float alpha) {
+#ifdef TARGET_PC
+  const float hudAlpha = gpGameState->GameOptions().GetVisorHudAlpha(0);
+#else
   const float hudAlpha = gpGameState->GameOptions().GetHudAlpha();
+#endif
   const CColor white = CColor::White();
   const float opacity = alpha * hudAlpha;
   const CColor color = white.WithAlphaOf(opacity);

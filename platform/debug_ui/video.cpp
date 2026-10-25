@@ -125,6 +125,30 @@ void DrawVideoDisplay() {
   ImGui::EndDisabled();
   ImGui::SetItemTooltip("How far the scan visor's side panels spread to the screen edges. 0 keeps\n"
                         "them at their 4:3 place near the centre (default on a phone).");
+  // The game's Visor Opacity is one value for every visor. A ticked box follows it; an unticked one
+  // gives that visor's HUD (and its menus and radar) its own.
+  const auto hudOpacityRow = [](const char* label, int& value) {
+    ImGui::PushID(label);
+    bool followVisor = value < PortOverlay::kHudOpacityMin;
+    if (ImGui::Checkbox("##follow", &followVisor)) {
+      value = followVisor ? PortOverlay::kHudOpacityVisor : PortOverlay::kHudOpacityMax;
+      Changed(true);
+    }
+    ImGui::SetItemTooltip("On: use the game's Visor Opacity (Options > Visor).");
+    ImGui::SameLine();
+    ImGui::BeginDisabled(followVisor);
+    int percent = followVisor ? PortOverlay::kHudOpacityMax : value;
+    if (ImGui::SliderInt(label, &percent, PortOverlay::kHudOpacityMin, PortOverlay::kHudOpacityMax,
+                         followVisor ? "Visor Opacity" : "%d%%")) {
+      value = percent;
+      Changed(true);
+    }
+    ImGui::EndDisabled();
+    ImGui::PopID();
+  };
+  hudOpacityRow("Echo HUD opacity", sHudOpacityEcho);
+  hudOpacityRow("Dark HUD opacity", sHudOpacityDark);
+  hudOpacityRow("Scan HUD opacity", sHudOpacityScan);
   if (sAimCrosshair) {
     Changed(ImGui::SliderInt("Crosshair opacity", &sCrosshairOpacity, PortOverlay::kCrosshairOpacityMin,
                              PortOverlay::kCrosshairOpacityMax, "%d%%"));
@@ -142,6 +166,10 @@ void DrawVideoDisplay() {
   Changed(ImGui::Checkbox("Hide helmet", &sHideHelmet));
   Changed(ImGui::Checkbox("Hide visor effects", &sHideVisorEffects));
   ImGui::SetItemTooltip("The scan visor's window and edges are what a visor effect draws here.");
+  Changed(ImGui::Checkbox("Cutscene black bars", &sCinemaBars));
+  ImGui::SetItemTooltip("Off lets a cutscene fill the screen instead of the game's letterbox.");
+  Changed(ImGui::Checkbox("Secondary crosshairs", &sSecondaryCrosshairs));
+  ImGui::SetItemTooltip("Off hides the next-target reticle; the lock-on reticle and the scan box stay.");
   // Applied by CCameraManager::UpdateCameras: the first-person camera takes its FOV when it is
   // built, so the live change goes through CCameraManager::mFirstPersonFov. 0 is the game's own 55.
   float fov = sFirstPersonFov > 0.f ? sFirstPersonFov : 55.f;

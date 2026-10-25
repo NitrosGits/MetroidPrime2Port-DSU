@@ -319,6 +319,14 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sLogFile >("log_file"),
     BoolKey< &sHideHelmet >("no_helmet"),
     BoolKey< &sHideVisorEffects >("no_visor_fx"),
+    BoolKey< &sCinemaBars >("cinema_bars"),
+    BoolKey< &sSecondaryCrosshairs >("secondary_crosshairs"),
+    IntKey< &sHudOpacityEcho, PortOverlay::kHudOpacityVisor, PortOverlay::kHudOpacityMax >(
+        "hud_opacity_echo", "-1", "40"),
+    IntKey< &sHudOpacityDark, PortOverlay::kHudOpacityVisor, PortOverlay::kHudOpacityMax >(
+        "hud_opacity_dark", "-1", "40"),
+    IntKey< &sHudOpacityScan, PortOverlay::kHudOpacityVisor, PortOverlay::kHudOpacityMax >(
+        "hud_opacity_scan", "-1", "40"),
     // 0 keeps the game's own FOV.
     {"fov",
      [](const std::string& value) {
