@@ -504,7 +504,7 @@ void CIngSpiderballGuardian::SelectNextWaypoint(CStateManager& mgr) {
   }
 }
 
-// fn_35_19D0
+// @ fn_35_19D0
 void CIngSpiderballGuardian::MoveAlongWaypoints(CStateManager& mgr, float dt) {
   const CScriptWaypoint* waypoint =
       TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(mTargetWaypointId));
