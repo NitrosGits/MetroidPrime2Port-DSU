@@ -273,6 +273,15 @@ void UpdateControllerNav() {
   ImGuiIO& io = ImGui::GetIO();
   io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+  // The SDL3 backend calls SDL_ShowCursor on every NewFrame unless this flag is set, and the port
+  // hides the cursor again while aiming (PortMouse::SetCapture), so the pointer flickered wherever
+  // relative mouse mode was not already hiding it: menus, cutscenes, Android. Let the backend own
+  // the cursor only while the overlay is open.
+  if (sVisible) {
+    io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+  } else {
+    io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+  }
   // ImGui applies one change per key and frame and holds everything queued behind a second one.
   // Nothing should queue faster than that; if something does, take the queue in one go.
   io.ConfigInputTrickleEventQueue = ImGui::GetCurrentContext()->InputEventsQueue.Size <= 64;
