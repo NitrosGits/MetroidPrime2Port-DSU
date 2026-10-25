@@ -37,6 +37,11 @@ struct SLdrMetroidAlpha {
   SLdrIngPossessionData ingPossessionData;                // 0xe61748ed
 };
 
+// @ fn_40_D70, proved offline against the retail asm 0xD70-0xF50: the sub-object ctors run in member
+// order; the stores that follow are the patterned, energy drain, scale, growth, dodge and flag
+// defaults below (retail offset = host offset - 0xC, because the host rstl::string is 0xC bigger
+// from `patterned` on); the stores equal to a sub-ctor default (e.g. SLdrEditorProperties'
+// unknown_0x5d298a43) are redundant on the host.
 inline SLdrMetroidAlpha::SLdrMetroidAlpha()
 : editorProperties()
 , patterned()
