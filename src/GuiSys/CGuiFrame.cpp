@@ -22,10 +22,12 @@
 // (CGuiCamera::Draw). A model spanning both outer quarters of the authored view (the visor frame,
 // the helmet) is warped in slices (PortDrawSliced): the middle, with the energy bar's housing and
 // lettering, keeps its authored size, a band either side stretches, and the rest slides out with
-// the screen edge, keeping its authored distance to it. Every other widget slides as an image by
-// CGuiCamera::GetSpreadTransform at its anchor (a model's bounds centre, since several icons keep
-// their place inside the vertices and their widget at the frame centre): past the middle by the
-// strut's whole offset, so each side cluster keeps its shape and stays on its strut.
+// the screen edge, keeping its authored distance to it. A model registered with SetSpreadSplit (the
+// glass brackets) is cut in two instead: the middle stays and each side slides whole with the edge.
+// Every other widget slides as an image by CGuiCamera::GetSpreadTransform at its anchor (a model's
+// bounds centre, since several icons keep their place inside the vertices and their widget at the
+// frame centre): past the middle by the strut's whole offset, so each side cluster keeps its shape
+// and stays on its strut.
 
 static void PortDrawSlicedPiece(const CGuiCamera& camera, const CGuiWidget* widget,
                                 const CGuiWidgetDrawParms& parms, const CTransform4f& toView,
@@ -74,12 +76,15 @@ static void PortDrawSlicedPiece(const CGuiCamera& camera, const CGuiWidget* widg
 
 static void PortDrawSliced(const CGuiCamera& camera, const CGuiWidget* widget,
                            const CGuiWidgetDrawParms& parms, const CTransform4f& view,
-                           const CTransform4f& fromView, bool curved, float depth) {
+                           const CTransform4f& fromView, bool curved, float depth,
+                           float split = 0.f) {
   u32 scissor[4];
   GXGetScissor(&scissor[0], &scissor[1], &scissor[2], &scissor[3]);
   const float halfWidth = camera.GetSpreadHalfWidth();
   const float inner =
-      (curved ? CGuiCamera::kSpreadCurveInner : CGuiCamera::kSpreadSliceInner) * halfWidth;
+      (split > 0.f ? split
+                   : curved ? CGuiCamera::kSpreadCurveInner : CGuiCamera::kSpreadSliceInner) *
+      halfWidth;
   const float outer =
       (curved ? CGuiCamera::kSpreadCurveOuter : CGuiCamera::kSpreadSliceOuter) * halfWidth;
   // Past the screen edge, so the outer scissors reach it.
@@ -93,6 +98,14 @@ static void PortDrawSliced(const CGuiCamera& camera, const CGuiWidget* widget,
                         camera.GetLaggedTangent(toWarped, depth));
   };
   piece(-inner, inner, -inner, inner);
+  if (split > 0.f) {
+    // Rigid split: both sides slide whole by the full spread offset, leaving the gap empty.
+    const float moved = camera.GetSpreadSliceOffset(edge);
+    piece(inner, edge, inner + moved, edge + moved);
+    piece(-edge, -inner, -edge - moved, -inner - moved);
+    GXSetScissor(scissor[0], scissor[1], scissor[2], scissor[3]);
+    return;
+  }
   // The band is one linear piece, or for the eased curve enough chords that the joints don't
   // show; each maps its authored span onto the warped one, mirrored on the left.
   const int pieces = curved ? 16 : 1;
@@ -222,6 +235,52 @@ static void PortDropSpreadWeights(const CGuiFrame* frame) {
   sPortSpreadWeightCount = kept;
 }
 
+// Models cut rigidly instead of stretched (the visor frame's glass): `cut` is the fraction of the
+// authored half-width kept in the middle.
+struct SPortSpreadSplit {
+  const CGuiFrame* frame;
+  const CGuiWidget* member;
+  float cut;
+};
+static SPortSpreadSplit sPortSpreadSplits[16];
+static int sPortSpreadSplitCount = 0;
+
+static float PortFindSpreadSplit(const CGuiFrame* frame, const CGuiWidget* widget) {
+  for (int i = 0; i < sPortSpreadSplitCount; ++i) {
+    if (sPortSpreadSplits[i].frame == frame && sPortSpreadSplits[i].member == widget) {
+      return sPortSpreadSplits[i].cut;
+    }
+  }
+  return 0.f;
+}
+
+void CGuiFrame::SetSpreadSplit(const CGuiWidget* member, float cut) {
+  int slot = -1;
+  for (int i = 0; i < sPortSpreadSplitCount; ++i) {
+    if (sPortSpreadSplits[i].frame == this && sPortSpreadSplits[i].member == member) {
+      slot = i;
+    }
+  }
+  if (slot < 0 && sPortSpreadSplitCount < 16) {
+    slot = sPortSpreadSplitCount++;
+  }
+  if (slot >= 0) {
+    sPortSpreadSplits[slot].frame = this;
+    sPortSpreadSplits[slot].member = member;
+    sPortSpreadSplits[slot].cut = cut;
+  }
+}
+
+static void PortDropSpreadSplits(const CGuiFrame* frame) {
+  int kept = 0;
+  for (int i = 0; i < sPortSpreadSplitCount; ++i) {
+    if (sPortSpreadSplits[i].frame != frame) {
+      sPortSpreadSplits[kept++] = sPortSpreadSplits[i];
+    }
+  }
+  sPortSpreadSplitCount = kept;
+}
+
 static void PortDropSpreadAnchors(const CGuiFrame* frame) {
   int kept = 0;
   for (int i = 0; i < sPortSpreadAnchorCount; ++i) {
@@ -282,10 +341,15 @@ static void PortDrawSpread(const CGuiFrame* frame, const CGuiCamera& camera,
               eyeBounds.GetMinPoint().GetX() < centerX - quarterWidth &&
               eyeBounds.GetMaxPoint().GetX() > centerX + quarterWidth;
   }
-  if (stretch && (!camera.IsPerspective() || eyeMinDepth > 0.f) &&
+  // A model registered for a rigid split is cut even when it doesn't reach the outer quarters.
+  const float split = sPortSpreadSplitCount > 0 && spread != 1.f && bounds.GetMaxPoint().GetX() !=
+                                                                         bounds.GetMinPoint().GetX()
+                          ? PortFindSpreadSplit(frame, widget)
+                          : 0.f;
+  if ((stretch || split > 0.f) && (!camera.IsPerspective() || eyeMinDepth > 0.f) &&
       camera.GetSpreadScreenHalfWidth() > 0.f) {
     PortDrawSliced(camera, widget, parms, view, invView * world, true,
-                   camera.IsPerspective() ? eyeDepth : 0.f);
+                   camera.IsPerspective() ? eyeDepth : 0.f, split);
     return;
   }
   CTransform4f moved = world;
@@ -354,6 +418,7 @@ CGuiFrame::CGuiFrame(CInputStream& in, CSimplePool* pool)
 CGuiFrame::~CGuiFrame() {
   PortDropSpreadAnchors(this);
   PortDropSpreadWeights(this);
+  PortDropSpreadSplits(this);
   delete mRootWidget;
 }
 #else

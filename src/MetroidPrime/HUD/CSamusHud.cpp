@@ -315,6 +315,15 @@ void CSamusHud::InitializeFrameGlueMutable(const CStateManager& mgr) {
       mLoadedHudFrame->SetSpreadAnchor(mEmptyEnergyTanks[i], mEnergyBar);
     }
   }
+  // The visor frame's glass (model_frame) and the energy bar's U brackets (model_energy) are cut
+  // past the energy bar: brackets and ledges slide whole beside the radar and map instead of
+  // stretching to reach them.
+  if (CGuiWidget* glassFrame = mLoadedHudFrame->FindWidget("model_frame")) {
+    mLoadedHudFrame->SetSpreadSplit(glassFrame, 0.285f);
+  }
+  if (CGuiWidget* energyFrame = mLoadedHudFrame->FindWidget("model_energy")) {
+    mLoadedHudFrame->SetSpreadSplit(energyFrame, 0.285f);
+  }
 #endif
   if (mEnergyBracket != nullptr) {
     mEnergyBracketTransform = mEnergyBracket->GetWorldTransform();
@@ -411,6 +420,10 @@ void CSamusHud::InitializeFrameGlueMutable(const CStateManager& mgr) {
     camera->SetParms(hudCamera->GetParms());
 #ifdef TARGET_PC
     camera->SetSpreadable(true);
+    // The helmet's copy of the glass brackets goes with the HUD frame's (above).
+    if (CGuiWidget* glass = mLoadedHelmetFrame->FindWidget("model_glass")) {
+      mLoadedHelmetFrame->SetSpreadSplit(glass, 0.285f);
+    }
 #endif
     camera->SetO2WTransform(CTransform4f::Translate(hudCamera->GetLocalPosition()));
   }
