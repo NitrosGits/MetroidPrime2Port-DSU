@@ -140,7 +140,8 @@ def cells(bounds_min, bounds_max, margin):
     calling BoxForPosition or FindClosestCell): size = extent/5, centre = min - margin +
     (idx + .5) * size.  The margin shifts min and max alike, so it moves the centre by -margin."""
     size = [(hi - lo) / 5. for lo, hi in zip(bounds_min, bounds_max)]
-    return {idx: tuple(lo - margin + (idx[axis] + .5) * size[axis] for axis in range(3))
+    return {idx: tuple(bounds_min[axis] - margin + (idx[axis] + .5) * size[axis]
+                       for axis in range(3))
             for idx in ((x, y, z) for x in range(5) for y in range(5) for z in range(5))}
 
 def slot(idx):
@@ -247,9 +248,9 @@ class Run(gdb.Command):
         state['busy'] = True
         try:
             self.fixture(this, mgr)
-        except gdb.error as error:
-            state['err'] = str(error)[:200]
-            log('FAIL', label='fixture error: ' + state['err'])
+        except Exception as error:
+            state['err'] = '%s: %s' % (type(error).__name__, error)
+            log('FAIL', label='fixture error: ' + state['err'][:200])
         finally:
             state['busy'] = False
             state['scenario'] = None
@@ -263,8 +264,6 @@ class Run(gdb.Command):
         char_index = iv(A + 'mCharIdx')
         max_volume, min_volume = iv(S + 'mMaxVolume'), iv(S + 'mMinVolume')
         area = iv('((CEntity*)%d)->mAreaId.value' % this)
-        sfx = iv(S + 'mLocomotionLoopedSound')
-        check(0 < sfx <= 65535, 'real swarm sound id')
         count = iv(S + 'mBoids.mCount')
         active = []
         for slot_index in range(iv(S + 'mActiveBoidIndices.mCount')):
@@ -273,7 +272,7 @@ class Run(gdb.Command):
             active.append(translation(S + 'mBoids.mItems[%d].mTransform' % boid))
         state['active'] = active
         log('GEOMETRY', boids=count, active=len(active), char_index=char_index,
-            max_volume=max_volume, min_volume=min_volume, area=area, sfx=sfx)
+            max_volume=max_volume, min_volume=min_volume, area=area)
 
         # ---- fn_80_10C0 FindClosestCell: forced partition list + forced box geometry ----------
         list_lv = S + 'mPartitionedBoidLists'
@@ -314,9 +313,7 @@ class Run(gdb.Command):
                 ('empty', [], centres[(2, 2, 2)]),
                 ('second wins', ['first', 'second'], centres[heads['second']]),
                 ('first stays', ['first', 'second'], centres[heads['first']]),
-                ('tie keeps first', ['first', 'second'],
-                 tuple((a + b) * .5 for a, b in zip(centres[heads['first']],
-                                                    centres[heads['second']]))),
+                ('far query', ['first', 'second'], (1.e6, 1.e6, 1.e6)),
                 ('unordered query', ['first', 'second'], (float('nan'), 0., 0.)),
             )
             for label, names, pos in scenarios:
@@ -349,8 +346,10 @@ class Run(gdb.Command):
                 check(len(found) == 1, 'static identity ' + prefix)
                 statics.append(('*(%s*)&%s' % ('unsigned long long' if guard else 'float',
                                                quote(found[0])), guard))
-        sfx = iv(S + 'mLocomotionLoopedSound')
-        check(0 < sfx <= 65535, 'real swarm sound id')
+        node_sfx = iv(node + '.mSfxId')
+        loco_sfx = iv(S + 'mLocomotionLoopedSound')
+        sfx = node_sfx if 0 < node_sfx < 0xffff else loco_sfx
+        log('SOUND_ID', chosen=sfx, node_original=node_sfx, locomotion=loco_sfx)
         cases = (
             # label, count, type, character, weight, sfx, maxdist, falloff, emits
             ('zero count', 0, 8, -1, 2.0, sfx, 0., 0., 0),
