@@ -123,8 +123,9 @@ Controls > Remap:
   axis at any threshold); outside the ball its other bindings work as before, and the
   prompts in the ball follow it. A combo on a row replaces the same combo; its buttons alone
   keep what they do. A row given layers in controls.toml works in the ball while one is held
-  and adds to the game button; without the layer its input does what it did. Touch can't
-  take them (the overlay keeps its own morph ball buttons). A touch: binding on a control
+  and adds to the game button; without the layer its input does what it did. The touch
+  overlay's Morph Ball page (Bomb, Boost, Power Bomb, Spider, Unmorph; touch codes 40..44)
+  presses the rows; a remap moves a row off its button and relabels it. A touch: binding on a control
   counts as taking it over only where it applies.
 - `menu_standard_buttons`: Separate menu buttons (menus and the map read the "Menus and map"
   rows; ignored while the touch controls are on); env `MP2_MENU_STANDARD_BUTTONS`.

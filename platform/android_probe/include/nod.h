@@ -86,6 +86,7 @@ int64_t nod_seek(NodHandle* handle, int64_t offset, int32_t whence);
 NodResult nod_disc_header(const NodHandle* disc, NodDiscHeader* out);
 NodResult nod_partition_meta(const NodHandle* partition, NodPartitionMeta* out);
 void nod_partition_iterate_fst(const NodHandle* partition, NodFstCallback callback, void* user_data);
+bool nod_partition_is_wii(const NodHandle* partition);
 
 #ifdef __cplusplus
 }

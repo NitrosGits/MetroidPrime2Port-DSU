@@ -34,6 +34,14 @@ constexpr int kMouseHeld = 24;    // MP1's beam shift / turbo key slots; unused 
 // Touch overlay codes (Device::Touch). 0..kTouchControlCount-1 are the overlay's
 // controls, numbered as its layout editor (TouchControlsView's C_* ids).
 constexpr int kTouchControlCount = 29;
+// The Morph Ball page's own buttons (Bomb, Boost, Power Bomb, Spider, Unmorph:
+// TouchControlsView's C_BALL + i), drawn only in the ball.
+constexpr int kTouchBallBase = 40;
+constexpr int kTouchBallCount = 5;
+// The buttons the player adds in the layout editor (slot 0..63, its `k<slot>`
+// entry in the touch layout; PortInput::BindTouchButtons).
+constexpr int kTouchCustomBase = 64;
+constexpr int kTouchCustomCount = 64;
 
 struct SPoll {
   PADStatus status{};
@@ -97,6 +105,8 @@ SActiveProfiles ActiveUserProfiles();
 // binding reads it (then the overlay sends only the touch code, not its pad button).
 void SetTouchControl(int control, bool down);
 bool TouchControlBound(int control);
+// The Morph Ball row a stock control does in the ball now, or None.
+PortInput::Action TouchBallRow(int control);
 // Port 0's pad: its SDL GUID (32 hex digits), gamepad type string and name; false
 // (all empty) without one.
 bool ActivePad(std::string& guid, std::string& type, std::string& name);

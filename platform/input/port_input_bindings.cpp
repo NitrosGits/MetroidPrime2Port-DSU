@@ -32,12 +32,24 @@ constexpr std::string_view kPadAxisNames[] = {"leftx", "lefty", "rightx", "right
                                               "righttrigger"};
 constexpr std::string_view kGyroNames[] = {"pitch", "yaw", "roll"};
 // Touch codes: the overlay's control ids (TouchControlsView.CONTROL_IDS, the names
-// its saved layout uses), then the overlay's own signals at 32..34.
+// its saved layout uses), then the overlay's own signals at 32..34, its Morph Ball
+// page's buttons at 40..44, then the buttons added in its layout editor at 64..127
+// (their layout ids, k0..k63).
 constexpr std::string_view kTouchNames[] = {
     "lstick", "cstick", "dpad",    "a",     "b",    "x",   "y",          "l",          "r",
     "z",      "visor",  "beam",    "start", "menu", "map", "eye",        "rstick",     "jump",
     "fire",   "morph",  "missile", "lt",    "lb",   "rt",  "rb",         "tz",         "tr",
     "turbo",  "tturbo", "",        "",      "",     "beam_shift", "turbo_held", "map_tap",
+    "", "", "", "", "", "bbomb", "bboost", "bpbomb", "bspider", "bunmorph",
+    "", "", "", "", "", "", "", "", "", "",
+    "", "", "", "", "", "", "", "", "", "k0",
+    "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10",
+    "k11", "k12", "k13", "k14", "k15", "k16", "k17", "k18", "k19", "k20",
+    "k21", "k22", "k23", "k24", "k25", "k26", "k27", "k28", "k29", "k30",
+    "k31", "k32", "k33", "k34", "k35", "k36", "k37", "k38", "k39", "k40",
+    "k41", "k42", "k43", "k44", "k45", "k46", "k47", "k48", "k49", "k50",
+    "k51", "k52", "k53", "k54", "k55", "k56", "k57", "k58", "k59", "k60",
+    "k61", "k62", "k63",
 };
 
 // Mouse code bases (see the header): aim 0, SDL state 8, menu 16, held 24.
@@ -975,7 +987,9 @@ void ApplyBallButtons(Profile& profile) {
       },
       kCtxMorphBall, false);
   // A row bound in a family replaces its game button there in the ball: that
-  // family's inputs for the button stop pressing it. A row with layers adds to it.
+  // family's inputs for the button stop pressing it. A row with layers adds to it,
+  // and touch only replaces the overlay's own controls (TouchControlBound), so the
+  // turbo button and the layout's added buttons keep pressing theirs.
   bool replaced[std::size(kBallRows)][size_t(Family::Touch)] = {};
   for (const Binding& b : profile.bindings) {
     const BallRow* row = FindBallRow(b.action);
@@ -988,6 +1002,71 @@ void ApplyBallButtons(Profile& profile) {
     const Family family = BindingFamily(b);
     if (row != nullptr && b.count > 0 && family != Family::Touch && replaced[size_t(row - kBallRows)][size_t(family)])
       b.blocked |= kCtxMorphBall;
+  }
+}
+
+bool TouchButtonAction(Action a) {
+  if (a == Action::None || Info(a).kind != ActionKind::Digital)
+    return false;
+  if (a >= Action::Layer1 && a <= Action::Layer4)
+    return false;
+  return !(a >= Action::MenuA && a <= Action::MenuRight);
+}
+
+std::vector<TouchButton> ParseTouchButtons(std::string_view layout) {
+  Action slots[kTouchButtonSlots] = {};
+  while (!layout.empty()) {
+    const size_t semi = layout.find(';');
+    const std::string_view entry = Trim(layout.substr(0, semi));
+    layout = semi == std::string_view::npos ? std::string_view{} : layout.substr(semi + 1);
+    const size_t colon = entry.find(':');
+    if (colon == std::string_view::npos)
+      continue;
+    // The stock controls' ids are words; a button's is k and its slot, 0..63.
+    const std::string_view id = Trim(entry.substr(0, colon));
+    if (id.size() < 2 || id.size() > 3 || id[0] != 'k')
+      continue;
+    int slot = 0;
+    bool digits = true;
+    for (char c : id.substr(1)) {
+      digits = digits && c >= '0' && c <= '9';
+      slot = slot * 10 + (c - '0');
+    }
+    if (!digits || slot >= kTouchButtonSlots || (id.size() == 3 && id[1] == '0'))
+      continue;
+    std::string_view fields = entry.substr(colon + 1);
+    std::string_view key;
+    int count = 0;
+    while (true) {
+      const size_t comma = fields.find(',');
+      if (++count == 6)
+        key = fields.substr(0, comma);
+      if (comma == std::string_view::npos)
+        break;
+      fields = fields.substr(comma + 1);
+    }
+    // The 7th, the page the button shows on, is the overlay's alone.
+    if (count != 6 && count != 7)
+      continue;
+    const Action a = ActionFromKey(Trim(key));
+    if (TouchButtonAction(a))
+      slots[slot] = a;
+  }
+  std::vector<TouchButton> out;
+  for (int slot = 0; slot < kTouchButtonSlots; ++slot) {
+    if (slots[slot] != Action::None)
+      out.push_back({slot, slots[slot]});
+  }
+  return out;
+}
+
+void BindTouchButtons(Profile& profile, std::string_view layout) {
+  for (const TouchButton& button : ParseTouchButtons(layout)) {
+    Binding b;
+    b.action = button.action;
+    b.inputs[0] = Input{Device::Touch, 0, 50, uint16_t(kTouchButtonBase + button.slot)};
+    b.count = 1;
+    profile.bindings.push_back(b);
   }
 }
 

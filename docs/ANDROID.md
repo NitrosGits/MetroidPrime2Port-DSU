@@ -427,6 +427,18 @@ files dir (`/sdcard/Android/data/org.metroidprime2.port/files/`): `user/` (card,
 (needs a save in `user/USA/Card A`; 2.7 s to the first game update and 7 s to a controllable player
 since `MP2_SKIP_INTRO` also skips the level-load text).
 
+### Layout editor additions (MP1 sync package 8, item 5)
+
+`TouchControlsView` now has MP1's editor: per-control opacity and hide, deleting stock controls,
+adding your own buttons (up to 64, any digital input action, stored in the `touch_layout` string as
+`k<slot>:dx,dy,scale,opacity,hidden,<action>[,page]`, cap 16 KB), and a Morph Ball page (Bomb,
+Boost, Power Bomb, Spider, Unmorph) drawn only in the ball and split from the gameplay layout. The
+Edit and Menu buttons cannot be hidden, deleted or faded out. Native side: the touch state is 128
+bits (`PortInput::kTouchCount`; stock controls 0..35, ball page 40..44, added buttons 64+slot);
+`PortInputDevices::SetTouchControl` feeds them, `BuildProfile` binds the added buttons
+(`PortInput::BindTouchButtons`) and the ball page rows. JNI: `nativeTouchControl`,
+`nativeTouchControlBound`, `nativeTouchBallLabel`, `nativeTouchButtonActions`.
+
 ## 5. Risks, worst first
 
 - **REL arena placement** (M0): the thing that could have made the whole plan collapse. **Resolved**
