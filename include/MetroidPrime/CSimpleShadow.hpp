@@ -6,6 +6,10 @@
 #include "Kyoto/Math/CTransform4f.hpp"
 #include "Kyoto/TToken.hpp"
 
+#ifdef TARGET_PC
+#include "port_tick_pair.h"
+#endif
+
 class CAABox;
 class CStateManager;
 class CTexture;
@@ -36,6 +40,10 @@ private:
   bool mCollision : 1;
   bool mAlwaysCalculateRadius : 1;
   bool mRadiusCalculated : 1;
+#ifdef TARGET_PC
+  // Render() snapshots mXf per tick to draw the blob at the blend between ticks.
+  mutable PortTickPair< CTransform4f > mPortXf{CTransform4f::Identity()};
+#endif
 };
 
 CHECK_SIZEOF(CSimpleShadow, 0x4c)
