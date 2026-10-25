@@ -151,6 +151,9 @@ private:
   bool mPreviousMotionForward : 1;
   bool x48d_25_ : 1;
   bool mMotionTransformed : 1;
+#ifdef TARGET_PC
+  friend struct PortRoomState; // save states' room state (platform/port_savestate_room.cpp)
+#endif
 };
 CHECK_SIZEOF(CScriptPlatform, 0x490)
 

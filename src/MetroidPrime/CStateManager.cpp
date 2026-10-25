@@ -621,6 +621,10 @@ void CStateManager::BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >& near
 }
 
 void CStateManager::AreaLoaded(TAreaId area) {
+#ifdef TARGET_PC
+  // PORT: a save state's room state carries what the mailbox's messages did (RoomRestoreOwnsArea).
+  if (!PortSaveState::RoomRestoreOwnsArea(*this, area.Value()))
+#endif
   mMailbox->SendMsgs(area, *this);
   mEnvFxManager->AreaLoaded();
 }
@@ -2911,6 +2915,9 @@ void CStateManager::RemoveObject(TUniqueId id) {
     mFilteredObjectLists[i]->RemoveObject(id);
   }
   mAllocatedObjectIndices[id.Value()] = false;
+#ifdef TARGET_PC
+  PortSaveState::NoteRemoved(*this, id.value);
+#endif
 }
 
 void CStateManager::SendDamageScriptMsgs(CActor& damagee, TUniqueId source,
@@ -3644,6 +3651,12 @@ void CStateManager::DispatchScriptMessages() {
     if (ent) {
       const bool wasActive = ent->GetActive();
       ent->AcceptScriptMsg(*this, msg);
+#ifdef TARGET_PC
+      if (msg.GetState() != kSS_InvalidState) {
+        PortSaveState::NoteScriptMsg(*this, ent->GetUniqueId().value, msg.GetSenderId().value,
+                                     static_cast< uint32_t >(msg.GetMessage()));
+      }
+#endif
       if (wasActive != ent->GetActive()) {
         if (CActor* actor = TCastToPtr< CActor >(ent)) {
           UpdateActorInSortedLists(actor);

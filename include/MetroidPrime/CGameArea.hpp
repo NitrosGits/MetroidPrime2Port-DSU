@@ -290,7 +290,18 @@ public:
   rstl::string IGetInternalAreaName() const override;
 #ifdef TARGET_PC
   const rstl::string& PortGetMlvlAreaName() const override { return mPortMlvlAreaName; }
-  int PortLayerCount() const { return mLayerPhases.size(); }
+  // Layers with a script size (mLayerPhases has one entry more); 0 until the area's data is in.
+  int PortLayerCount() const {
+    return mPhase > kP_WaitForData && mPostConst.get() != nullptr ? mPostConst->mLayerScriptSizes.size() : 0;
+  }
+  // Bit n: layer n's script objects were spawned (the layers active when the area's tokens were
+  // listed, plus layers activated since). Save states rebuild the area with these bits.
+  uint64_t PortSpawnLayers() const { return mPortSpawnLayers; }
+  void PortNoteSpawnLayer(int layer) {
+    if (layer >= 0 && layer < 64) {
+      mPortSpawnLayers |= uint64_t(1) << layer;
+    }
+  }
 #endif
 
   int GetPhase() const { return mPhase; }
@@ -431,6 +442,9 @@ private:
   CGameArea* mPrev;
   int mCurrentChain;
   // Name from the Corruption prototype's (G2MEAB) CGameArea asserts ("mPostConst->mVisFreeList").
+#ifdef TARGET_PC
+  uint64_t mPortSpawnLayers = 0;
+#endif
   rstl::single_ptr< CPostConstructed > mPostConst;
   bool mLoadPaused : 1;
   bool mValidationPaused : 1;

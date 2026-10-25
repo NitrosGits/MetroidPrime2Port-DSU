@@ -5,6 +5,9 @@
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrGenerator.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#ifdef TARGET_PC
+#include "port_savestate.h"
+#endif
 
 CScriptGenerator::CScriptGenerator(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                                    int spawnCount, bool noReuseFollowers, const CVector3f& offset,
@@ -95,6 +98,10 @@ void CScriptGenerator::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
       const CScriptObjectLoaderHelper::SGeneratedObject generated =
           loader.GenerateScriptObject(activationId, mgr);
       if (generated.mUniqueId != kInvalidUniqueId) {
+#ifdef TARGET_PC
+        // A save state brings the copy back from the template it was made from.
+        PortSaveState::NoteGenerated(mgr, generated.mUniqueId.value);
+#endif
         CEntity* generatedEntity = mgr.ObjectById(generated.mUniqueId);
         CActor* generatedActor = TCastToPtr< CActor >(generatedEntity);
         const CActor* followerActor = TCastToConstPtr< CActor >(follower);

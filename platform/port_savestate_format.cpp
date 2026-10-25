@@ -1,6 +1,7 @@
 // Save states, room trailer format (MP1's port_savestate_format.cpp, adapted to MP2). See
 // platform/include/port_savestate.h.
 //
+// v4 (what this writes) is v3 with a spawn-layer byte (and u64 mask) after each area's known byte.
 // v2 (what old .mp2ss files carry; no version word): u32 area count, (area, assetId) pairs, u32
 // object count, per object u32 editorId, u32 active, u32 block count, blocks of (u32 tag, u32 length,
 // bytes). v3 starts with kV3Magic, which no v2 area count can equal (v2 counts stop at kMaxCount),
@@ -17,7 +18,7 @@
 namespace PortSaveState {
 namespace {
 
-constexpr uint32_t kV3Magic = 0x33534d52; // "RMS3" little-endian
+constexpr uint32_t kV4Magic = 0x34534d52; // "RMS4": v3 plus per-area spawn layers
 constexpr uint32_t kMaxCount = 1u << 20;
 constexpr size_t kMaxBlocks = 64; // a v2 limit; v3's flags byte holds 7 bits
 constexpr size_t kMaxBlock = 0xffff;
@@ -148,7 +149,7 @@ bool DecodeV2(In& r, RoomState& room) {
   return r.ok;
 }
 
-bool DecodeV3(In& r, RoomState& room) {
+bool DecodeV3(In& r, RoomState& room, bool v4) {
   const uint32_t areas = r.U32();
   if (!r.ok || areas > kMaxCount) {
     return false;
@@ -165,6 +166,16 @@ bool DecodeV3(In& r, RoomState& room) {
       return false;
     }
     a.known = known == 1;
+    if (v4) {
+      const uint8_t spawn = r.U8();
+      if (spawn > 1) {
+        return false;
+      }
+      a.hasSpawn = spawn == 1;
+      if (a.hasSpawn) {
+        a.spawnLayers = r.U64();
+      }
+    }
     last = a.area;
     room.areas.push_back(a);
   }
@@ -248,13 +259,17 @@ void EncodeRoomState(const RoomState& room, std::string& out) {
     return a->editorId < b->editorId;
   });
   Out w;
-  w.U32(kV3Magic);
+  w.U32(kV4Magic);
   w.U32(static_cast< uint32_t >(room.areas.size()));
   for (const RoomArea& a : room.areas) {
     w.U32(static_cast< uint32_t >(a.area));
     w.U32(a.assetId);
     w.U64(a.fingerprint);
     w.U8(a.known ? 1 : 0);
+    w.U8(a.hasSpawn ? 1 : 0);
+    if (a.hasSpawn) {
+      w.U64(a.spawnLayers);
+    }
   }
   w.U32(keep ? static_cast< uint32_t >(sorted.size()) : 0);
   uint32_t id = 0;
@@ -277,9 +292,10 @@ bool DecodeRoomState(const std::string& in, RoomState& room) {
   In r(in);
   // v3 leads with its magic; a v2 trailer leads with an area count, always below kMaxCount.
   bool ok;
-  if (in.size() >= 4 && std::memcmp(in.data(), "RMS3", 4) == 0) {
+  if (in.size() >= 4 && (std::memcmp(in.data(), "RMS3", 4) == 0 || std::memcmp(in.data(), "RMS4", 4) == 0)) {
+    const bool v4 = in[3] == '4';
     r.U32();
-    ok = DecodeV3(r, room);
+    ok = DecodeV3(r, room, v4);
   } else {
     ok = DecodeV2(r, room);
   }

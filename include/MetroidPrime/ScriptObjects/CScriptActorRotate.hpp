@@ -63,6 +63,9 @@ private:
   rstl::vector< rstl::pair< TUniqueId, CTransform4f > > mActors;
   TUniqueId mTargetId;
   bool mPlaying : 1;
+#ifdef TARGET_PC
+  friend struct PortRoomState; // save states' room state (platform/port_savestate_room.cpp)
+#endif
 };
 CHECK_SIZEOF(CScriptActorRotate, 0x20c)
 
