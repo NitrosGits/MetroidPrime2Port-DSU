@@ -54,13 +54,17 @@ PHASES = [
     ('E', 1, 0, None, 0, None, False, ()),
     ('G', 1, 0, None, None, 0, False, ()),
     ('F', 1, 1, 1, None, None, True, ()),
-    ('N', 1, 0, None, None, None, False, ('dl0',)),
     ('H', 1, 0, None, None, None, False, ('alpha',)),
     ('LA', 1, 0, None, None, None, False, ('lights',)),
     ('LD', 0, None, None, None, None, False, ('lights',)),
     ('LB', 1, 1, 1, None, None, False, ('lights',)),
 ]
 E_LIGHT_ACTIVE = 'CGraphics::mLightActive'
+# Phase N nulls the display list. Only the base CSwarmBasics::RenderBoid (line 1122, TARGET_PC) returns
+# on a null list; CPlantScarabSwarm/Metaree/IngBlob/... RenderBoid overrides draw through it and
+# crash. SWB17_DL0=1 is for a CFlyerSwarm area (Agon 01_sand_entrance), which uses the base.
+if os.environ.get('SWB17_DL0') == '1':
+    PHASES.insert(7, ('N', 1, 0, None, None, None, False, ('dl0',)))
 
 _st = dict(render=0, opens=0, closed=0, unwound=0, hw=0, sw=0, unowned=0, refused=0,
            orderFail=0, restoreFail=0, noRestore=0, ownershipFail=0, err=0, dup=0,

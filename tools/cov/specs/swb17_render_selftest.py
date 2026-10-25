@@ -3,6 +3,7 @@ import sys, types, unittest, os
 sys.modules['gdb'] = types.SimpleNamespace(events=types.SimpleNamespace(exited=types.SimpleNamespace(connect=lambda f: None)),
                                            FinishBreakpoint=object, Breakpoint=object)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+os.environ['SWB17_DL0'] = '1'
 import swb17_render as S
 
 
