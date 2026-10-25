@@ -17,6 +17,19 @@
 
 static EMaterialTypes SolidMaterial = kMT_Solid;
 
+// Retail `__sinit_CMetaree_cpp` (0x1DFC-0x1F80) writes exactly these two tables and nothing else:
+// `lis` 0x1E08 and 0x1E58 take the table addresses, then 30 word copies (`stw` 0x1EEC-0x1F70) put
+// each entry's member pointer at +4/+8/+0xC as a **virtual** mfp {adjust 0, vtoff, fn 0}. Every vtoff
+// indexes the vtable `__vt__8CMetaree` (retail .data 0x124) and that slot resolves by relocation to
+// the same-named function: 0x14C InRange (.text 0x18B0), 0x150 DropDelay (0x1864), 0x154 AttackDelay
+// (0x1818), 0x148 ShouldAttack (0x1940); 0x158 InActive (0x17E8), 0x160 Active (0x14E0), 0x15C
+// InActiveReady (0x17B8), 0x16C Halt (0x13F0), 0x164 Attack (0x1294), 0x174 Explode (0xEA0) - all
+// bodies already carry their `// @ fn_42_*` marker, and the host declares the same ten `virtual`
+// (CMetaree.hpp), so its mfps are virtual too (binary: 0x288/0x290/0x298/0x2A0 and
+// 0x2A8/0x2B8/0x2B0/0x2D0/0x2C0/0x2E0 resolving to the same functions). Names .rodata
+// 0x28/0x30/0x3A/0x46 and 0x53/0x5C/0x63/0x71/0x76/0x7D, same order as below. No call, no branch;
+// the only other store is the register save stmw r14 0x1E0C (frame 0x60, restored lmw 0x1F74).
+// @ fn_42_1DFC
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"InRange", static_cast< CPatterned::StateMachine::TriggerFunc >(&CMetaree::InRange)},
     {"DropDelay", static_cast< CPatterned::StateMachine::TriggerFunc >(&CMetaree::DropDelay)},

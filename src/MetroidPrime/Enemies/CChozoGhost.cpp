@@ -28,6 +28,22 @@ const rstl::string CChozoGhost::skSpeedSwooshName = rstl::string_l("SpeedSwoosh"
 
 static EMaterialTypes SolidMaterial = kMT_Solid;
 
+// Retail `__sinit_CChozoGhost_cpp` (0x5620-0x59EC) writes exactly these two tables plus the
+// `skSpeedSwooshName` string. Tables: 69 word copies (`stw` 0x5774-0x59D4) put each entry's member
+// pointer at +4/+8/+0xC as {adjust 0, vtoff -1 (non-virtual), fn = address}; addresses come from
+// `lis` 0x5694/0x567C (.data 0x64 triggers, 0x198 states). Names .rodata 0x84/0x91/0x99/0xA5/0xB0/
+// 0xB8/0xBE/0xCB and 0xDB/0xE1/0xEA/0xF1/0xFA/0xFE/0x10B/0x110/0x11B/0x123/0x129/0x12E/0x135/
+// 0x13C/0x147, functions .text 0x2ED8/0x2F18/0x2908/0x2428/0x38B4/0x23E0/0x23D4/0x23C8 and
+// 0x38E0/0x2B14/0x338C/0x2F24/0x2EEC/0x20D8/0x2188/0x291C/0x2794/0x243C/0x249C/0x37B0/0x3168/
+// 0x2A9C, with `Start` being the DOL's CPatterned::Start 0x8015294C - same names, order and targets
+// as below; all 22 local bodies marked.
+// The extra initialisation is `const rstl::string skSpeedSwooshName`: rstl::string_l (.rodata
+// 0x15A "SpeedSwoosh") at 0x5640, the copy ctor into .bss 0x10 at 0x5650, __register_global_object
+// (dtor text 0x5884, chain .bss 0x0) at 0x5664, internal_dereference on the temporary at 0x566C.
+// Host: the same static (CChozoGhost.cpp:27) with global dtor registration, filled by
+// `_GLOBAL__sub_I_CChozoGhost.cpp` calling rstl::string_l with the same literal.
+// No other store; the only frame traffic is stmw r14 0x5638 (frame 0xA0, lmw 0x59D8).
+// @ fn_8_5620
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"ShouldAttack",
      static_cast< CPatterned::StateMachine::TriggerFunc >(&CChozoGhost::ShouldAttack)},
