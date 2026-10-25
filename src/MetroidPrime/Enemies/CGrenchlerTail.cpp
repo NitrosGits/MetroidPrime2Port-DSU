@@ -5,6 +5,12 @@
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 
+// Retail `__sinit_CGrenchlerTail_cpp` (0x156DC-0x15738) has no tables and no stores at all: it only
+// builds the `skRelName` string - rstl::string_l(.rodata 0x8AF "Grenchler.rel") at 0x156F8, the copy
+// ctor into .bss 0x54 at 0x15708, __register_global_object (dtor 0x15790, chain .bss 0x48) at
+// 0x1571C, internal_dereference on the temporary at 0x15724. Frame stwu 0x156DC (-0x20) / lmw
+// 0x15728; no branch. Host: the same static, `skRelName = rstl::string_l("Grenchler.rel")` below.
+// @ fn_27_156DC
 static const rstl::string skRelName = rstl::string_l("Grenchler.rel");
 
 // @ fn_27_1536C
