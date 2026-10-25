@@ -741,7 +741,10 @@ const SLdrIngSpiderballGuardianStruct& CIngSpiderballGuardian::GetPhasePropertie
   }
 }
 
-// fn_35_178
+// @ fn_35_178
+// Dead by data (tools/scan_isg_loader.py): the disc has one ISBG placement (mlvl 1baa96c2), its
+// ancs 0x4e6c079a is an ANCS, so LdrToModelData never returns an empty optional and the
+// `return nullptr` below is never taken; every other arm ran in the natural fight run.
 CEntity* LoadIngSpiderballGuardian(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrIngSpiderballGuardian sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrIngSpiderballGuardian.inc"
