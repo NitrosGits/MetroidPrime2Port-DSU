@@ -24,7 +24,7 @@ class Oracle(unittest.TestCase):
         self.assertEqual(S.expected([], [(0, 1), (1, 0)], 1, 0, 0), (0, 0, 0))
 
     def test_phases_cover_all(self):
-        self.assertEqual([p[0] for p in S.PHASES], list('ABCDEGF'))
+        self.assertEqual([p[0] for p in S.PHASES], [p[0] for p in S.PHASES][:7] and list('ABCDEGF') + ['N', 'H', 'LA', 'LD', 'LB'])
         self.assertEqual(S.PERIOD % 1, 0)
 
 

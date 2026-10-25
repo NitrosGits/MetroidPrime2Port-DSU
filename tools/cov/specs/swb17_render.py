@@ -36,27 +36,36 @@ _HW = 'CSwarmBasics::HardwareLight('
 _SW = 'CSwarmBasics::SoftwareLight('
 _PRB = 'CSwarmBasics::PreRenderBoid('
 _CP = 'CSwarmBasics::CachePose('
-PERIOD, OFFSET = 3, 1
-PRB_PERIOD, PRB_OFFSET = 25, 3
+PERIOD, OFFSET = 2, 1
+PRB_PERIOD, PRB_OFFSET = 12, 3
 CBOID = 'CSwarmBasics::CBoid'
 FREEZE_OFF = 96  # CBoid::mFreezeTimer (ptype/o on the coverage binary)
 FROZEN = 0x3F800000  # 1.0f
 
-# (name, lighting, soft, thinkCounter, headInFrustum, headActive, clearActiveAfterSoftLight)
+# (name, lighting, soft, thinkCounter, headInFrustum, headActive, clearActiveAfterSoftLight, extras)
+# extras: 'dl0'    mDisplayList.mPtr = 0 (line 1175 false arm; RenderBoid's TARGET_PC guard returns)
+#         'alpha'  GetRenderAlphaBufferAlpha returns 0 to this Render (lines 1166 and 1239)
+#         'lights' CGraphics::mLightActive = 1 after DisableAllLights returns (line 1178-1182 arms)
 PHASES = [
-    ('A', 1, 0, None, None, None, False),
-    ('B', 1, 1, 1, None, None, False),
-    ('C', 1, 1, 0, None, None, False),
-    ('D', 0, None, None, None, None, False),
-    ('E', 1, 0, None, 0, None, False),
-    ('G', 1, 0, None, None, 0, False),
-    ('F', 1, 1, 1, None, None, True),
+    ('A', 1, 0, None, None, None, False, ()),
+    ('B', 1, 1, 1, None, None, False, ()),
+    ('C', 1, 1, 0, None, None, False, ()),
+    ('D', 0, None, None, None, None, False, ()),
+    ('E', 1, 0, None, 0, None, False, ()),
+    ('G', 1, 0, None, None, 0, False, ()),
+    ('F', 1, 1, 1, None, None, True, ()),
+    ('N', 1, 0, None, None, None, False, ('dl0',)),
+    ('H', 1, 0, None, None, None, False, ('alpha',)),
+    ('LA', 1, 0, None, None, None, False, ('lights',)),
+    ('LD', 0, None, None, None, None, False, ('lights',)),
+    ('LB', 1, 1, 1, None, None, False, ('lights',)),
 ]
+E_LIGHT_ACTIVE = 'CGraphics::mLightActive'
 
 _st = dict(render=0, opens=0, closed=0, unwound=0, hw=0, sw=0, unowned=0, refused=0,
            orderFail=0, restoreFail=0, noRestore=0, ownershipFail=0, err=0, dup=0,
            countFail=0, lateFinish=0, softHooks=0, hookFail=0,
-           prb=0, prbOpens=0, prbClosed=0, prbUnwound=0, prbCache=0, prbFail=0,
+           prb=0, prbMode={}, prbOpens=0, prbClosed=0, prbUnwound=0, prbCache=0, prbFail=0,
            open={}, status=[], phaseOk={}, phaseBad={})
 
 
@@ -200,18 +209,19 @@ class _Finish(gdb.FinishBreakpoint):
             return False
         restored = _restore(w, 'return' if how == 'return' else 'unwind')
         if w['kind'] == 'render':
-            good = (w['gotHw'], w['gotSw']) == (w['expHw'], w['expSw']) and w['hooksOk']
+            good = ((w['gotHw'], w['gotSw']) == (w['expHw'], w['expSw']) and w['hooksOk']
+                    and w['need'] <= w['done'] and (not w['clear'] or w['hookDone']))
             if how == 'return' and not good:
                 _st['countFail'] += 1
                 _fail('count:' + w['tag'])
             ph = w['phase']
             (_st['phaseOk'] if good and how == 'return' else _st['phaseBad'])[ph] = \
                 (_st['phaseOk'] if good and how == 'return' else _st['phaseBad']).get(ph, 0) + 1
-            _log('WINDOW %s %s hw=%d/%d sw=%d/%d hooks=%s close=%s'
+            _log('WINDOW %s %s hw=%d/%d sw=%d/%d hooks=%s extras=%s/%s close=%s'
                  % (w['tag'], 'OK' if good and how == 'return' else 'FAILED', w['gotHw'], w['expHw'],
-                    w['gotSw'], w['expSw'], w['hooksOk'], how))
+                    w['gotSw'], w['expSw'], w['hooksOk'], sorted(w['done']), sorted(w['need']), how))
         else:
-            good = w['gotCache'] == 0
+            good = w['gotCache'] == 0 and _i(gdb, e_u32(w['mask'])) == w['mask0']
             if how == 'return' and not good:
                 _st['prbFail'] += 1
                 _fail('prb-cachepose:' + w['tag'])
@@ -288,8 +298,8 @@ def render_body(g):
                 st['dup'] += 1
                 _fail('dup-entry:' + other['tag'])
                 return
-        ph = PHASES[(st['render'] // PERIOD) % len(PHASES)]
-        name, lighting, soft, think, head_f, head_a, clear_after = ph
+        ph = PHASES[st['opens'] % len(PHASES)]
+        name, lighting, soft, think, head_f, head_a, clear_after, extras = ph
         count = _i(g, e_this(this, 'mBoids.mCount'))
         items = _i(g, e_this(this, 'mBoids.mItems'))
         size = _i(g, E_SIZEOF)
@@ -305,7 +315,6 @@ def render_body(g):
                 break
         if not head:
             st['refused'] += 1
-            _fail('refused-no-visible-boid')
             _log('REFUSED render=%d phase=%s: no active in-frustum boid' % (st['render'], name))
             return
         cell_idx = [i for i in range(125) if _i(g, e_u64(cells + 8 * i)) != 0]
@@ -335,6 +344,7 @@ def render_body(g):
     w = dict(kind='render', tag='swb17-r%d-%s' % (st['render'], name), phase=name, frame=frame,
              context=context, this=this, head=head, expHw=exp_hw, expSw=exp_sw, cellSw=cell_sw,
              gotHw=0, gotSw=0, hooksOk=True, hookDone=False, clear=clear_after, closed=False,
+             extras=extras, need=set(extras), done=set(),
              snap=[], dirty=False)
     writes = [(e_this(this, 'mEnableLighting'), lighting, light0),
               (e_ptr_raw(this, 'mOutlierBoidList'), head, _i(g, e_ptr_raw(this, 'mOutlierBoidList')))]
@@ -346,6 +356,9 @@ def render_body(g):
         writes.append((e_boid(head, 'mInFrustum'), head_f, _i(g, e_boid(head, 'mInFrustum'))))
     if head_a is not None:
         writes.append((e_boid(head, 'mActive'), head_a, _i(g, e_boid(head, 'mActive'))))
+    if 'dl0' in extras:
+        writes.append((e_ptr_raw(this, 'mDisplayList.mPtr'), 0,
+                       _i(g, e_ptr_raw(this, 'mDisplayList.mPtr'))))
     if clear_after:
         w['snap'].append((e_boid(head, 'mActive'), _i(g, e_boid(head, 'mActive'))))
     try:
@@ -413,26 +426,94 @@ def sw_hit(g):
     _light_hit(g, 'sw')
 
 
+class _RegFinish(gdb.FinishBreakpoint):
+    """After DisableAllLights / GetRenderAlphaBufferAlpha returned to a window's Render: the write."""
+
+    def __init__(self, frame, win, what):
+        super().__init__(frame, internal=True)
+        self.win, self.what = win, what
+
+    def stop(self):
+        w = self.win
+        try:
+            if w['closed']:
+                raise RuntimeError('window already closed')
+            if self.what == 'lights':
+                orig = _i(gdb, E_LIGHT_ACTIVE)
+                w['snap'].append((E_LIGHT_ACTIVE, orig))
+                gdb.execute('set var %s = 1' % E_LIGHT_ACTIVE)
+                if _i(gdb, E_LIGHT_ACTIVE) != 1:
+                    raise RuntimeError('mLightActive readback')
+            else:
+                gdb.execute('set var $rax = 0')  # int return value in eax (x86-64 SysV)
+                if _i(gdb, '(int)$eax') != 0:
+                    raise RuntimeError('eax readback')
+            w['done'].add(self.what)
+        except Exception as error:
+            w['hooksOk'] = False
+            _st['hookFail'] += 1
+            _fail('hook:%s:%s' % (self.what, w['tag']))
+            _log('REG-HOOK %s %s FAILED %s' % (w['tag'], self.what, error))
+        return False
+
+    def out_of_scope(self):
+        self.win['hooksOk'] = False
+        _fail('hook-unwound:' + self.win['tag'])
+
+
+def _reg_hit(g, what):
+    try:
+        w, _ = _owner(g, 'render')
+        if w is None or what not in w['need'] or what in w['done'] or w.get('armed_' + what):
+            return
+        w['armed_' + what] = True
+        _RegFinish(g.newest_frame(), w, what)
+    except Exception as error:
+        _st['ownershipFail'] += 1
+        _fail('reg-hook-arm')
+        _log('REG-HOOK-ARM %s FAILED %s' % (what, error))
+
+
+def dal_hit(g):
+    _reg_hit(g, 'lights')
+
+
+def alpha_hit(g):
+    _reg_hit(g, 'alpha')
+
+
 def prb_body(g):
     st = _st
     st['prb'] += 1
-    if st['prb'] % PRB_PERIOD != PRB_OFFSET:
+    n = st['prb'] % PRB_PERIOD
+    if n not in (PRB_OFFSET, PRB_OFFSET + 1):
         return
+    mode = 'freeze' if n == PRB_OFFSET else 'empty'
     try:
         frame = g.newest_frame()
         if not _frame_name(frame).startswith(_PRB.rstrip('(')):
             raise RuntimeError('not a PreRenderBoid frame')
         context = _context(g)
-        boid = _i(g, '$rsi')
-        expr = e_u32(boid + FREEZE_OFF)
+        this, boid, mask = _i(g, '$rdi'), _i(g, '$rsi'), _i(g, '$rdx')
+        mask0 = _i(g, e_u32(mask))
+        if mode == 'freeze':
+            expr = e_u32(boid + FREEZE_OFF)
+            value = FROZEN
+        else:
+            # an empty model list makes idx = mIndex; only a boid with mIndex > 31 takes the host
+            # guard's false side (no model state is read, bit = 0), so refuse any other boid
+            if _i(g, e_boid(boid, 'mIndex')) <= 31:
+                return
+            expr = e_this(this, 'mModelDatas.mCount')
+            value = 0
         orig = _i(g, expr)
     except Exception as error:
         st['err'] += 1
         _fail('prb-entry-unreadable')
         _log('PRB-ENTRY-FAILED %s' % error)
         return
-    w = dict(kind='prb', tag='swb17-p%d' % st['prb'], frame=frame, context=context, gotCache=0,
-             closed=False, snap=[(expr, orig)], dirty=False)
+    w = dict(kind='prb', tag='swb17-p%d-%s' % (st['prb'], mode), frame=frame, context=context,
+             gotCache=0, closed=False, snap=[(expr, orig)], dirty=False, mask=mask, mask0=mask0)
     try:
         w['finish'] = _Finish(frame, w)
     except Exception as error:
@@ -442,9 +523,10 @@ def prb_body(g):
         return
     st['open'][id(w)] = w
     st['prbOpens'] += 1
+    st['prbMode'][mode] = st['prbMode'].get(mode, 0) + 1
     try:
-        g.execute('set var %s = %d' % (expr, FROZEN))
-        if _i(g, expr) != FROZEN:
+        g.execute('set var %s = %d' % (expr, value))
+        if _i(g, expr) != value:
             raise RuntimeError('forced readback mismatch')
     except Exception as error:
         st['err'] += 1
@@ -452,7 +534,7 @@ def prb_body(g):
         _log('PRB-WRITE-FAILED %s %s' % (w['tag'], error))
         _restore(w, 'rollback')
         return
-    _log('%s FROZEN boid=0x%x timer 0x%x -> 0x%x' % (w['tag'], boid, orig, FROZEN))
+    _log('%s FORCED boid=0x%x %s 0x%x -> 0x%x' % (w['tag'], boid, expr, orig, value))
 
 
 def cp_hit(g):
@@ -473,8 +555,9 @@ def _summary(event=None):
     pending = len(st['open'])
     for w in st['open'].values():
         _fail('pending:' + w['tag'])
-    if not st['opens']:
-        _fail('no-render-windows')
+    for ph in PHASES:
+        if not st['phaseOk'].get(ph[0]):
+            _fail('phase-never-ok:' + ph[0])
     if not st['prbOpens']:
         _fail('no-prb-windows')
     if st['opens'] != st['closed'] + st['unwound'] + sum(1 for w in st['open'].values()
@@ -487,11 +570,11 @@ def _summary(event=None):
     _log('SUMMARY exit: render=%d opens=%d closed=%d unwound=%d pending=%d hw=%d sw=%d unowned=%d '
          'refused=%d countFail=%d restoreFail=%d noRestore=%d ownershipFail=%d err=%d dup=%d '
          'softHooks=%d hookFail=%d prb=%d prbOpens=%d prbClosed=%d prbUnwound=%d prbCache=%d '
-         'prbFail=%d phaseOk=%s phaseBad=%s status=%s %s'
+         'prbFail=%d prbMode=%s phaseOk=%s phaseBad=%s status=%s %s'
          % (st['render'], st['opens'], st['closed'], st['unwound'], pending, st['hw'], st['sw'],
             st['unowned'], st['refused'], st['countFail'], st['restoreFail'], st['noRestore'],
             st['ownershipFail'], st['err'], st['dup'], st['softHooks'], st['hookFail'], st['prb'],
-            st['prbOpens'], st['prbClosed'], st['prbUnwound'], st['prbCache'], st['prbFail'],
+            st['prbOpens'], st['prbClosed'], st['prbUnwound'], st['prbCache'], st['prbFail'], st['prbMode'],
             dict(sorted(st['phaseOk'].items())), dict(sorted(st['phaseBad'].items())),
             'OK' if ok else 'FAIL', st['status']))
     return ok
@@ -504,6 +587,10 @@ except Exception:
     _fail('exit-hook-unavailable')
 
 FORCE = [
+    ('DisableAllLights', 'CGraphics::DisableAllLights(', [], [dal_hit], 0,
+     'phases LA/LD/LB: mLightActive = 1 once it returns to a window'),
+    ('GetRenderAlphaBufferAlpha', 'CActor::GetRenderAlphaBufferAlpha(', [], [alpha_hit], 0,
+     'phase H: the result forced to 0 for a window'),
     ('3B34 Render window', _RENDER, [], [render_body], 0,
      'frame-owned phases A/B/C/D/E/G/F; snapshot, forced readback, return/unwind restore'),
     ('4538 HardwareLight', _HW, [], [hw_hit], 0, 'counts calls whose caller is a Render window'),
