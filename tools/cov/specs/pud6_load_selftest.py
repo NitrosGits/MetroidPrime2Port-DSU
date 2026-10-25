@@ -303,6 +303,25 @@ def main():
     ns['summarize']()
     scenario('single load ok', 'status=OK' in line(out) and 'natural_entities=0' in line(out), line(out))
 
+    # observe-only arm: no edit, returns an entity -> OK; an edit-free run without an entity -> FAIL
+    out = tmp / 'none_ok'
+    g = FakeGdb(str(binary))
+    ns = load(g, str(out), 'none')
+    g.Breakpoint.instances[0].stop()
+    g.rax = 0x5555
+    g.FinishBreakpoint.instances[-1].stop()
+    ns['summarize']()
+    scenario('none ok', 'status=OK' in line(out) and 'forced=0' in line(out) and len(g.Breakpoint.instances) == 1
+             and not g.written, line(out))
+    out = tmp / 'none_null'
+    g = FakeGdb(str(binary))
+    ns = load(g, str(out), 'none')
+    g.Breakpoint.instances[0].stop()
+    g.rax = 0
+    g.FinishBreakpoint.instances[-1].stop()
+    ns['summarize']()
+    scenario('none no entity', 'status=FAIL' in line(out) and 'no natural load returned an entity' in line(out), line(out))
+
     # install failures: breakpoint, bad insn, bad arm
     out = tmp / 'noinstall'
     g = FakeGdb(str(binary), install_fails=True)

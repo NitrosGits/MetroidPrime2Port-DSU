@@ -14,6 +14,9 @@
 #                   +1171 reads the loaded bool; the byte is inverted there (recorded BEFORE the write),
 #                   restored and read back at the following `je` (+1178).  The function must return an entity.
 #
+#   PUD6_ARM=none   observe only (no breakpoint beyond the entry/return pair, no write): the natural baseline
+#                   on the same frozen binary; the load must return an entity.
+#
 # Window: the FIRST LoadPuddleSpore invocation only.  Every instruction site is checked against its
 # expected disassembly at install time; a mismatch installs nothing (fail closed).  A FinishBreakpoint
 # armed at the entry restores the word again at the return (idempotent safety net).  The summary fails
@@ -38,6 +41,7 @@ SPECS = {
     # arm: (write site, expected insn fragments, restore site, expected fragments)
     'null': (748, ('call', 'LdrToModelData'), 753, ('cmpb', '-0x308(%rbp)')),
     'flag': (1171, ('cmpb', '-0x3e8(%rbp)'), 1178, ('je',)),
+    'none': None,
 }
 state = {'installed': 0, 'binary': 'unchecked', 'loads': [], 'current': None, 'problems': []}
 
@@ -237,7 +241,12 @@ def summarize():
     if not loads:
         problems.append('no LoadPuddleSpore call at all')
     forced = [r for r in loads if r['attempted']]
-    if not forced:
+    if ARM == 'none':
+        if forced:
+            problems.append('observe-only arm made an edit')
+        if not any(r['returned'] and r['ret'] for r in loads):
+            problems.append('no natural load returned an entity')
+    elif not forced:
         problems.append('the forced %s load never happened (loads=%d)' % (ARM, len(loads)))
     unreturned = [r['id'] for r in loads if r['armed'] and not r['returned']]
     if unreturned:
@@ -304,16 +313,19 @@ _sha, _why = binary_sha()
 state['binary'] = _sha or ('unavailable: ' + str(_why))
 try:
     if ARM not in SPECS:
-        raise ValueError('PUD6_ARM=%r is not null|flag' % ARM)
-    w_off, w_frags, r_off, r_frags = SPECS[ARM]
-    for off, frags in ((w_off, w_frags), (r_off, r_frags)):
-        ok, text = insn_ok(off, frags)
-        log('pud6: site +%d %s: %s' % (off, 'OK' if ok else 'MISMATCH', text))
-        if not ok:
-            raise ValueError('site +%d does not hold %s (%s)' % (off, frags, text))
+        raise ValueError('PUD6_ARM=%r is not null|flag|none' % ARM)
+    sites = SPECS[ARM]
+    if sites is not None:
+        w_off, w_frags, r_off, r_frags = sites
+        for off, frags in ((w_off, w_frags), (r_off, r_frags)):
+            ok, text = insn_ok(off, frags)
+            log('pud6: site +%d %s: %s' % (off, 'OK' if ok else 'MISMATCH', text))
+            if not ok:
+                raise ValueError('site +%d does not hold %s (%s)' % (off, frags, text))
     EntryBp()
-    WriteBp('*%s+%d' % (FUNC, w_off))
-    RestoreBp('*%s+%d' % (FUNC, r_off))
+    if sites is not None:
+        WriteBp('*%s+%d' % (FUNC, w_off))
+        RestoreBp('*%s+%d' % (FUNC, r_off))
     state['installed'] = 1
     log('pud6: fixture installed (binary %s, arm %s)' % ((_sha or '?')[:12], ARM))
 except Exception as e:
