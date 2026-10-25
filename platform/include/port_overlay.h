@@ -147,6 +147,10 @@ bool GyroCursorCamera();
 // `MP2_GYRO_SENSITIVITY_Y` (same range); under pointer aim it scales the pointer's vertical travel.
 bool GyroSplit();
 float GyroSensitivityY();
+// Lock-on free aim (Remastered): under a combat lock the mouse, twin stick, gyro or a touch drag
+// moves a crosshair over the view and shots follow it, with or without pointer aim
+// (`MP2_LOCK_ON_FREE_AIM`). CPlayer::PortLockFreeAim reads it.
+bool LockOnFreeAim();
 // The Reset aim binding recentres the pointer under pointer aim, else levels the camera;
 // `MP2_RESET_AIM_BOTH` makes it do both either way.
 bool ResetAimBoth();

@@ -274,12 +274,17 @@ bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch);
 // aim tracks the camera the rest of the time without turning the player.
 // Returns true when the caller should rotate the player to Yaw().
 // dt is the tick period, which pointer aim's edge turn integrates over.
-bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt = 0.f);
+// `pointerLock` is lock-on free aim: with `locked` and `active` it moves a pointer over the locked
+// view (pointer aim's, or one for the lock only; no edge turn) and still returns false.
+bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt = 0.f,
+               bool pointerLock = false);
 // Pointer aim: CPlayer pushes the F1 settings here every tick (this file is built without the
 // overlay). box is the dead box as a fraction of the half-screen (0.2..0.95), turnRate the edge
 // turn in radians per second. It needs a direct source (mouse, twin stick or touch aim) on.
 void SetPointerAim(bool enabled, float box, float turnRate);
 bool PointerAimEnabled();
+// The last UpdateAim left a pointer free under a lock (lock-on free aim).
+bool LockFreeAimActive();
 // The pointer (x right, y down, -1..1) and whether it is free this tick: pointer aim is on and
 // the last UpdateAim applied it. Outside that the pointer is centred and the aim is retail's.
 bool PointerAimPosition(float& x, float& y);

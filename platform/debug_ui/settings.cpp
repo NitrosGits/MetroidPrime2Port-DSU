@@ -210,6 +210,7 @@ const SettingKey kSettingKeys[] = {
      false,
      "2",
      "1"},
+    BoolKey< &sLockOnFreeAim >("lock_on_free_aim"),
     BoolKey< &sResetAimBoth >("reset_aim_both"),
     BoolKey< &sMenuStandardButtons >("menu_standard_buttons"),
     BoolKey< &sMouseButtons >("mouse_buttons"),

@@ -78,6 +78,7 @@ bool sGyroCursorCamera = false;
 bool sGyroSplit = false;
 float sGyroSensitivityY = PortOverlay::kGyroSensitivityDefault;
 bool sResetAimBoth = false;
+bool sLockOnFreeAim = false;
 bool sMenuStandardButtons = false;
 bool sRapidCharge = false;
 bool sMouseButtons = true;
@@ -846,6 +847,11 @@ bool GyroSplit() {
 float GyroSensitivityY() {
   ReadEnv();
   return EnvFloatIn("MP2_GYRO_SENSITIVITY_Y", sGyroSensitivityY, kGyroSensitivityMin, kGyroSensitivityMax);
+}
+
+bool LockOnFreeAim() {
+  ReadEnv();
+  return EnvBool("MP2_LOCK_ON_FREE_AIM", sLockOnFreeAim);
 }
 
 bool ResetAimBoth() {

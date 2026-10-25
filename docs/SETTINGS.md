@@ -40,6 +40,15 @@ Controls > Options:
 - `auto_aim`: Aiming > Auto-aim.
 - `pointer_aim`, `pointer_aim_box`, `pointer_aim_turn`: Aiming > Pointer aim (Trilogy style),
   Dead box, Edge turn speed.
+- `lock_on_free_aim`: Aiming > Lock-on free aim (default off; needs Mouse aim, Twin stick or
+  Touch aim), as in Remastered; env `MP2_LOCK_ON_FREE_AIM`. Under a combat lock the mouse, the
+  right stick, gyro aim or a touch aim drag moves a crosshair over the view and shots leave along
+  the ray through it, as with pointer aim, while the lock steers the view (no edge turn). Without
+  pointer aim the crosshair is there only during the lock. It starts and ends each lock at the
+  centre, where shots and homing go for the locked target as before; off the centre beams and
+  missiles head for the crosshair and do not home. Under pointer aim with gyro aim the right stick
+  moves the crosshair too while locked. Scan locks and grapples still aim through the centre. A
+  touch source re-centres it while no finger is down.
 - `reset_aim_both`: Aiming > Reset aim resets pointer and camera (the Reset aim binding, unbound
   by default, recentres the pointer under pointer aim, else levels the view); env
   `MP2_RESET_AIM_BOTH`.

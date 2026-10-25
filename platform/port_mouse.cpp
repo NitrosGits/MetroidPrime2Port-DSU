@@ -77,6 +77,8 @@ bool sAppliedLastTick = false;
 float sLastTickDt = 1.f / 60.f;
 // Pointer aim (MP1's sPointerAim/sPointerAimFree), configured each tick by CPlayer.
 PortMouse::PointerAim sPointer;
+// The last update left the pointer free under a lock (lock-on free aim).
+bool sLockFree = false;
 bool sPointerEnabled = false;
 bool sPointerFree = false;
 float sPointerBox = 0.7f;
@@ -453,7 +455,7 @@ void BeginTick() {
   sCameraPendingY = 0.f;
 }
 
-bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
+bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bool pointerLock) {
   ReadEnv();
   sAppliedLastTick = false;
   if (std::isfinite(dt) && dt > 0.f) {
@@ -462,6 +464,7 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
   if ((!sEnabled && !sStickEnabled && !sTouchEnabled.load()) || sUiActive) {
     sAiming = false;
     sPointerFree = false;
+    sLockFree = false;
     sPointer.Center();
     SetCapture(false);
     return false;
@@ -497,13 +500,24 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
       sAim.pitch = 0.f;
     }
   }
-  if (sPointerEnabled) {
+  // Lock-on free aim (MP1 83ff2ecba, 1881b35d4): the lock owns the view and a pointer moves over
+  // it, pointer aim's or, without pointer aim, one for the lock only. It starts and ends a lock at
+  // the centre, where the target is. A touch source with no finger down re-centres it.
+  const bool lockFree = pointerLock && active && locked && !touchIdle;
+  if (lockFree != sLockFree) {
+    sPointer.Center();
+    sLockFree = lockFree;
+  }
+  if (sPointerEnabled || lockFree) {
     // MP1's pointer path: the travel moves the pointer, not the view. A lock (or anything that
-    // stops free look) re-centres it, so lock-on, scan and grapple still aim through the centre.
+    // stops free look) re-centres it (except under lock-on free aim), so lock-on, scan and grapple
+    // still aim through the centre.
     // With the gyro driving the pointer, the stick turns the camera as it does without pointer
     // aim (MP1 4b8117d16).
-    const bool stickTurns = sGyroDrivesAim;
-    if (owns) {
+    // A lock leaves the view nothing to turn, so the stick moves the pointer too.
+    const bool stickTurns = sGyroDrivesAim && !lockFree;
+    const bool moves = owns || lockFree;
+    if (moves) {
       float sx = 0.f, sy = 0.f;
       PointerAimScale(sx, sy);
       if (stickTurns) {
@@ -526,11 +540,12 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
                                     dyaw, dpitch);
       sAim.Turn(dyaw, dpitch);
     }
-    sPointerFree = applied && owns;
+    sPointerFree = (applied && owns) || lockFree;
     if (!sPointerFree) {
       sPointer.Center();
     }
-    if (applied) {
+    // The second update of a tick must not move the pointer by the same travel again.
+    if (applied || lockFree) {
       sFrameX = sFrameY = sStickFrameX = sStickFrameY = 0.f;
       sCameraFrameX = sCameraFrameY = 0.f;
     }
@@ -538,6 +553,7 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
     return applied && owns;
   }
   sPointerFree = false;
+  sLockFree = false;
   // Without pointer aim the gyro's travel turns the view beside the mouse's, stick's and touch's.
   const bool applied = sAim.Update(active, held, x, y, z, sFrameX + sCameraFrameX, sFrameY + sCameraFrameY,
                                    sSensitivity, sInvertX, sInvertY);
@@ -614,6 +630,8 @@ void SetPointerAim(bool enabled, float box, float turnRate) {
 }
 
 bool PointerAimEnabled() { return sPointerEnabled; }
+
+bool LockFreeAimActive() { return sLockFree; }
 
 bool PointerAimPosition(float& x, float& y) {
   x = sPointer.x;

@@ -58,6 +58,10 @@ void DrawControlsOptions() {
   }
   ImGui::SetItemTooltip("Turn speed with the crosshair at the screen edge.");
   ImGui::EndDisabled();
+  Changed(ImGui::Checkbox("Lock-on free aim", &sLockOnFreeAim));
+  ItemHelp("As in Remastered: while locked on, the mouse, right stick, gyro or a touch drag moves a "
+           "crosshair and shots follow it. Centred, shots and missiles go for the locked target as "
+           "before. Needs Mouse aim, Twin stick or Touch aim.");
   Changed(ImGui::Checkbox("Reset aim resets pointer and camera", &sResetAimBoth));
   ItemHelp("Reset aim (unbound by default) recentres the crosshair with pointer aim on, or levels "
            "the camera with it off. On: it does both.");

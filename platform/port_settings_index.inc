@@ -22,6 +22,7 @@
 {"Controls", "Options", "Aiming", "Pointer aim (Trilogy style)", "wii cursor pointer trilogy"},
 {"Controls", "Options", "Aiming", "Dead box", "pointer box centre"},
 {"Controls", "Options", "Aiming", "Edge turn speed", "pointer turn edge"},
+{"Controls", "Options", "Aiming", "Lock-on free aim", "lock on lockon free aim cursor pointer crosshair remastered"},
 {"Controls", "Options", "Aiming", "Reset aim resets pointer and camera", "recentre center level pointer camera reset aim"},
 {"Controls", "Options", "Morph ball", "Fast Morph", "morph ball speed quick transform"},
 {"Controls", "Options", "Morph ball", "Spring Ball (C-stick up)", "morph ball jump bomb"},

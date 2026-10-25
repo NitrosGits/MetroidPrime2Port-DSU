@@ -37,6 +37,7 @@ extern bool sGyroCursorCamera;
 extern bool sGyroSplit;
 extern float sGyroSensitivityY;
 extern bool sResetAimBoth;
+extern bool sLockOnFreeAim;
 extern bool sMenuStandardButtons;
 extern bool sMouseButtons;
 extern bool sCardBackup;

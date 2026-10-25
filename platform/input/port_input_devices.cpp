@@ -1498,7 +1498,8 @@ void PollGyro() {
   }
   const float sense = PortOverlay::GyroSensitivity();
   const float senseY = PortOverlay::GyroSplit() ? PortOverlay::GyroSensitivityY() : sense;
-  if (!PortOverlay::PointerAim() || !PortMouse::PointerAimEnabled()) {
+  if ((!PortOverlay::PointerAim() || !PortMouse::PointerAimEnabled()) &&
+      !PortMouse::LockFreeAimActive()) {
     PortMouse::AddGyroCamera(yaw, pitch, dt, sense, senseY);
     return;
   }
