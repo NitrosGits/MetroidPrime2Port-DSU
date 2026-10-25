@@ -19,6 +19,7 @@
 #include "REL/REL_Setup.h"
 #include <float.h>
 
+// @ fn_48_402C
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"Attacked", static_cast< CPatterned::StateMachine::TriggerFunc >(&CPillBug::Attacked)},
     {"Bombed", static_cast< CPatterned::StateMachine::TriggerFunc >(&CPillBug::Bombed)},
@@ -303,6 +304,7 @@ void CPillBug::BuildPath(CStateManager& mgr) {
   }
 }
 
+// @ fn_48_2FE4
 bool CPillBug::HasInnerPathLoop(CStateManager& mgr) const {
   const TUniqueId start = CheckConnectedObject(mgr, kSS_Patrol, kSM_Follow);
   TUniqueId current = start;
@@ -801,6 +803,7 @@ void CPillBug::Pause(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_48_130
 CEntity* LoadPillBug(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrPillBug sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrPillBug.inc"
