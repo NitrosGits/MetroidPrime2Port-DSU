@@ -38,6 +38,11 @@ public:
   void EnableLights(uint mask) const;
   void DisableLights() const;
   void ApplyLights() const; // Guessed name
+#ifdef TARGET_PC
+  // Port: widgets that move as one unit under the widescreen spread share the anchor's position.
+  void SetSpreadAnchor(const CGuiWidget* member, const CGuiWidget* anchor);
+  void SetSpreadAnchorTree(const CGuiWidget* root);
+#endif
 
 private:
   // Reconstructed resource-reader names and source qualifiers; native ABI verified.

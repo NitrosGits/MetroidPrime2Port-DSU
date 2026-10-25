@@ -62,6 +62,9 @@ CHudVisorBeamMenu::CHudVisorBeamMenu(CGuiFrame& frame, const TLockedToken< CStri
   const char* ghostName = CBasics::Stringize(
       "%s%s", mType == kVBM_Visor ? skVisorWidgetBaseName : skBeamWidgetBaseName, skGhostSuffix);
   mGhost = frame.FindWidget(ghostName);
+#ifdef TARGET_PC
+  PortGroupSpread();
+#endif
   for (int i = 0; i < 4; ++i) {
     const char* const base = mType == kVBM_Visor ? skVisorWidgetBaseName : skBeamWidgetBaseName;
     const char* const indices = mType == kVBM_Visor ? skVisorWidgetIndices : skBeamWidgetIndices;
@@ -172,6 +175,14 @@ void CHudVisorBeamMenu::SetIsVisibleGame(const bool visible) {
   }
 }
 
+#ifdef TARGET_PC
+// Port: the menu's widgets move as one unit under the widescreen HUD spread (CGuiFrame).
+void CHudVisorBeamMenu::PortGroupSpread() {
+  mFrame.SetSpreadAnchorTree(mMenuRoot);
+  mFrame.SetSpreadAnchorTree(mTitleRoot);
+}
+#endif
+
 void CHudVisorBeamMenu::Update(float dt, const bool init) {
   const CColor itemColors[2][4] = {
       {gpTweakGuiColors->GetVisorMenuIconColor0(), gpTweakGuiColors->GetVisorMenuIconColor1(),
@@ -187,6 +198,9 @@ void CHudVisorBeamMenu::Update(float dt, const bool init) {
     mTitle =
         static_cast< CGuiTextPane* >(mFrame.FindWidget(skMenuTitleWidgetNames[GetSwappedType()]));
     mTitleRoot = mFrame.FindWidget(skBaseTitleWidgetNames[GetSwappedType()]);
+#ifdef TARGET_PC
+    PortGroupSpread();
+#endif
     for (int i = 0; i < 4; ++i) {
       SMenuItem& item = mItems[i];
       UpdateMenuWidgetTransform(i, *item.mIcon, item.mPosition);

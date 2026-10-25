@@ -54,7 +54,9 @@ public:
   // centre).
   static const float kSpreadSliceInner;
   static const float kSpreadSliceOuter;
-  float GetSpreadSliceOffset(float t) const;
+  // `curved`: the eased variant for the helmet's arcs, a wider band with a smoothstep stretch.
+  static const float kSpreadCurveOuter;
+  float GetSpreadSliceOffset(float t, bool curved = false) const;
   // The spread of a compact widget or cluster anchored at `worldAnchor`: an exact screen-space
   // slide, the whole side offset past the middle slice, none inside it. `weight` fades it.
   CTransform4f GetSpreadTransform(const CVector3f& worldAnchor, float weight = 1.f) const;

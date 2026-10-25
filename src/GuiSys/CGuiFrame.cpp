@@ -74,29 +74,101 @@ static void PortDrawSlicedPiece(const CGuiCamera& camera, const CGuiWidget* widg
 
 static void PortDrawSliced(const CGuiCamera& camera, const CGuiWidget* widget,
                            const CGuiWidgetDrawParms& parms, const CTransform4f& view,
-                           const CTransform4f& fromView) {
+                           const CTransform4f& fromView, bool curved) {
   u32 scissor[4];
   GXGetScissor(&scissor[0], &scissor[1], &scissor[2], &scissor[3]);
   const float halfWidth = camera.GetSpreadHalfWidth();
   const float inner = CGuiCamera::kSpreadSliceInner * halfWidth;
-  const float outer = CGuiCamera::kSpreadSliceOuter * halfWidth;
-  const float warpedOuter = outer + camera.GetSpreadSliceOffset(outer);
+  const float outer =
+      (curved ? CGuiCamera::kSpreadCurveOuter : CGuiCamera::kSpreadSliceOuter) * halfWidth;
   // Past the screen edge, so the outer scissors reach it.
   const float edge = 2.f * camera.GetSpreadScreenHalfWidth();
   PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, -inner, inner, -inner, inner);
-  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, inner, outer, inner,
-                      warpedOuter);
-  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, -outer, -inner,
-                      -warpedOuter, -inner);
-  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, outer, edge, warpedOuter,
-                      edge + warpedOuter - outer);
+  // The band is one linear piece, or for the eased curve enough chords that the joints don't
+  // show; each maps its authored span onto the warped one, mirrored on the left.
+  const int pieces = curved ? 16 : 1;
+  float from = inner;
+  float fromWarped = inner;
+  for (int piece = 1; piece <= pieces; ++piece) {
+    const float to = inner + (outer - inner) * static_cast< float >(piece) / pieces;
+    const float toWarped = to + camera.GetSpreadSliceOffset(to, curved);
+    PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, from, to, fromWarped,
+                        toWarped);
+    PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, -to, -from, -toWarped,
+                        -fromWarped);
+    from = to;
+    fromWarped = toWarped;
+  }
+  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, outer, edge, fromWarped,
+                      edge + fromWarped - outer);
   PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, -edge, -outer,
-                      -edge - warpedOuter + outer, -warpedOuter);
+                      -edge - fromWarped + outer, -fromWarped);
   GXSetScissor(scissor[0], scissor[1], scissor[2], scissor[3]);
 }
 
-static void PortDrawSpread(const CGuiCamera& camera, const CGuiWidget* widget,
-                           const CGuiWidgetDrawParms& parms) {
+// Cluster members (the visor/beam selectors) share their group's anchor, so the cluster moves as one
+// unit instead of each icon and lozenge drifting by its own bounding box. Kept out of CGuiFrame so
+// the frame's layout is unchanged; entries are dropped with the frame.
+struct SPortSpreadAnchor {
+  const CGuiFrame* frame;
+  const CGuiWidget* member;
+  const CGuiWidget* group;
+};
+static SPortSpreadAnchor sPortSpreadAnchors[96];
+static int sPortSpreadAnchorCount = 0;
+
+static const CGuiWidget* PortFindSpreadAnchor(const CGuiFrame* frame, const CGuiWidget* widget) {
+  for (int i = 0; i < sPortSpreadAnchorCount; ++i) {
+    if (sPortSpreadAnchors[i].frame == frame && sPortSpreadAnchors[i].member == widget) {
+      return sPortSpreadAnchors[i].group;
+    }
+  }
+  return nullptr;
+}
+
+void CGuiFrame::SetSpreadAnchor(const CGuiWidget* member, const CGuiWidget* anchor) {
+  for (int i = 0; i < sPortSpreadAnchorCount; ++i) {
+    if (sPortSpreadAnchors[i].frame == this && sPortSpreadAnchors[i].member == member) {
+      sPortSpreadAnchors[i].group = anchor;
+      return;
+    }
+  }
+  if (sPortSpreadAnchorCount < 96) {
+    SPortSpreadAnchor& entry = sPortSpreadAnchors[sPortSpreadAnchorCount++];
+    entry.frame = this;
+    entry.member = member;
+    entry.group = anchor;
+  }
+}
+
+void CGuiFrame::SetSpreadAnchorTree(const CGuiWidget* root) {
+  if (root == nullptr) {
+    return;
+  }
+  SetSpreadAnchor(root, root);
+  for (rstl::vector< CGuiWidget* >::const_iterator it = mWidgets.begin(); it != mWidgets.end();
+       ++it) {
+    for (const CGuiObject* obj = (*it)->GetParent(); obj != nullptr; obj = obj->GetParent()) {
+      if (obj == root) {
+        SetSpreadAnchor(*it, root);
+        break;
+      }
+    }
+  }
+}
+
+static void PortDropSpreadAnchors(const CGuiFrame* frame) {
+  int kept = 0;
+  for (int i = 0; i < sPortSpreadAnchorCount; ++i) {
+    if (sPortSpreadAnchors[i].frame != frame) {
+      sPortSpreadAnchors[kept++] = sPortSpreadAnchors[i];
+    }
+  }
+  sPortSpreadAnchorCount = kept;
+}
+
+static void PortDrawSpread(const CGuiFrame* frame, const CGuiCamera& camera,
+                           const CGuiWidget* widget, const CGuiWidgetDrawParms& parms) {
   const float spread = camera.GetAspectSpread();
   CTransform4f savedXf = CTransform4f::Identity();
   bool savedValid = false;
@@ -111,7 +183,10 @@ static void PortDrawSpread(const CGuiCamera& camera, const CGuiWidget* widget,
   bool stretch = false;
   float eyeMinDepth = 0.f;
   CAABox bounds(CVector3f(0.f, 0.f, 0.f), CVector3f(0.f, 0.f, 0.f));
-  if (widget->GetWidgetTypeID() == 'MODL' &&
+  const CGuiWidget* group = PortFindSpreadAnchor(frame, widget);
+  if (group != nullptr) {
+    anchor = group->GetWorldTransform().GetTranslation();
+  } else if (widget->GetWidgetTypeID() == 'MODL' &&
       static_cast< const CGuiModel* >(widget)->PortGetBounds(bounds)) {
     anchor = world * bounds.GetCenterPoint();
     const CAABox eyeBounds = bounds.GetTransformedAABox(invView * world);
@@ -126,7 +201,7 @@ static void PortDrawSpread(const CGuiCamera& camera, const CGuiWidget* widget,
   }
   if (stretch && (!camera.IsPerspective() || eyeMinDepth > 0.f) &&
       camera.GetSpreadScreenHalfWidth() > 0.f) {
-    PortDrawSliced(camera, widget, parms, view, invView * world);
+    PortDrawSliced(camera, widget, parms, view, invView * world, true);
     return;
   }
   CTransform4f moved = world;
@@ -187,7 +262,12 @@ CGuiFrame::CGuiFrame(CInputStream& in, CSimplePool* pool)
   LoadWidgetsInGame(in, pool, mVersion);
 }
 
-CGuiFrame::~CGuiFrame() { delete mRootWidget; }
+CGuiFrame::~CGuiFrame() {
+#ifdef TARGET_PC
+  PortDropSpreadAnchors(this);
+#endif
+  delete mRootWidget;
+}
 
 void CGuiFrame::LoadWidgetsInGame(CInputStream& in, CSimplePool* pool, uint version) {
   const int count = in.Get< int >();
@@ -265,7 +345,7 @@ void CGuiFrame::Draw(const CGuiWidgetDrawParms& parms) const {
     CGuiWidget* widget = *it;
     if (widget->GetIsVisible()) {
 #ifdef TARGET_PC
-      PortDrawSpread(*mCamera, widget, parms);
+      PortDrawSpread(this, *mCamera, widget, parms);
 #else
       widget->Draw(parms);
 #endif
@@ -279,7 +359,7 @@ void CGuiFrame::Draw(const CGuiWidgetDrawParms& parms) const {
     CGuiWidget* widget = *it;
     if (widget->GetIsVisible()) {
 #ifdef TARGET_PC
-      PortDrawSpread(*mCamera, widget, parms);
+      PortDrawSpread(this, *mCamera, widget, parms);
 #else
       widget->Draw(parms);
 #endif

@@ -156,12 +156,17 @@ void CGuiCamera::Draw(const CGuiWidgetDrawParms& parms) const {
 // outer fraction is the frame's ledge running to the side struts.
 const float CGuiCamera::kSpreadSliceInner = 0.46f;
 const float CGuiCamera::kSpreadSliceOuter = 0.585f;
+const float CGuiCamera::kSpreadCurveOuter = 0.85f;
 
-float CGuiCamera::GetSpreadSliceOffset(float t) const {
+float CGuiCamera::GetSpreadSliceOffset(float t, bool curved) const {
   const float inner = kSpreadSliceInner * mSpreadHalfWidth;
-  const float outer = kSpreadSliceOuter * mSpreadHalfWidth;
+  const float outer = (curved ? kSpreadCurveOuter : kSpreadSliceOuter) * mSpreadHalfWidth;
   const float a = t < 0.f ? -t : t;
-  const float along = a <= inner ? 0.f : a >= outer ? 1.f : (a - inner) / (outer - inner);
+  float along = a <= inner ? 0.f : a >= outer ? 1.f : (a - inner) / (outer - inner);
+  if (curved) {
+    // Smoothstep: no change of slope where the stretch starts and ends.
+    along = along * along * (3.f - 2.f * along);
+  }
   const float moved = (mSpread - 1.f) * mSpreadHalfWidth * along;
   return t < 0.f ? -moved : moved;
 }
