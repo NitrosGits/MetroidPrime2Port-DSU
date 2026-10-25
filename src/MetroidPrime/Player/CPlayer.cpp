@@ -2927,8 +2927,13 @@ void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
   const CVector3f forward = fpCamera != nullptr && mCameraManager->IsInFPCamera()
                                 ? fpCamera->GetTransform().GetForward()
                                 : GetTransform().GetForward();
+  // An analog L's travel starts a point orbit a tick or more before its click locks on
+  // (UpdateOrbitInput). In the Scan Visor the pointer holds still through it, so the click picks
+  // the scan point under the pointer's window rather than the one at the centre (MP1 issue #190).
+  const bool scanPointHold = mOrbitState == kOS_OrbitPoint &&
+                             mgr.GetPlayerState()->GetCurrentVisor() == CPlayerState::kPV_Scan;
   if (!PortMouse::UpdateAim(true, !allowed, forward.GetX(), forward.GetY(), forward.GetZ(), dt,
-                            PortLockFreeAim(mgr))) {
+                            PortLockFreeAim(mgr), scanPointHold)) {
     return;
   }
 

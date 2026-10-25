@@ -455,7 +455,8 @@ void BeginTick() {
   sCameraPendingY = 0.f;
 }
 
-bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bool pointerLock) {
+bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bool pointerLock,
+               bool pointerHold) {
   ReadEnv();
   sAppliedLastTick = false;
   if (std::isfinite(dt) && dt > 0.f) {
@@ -508,6 +509,8 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
     sPointer.Center();
     sLockFree = lockFree;
   }
+  // A held pointer stays where the lock found it, and neither moves nor turns the view.
+  const bool pointerHeld = active && locked && !lockFree && pointerHold && sPointerEnabled && !touchIdle;
   if (sPointerEnabled || lockFree) {
     // MP1's pointer path: the travel moves the pointer, not the view. A lock (or anything that
     // stops free look) re-centres it (except under lock-on free aim), so lock-on, scan and grapple
@@ -525,7 +528,7 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
       } else {
         sPointer.Move(sFrameX * sx, sFrameY * sy);
       }
-    } else {
+    } else if (!pointerHeld) {
       sPointer.Center();
     }
     // The view turns only by the gyro's camera travel (zero unless it also turns the camera),
@@ -540,7 +543,7 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
                                     dyaw, dpitch);
       sAim.Turn(dyaw, dpitch);
     }
-    sPointerFree = (applied && owns) || lockFree;
+    sPointerFree = (applied && owns) || lockFree || pointerHeld;
     if (!sPointerFree) {
       sPointer.Center();
     }

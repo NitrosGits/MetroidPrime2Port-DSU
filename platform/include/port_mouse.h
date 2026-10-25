@@ -276,8 +276,10 @@ bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch);
 // dt is the tick period, which pointer aim's edge turn integrates over.
 // `pointerLock` is lock-on free aim: with `locked` and `active` it moves a pointer over the locked
 // view (pointer aim's, or one for the lock only; no edge turn) and still returns false.
+// `pointerHold`: under pointer aim, a lock that keeps the pointer where it is instead of
+// re-centring it (the Scan Visor's point orbit, CPlayer::UpdateMouseAim).
 bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt = 0.f,
-               bool pointerLock = false);
+               bool pointerLock = false, bool pointerHold = false);
 // Pointer aim: CPlayer pushes the F1 settings here every tick (this file is built without the
 // overlay). box is the dead box as a fraction of the half-screen (0.2..0.95), turnRate the edge
 // turn in radians per second. It needs a direct source (mouse, twin stick or touch aim) on.
