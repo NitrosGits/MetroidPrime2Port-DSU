@@ -675,7 +675,7 @@ void CPuddleSpore::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_51_42C
+// @ fn_51_42C
 CEntity* LoadPuddleSpore(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrPuddleSpore sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrPuddleSpore.inc"
