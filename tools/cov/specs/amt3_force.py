@@ -63,7 +63,7 @@ ATTACK_PLAN = ['limit'] * 3
 FIRE_PLAN = [None, None, 'unloaded', None, 'unloaded', None, 'noanim', None, 'noanim']
 
 state = {'this': None, 'calls': {'U': 0, 'A': 0, 'F': 0}, 'plan': {'U': 0, 'A': 0, 'F': 0},
-         'armed': {}}
+         'armed': {}, 'watch': 0}
 
 def log(event, **data):
     with open(os.path.join(os.environ['COV_OUT'], 'amt3.jsonl'), 'a') as f:
@@ -111,7 +111,11 @@ class Frame(gdb.FinishBreakpoint):
             rows.append(dict(lvalue=lv, original=original.hex(), readback=back.hex()))
             if back != original:
                 errors.append(lv)
-        log('RESTORE', body=self.key, scenario=self.scenario, how=how, fields=rows, errors=errors)
+        if self.scenario == 'watch' and not rows:
+            state['watch'] += 1  # Attack call that did not reach +896: nothing written, no log line
+        else:
+            log('RESTORE', body=self.key, scenario=self.scenario, how=how, fields=rows,
+                errors=errors)
         state['armed'].pop(self.key, None)
         if errors:
             fail('restore mismatch ' + str(errors))
@@ -152,9 +156,16 @@ def write_reg(reg, value, scenario):
     if not ok:
         fail('readback ' + reg)
 
+def outer_frame():
+    # Attack+896 is inside inlined CMath::Limit: compare the real (non-inline) frame.
+    f = gdb.newest_frame()
+    while f is not None and f.type() == gdb.INLINE_FRAME:
+        f = f.older()
+    return f
+
 def owner(key):
     armed = state['armed'].get(key)
-    return armed if armed and armed.is_valid() and gdb.newest_frame() == armed.frame_ else None
+    return armed if armed and armed.is_valid() and outer_frame() == armed.frame_ else None
 
 class Entry(gdb.Breakpoint):
     def __init__(self, key, sym):
@@ -184,7 +195,8 @@ class Entry(gdb.Breakpoint):
         if scenario is None:
             return False
         saved = []
-        log('ARM', body=self.key, call=n, scenario=scenario, this=this)
+        if scenario != 'watch':
+            log('ARM', body=self.key, call=n, scenario=scenario, this=this)
         if scenario == 'snap':
             write_reg('$rdx', 1, scenario)
         elif scenario == 'limits':
@@ -205,7 +217,7 @@ class Entry(gdb.Breakpoint):
                     saved.append(('((%s*)%d)->%s' % (CLASS, this, member), int(v.address),
                                   bytes(gdb.selected_inferior().read_memory(int(v.address), 4))))
         fb = Frame(self.key, this, scenario, saved)
-        fb.frame_ = gdb.newest_frame()
+        fb.frame_ = outer_frame()
         state['armed'][self.key] = fb
         return False
 
@@ -239,7 +251,7 @@ class Mid(gdb.Breakpoint):
         return False
 
 def finished(event):
-    log('EXIT', calls=state['calls'], plan=state['plan'])
+    log('EXIT', calls=state['calls'], plan=state['plan'], watch_unforced=state['watch'])
 
 def install():
     check_sites()
