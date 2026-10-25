@@ -16,6 +16,19 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "REL/REL_Setup.h"
 
+// Retail `__sinit_CMysteryFlyer_cpp` (0x2BF8-0x2F4C) writes exactly these three tables and nothing
+// else: `lis` 0x2C24/0x2C0C/0x2E10 take the table addresses (.data 0x78, 0x190, 0x248), then 66 word
+// copies (`stw` 0x2CCC-0x2F3C) put each entry's member pointer at +4/+8/+0xC as {adjust 0, vtoff -1
+// (non-virtual), fn = address} - every entry is a direct pointer, no vtoff anywhere. Trigger names
+// .rodata 0x2C/0x36/0x41/0x52/0x61/0x6E/0x74/0x83/0x8C/0x92 -> .text 0x2260/0x2224/0x21DC/0x21AC/
+// 0x20C4/0x20A4/0x202C/0x1FFC/0x1FE0/0x1FD4; state names .rodata 0x9E/0xA4/0xAD/0xB8/0xBF/0xD0/0xD6/
+// 0xDF/0xE6/0xEC -> .text 0x1FD0/0x1E14/0x1BEC/0x1B24/0x1A04/0x1998/0x1850/0x162C/0x13F0/0x15F4;
+// code function names .rodata 0xF1/0xFD -> .text 0x1368/0x1348. Same names, order and targets as
+// below; all 22 bodies already marked, and CMysteryFlyer.hpp declares no virtual at all, so the host
+// arrays are direct pointers too (binary: skTriggers 0x2270160, skStates 0x2270060, skCodeFuncs
+// 0x2270020, adjust 0). No call, no branch; the only other store is the register save stmw r14
+// 0x2BFC (frame 0x90, restored lmw 0x2F40).
+// @ fn_45_2BF8
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"StateOver", static_cast< CPatterned::StateMachine::TriggerFunc >(&CMysteryFlyer::StateOver)},
     {"NearPatrol",
