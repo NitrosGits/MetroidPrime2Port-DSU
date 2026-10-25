@@ -586,6 +586,35 @@ std::string CopyDiscImage(const std::string& uri, const std::string& target) {
   return target;
 }
 
+// A disc picked after Android destroyed the activity behind the picker: the pick arrives at
+// the next launch, which MetroidPrime2Activity.onActivityResult leaves in pending_disc_uri
+// (MP1 dc9473176). Copied to `target` like a fresh pick, so the lookup after it finds it.
+// Without this the next launch asked again, and on a phone that destroys the activity each
+// time the picker covers it the game never started.
+void TakeDiscPickedLastLaunch(const std::string& target) {
+  const char* dir = SDL_GetAndroidInternalStoragePath();
+  if (dir == nullptr) {
+    return;
+  }
+  const std::filesystem::path file = std::filesystem::path(dir) / "pending_disc_uri";
+  std::string chosen;
+  {
+    std::ifstream in(file);
+    std::getline(in, chosen);
+  }
+  std::error_code ec;
+  std::filesystem::remove(file, ec);
+  if (chosen.empty()) {
+    return;
+  }
+  std::fprintf(stderr, "metroid_prime2_port: using the disc image picked before the app was restarted\n");
+  const std::string copied = CopyDiscImage(chosen, target);
+  if (!copied.empty()) {
+    std::printf("metroid_prime2_port: disc image picked: %s, copied to %s\n", chosen.c_str(),
+                copied.c_str());
+  }
+}
+
 // The disc this launch will use. The path the resolution chose is used when it is a usable
 // image - an image pushed into app storage, or MP2_DISC - and otherwise the user is asked for
 // one, which is copied over that same path (the app's own port_paths.txt makes it
@@ -593,6 +622,7 @@ std::string CopyDiscImage(const std::string& uri, const std::string& target) {
 // meaningful instead of silently writing somewhere else). An empty return is a user who
 // cancelled, a picker that failed or a pick that could not be copied, each of which is logged.
 std::string EnsureDiscImage(const std::string& resolved, const std::string& defaultDisc) {
+  TakeDiscPickedLastLaunch(defaultDisc);
   std::string disc = resolved.empty() ? defaultDisc : resolved;
   for (;;) {
     if (DiscImageIsUsable(disc)) {
