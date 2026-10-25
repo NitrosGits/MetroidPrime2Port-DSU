@@ -74,8 +74,9 @@ MOVED_RE = re.compile(r"^\[warp\] (?:moved to|the game's own transition arrived 
 RES_RE = re.compile(r"^\[res\] (.*)$")
 CREDITS_RE = re.compile(r"^\[end\] the credits are rolling$")
 # The port serving a `MP2_WORLD` request: `[warp] world <id> area <mrea>`. Before it, a `WORLD=` sweep
-# shard is still in the save's own world, whose `[area] 0` is not the target world's slot 0.
-WARP_WORLD_RE = re.compile(r"^\[warp\] world ([0-9a-f]{8}) area ")
+# shard is still in the save's own world, whose `[area] 0` is not the target world's slot 0. A boot
+# request (`PortWarp::DirectBoot`) prints `[warp] direct boot: world <id> area <mrea> ...` instead.
+WARP_WORLD_RE = re.compile(r"^\[warp\] (?:direct boot: )?world ([0-9a-f]{8}) area ")
 FATAL = ("[port] caught",)
 ABORT = ("Object list full", "assert", "Assert", "ASSERT")
 # Lines that are ordinary in every area and say nothing about the area being tested.
