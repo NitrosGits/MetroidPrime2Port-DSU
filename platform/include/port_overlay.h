@@ -385,6 +385,25 @@ void NoteFrameWork(uint64_t ns);
 // default. With the cap off, the camera is drawn between the last two 60 Hz ticks.
 bool SmoothFrames();
 void SetSmoothFrames(bool enabled);
+// Frame-blend tests (MP1's PortDebug::PresentOverride). `MP2_PRESENT_T=<0..1|cycle|tick>` and the
+// console's `present` force the presentation factor the camera and actors blend at, even with the
+// cap on and smooth frames off; cycle steps through 0, 0.25, 0.5 and 0.75 per drawn frame. Not
+// saved. PresentOverride replaces t and returns true when it did: a value in [0,1] is fixed,
+// kPresentCycle cycles, kPresentTick draws the plain tick state (-1, as the cap does), negative
+// leaves the clock's factor alone.
+constexpr float kPresentCycle = 2.f;
+constexpr float kPresentTick = 3.f;
+bool PresentOverride(float& t);
+// [0,1] fixed, kPresentCycle, kPresentTick, or negative for off.
+void SetPresentOverride(float value);
+float PresentOverrideValue();
+// The console's `hold`/`step` (MP1's TickHold there): while held, the main loop runs no simulation
+// ticks except one per queued step, so one tick state can be drawn at several factors. Not saved.
+bool TickHold();
+void SetTickHold(bool held);
+void StepTicks(unsigned count);
+unsigned PendingHeldTicks();
+unsigned TakeHeldTicks();
 // MP1's pose interpolation (`MP2_POSE_INTERPOLATION=0|1`, F1 > Video > Frame rate); off by default.
 // With smooth frames on and the cap off, skinned models draw a blend of their last two tick poses
 // (CAnimData::PortPresentedPose).

@@ -36,6 +36,10 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `uiscale <50..200>` — the F1 window's size in percent, as the Render row does
 - `vsync <0|1>` — vertical sync, as the F1 Render row does
 - `interp [0|1]` — smooth frames: the camera between ticks with the cap off
+- `present [<0..1|cycle|tick|off>]` — the factor the camera is drawn at between ticks, forced even
+  with the cap on (`tick` draws the plain tick state); also `MP2_PRESENT_T`, and no argument prints it
+- `hold [0|1]` — stop the simulation; no tick runs until `step` runs some
+- `step [1..600]` — while held, run that many ticks, one per drawn frame (default 1)
 - `hudspread [16:9|21:9|full]` — widest screen the widescreen HUD spreads to (F1 Video > Display)
 - `aspect [4:3|16:9|window]` — aspect ratio, as the F1 Video > Display row does
 - `boost` — boost-ball release on the morphed player

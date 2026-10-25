@@ -1691,6 +1691,64 @@ void CmdInterp(CStateManager&, const Args& args, std::string& out) {
   out += PortOverlay::FrameLimit() ? " (inactive: 60 FPS cap on)\n" : "\n";
 }
 
+// MP1's CmdPresent: the presentation factor the camera and actors are drawn with between ticks,
+// forced even with the cap on. No argument prints it.
+void CmdPresent(CStateManager&, const Args& args, std::string& out) {
+  const std::string arg = args.size() > 1 ? Lower(args[1]) : std::string();
+  float t = 0.f;
+  if (arg == "off") {
+    PortOverlay::SetPresentOverride(-1.f);
+  } else if (arg == "cycle") {
+    PortOverlay::SetPresentOverride(PortOverlay::kPresentCycle);
+  } else if (arg == "tick") {
+    PortOverlay::SetPresentOverride(PortOverlay::kPresentTick);
+  } else if (args.size() > 1 && !(ParseFloat(arg, t) && t >= 0.f && t <= 1.f)) {
+    Fail("usage: present <0..1|cycle|tick|off>");
+    return;
+  } else if (args.size() > 1) {
+    PortOverlay::SetPresentOverride(t);
+  }
+  const float value = PortOverlay::PresentOverrideValue();
+  char line[32];
+  if (value < 0.f) {
+    std::snprintf(line, sizeof(line), "present off\n");
+  } else if (value == PortOverlay::kPresentTick) {
+    std::snprintf(line, sizeof(line), "present tick\n");
+  } else if (value > 1.f) {
+    std::snprintf(line, sizeof(line), "present cycle\n");
+  } else {
+    std::snprintf(line, sizeof(line), "present %.3f\n", value);
+  }
+  out += line;
+}
+
+// MP1's CmdHold: stop the simulation; `step` then runs ticks one per drawn frame.
+void CmdHold(CStateManager&, const Args& args, std::string& out) {
+  const std::string arg = args.size() > 1 ? Lower(args[1]) : std::string();
+  if (args.size() > 1 && arg != "0" && arg != "1") {
+    Fail("usage: hold <0|1>");
+    return;
+  }
+  if (args.size() > 1) {
+    PortOverlay::SetTickHold(arg == "1");
+  }
+  out += PortOverlay::TickHold() ? "hold 1, step runs ticks\n" : "hold 0, the simulation runs\n";
+}
+
+void CmdStep(CStateManager&, const Args& args, std::string& out) {
+  if (!PortOverlay::TickHold()) {
+    Fail("not held (hold 1 first)");
+    return;
+  }
+  const int count = args.size() > 1 ? ArgToInt(args[1], -1) : 1;
+  if (count < 1 || count > 600) {
+    Fail("usage: step [1..600]");
+    return;
+  }
+  PortOverlay::StepTicks(static_cast< unsigned >(count));
+  out += "stepping " + std::to_string(count) + (count == 1 ? " tick\n" : " ticks\n");
+}
+
 // The Prime 1 port's CmdAspect; applied by PortOverlay::ApplyAspect on the next loop iteration.
 void CmdAspect(CStateManager&, const Args& args, std::string& out) {
   if (args.size() >= 2) {
@@ -4353,6 +4411,13 @@ const CommandSpec kCommands[] = {
       "vsync <0|1>                 vertical sync, as the F1 Render row does\n"},
     {"interp", CmdInterp,
       "interp [0|1]                smooth frames: the camera between ticks with the cap off\n"},
+    {"present", CmdPresent,
+      "present [<0..1|cycle|tick|off>]  the presentation factor the camera is drawn at, forced even\n"
+      "                            with the cap on (also MP2_PRESENT_T); tick draws the plain tick state\n"},
+    {"hold", CmdHold,
+      "hold [0|1]                  stop the simulation: no tick runs until `step` runs some\n"},
+    {"step", CmdStep,
+      "step [1..600]               while held, run that many ticks, one per drawn frame (default 1)\n"},
     {"hudspread", CmdHudSpread,
       "hudspread [16:9|21:9|full]  widest screen the HUD spreads to, as the F1 Video row does\n"},
     {"aspect", CmdAspect,

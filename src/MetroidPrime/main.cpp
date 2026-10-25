@@ -381,6 +381,31 @@ bool CGameArchitectureSupport::UpdateTicks() {
     mTickRemainder = 1.f / 60.f;
   }
 #ifdef TARGET_PC
+  // Port: the console's hold/step (MP1's CGameArchitectureSupport::UpdateTicks there) stops the
+  // simulation: a held loop runs only the ticks a step queued, one per loop so each is a drawn
+  // frame, whatever the cap or MP2_TICKS_PER_FRAME say.
+  if (PortOverlay::TickHold()) {
+    const unsigned ticks = PortOverlay::TakeHeldTicks();
+    mArchQueue.Push(MakeMsg::CreateFrameBegin(kAMT_Game, mGameFrameCount));
+    for (unsigned tick = 0; tick < ticks; ++tick) {
+      PortTiming::BeginTick();
+      PortMouse::BeginTick();
+      PortRearmPad0();
+      if (!mInputGenerator.Update(1.f / 60.f, mArchQueue)) {
+        result = true;
+      }
+      mArchQueue.Push(MakeMsg::CreateTimerTick(kAMT_Game, 1.f / 60.f));
+      mIoWinMgr.PumpMessages(mArchQueue);
+    }
+    CGraphics::PortAdvanceRenderTimings(ticks);
+    // The wall clock kept no time while held, so resuming does not burst.
+    mTickRemainder = 0.f;
+    mPreviousTickRemainder2 = 0.f;
+    mPreviousTickRemainder = 0.f;
+    mPortTickClock.Advance(0.0, true);
+    mIoWinMgr.PumpMessages(mArchQueue);
+    return !result;
+  }
   // Port: MP1's fixed-step clock (CGameArchitectureSupport::UpdateTicks there). With the 60 FPS cap
   // off the loop runs faster than the game's tick, and the retail loop below runs at least one tick
   // per drawn frame, so the game sped up with the frame rate. The clock runs the whole 1/60 s ticks
@@ -803,6 +828,13 @@ int CMain::RsMain(int argc, const char* const* argv) {
           if (PortOverlay::FrameLimit() || !PortOverlay::SmoothFrames()) {
             interpolation = -1.f;
           }
+          // A held simulation sits on its last tick, so the camera does too (the console's
+          // `present` below still overrides, which is what the tests want).
+          if (PortOverlay::TickHold()) {
+            interpolation = -1.f;
+          }
+          // `MP2_PRESENT_T` / console `present`: a forced factor applies even with the cap on.
+          PortOverlay::PresentOverride(interpolation);
           CCameraManager::SetPresentationInterpolation(interpolation);
           // MP1's GUI clock lag (particle toggle): the draw reads the GUI clock (1 - t) / 60 s
           // behind the last tick, so GUI frames and HUD materials sit between the last two ticks.
