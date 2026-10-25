@@ -1915,6 +1915,18 @@ void CFlyingPirate::PreThink(float dt, CStateManager& mgr) {
   CPatterned::PreThink(dt, mgr);
 }
 
+// Behaviour-checked fp4 (frozen binary sha256 7be93176...2666 = build-port-cov, evidence
+// /tmp/opencode/fp4-evidence/): Think 126/126 lines, 112/112 branches ALL-ARMS from merged runs
+// run1-3, run4-pre, run5-8, run12, run15, run16.
+//  - flyingpirate_fp4b.py (23 scenarios on the cliff) forces mAlive/special state/timers etc.
+//  - 1922-1923 water arm: flyingpirate_fp4d.py on 08_sand_casualpirates (run12) writes
+//    mPosition.mZ +-1e6 and stubs CActor::InFluidId to the water uid, both ways ok. (fp3 wrote
+//    mTransform.m23, which GetTranslation() does not read; the member is CActor::mPosition.mZ.)
+//  - 1975 burst arm: flyingpirate_fp4e.py (run15): mBurstTimer 5.0 (-1 let Start() replace the
+//    forced table, run8), calloc'd SBurst in mCurBursts, mAngleIdx -1, mTimeToNextShot -1.0.
+// Failed launches (tmpfs quota, no hook set) kept as run9-11, run13-14 (logs only).
+// Every other zero edge is an exception landing pad.
+// @ fn_22_15DC
 void CFlyingPirate::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
