@@ -541,8 +541,14 @@ void CWorldTransManager::DrawAllModels() const {
 void CWorldTransManager::DrawFirstPass() const {
   const float fov = GetCameraFov(0);
   const float nearClip = CCameraManager::GetDefaultFirstPersonNearClipDistance();
+#ifdef TARGET_PC
+  // Port: widen the authored 4:3 aspect on a wider framebuffer (Hor+), or the transition stretches.
+  gpRender->SetPerspective(0.7f * fov, 1.42f * PortOverlay::AspectWiden(), nearClip,
+                           CCameraManager::GetDefaultFirstPersonFarClipDistance());
+#else
   gpRender->SetPerspective(0.7f * fov, 1.42f, nearClip,
                            CCameraManager::GetDefaultFirstPersonFarClipDistance());
+#endif
   CGraphics::SetViewPointMatrix(GetCameraTransform(0));
   DrawAllModels();
 }
@@ -550,8 +556,14 @@ void CWorldTransManager::DrawFirstPass() const {
 void CWorldTransManager::DrawSecondPass() const {
   const float fov = GetCameraFov(1);
   const float nearClip = CCameraManager::GetDefaultFirstPersonNearClipDistance();
+#ifdef TARGET_PC
+  // Port: widen the authored 4:3 aspect on a wider framebuffer (Hor+), or the transition stretches.
+  gpRender->SetPerspective(0.7f * fov, 1.42f * PortOverlay::AspectWiden(), nearClip,
+                           CCameraManager::GetDefaultFirstPersonFarClipDistance());
+#else
   gpRender->SetPerspective(0.7f * fov, 1.42f, nearClip,
                            CCameraManager::GetDefaultFirstPersonFarClipDistance());
+#endif
   CGraphics::SetViewPointMatrix(GetCameraTransform(1));
   DrawAllModels();
 }

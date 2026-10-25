@@ -15,6 +15,23 @@
 #include "MetroidPrime/ScriptObjects/CScriptTimeKeyframe.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
+#ifdef TARGET_PC
+// Port (MP1's fix for its issues #9 and #14): the vertical FOV for a cinematic's horizontal FOV at
+// the live aspect. Retail divides the angle by its 4:3 camera aspect and frames the shot for the
+// 16:9 letterbox CCameraFilterPass draws over it; dividing by a wider aspect zoomed the shot in and
+// cut its top and bottom off. Keep retail's shot width (in tangent space) up to 16:9, where the
+// bars crop it to the same band, and past 16:9 keep the band's height and widen instead.
+static float PortCinematicFovy(const float hfov, const float aspect) {
+  const float retailAspect = CCameraManager::GetDefaultAspectRatio();
+  const float kLetterbox = 16.f / 9.f;
+  const float retailFovy = hfov / retailAspect;
+  const float tanHalfWidth = retailAspect * tanf(CMath::Deg2Rad(0.5f * retailFovy));
+  const float fit = aspect < kLetterbox ? aspect : kLetterbox;
+  return 2.f * CMath::Rad2Deg(atanf(tanHalfWidth / fit));
+}
+#endif
+
+
 CCinematicCamera::CCinematicCamera(TUniqueId uid, const CTransform4f& xf, bool active, float fov,
                                    float nearZ, float farZ, float aspect, int index,
                                    int controllerIdx)
@@ -46,7 +63,11 @@ void CCinematicCamera::Reset(const CTransform4f& xf, CStateManager& mgr) {
     if ((mFlags & CScriptCamera::kF_VerticalFov) != 0) {
       SetFovAndTarget(spline.GetFovByTime(mTime));
     } else {
+#ifdef TARGET_PC
+      SetFovAndTarget(PortCinematicFovy(spline.GetFovByTime(mTime), GetAspectRatio()));
+#else
       SetFovAndTarget(spline.GetFovByTime(mTime) / GetAspectRatio());
+#endif
     }
     mMoveIntoEyePos = CalculateMoveOutofIntoEyePosition(false, mgr);
     Think(0.f, mgr);
@@ -106,7 +127,11 @@ void CCinematicCamera::Think(float dt, CStateManager& mgr) {
   if ((mFlags & CScriptCamera::kF_VerticalFov) != 0) {
     SetFovAndTarget(spline.GetFovByTime(mTime));
   } else {
+#ifdef TARGET_PC
+    SetFovAndTarget(PortCinematicFovy(spline.GetFovByTime(mTime), GetAspectRatio()));
+#else
     SetFovAndTarget(spline.GetFovByTime(mTime) / GetAspectRatio());
+#endif
   }
   mMoveIntoEyePos = CalculateMoveOutofIntoEyePosition(false, mgr);
 

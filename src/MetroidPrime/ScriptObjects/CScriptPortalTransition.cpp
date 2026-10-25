@@ -24,6 +24,9 @@
 #include "Kyoto/Particles/CElementGen.hpp"
 #include "MetaRender/CCubeRenderer.hpp"
 #include "rstl/math.hpp"
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
 
 CScriptPortalTransition::CScriptPortalTransition(
     TUniqueId uid, const rstl::string& name, const CEntityInfo& info, int direction,
@@ -370,7 +373,13 @@ void CPortalTransition::Draw() const {
   const float fov = GetCameraFov(mCameraPass);
   const float znear = CCameraManager::GetDefaultFirstPersonNearClipDistance();
   const float zfar = CCameraManager::GetDefaultFirstPersonFarClipDistance();
+#ifdef TARGET_PC
+  // Port: the authored 4:3 aspect stretched the warp on a wider framebuffer; widen it (Hor+,
+  // like the game camera) so the vertical framing stays retail's.
+  gpRender->SetPerspective(fov * 0.7f, 1.42f * PortOverlay::AspectWiden(), znear, zfar);
+#else
   gpRender->SetPerspective(fov * 0.7f, 1.42f, znear, zfar);
+#endif
   CGraphics::SetViewPointMatrix(GetCameraTransform(mCameraPass));
   CActorLights lights(0, CVector3f::Zero(), 4, 4, 0.f, false, false, false, false);
   lights.BuildFakeLightList(mLights, CColor(0.f, 0.f, 0.f, 1.f));
