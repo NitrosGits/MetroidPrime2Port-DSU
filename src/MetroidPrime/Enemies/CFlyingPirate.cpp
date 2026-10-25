@@ -215,6 +215,22 @@ CFlyingPirate::CFlyingPirateData::CFlyingPirateData(
 , unknown_0x9ca8f357(unknown_0x9ca8f357)
 , unknown_0x7ac85cb6(unknown_0x7ac85cb6) {}
 
+// Port coverage (fp4): the ctor ran twice (both cliff FPRT, one frozen binary sha256 7be93176...,
+// /tmp/opencode/fp4-evidence/run1/gcov, source 6dcb7d5dd), every non-landing-pad edge taken
+// except seven, each dead by the disc:
+//  - `(mData.mType & 2) ? 4 : 3` (the aqua path-find type 4; gcov counts the one `testb $2; jne`
+//    arc on the three lines 230/231/232 of that statement): tools/scan_flyingpirate_props.py
+//    over the whole disc (20 paks, 12 MLVLs, 291 areas, every layer; the 291 MREA resources are
+//    exactly the MLVL areas, none unreadable) finds 18 FPRT, types 0 (10) and 1 (8) only; bit 1
+//    never set. `LoadFlyingPirate` is the only caller (ScriptLoader.cpp 'FPRT').
+//  - `mParticleGen1/2/3 != kInvalidAssetId` (three `cmp $-1; je`; the first two je and the third
+//    are gcov's three zero edges): all 18 placements carry landingCloudDirt/Dust/Snow =
+//    811e5be1/340608af/f4474106 (scan.txt "particle gens"), so the guard is always true and the
+//    empty-vector loop skip merges with the loop exit the cliff run takes.
+//  - the last zero edge, on the `{` line, is the stack-protector canary `jne __stack_chk_fail`
+//    (+1166, 0xdfab88 -> 0xdfabce): hardening of the host build, no source arm.
+// Every other zero edge is an exception landing pad (`throw`).
+// @ fn_22_96D4
 CFlyingPirate::CFlyingPirate(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                              const CTransform4f& xf, const CModelData& modelData,
                              const CActorParameters& actParms, const CPatternedInfo& pInfo,
