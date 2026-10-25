@@ -23,7 +23,6 @@
 #include "port_pointer.h"
 #include "port_pointer_menu.h"
 #endif
-
 static const char* const skFrameNames[] = {"FRME_MultiplayerPause4", "FRME_MultiplayerPause2",
                                            "FRME_MultiplayerPause4"};
 

@@ -3,7 +3,6 @@
 #ifdef TARGET_PC
 #include <cstdio>
 #endif
-
 #include "GuiSys/CGuiFrame.hpp"
 #include "GuiSys/CGuiTextPane.hpp"
 #include "GuiSys/CGuiWidgetDrawParms.hpp"
@@ -72,7 +71,6 @@ float sPortMapTwist = 0.f;
 float sPortMapPinch = 1.f;
 } // namespace
 #endif
-
 static const char* const skFRME_MapScreen = "FRME_MapScreen";
 static const char* const skFRME_MapScreenBackground = "FRME_MapScreenBackground";
 
@@ -778,7 +776,6 @@ void CAutoMapper::PortPointerInput(CFinalInput& input, const CStateManager& mgr)
   }
 }
 #endif
-
 #ifdef TARGET_PC
 void CAutoMapper::ProcessControllerInput(const CFinalInput& frameInput, CStateManager& mgr) {
   CFinalInput portInput = frameInput;
@@ -1180,7 +1177,6 @@ void CAutoMapper::ProcessMapZoomInput(const CFinalInput& input, const CStateMana
     mRenderState0.mCamDist = GetClampedMapScreenCameraDistance(mRenderState0.mCamDist / sPortMapPinch);
   }
 #endif
-
   if (oldDist == mRenderState0.mCamDist)
     SetShouldZoomingSoundBePlaying(false);
   else

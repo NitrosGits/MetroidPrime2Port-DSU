@@ -15,7 +15,6 @@
 #include "port_pointer.h"
 #include "port_pointer_menu.h"
 #endif
-
 static const char* const skTitleNames[] = {"QuitGame", "Continue", "QuitMPConfirmation"};
 
 static const char* const skFrameNames[] = {"FRME_QuitScreen1", "FRME_QuitScreen2",
