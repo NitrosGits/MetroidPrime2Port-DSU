@@ -101,6 +101,10 @@ bool ConsumeShowHintRequest();
 // Spring Ball (`MP2_SPRING_BALL=1`): C-stick up on the ground in Morph Ball is a bomb jump from the
 // ball's own position, as Trilogy's nunchuk flick is, so the ball can leave the ground without a
 // bomb to spend (needs Morph Ball Bombs; CMorphBall::ComputeBallMovement).
+// Quick resume (`MP2_QUICK_RESUME`, default on): quitting during play writes savestates/resume.mp2ss
+// and the next launch offers "Resume where you left off?" (PortSaveState::Resume*).
+bool QuickResume();
+void SetQuickResume(bool enabled);
 bool SpringBall();
 void SetSpringBall(bool enabled);
 // Toggle Lock-On (`MP2_LOCK_ON_TOGGLE=1`): an L press that locks on latches L until the next press,

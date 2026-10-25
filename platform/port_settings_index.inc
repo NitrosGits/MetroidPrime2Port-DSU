@@ -155,6 +155,7 @@
 {"Cheats", "", "Teleport", "Next world", "warp teleport planet region forward"},
 {"Cheats", "", "Teleport", "Reload", "room reload warp"},
 {"Save states", "", "", "Undo last load", "save state undo"},
+{"Save states", "", "", "Quick resume", "quick resume background quit continue"},
 #if !defined(__ANDROID__)
 {"System", "", "Overlay", "Overlay as a floating window", "window detach float desktop"},
 #endif

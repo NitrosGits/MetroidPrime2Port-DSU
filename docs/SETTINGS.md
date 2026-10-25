@@ -32,6 +32,12 @@
 
 ## Keys
 
+Save states page:
+
+- `quick_resume`: Save states > Quick resume (default on); env `MP2_QUICK_RESUME`. On quitting during
+  play (and as the game keeps safe points, see Resume below) `savestates/resume.mp2ss` is written; the
+  next launch asks "Resume where you left off?". Console: `resume [status|save|load|clear]`.
+
 Game page:
 
 - `skip_cinematics`: Cutscenes > Skippable cutscenes.

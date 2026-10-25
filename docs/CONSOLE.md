@@ -24,6 +24,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `overlay <page>[/<sub>]|off` — open the F1 window on a page (name prefixes: `overlay video/qual`)
 - `gpuselftest` — run the GPU self-test next frame; PASS/FAIL lines go to the log
 - `state save|load <slot>` — the F5/F9 save states (load 0 = undo the last load)
+- `resume [status|save|load|clear]` — quick resume (savestates/resume.mp2ss): show, snapshot now, load, delete
 - `skipcine <0|1>` — skip cutscenes the player has not seen (the F1 setting)
 - `gunoffset [<r> <f> <u>]` — arm cannon offset in metres (+-1), as the F1 Render row does
 - `msaa <1|4> | aniso <1..16>` — anti-aliasing and anisotropic filtering (applied next frame) (also `aniso`)

@@ -172,6 +172,7 @@ const SettingKey kSettingKeys[] = {
     IntKey< &sHintDelay, PortOverlay::kHintDelayMin, PortOverlay::kHintDelayMax >("hint_delay", "0",
                                                                                   "30"),
     BoolKey< &sSpringBall >("spring_ball"),
+    BoolKey< &sQuickResume >("quick_resume"),
     BoolKey< &sLockOnToggle >("lockon_toggle"),
     BoolKey< &sStickyCharge >("sticky_charge"),
     BoolKey< &sRapidCharge >("rapid_charge"),

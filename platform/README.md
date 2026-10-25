@@ -237,14 +237,21 @@ and the game-side half of it lives in `src/MetroidPrime/PortSkipFrontEnd.cpp`:
   `[harness] no game update for <n> s (... updates so far, limit ...)`, once per
   stall.
 
-- **`MP2_RESUME=0|1`** (default 1): quick resume, MP1's `resume.mpss`. A clean quit (the window's
-  close, which reaches `PortPumpEvents` as `AURORA_EXIT`) writes `<user>/savestates/resume.mp2ss`, a
-  save state of the running game; the next launch with `MP2_SKIP_FRONTEND=1` loads it instead of the
-  card's save once the game is first ready, provided its world is still on the disc, and deletes it
-  once Samus is back. `0` turns both sides off. An `MP2_FRAMES` exit writes one only with
-  `MP2_RESUME=1`, so test runs do not hand their end state to the next run; `MP2_WORLD`/
-  `MP2_TELEPORT` leave the file in place for a later launch. `[savestate] resume:` lines say which
-  happened. Code: `PortSaveState::ResumeSave`/`ResumeCheck` in `port_savestate.cpp`.
+- **Quick resume** (setting Save states > Quick resume, `MP2_QUICK_RESUME`, default on; `MP2_RESUME=0|1`
+  is the test gate, default 1, and an `MP2_FRAMES` run is inactive unless `MP2_RESUME=1`). MP1's
+  `resume.mpss`, ported: `<user>/savestates/resume.mp2ss` is a save state of the running game in an
+  `MPRS` container (file index, card serial, save time). A snapshot is written 2 s into a room, again
+  every 30 s, and at quit or backgrounding, atomically; none while loading, dead, in a cutscene or with
+  a screen about to open (`[savestate] resume: no snapshot - <why>`, logged once per change). A
+  `running` file beside it marks a live run: if it is there at launch the last run crashed, and after a
+  resume it reads `resumed <savedAt>`, so a crash before the next snapshot makes the prompt say "again"
+  and default to No. The next launch shows "Resume where you left off?" over the splash
+  (`PortSaveState::ResumePromptTick`, `DrawResumePrompt`; pad left/right + A/Start, or click). Yes boots
+  the card file the snapshot came from (`PortSkipFrontEnd::ArmFromResume`) and loads the snapshot;
+  No boots normally. The file stays until the next snapshot replaces it. `MP2_SKIP_FRONTEND` runs take
+  it with no prompt; `MP2_WORLD`/`MP2_TELEPORT` and `MP2_SKIP_FRONTEND` skip the prompt.
+  `MP2_RESUME_ANSWER=yes|no` answers it after ~3 s (tests). Console: `resume [status|save|load|clear]`.
+  Code: `port_savestate.cpp`, pure logic in `port_resume_logic.h`.
 
 `tools/run_gameplay.sh` is the wrapper the port's tests use for all of the above: it passes
 `MP2_SKIP_FRONTEND`, an optional `MP2_WORLD` restart, an `MP2_INPUT` script read from a file, the

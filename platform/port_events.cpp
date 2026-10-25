@@ -350,11 +350,31 @@ void PortPaceFrame() {
 }
 
 // Runs aurora_update (window, input and GX housekeeping); true once the window asks to quit.
+// Quick resume on the platforms that background or kill an app: the held snapshot is written when
+// the app goes to the background (it may be killed there), and the marker goes at termination.
+// May run on another thread, so it only flushes what the game thread already took.
+bool ResumeEventWatch(void*, SDL_Event* event) {
+  switch (event->type) {
+  case SDL_EVENT_WILL_ENTER_BACKGROUND:
+  case SDL_EVENT_DID_ENTER_BACKGROUND:
+    PortSaveState::ResumeFlush();
+    break;
+  case SDL_EVENT_TERMINATING:
+    PortSaveState::ResumeShutdown();
+    break;
+  default:
+    break;
+  }
+  return true;
+}
+
 bool PortPumpEvents() {
   // The hang watchdog's heartbeat: the game loop asks this once per iteration, so a frame that
   // never returns here is the one the watchdog reports (phase and stack).
   static unsigned sFrame = 0;
   PortWatchdog::Heartbeat(++sFrame);
+  static const bool sWatching = SDL_AddEventWatch(ResumeEventWatch, nullptr);
+  (void)sWatching;
   PortWarp::ApplyEnvOnce();
   // The aspect setting: widens the render mode before anything this iteration draws.
   PortOverlay::ApplyAspect();

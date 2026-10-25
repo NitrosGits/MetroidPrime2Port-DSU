@@ -337,4 +337,21 @@ bool StartGame() {
 
 bool Started() { return sPhase == kStarted; }
 
+void ArmFromResume(int fileIdx) {
+  sReadEnv = true;
+  sArmed = true;
+  sSlot = fileIdx;
+  sSlotGiven = true;
+  sPhase = kIdle;
+  sSplashDone = false;
+  sSplashCalls = 0;
+  sSplashRemoved = 0;
+  sSplashQuietCalls = 0;
+}
+
+bool Armed() {
+  ReadEnvOnce();
+  return sArmed;
+}
+
 } // namespace PortSkipFrontEnd
