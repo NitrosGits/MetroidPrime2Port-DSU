@@ -587,6 +587,31 @@ bool CElementGen::InternalUpdate(double dt) {
 }
 
 void CElementGen::UpdateLightParameters() {
+#ifdef TARGET_PC
+  // A light whose PART leaves out one of its properties keeps that value's
+  // default instead of calling through a null element.
+  CGenDescription* desc = mLoadedGenDesc;
+  if (desc->mLCLR) {
+    desc->mLCLR->GetValue(mCurFrame, mLCLR);
+  }
+  if (desc->mLINT) {
+    desc->mLINT->GetValue(mCurFrame, mLINT);
+  }
+  if (mLightType != kLT_Directional) {
+    if (desc->mLOFF) {
+      desc->mLOFF->GetValue(mCurFrame, mLOFF);
+    }
+    if (desc->mLFOR) {
+      desc->mLFOR->GetValue(mCurFrame, mLFOR);
+    }
+    if (mLightType == kLT_Spot && desc->mLSLA) {
+      desc->mLSLA->GetValue(mCurFrame, mLSLA);
+    }
+  }
+  if (mLightType != kLT_Custom && desc->mLDIR) {
+    desc->mLDIR->GetValue(mCurFrame, mLDIR);
+  }
+#else
   mLoadedGenDesc->mLCLR->GetValue(mCurFrame, mLCLR);
   mLoadedGenDesc->mLINT->GetValue(mCurFrame, mLINT);
   if (mLightType != kLT_Directional) {
@@ -599,6 +624,7 @@ void CElementGen::UpdateLightParameters() {
   if (mLightType != kLT_Custom) {
     mLoadedGenDesc->mLDIR->GetValue(mCurFrame, mLDIR);
   }
+#endif
 }
 
 void CElementGen::UpdateAdvanceAccessParameters(int particleIndex, int particleFrame) {
