@@ -5,6 +5,7 @@
 #ifdef TARGET_PC
 #include "Kyoto/Graphics/CCubeSurface.hpp"
 #include "port_pipeline_context.h"
+#include "port_savestate.h"
 #endif
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/Graphics/CTexture.hpp"
@@ -353,6 +354,10 @@ bool CGameArea::UpdateDependencyLoading(CStateManager& mgr) {
 void CGameArea::VerifyTokenList(CStateManager& mgr) {
   const CWorldLayerState& layers = *mgr.mCurrentWorldLayerState;
   if (GetTokenCount() == 0) {
+#ifdef TARGET_PC
+    // PORT: a save state rebuilds the area with the layers its objects were spawned with.
+    PortSaveState::NoteAreaSpawnBegin(*mgr.mCurrentWorldLayerState, mSelfIdx.Value());
+#endif
     ClearTokenList();
     mLayerPhases.resize(mLayerDependencyOffsets.size(), kLP_Inactive);
     mPostConst->mActiveLayers.resize(layers.GetLayerCount(mSelfIdx), false);
@@ -378,8 +383,16 @@ void CGameArea::VerifyTokenList(CStateManager& mgr) {
       for (uint layer = 0; layer < layers.GetLayerCount(mSelfIdx); ++layer) {
         mPostConst->GetActiveLayers()[layer] =
             layers.IsLayerActive(mSelfIdx, TLayerId(layer));
+#ifdef TARGET_PC
+        if (mPostConst->GetActiveLayers()[layer]) {
+          PortNoteSpawnLayer(layer);
+        }
+#endif
       }
     }
+#ifdef TARGET_PC
+    PortSaveState::NoteAreaSpawnEnd(*mgr.mCurrentWorldLayerState, mSelfIdx.Value()); // puts the live layer bits back
+#endif
   }
 
   const int relLayerCount = mRelOffsets.size() / 2;
@@ -2440,6 +2453,9 @@ void CGameArea::ActivateLayerDynamic(CStateManager& mgr, const TLayerId layer) {
   ids = rstl::vector< TEditorId >();
   const rstl::pair< const uchar*, int > buffer = GetLayerScriptBuffer(layer);
   CMemoryInStream in(buffer.first, buffer.second);
+#ifdef TARGET_PC
+  PortNoteSpawnLayer(layerIdx);
+#endif
   mPostConst->mScriptObjectsInitialized = false;
   loader.LoadScriptObjects(GetId(), in, ids, mgr);
   loader.InitScriptObjects(ids, mgr);

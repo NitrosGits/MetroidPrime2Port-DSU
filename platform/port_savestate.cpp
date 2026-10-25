@@ -13,6 +13,8 @@
 
 #include <SDL3/SDL_mouse.h>
 
+#include <algorithm>
+
 #include "port_mods.h"
 #include "port_overlay.h"
 #include "port_resume_logic.h"
@@ -541,6 +543,11 @@ bool DoLoad(CStateManager& mgr, int slot) {
 
   const CAssetId liveWorld = gpGameState->CurrentWorldAssetId();
   SwapGameState(s);
+  // Rebuild the areas with the layers their objects were spawned with (as each area lists them).
+  DisarmSpawnLayers();
+  if (PortOverlay::SaveStateRoomState()) {
+    ArmSpawnLayers(s.roomState, static_cast< uint32_t >(s.worldId));
+  }
   mgr.PortWarpToWorld(s.worldId, s.areaAssetId);
   if (liveWorld != s.worldId) {
     KeepWorldPakReadable(liveWorld);
@@ -778,6 +785,7 @@ void TickResume(CStateManager& mgr) {
 void TickPlacement(CStateManager& mgr) {
   if (++sPlace.waited > kPlaceTimeoutFrames) {
     sPlace.active = false;
+    DisarmSpawnLayers();
     SetMessage("load timed out before the world came back; Samus stays at the area's spawn");
     return;
   }
@@ -797,6 +805,7 @@ void TickPlacement(CStateManager& mgr) {
   sRetired = nullptr;
   if (mgr.World()->IGetWorldAssetId() != sPlace.state.worldId) {
     sPlace.active = false;
+    DisarmSpawnLayers();
     SetMessage("load landed in another world; Samus stays at its spawn");
     return;
   }
@@ -891,6 +900,7 @@ void TickRoom(CStateManager& mgr) {
   if (mgr.mQuitGame || !mgr.IsFullyInitialized() || mgr.World() == nullptr ||
       mgr.World()->IGetWorldAssetId() != sPlace.state.worldId) {
     sRoom.active = false;
+    DisarmSpawnLayers();
     SetMessage("room state dropped: the world changed before it was applied");
     return;
   }
@@ -934,6 +944,7 @@ void TickRoom(CStateManager& mgr) {
     }
   }
   sRoom.active = false;
+  DisarmSpawnLayers();
   const RoomApplyStats& st = sRoom.progress.stats;
   SetMessage("room state restored: " + std::to_string(sRoom.progress.done.size()) + " of " +
              std::to_string(sRoom.state.areas.size()) + " areas, " + std::to_string(st.applied) +
@@ -1145,6 +1156,26 @@ void ResumeFlush() { FlushSnapshot(); }
 void ResumeShutdown() {
   FlushSnapshot();
   ResumeQuitCleanly();
+}
+
+bool RoomRestoreOwnsArea(CStateManager& mgr, int area) {
+  (void)mgr;
+  if (!sRoom.active) {
+    return false;
+  }
+  const auto has = [area](const std::vector< int32_t >& v) {
+    return std::find(v.begin(), v.end(), area) != v.end();
+  };
+  if (has(sRoom.progress.done)) {
+    return false;
+  }
+  for (const RoomArea& ra : sRoom.state.areas) {
+    if (ra.area == area) {
+      std::fprintf(stderr, "[savestate] room: area %d loaded, its queued messages are skipped\n", area);
+      return true; // the restore replays this area's saved messages itself
+    }
+  }
+  return false;
 }
 
 void Forget(const CStateManager* mgr) {

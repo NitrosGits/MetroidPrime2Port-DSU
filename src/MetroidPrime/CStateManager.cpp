@@ -621,6 +621,10 @@ void CStateManager::BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >& near
 }
 
 void CStateManager::AreaLoaded(TAreaId area) {
+#ifdef TARGET_PC
+  // PORT: a save state's room state carries what the mailbox's messages did (RoomRestoreOwnsArea).
+  if (!PortSaveState::RoomRestoreOwnsArea(*this, area.Value()))
+#endif
   mMailbox->SendMsgs(area, *this);
   mEnvFxManager->AreaLoaded();
 }

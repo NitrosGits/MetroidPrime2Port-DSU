@@ -11,6 +11,8 @@
 #include "Kyoto/Math/CTransform4f.hpp"
 #include "Kyoto/Math/CVector3f.hpp"
 #include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/CWorldLayerState.hpp"
+#include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/CEntity.hpp"
 #include "MetroidPrime/CGameArea.hpp"
@@ -733,6 +735,8 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out) {
       ra.assetId = static_cast< uint32_t >(a->GetAreaAssetId());
       ra.fingerprint = AreaFingerprint(*a);
       ra.known = true;
+      ra.spawnLayers = a->PortSpawnLayers();
+      ra.hasSpawn = true;
       out.areas.push_back(ra);
     }
   }
@@ -919,6 +923,85 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
   }
   return waiting;
 }
+
+namespace {
+// The override ArmSpawnLayers installed for a state load, and the live bits Begin replaced.
+struct SpawnOverride {
+  uint32_t world = 0;
+  int area = 0;
+  uint64_t spawn = 0;
+  uint64_t live = 0;
+  uint64_t applied = 0;
+  bool swapped = false;
+  CWorldLayerState* layers = nullptr; // the state Begin swapped, valid until the restore ends
+};
+std::vector< SpawnOverride > sOverrides;
+
+uint64_t LayerMask(const CWorldLayerState& layers, int area) {
+  uint64_t mask = 0;
+  const int count = std::min(layers.GetLayerCount(TAreaId(area)), 64);
+  for (int l = 0; l < count; ++l) {
+    if (layers.IsLayerActive(TAreaId(area), TLayerId(l))) {
+      mask |= uint64_t(1) << l;
+    }
+  }
+  return mask;
+}
+
+void SetLayerMask(CWorldLayerState& layers, int area, uint64_t mask) {
+  const int count = std::min(layers.GetLayerCount(TAreaId(area)), 64);
+  for (int l = 0; l < count; ++l) {
+    layers.SetLayerActive(TAreaId(area), TLayerId(l), ((mask >> l) & 1) != 0);
+  }
+}
+} // namespace
+
+void NoteAreaSpawnBegin(CWorldLayerState& layers, int area) {
+  if (gpGameState == nullptr) {
+    return;
+  }
+  for (SpawnOverride& o : sOverrides) {
+    if (o.area == area && o.world == static_cast< uint32_t >(gpGameState->CurrentWorldAssetId()) &&
+        !o.swapped) {
+      o.live = LayerMask(layers, area);
+      // Only layers the memory card stream also has on: one it lacks (the opening cinematic's, for a
+      // state from a fresh game) would spawn its objects again, and the restore activates those the
+      // saved room had that the stream lacked (TickRoom) anyway. What goes is the layers the live
+      // stream switched on after the saved room was built.
+      o.applied = o.spawn & o.live;
+      SetLayerMask(layers, area, o.applied);
+      o.swapped = true;
+      o.layers = &layers;
+      return;
+    }
+  }
+}
+
+void NoteAreaSpawnEnd(CWorldLayerState& layers, int area) {
+  // The swapped bits stay until the restore ends: the area's dependency tokens and layer phases were
+  // built from them, and the live bits would disagree with the objects the area spawned.
+  for (const SpawnOverride& o : sOverrides) {
+    if (o.area == area && o.swapped && o.layers == &layers) {
+      std::fprintf(stderr,
+                   "[savestate] room: area %d rebuilt with layers %llx (saved spawn %llx, stream %llx)\n",
+                   area, static_cast< unsigned long long >(o.applied),
+                   static_cast< unsigned long long >(o.spawn),
+                   static_cast< unsigned long long >(o.live));
+      return;
+    }
+  }
+}
+
+void ArmSpawnLayers(const RoomState& room, uint32_t worldId) {
+  sOverrides.clear();
+  for (const RoomArea& ra : room.areas) {
+    if (ra.hasSpawn) {
+      sOverrides.push_back({worldId, ra.area, ra.spawnLayers, 0, 0, false, nullptr});
+    }
+  }
+}
+
+void DisarmSpawnLayers() { sOverrides.clear(); }
 
 void NoteGenerated(CStateManager& mgr, uint16_t uid) { NoteFor(mgr, RawId(uid)).generated = true; }
 

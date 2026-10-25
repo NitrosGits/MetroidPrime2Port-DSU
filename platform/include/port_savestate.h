@@ -6,6 +6,7 @@
 
 class CGameArea;
 class CStateManager;
+class CWorldLayerState;
 
 // Save states: save anywhere, load back to the same spot (MP1's port_savestate, phase 1).
 //
@@ -127,6 +128,10 @@ struct RoomArea {
   // false for a v2 trailer (written before the fingerprint): that area restores unchecked.
   uint64_t fingerprint = 0;
   bool known = false;
+  // The layers whose script objects the area was spawned with (bit n: layer n), which the live
+  // layer bits of the memory card stream can differ from. `hasSpawn` is false for a v2/v3 trailer.
+  uint64_t spawnLayers = 0;
+  bool hasSpawn = false;
 };
 struct RoomState {
   std::vector< RoomArea > areas;   // the areas that were loaded, so captured
@@ -162,8 +167,23 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out);
 // Applies the saved areas that are ready now and not yet done; returns how many saved areas are
 // still waiting to load.
 int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress& progress);
-// platform/port_savestate_format.cpp. The room trailer is v3 (a magic word, then 16-bit block
-// lengths and delta-varint editor ids); Decode also reads the v2 trailer old .mp2ss files carry.
+
+// Spawn layers, game thread. CGameArea::VerifyTokenList calls NoteAreaSpawn{Begin,End} around
+// listing the layers an area spawns: Begin swaps in the recorded bits of an armed area, End puts
+// the live ones back. ArmSpawnLayers (a state load, right after its game state is installed) arms
+// each recorded area of world `worldId` (the area spawns with the recorded layers that the loaded
+// stream also has on; the swapped bits stay in the world's layer state). DisarmSpawnLayers forgets
+// whatever is still armed.
+void NoteAreaSpawnBegin(CWorldLayerState& layers, int area);
+void NoteAreaSpawnEnd(CWorldLayerState& layers, int area);
+void ArmSpawnLayers(const RoomState& room, uint32_t worldId);
+void DisarmSpawnLayers();
+// CStateManager::AreaLoaded: true while a pending room restore is going to apply this area, whose
+// objects carry what the mailbox's relayed messages did (it would send them a second time).
+bool RoomRestoreOwnsArea(CStateManager& mgr, int area);
+// platform/port_savestate_format.cpp. The room trailer is v4 (v3 plus each area's spawn layers; a
+// magic word, then 16-bit block lengths and delta-varint editor ids); Decode also reads v3 and the
+// v2 trailer old .mp2ss files carry.
 // Encode writes an empty state when a block would not fit its length field, rather than a
 // trailer the reader would refuse.
 void EncodeRoomState(const RoomState& room, std::string& out);
