@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.odrannnn.metroidprime2port</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>LicenseRef-mixed</project_license>
+
+  <name>Metroid Prime 2 Port</name>
+  <!-- The icon the desktop entry names, installed by CMakeLists.txt's install rules to
+       share/icons/hicolor/scalable/apps. -->
+  <icon type="stock">io.github.odrannnn.metroidprime2port</icon>
+  <!-- AppStream categories, a different list from the desktop entry's XDG ones. -->
+  <categories>
+    <category>Game</category>
+  </categories>
+  <summary>Metroid Prime 2: Echoes running natively</summary>
+
+  <description>
+    <p>
+      A native port of Metroid Prime 2: Echoes, built from the PrimeDecomp decompilation, with no
+      emulator in the loop and no disc image bundled: the port asks for your own copy of the disc
+      on first launch.
+    </p>
+    <p>
+      This package contains no game assets. It will not play without a disc image you supply, and
+      none is distributed with it.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.odrannnn.metroidprime2port.desktop</launchable>
+
+  <url type="homepage">https://github.com/Odrannnn/echoes</url>
+
+  <developer id="io.github.odrannnn">
+    <name>The Metroid Prime 2 Port contributors</name>
+  </developer>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="0.5.0" date="2026-10-25"/>
+  </releases>
+
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>gamepad</control>
+  </recommends>
+</component>

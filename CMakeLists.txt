@@ -698,3 +698,19 @@ else()
     message(FATAL_ERROR
         "This port needs an ELF linker with RESCAN support or an MSVC-compatible COFF linker")
 endif()
+
+# Install rules (desktop only): the executable, and for Linux menus and software centres the desktop
+# entry (Categories=Game), its icon under the app id, and the AppStream metainfo (category Game).
+if(NOT ANDROID)
+    include(GNUInstallDirs)
+    install(TARGETS metroid_prime2_port RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    if(UNIX AND NOT APPLE)
+        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/packaging/io.github.odrannnn.metroidprime2port.desktop
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/packaging/varia-bolt.svg
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
+            RENAME io.github.odrannnn.metroidprime2port.svg)
+        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/packaging/io.github.odrannnn.metroidprime2port.metainfo.xml
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
+    endif()
+endif()
