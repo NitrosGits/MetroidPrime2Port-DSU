@@ -205,7 +205,7 @@ void CIngSpiderballGuardian::Think(float dt, CStateManager& mgr) {
   }
 }
 
-// fn_35_303C
+// @ fn_35_303C
 void CIngSpiderballGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                              EUserEventType type, float dt) {
   bool handled = false;
@@ -504,7 +504,7 @@ void CIngSpiderballGuardian::SelectNextWaypoint(CStateManager& mgr) {
   }
 }
 
-// fn_35_19D0
+// @ fn_35_19D0
 void CIngSpiderballGuardian::MoveAlongWaypoints(CStateManager& mgr, float dt) {
   const CScriptWaypoint* waypoint =
       TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(mTargetWaypointId));
@@ -547,7 +547,7 @@ void CIngSpiderballGuardian::MoveAlongWaypoints(CStateManager& mgr, float dt) {
   SetTransform(CTransform4f::LookAt(newPosition, newPosition + direction, newUp));
 }
 
-// fn_35_1878
+// @ fn_35_1878
 void CIngSpiderballGuardian::ApplyProximityDamage(CStateManager& mgr) {
   if (mEffectsActive && mProximityDamageEnabled && mCurDamageRemTime <= 0.f) {
     CPlayer* player = mgr.GetPlayer(0);
@@ -741,7 +741,10 @@ const SLdrIngSpiderballGuardianStruct& CIngSpiderballGuardian::GetPhasePropertie
   }
 }
 
-// fn_35_178
+// @ fn_35_178
+// Dead by data (tools/scan_isg_loader.py): the disc has one ISBG placement (mlvl 1baa96c2), its
+// ancs 0x4e6c079a is an ANCS, so LdrToModelData never returns an empty optional and the
+// `return nullptr` below is never taken; every other arm ran in the natural fight run.
 CEntity* LoadIngSpiderballGuardian(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrIngSpiderballGuardian sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrIngSpiderballGuardian.inc"
