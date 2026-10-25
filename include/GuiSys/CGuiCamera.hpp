@@ -60,7 +60,9 @@ public:
   // centre).
   static const float kSpreadSliceInner;
   static const float kSpreadSliceOuter;
-  // `curved`: the eased variant for the helmet's arcs, a wider band with a smoothstep stretch.
+  // `curved`: the eased variant for the visor frame and helmet arcs, a smoothstep stretch over the
+  // ledge only, so the glass brackets beside the energy bar keep their width.
+  static const float kSpreadCurveInner;
   static const float kSpreadCurveOuter;
   float GetSpreadSliceOffset(float t, bool curved = false) const;
   // The spread of a compact widget or cluster anchored at `worldAnchor`: an exact screen-space

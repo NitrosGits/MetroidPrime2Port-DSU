@@ -78,7 +78,8 @@ static void PortDrawSliced(const CGuiCamera& camera, const CGuiWidget* widget,
   u32 scissor[4];
   GXGetScissor(&scissor[0], &scissor[1], &scissor[2], &scissor[3]);
   const float halfWidth = camera.GetSpreadHalfWidth();
-  const float inner = CGuiCamera::kSpreadSliceInner * halfWidth;
+  const float inner =
+      (curved ? CGuiCamera::kSpreadCurveInner : CGuiCamera::kSpreadSliceInner) * halfWidth;
   const float outer =
       (curved ? CGuiCamera::kSpreadCurveOuter : CGuiCamera::kSpreadSliceOuter) * halfWidth;
   // Past the screen edge, so the outer scissors reach it.
