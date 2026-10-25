@@ -412,6 +412,13 @@ void CAIMannedTurret::Render(const CStateManager& mgr) const {
   }
 }
 
+// Every arm ran or was forced (tools/cov amt3, 06_sand_alamofront, 2026-10-25). Forced three
+// times each by amt3_force.py (frame-owned writes, readback, restored at return): |dot| < 1e-4 at
+// both tests (xmm0/xmm1 := 0 at UpdateAim+353/+543), angle > limit on both sides (horizontal
+// limits := 0), the three elevation clamp extremes (mElevation := -1000/1000, 170 with
+// vertSpeed 1e6) and snap (rdx := 1 at entry). Snap is code-dead in retail: both callers pass
+// li r5,0 (Patrol 0x2C34, Attack 0x2EFC). Unrun arcs are landing pads only (callees don't throw).
+// @ fn_1_1F28
 void CAIMannedTurret::UpdateAim(CStateManager& mgr, float dt, bool snap) {
   if (CActor* turret = TCastToPtr< CActor >(mgr.ObjectById(mTurretId))) {
     const CVector2f turretForward2d = turret->GetTransform().GetForward().ToVec2f().AsNormalized();
