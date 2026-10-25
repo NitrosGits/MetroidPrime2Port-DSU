@@ -752,6 +752,7 @@ void CSwarmBasics::AddDoorRepulsors(CStateManager& mgr) {
   }
 }
 
+// @ fn_80_50B8
 void CSwarmBasics::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -878,6 +879,7 @@ void CSwarmBasics::Think(float dt, CStateManager& mgr) {
   UpdateSeekerTargets(mgr);
 }
 
+// @ fn_80_5024
 void CSwarmBasics::UpdateAllBoidMovement(CStateManager& mgr, float dt) {
   uint count = mBoids.size();
   if (mAnimated) {

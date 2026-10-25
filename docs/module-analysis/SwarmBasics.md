@@ -788,3 +788,112 @@ Evidence frozen before the marker went in, and untouched by this correction:
 `/tmp/opencode/reports/swb15-evidence/` (gcno, gcda, raw gcov JSON, the module's asm, binary/source
 hashes, the raw fixture log, the run log, mock tests); the mechanical reconciliation and the hardened
 fixture's mock suite are in `/tmp/opencode/swb15-reconcile/`.
+
+## swb16: Think 98/98 lines, 76/76 branches; UpdateAllBoidMovement 8/8 lines, 4/4 branches - both marked
+
+`fn_80_50B8` `CSwarmBasics::Think` and `fn_80_5024` `CSwarmBasics::UpdateAllBoidMovement` are both
+measured in one binary on real arms. Both are now marked.
+
+**Binary.** `build-port-cov` (`-DMP_PORT_COVERAGE=ON`) is frozen as `/var/tmp/swb16/frozen/metroid_prime2_port`,
+sha256 `9df975473111b1adc6c648d8ab9ff33cc95018cb63d70933d3da85dd7f607e03`. Its gcno is
+`/var/tmp/swb16/gcn/CSwarmBasics.cpp.gcno`, sha256 `f813d456b80495e490b80bf47eb67bba685cf7ceaab66398a1b72b8c85f71161`.
+
+In this build UpdateAllBoidMovement is out of line (`e31410`). Think reaches it only through the
+virtual call at Think+0x595, which returns to +0x59b. Retail reaches it the same way, a `bctrl` through
+the vtable. The evidence therefore comes from a non-inlined build, and no `noinline` or source change
+was needed.
+
+**Fixture** `tools/cov/specs/swb16_think.py`, loaded by `tools/cov/force.py`:
+
+- **What it writes.** It only writes `$eflags`, and only at 20 conditional jumps whose flags are dead at both
+  successors: the next instruction executed writes flags, or is a call or ret. Each original eflags value
+  is restored at the successor breakpoint, and every write is read back.
+- **Members written.** The forced occlusion paths write `mOccludedTimer` (0x1d4, line 769) and the S8 path
+  writes `mBoidGenCooldownTimer` (0x63c, line 808). Both are saved raw at plan start and written back,
+  then read back, before the activation leaves the path. S18 only records `x52c_` (0x7f8) and
+  `mCreatedBoids` (0x7a4) and checks them at T+0x2bf, where both exits of the 814 create loop join.
+  It does not write them.
+- **Guarded ownership.** The Think body rsp is fixed (6 pushes + 0x2528), so CFA = rsp+0x2558.
+  - Entry at T+0x83 (after GetActive) opens an activation: thread, CFA, `this`.
+  - Every site requires the same thread, the same CFA and the same `this` register.
+  - Exit at T+0x5a (`e3729a`) closes it, and fails the run if a restore is still pending.
+  - UpdateAll is owned only when its return address is T+0x59b, rsp+8+0x2558 == CFA, and rdi == this.
+    Both U sites sit before its first call, so no nested frame is involved. This is the swb15
+    MoveBoid-level confusion, avoided.
+- **No inferior calls in stop().**
+- **Static check at load.** Each site's mnemonic and target is checked by `x/2i` against the table, and any
+  mismatch disables all forcing. A dry run on the frozen binary (`/var/tmp/swb16/dry{,2,3}`) verified
+  all 21 sites.
+- **Stale comment.** The header comment still says "epilogue Think+0x51". The code uses `EXIT=0x5a`.
+
+| site | off | jcc | line | forced |
+|------|-----|-----|------|--------|
+| S1/S2 | T+0xe1 / T+0x8d3 | je / jne | 767 IsLoaded false / not Visible -> occluded | 8 each |
+| S3/S4 | T+0xf6 / T+0x116 | jbe / jae | 768 timer > 0, 771 timer <= 0 return (inverted) | 8 each |
+| S5 | T+0x128 | jne | 774 mThinkCounter & 2 (adaptive) | 1 + 3 taken / 4 fall natural |
+| S6 | T+0x1e9 | jne | 787 !x4f1_25_ -> RemoveMaterial | 3 |
+| S7/S7b | T+0x918 / T+0x93a | je / jb | 795 mMaxCreatedBoids == 0, 796 loop exit | 3 each |
+| S8 | T+0x9ab | jne | 799 boid active -> 807/808 cooldown | 3 |
+| S9-S13 | T+0x86a..0x7ba | je/jne/je/ja/je | 835 ShouldBuild, 840/843/844/845 partition loop | 3 each |
+| S14-S17 | T+0x419..0x469 | jne/je/ja/je | 855/858/858/859 outlier loop | 3 each |
+| S18 | T+0x29b | jle | 818 x52c_ > 0 -> break | 3 (force3) |
+| U1/U2 | U+0x14 / U+0x3b | je / je | 883 !mAnimated -> ret, 885 count == 0 | 3 each |
+
+**Runs.** All on GPU (Xvfb), never headless, with `42b935e4,01_sand_entrance`,
+`--con tools/cov/specs/swarmbasics_sand.con --fast --frames 3000`.
+
+Each run dir keeps the fixture copy, `fixture.sha256`, `fixture.commit`, `binary.sha256`, `dry-verify.log`,
+`swb16.log`, gcda and game logs. The dawn/pipeline caches were deleted.
+
+| run | fixture commit | fixture sha256 | result |
+|-----|----------------|----------------|--------|
+| `/var/tmp/swb16/force1` | `21b7cf147` | `ad0f1bc4…` | FAIL (own criterion) |
+| `/var/tmp/swb16/force2` | `fdb7daac5` | `c20cc49e60c3f54f0099535fd423029fbb50df3aedd0f2200f59a870924ab116` | PASS |
+| `/var/tmp/swb16/force3` | `83126976f` | `d894d553aaad0d83a2bb28ece85294284a2f2ee9f2e0b388f95fd5a2dbedf7b2` | PASS |
+
+- **force1** put its exit hook at T+0x51, which only the GetActive-false path reaches. It saw 11285
+  opens against 1693 closes, so its gcda is not used. Its forcing was still correctly owned.
+- **force2** first forced S18 to fall through, but the natural outcome is always fall-through, so it
+  never fired. Results: opens = closes = 11285, unattributed 0, fail 0, uOwned 11274 / uForeign 0,
+  flagRestored 78, memRestored 18.
+- **force3** forced the break instead. Results: the same counts, with flagRestored 81. It left
+  Think at 75/76 by itself.
+
+**Coverage.** The force2 and force3 gcda were merged with `gcov-tool merge` into
+`/var/tmp/swb16/m23`. gcda sha256s:
+
+- force2: `c746c3ae…3728`
+- force3: `28a40bbe…8581`
+- merged: `fdb25bf306c9e29f492a67929c841e70a3a90792a7e80b8ee53c38ab9853a3e2`
+
+gcov output is in `/var/tmp/swb16/gm23`:
+
+- Think: lines 98/98, branches executed 76/76, taken 76/76, calls 29/29.
+- UpdateAllBoidMovement: lines 8/8, branches 4/4, calls 1/1.
+
+**UpdateAll asm vs source** (lines 883-890):
+
+- `0x5044 lbz 0x4f0` + `0x504C extrwi. 1,27` is mask 0x10. mAnimated is the 4th bitfield of 0x4f0.
+- `0x5050 beq` goes to the return.
+- `0x5048 lwz 0x17c` is the boid count. `0x5054 lwz 0x490` / `0x5060 subi` is the model-count mask.
+- The loop is `0x5068-0x509C`: `and` with the mask, `mulli 0x1c` into deltas at 0x4a8, boid stride
+  0xb8 from 0x184, `bl fn_80_4D8C` (MoveBoid), then `cmplw` + `blt`.
+- This is one-to-one with the source.
+
+**asmcheck triage** (`check SwarmBasics`, both markers). Every finding is an auto-name or call-kind
+false positive:
+
+- `BIT 0x5100 clr x4f0_01` is `mBoidUpdatedThisFrame = false` (line 760). It is the last, LSB
+  bitfield at 0x4f0.
+- `BIT 0x51AC x173_02` and `0x554C x173_01` are int masks on `mThinkCounter` (0x170), not byte bits:
+  `& 2` at line 774, and `(mThinkCounter & 1) == (i & 1)` in the partition and outlier loops.
+- `CALL 0x54CC fn_80_5820` and `0x54D8 fn_80_5C8C` are the weak `CAreaCollisionCache` copy ctor/dtor
+  (TSV rows 05820/05C8C). They come from the partition and outlier cache locals.
+- The XCALLs CreateBoid, GetBoundingBox, ShouldBuild..., UpdateAllBoidMovement, UpdateBoid,
+  UpdateClosestPartitionLoopedSounds and UpdateSwarmAnimations are all virtual (header 125-154), and
+  retail calls them with `bctrl`.
+- `NOPOS mAnimated` means the header states no bit position for mAnimated. The 0x504C extract above
+  fixes it at mask 0x10.
+
+Neither function has a dead arm. Source and header are unchanged apart from the two markers.
+Report: `/tmp/opencode/reports/swb16.md`.
