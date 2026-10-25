@@ -1312,7 +1312,11 @@ static inline CMapArea* GetMapArea(const IWorld& world, int aid) {
 }
 
 void CAutoMapper::Draw(const CStateManager& mgr, const CTransform4f& xf, float alpha) const {
+#ifdef TARGET_PC
+  float drawAlpha = alpha * gpGameState->GameOptions().GetVisorHudAlpha(0);
+#else
   float drawAlpha = alpha * gpGameState->GameOptions().GetHudAlpha();
+#endif
   gpRender->SetBlendMode_AlphaBlended();
   CGraphics::SetCullMode(kCM_Front);
 

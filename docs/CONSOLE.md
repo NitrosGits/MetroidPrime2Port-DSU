@@ -26,6 +26,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `state save|load <slot>` — the F5/F9 save states (load 0 = undo the last load)
 - `resume [status|save|load|clear]` — quick resume (savestates/resume.mp2ss): show, snapshot now, load, delete
 - `skipcine <0|1>` — skip cutscenes the player has not seen (the F1 setting)
+- `hudopacity <echo|dark|scan> <visor|0..100>` — HUD opacity for that visor; `visor` follows the HUD opacity setting
 - `gunoffset [<r> <f> <u>]` — arm cannon offset in metres (+-1), as the F1 Render row does
 - `msaa <1|4> | aniso <1..16>` — anti-aliasing and anisotropic filtering (applied next frame) (also `aniso`)
 - `scanspread [0..100]` — how much of the widescreen spread the scan visor side panels get (0 = 4:3 place)

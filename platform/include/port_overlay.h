@@ -306,6 +306,24 @@ void SetHudScalingActive(bool active);
 // (the per-visor effect: on this port that is the scan visor's window and edges).
 bool HideHelmet();
 bool HideVisorEffects();
+// Cutscene black bars (`cinema_bars`, env `MP2_CINEMA_BARS`, F1 > HUD and view): the letterbox the
+// game draws over a cinematic and the viewport shrink that goes with it. On by default (the
+// game's own); off lets the cinematic fill the screen. Read by CCameraFilterPass. Original
+// experience keeps them.
+bool CinemaBars();
+// Secondary crosshairs (`secondary_crosshairs`, env `MP2_SECONDARY_CROSSHAIRS`): the next-target
+// reticle in combat and the seeker ring it shares; the lock-on reticle and the scan box stay. On
+// by default; Original experience keeps them. Read by CCompoundTargetReticle::DrawSeeker.
+bool SecondaryCrosshairs();
+// HUD opacity per visor (`hud_opacity_echo/dark/scan`), in percent, or kHudOpacityVisor for the
+// game's Visor Opacity (Options > Visor). The Combat and Ball HUDs always use the option. Original
+// experience ignores these. Read by CGameOptions::GetVisorHudAlpha.
+enum HudOpacityPart { kHudOpacityEcho, kHudOpacityDark, kHudOpacityScan, kHudOpacityPartCount };
+const int kHudOpacityVisor = -1;
+const int kHudOpacityMin = 0;
+const int kHudOpacityMax = 100;
+int HudOpacity(HudOpacityPart part);
+void SetHudOpacity(HudOpacityPart part, int percent);
 // The view's aim crosshair while the port's aim owns the body heading (`aim_crosshair`, on by
 // default; F1 > HUD, console `crosshair`). The game's own crosshair is a digital input retail
 // presses with the look control, which the port never presses - without this the reticle stays

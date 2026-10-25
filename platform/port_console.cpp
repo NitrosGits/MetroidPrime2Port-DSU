@@ -1576,6 +1576,29 @@ void CmdHudScale(CStateManager&, const Args& args, std::string& out) {
   out += line;
 }
 
+// hudopacity <echo|dark|scan> <visor|0..100>: that visor's HUD opacity, or the game's Visor Opacity.
+void CmdHudOpacity(CStateManager&, const Args& args, std::string& out) {
+  static const char* const kParts[PortOverlay::kHudOpacityPartCount] = {"echo", "dark", "scan"};
+  int part = -1;
+  for (int i = 0; i < PortOverlay::kHudOpacityPartCount; ++i) {
+    if (args.size() > 1 && args[1] == kParts[i]) {
+      part = i;
+    }
+  }
+  const std::string_view value = args.size() > 2 ? args[2] : std::string_view();
+  const int percent = value == "visor" ? PortOverlay::kHudOpacityVisor : ArgToInt(value, -2);
+  if (part < 0 || value.empty() ||
+      (percent != PortOverlay::kHudOpacityVisor &&
+       (percent < PortOverlay::kHudOpacityMin || percent > PortOverlay::kHudOpacityMax))) {
+    Fail("usage: hudopacity <echo|dark|scan> <visor|0..100>");
+    return;
+  }
+  PortOverlay::SetHudOpacity(static_cast< PortOverlay::HudOpacityPart >(part), percent);
+  char line[64];
+  std::snprintf(line, sizeof(line), "hud opacity %s %d\n", kParts[part], percent);
+  out += line;
+}
+
 // crosshair [<25..100> | style classic|remastered | opacity <0..100> | color <r> <g> <b> | color
 // clear]: the Prime port's crosshair settings, same meanings.
 void CmdCrosshair(CStateManager&, const Args& args, std::string& out) {
@@ -4311,6 +4334,8 @@ const CommandSpec kCommands[] = {
       "scanspread [0..100]         how far the scan visor side panels spread (0 = 4:3 place)\n"},
     {"hudscale", CmdHudScale,
       "hudscale <50..100>          HUD scale in percent, as the F1 HUD row does\n"},
+    {"hudopacity", CmdHudOpacity,
+      "hudopacity <echo|dark|scan> <visor|0..100>  that visor HUD's opacity, or Visor Opacity's\n"},
     {"crosshair", CmdCrosshair,
       "crosshair [<25..100>]       aim crosshair size, `style classic|remastered`, opacity,\n"
       "                            color <r> <g> <b>|clear, aim <0|1> (F1 HUD)\n"},

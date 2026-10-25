@@ -50,6 +50,11 @@ public:
 
   int GetHudAlphaRaw() const;
   float GetHudAlpha() const;
+#ifdef TARGET_PC
+  // Visor Opacity for the HUD of the visor in use: the Echo, Dark and Scan HUDs can have their own
+  // (PortOverlay::HudOpacity), Combat uses the option.
+  float GetVisorHudAlpha(int playerIndex) const;
+#endif
   void SetHudAlpha(int);
   int GetHelmetAlphaRaw() const;
   float GetHelmetAlpha() const;
