@@ -177,6 +177,19 @@ float CGuiCamera::GetSpreadSliceOffset(float t, bool curved) const {
   return t < 0.f ? -moved : moved;
 }
 
+void CGuiCamera::SetHudO2WTransform(const CTransform4f& xf, const CVector3f& idlePos) {
+  SetO2WTransform(xf);
+  SetSpreadLag(xf.GetQuickInverse() * CTransform4f::Translate(idlePos));
+}
+
+float CGuiCamera::GetLaggedTangent(float tangent, float depth) const {
+  if (mProjection != kProjection_Perspective) {
+    return tangent;
+  }
+  const CVector3f view = mSpreadLag * CVector3f(tangent * depth, depth, 0.f);
+  return view.GetY() > 0.f ? view.GetX() / view.GetY() : tangent;
+}
+
 CTransform4f CGuiCamera::GetSpreadTransform(const CVector3f& worldAnchor, float weight) const {
   if (mSpread == 1.f && mSpreadY != 1.f && weight != 0.f) {
     // The vertical spread: each compact widget keeps its shape and moves to where the image remap
@@ -209,9 +222,17 @@ CTransform4f CGuiCamera::GetSpreadTransform(const CVector3f& worldAnchor, float 
     return CTransform4f::Identity();
   }
   // x += offset * depth: an exact image translation, so a widget with depth keeps its authored
-  // shape off axis (a rigid slide widened the selectors).
-  const float t = eye.GetX() / eye.GetY();
-  const float offset = t < -inner ? -full : t > inner ? full : 0.f;
+  // shape off axis (a rigid slide widened the selectors). Decided in the unlagged view and carried
+  // through the HUD lag: the point is taken back, slid there, and lagged again.
+  const CVector3f idle = mSpreadLagInv * eye;
+  const float t = idle.GetY() > 0.f ? idle.GetX() / idle.GetY() : eye.GetX() / eye.GetY();
+  float offset = t < -inner ? -full : t > inner ? full : 0.f;
+  if (idle.GetY() > 0.f && offset != 0.f) {
+    const CVector3f moved = mSpreadLag * (idle + CVector3f(offset * idle.GetY(), 0.f, 0.f));
+    if (moved.GetY() > 0.f) {
+      offset = moved.GetX() / moved.GetY() - eye.GetX() / eye.GetY();
+    }
+  }
   return mSpreadView * CTransform4f(1.f, offset, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f) *
          invView;
 }

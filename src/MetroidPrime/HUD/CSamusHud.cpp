@@ -296,6 +296,26 @@ void CSamusHud::InitializeFrameGlueMutable(const CStateManager& mgr) {
       mEmptyEnergyTanks.push_back(tank);
     }
   }
+#ifdef TARGET_PC
+  // Port: the energy bar, its digits and warning, the bracket and the tank boxes slide as one
+  // cluster in the widescreen spread: anchored alone, the tank row straddled the middle slice's
+  // edge (the ball HUD's moved ones left the rest of the row behind).
+  if (mEnergyBar != nullptr) {
+    mLoadedHudFrame->SetSpreadAnchor(mEnergyBar, mEnergyBar);
+    CGuiWidget* const members[] = {mEnergyDigits, mEnergyWarning, mEnergyBracket};
+    for (int i = 0; i < 3; ++i) {
+      if (members[i] != nullptr) {
+        mLoadedHudFrame->SetSpreadAnchor(members[i], mEnergyBar);
+      }
+    }
+    for (int i = 0; i < mFilledEnergyTanks.size(); ++i) {
+      mLoadedHudFrame->SetSpreadAnchor(mFilledEnergyTanks[i], mEnergyBar);
+    }
+    for (int i = 0; i < mEmptyEnergyTanks.size(); ++i) {
+      mLoadedHudFrame->SetSpreadAnchor(mEmptyEnergyTanks[i], mEnergyBar);
+    }
+  }
+#endif
   if (mEnergyBracket != nullptr) {
     mEnergyBracketTransform = mEnergyBracket->GetWorldTransform();
   }
@@ -2735,7 +2755,11 @@ void CSamusHud::UpdateHudLag(float dt, const CStateManager& mgr) {
   CTransform4f helmetTransform =
       BuildFinalCameraTransform(lagRotation, helmetPivot + lagOffset, helmetPosition);
   helmetTransform.SetTranslation(helmetTransform.GetTranslation() + lagOffset);
+#ifdef TARGET_PC
+  helmetCamera->SetHudO2WTransform(helmetTransform, helmetPosition);
+#else
   helmetCamera->SetO2WTransform(helmetTransform);
+#endif
   const CVector3f hudPosition = mHudCamera->GetIdleXform().GetTranslation();
   const CVector3f hudPivot = mLoadedHudFrame->GetRootWidget()->GetIdleXform().GetTranslation();
   CTransform4f hudTransform =
@@ -2743,7 +2767,11 @@ void CSamusHud::UpdateHudLag(float dt, const CStateManager& mgr) {
   if (mNextState != kHS_Ball) {
     hudTransform.SetTranslation(hudTransform.GetTranslation() + lagOffset);
   }
+#ifdef TARGET_PC
+  mLoadedHudFrame->GetFrameCamera()->SetHudO2WTransform(hudTransform, hudPosition);
+#else
   mLoadedHudFrame->GetFrameCamera()->SetO2WTransform(hudTransform);
+#endif
   mPreviousCameraDirection = cameraDirection;
 #ifdef TARGET_PC
   PortRecordHudLag(true, lagRotation, lagOffset);
@@ -2770,6 +2798,7 @@ void CSamusHud::PortApplyHudLag(const SPortHudLag& state) {
     root->SetO2PTransform(root->GetIdleXform());
     CGuiCamera* camera = mLoadedHudFrame->GetFrameCamera();
     camera->SetO2WTransform(camera->GetIdleXform());
+    camera->SetSpreadLag(CTransform4f::Identity());
     return;
   }
   CGuiCamera* helmetCamera = mLoadedHelmetFrame->GetFrameCamera();
@@ -2779,7 +2808,11 @@ void CSamusHud::PortApplyHudLag(const SPortHudLag& state) {
   CTransform4f helmetTransform =
       BuildFinalCameraTransform(state.rotation, helmetPivot + state.offset, helmetPosition);
   helmetTransform.SetTranslation(helmetTransform.GetTranslation() + state.offset);
+#ifdef TARGET_PC
+  helmetCamera->SetHudO2WTransform(helmetTransform, helmetPosition);
+#else
   helmetCamera->SetO2WTransform(helmetTransform);
+#endif
   const CVector3f hudPosition = mHudCamera->GetIdleXform().GetTranslation();
   const CVector3f hudPivot = mLoadedHudFrame->GetRootWidget()->GetIdleXform().GetTranslation();
   CTransform4f hudTransform =
@@ -2787,7 +2820,11 @@ void CSamusHud::PortApplyHudLag(const SPortHudLag& state) {
   if (!state.ball) {
     hudTransform.SetTranslation(hudTransform.GetTranslation() + state.offset);
   }
+#ifdef TARGET_PC
+  mLoadedHudFrame->GetFrameCamera()->SetHudO2WTransform(hudTransform, hudPosition);
+#else
   mLoadedHudFrame->GetFrameCamera()->SetO2WTransform(hudTransform);
+#endif
 }
 
 void CSamusHud::PortPresentHudLag(bool present, bool mouseLookFree) const {

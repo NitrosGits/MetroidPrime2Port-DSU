@@ -66,6 +66,17 @@ public:
   // The spread of a compact widget or cluster anchored at `worldAnchor`: an exact screen-space
   // slide, the whole side offset past the middle slice, none inside it. `weight` fades it.
   CTransform4f GetSpreadTransform(const CVector3f& worldAnchor, float weight = 1.f) const;
+  // HUD lag moves the frame's content on screen. `idleToView` maps the frame's unlagged view space
+  // onto the drawn one (identity at rest). The spread is applied in the unlagged space and carried
+  // through the lag, so content keeps its shape while it lags (MP1 sync: warp before lag).
+  void SetSpreadLag(const CTransform4f& idleToView) {
+    mSpreadLag = idleToView;
+    mSpreadLagInv = idleToView.GetInverse();
+  }
+  // Places a camera at `xf` whose unlagged pose is unrotated at `idlePos`, and sets the lag to match.
+  void SetHudO2WTransform(const CTransform4f& xf, const CVector3f& idlePos);
+  // The drawn screen tangent of unlagged tangent `tangent` at view depth `depth`.
+  float GetLaggedTangent(float tangent, float depth) const;
 #endif
   UCameraParms GetParms() const { return mCameraParms; }
   void SetParms(const UCameraParms& parms) { mCameraParms = parms; }
@@ -83,6 +94,8 @@ private:
   mutable float mSpreadHalfWidth = 0.f;
   mutable float mSpreadScreenHalfWidth = 0.f;
   mutable CTransform4f mSpreadView = CTransform4f::Identity();
+  CTransform4f mSpreadLag = CTransform4f::Identity();
+  CTransform4f mSpreadLagInv = CTransform4f::Identity();
 #endif
 };
 CHECK_SIZEOF(CGuiCamera, 0xd8)
