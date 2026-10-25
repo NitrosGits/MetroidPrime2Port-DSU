@@ -586,12 +586,6 @@ std::string CopyDiscImage(const std::string& uri, const std::string& target) {
   return target;
 }
 
-// The disc this launch will use. The path the resolution chose is used when it is a usable
-// image - an image pushed into app storage, or MP2_DISC - and otherwise the user is asked for
-// one, which is copied over that same path (the app's own port_paths.txt makes it
-// `<files>/disc.iso`, and naming the path the resolution gave keeps a pushed `disc=` override
-// meaningful instead of silently writing somewhere else). An empty return is a user who
-// cancelled, a picker that failed or a pick that could not be copied, each of which is logged.
 // A disc picked after Android destroyed the activity behind the picker: the pick arrives at
 // the next launch, which MetroidPrime2Activity.onActivityResult leaves in pending_disc_uri
 // (MP1 dc9473176). Copied to `target` like a fresh pick, so the lookup after it finds it.
@@ -621,6 +615,12 @@ void TakeDiscPickedLastLaunch(const std::string& target) {
   }
 }
 
+// The disc this launch will use. The path the resolution chose is used when it is a usable
+// image - an image pushed into app storage, or MP2_DISC - and otherwise the user is asked for
+// one, which is copied over that same path (the app's own port_paths.txt makes it
+// `<files>/disc.iso`, and naming the path the resolution gave keeps a pushed `disc=` override
+// meaningful instead of silently writing somewhere else). An empty return is a user who
+// cancelled, a picker that failed or a pick that could not be copied, each of which is logged.
 std::string EnsureDiscImage(const std::string& resolved, const std::string& defaultDisc) {
   TakeDiscPickedLastLaunch(defaultDisc);
   std::string disc = resolved.empty() ? defaultDisc : resolved;
