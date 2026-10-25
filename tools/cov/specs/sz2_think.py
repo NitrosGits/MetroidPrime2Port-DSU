@@ -496,11 +496,35 @@ def abort(error):
 
 
 def make_scratch():
-    """one anonymous page for the fake echo emitter (offset 0) and the fake light (offset 1024)"""
+    """one page for the fake echo emitter (offset 0) and the fake light (offset 1024): the unused low end
+    of another thread's mapped stack, zero-filled and far below its stack pointer.  Not an inferior call:
+    one made inside a breakpoint's stop() leaves every other thread stopped (the Aurora FIFO worker
+    starves, sz2e)."""
     if state['scratch']:
         return
-    page = int(ev('(unsigned long)((void*(*)(void*,unsigned long,int,int,int,long))mmap)(0,4096,3,0x22,-1,0)'))
-    check(page not in (0, 0xFFFFFFFFFFFFFFFF), 'mmap scratch page')
+    inferior = gdb.selected_inferior()
+    maps = []
+    with open('/proc/%d/maps' % inferior.pid) as f:
+        for line in f:
+            fields = line.split()
+            lo, hi = (int(x, 16) for x in fields[0].split('-'))
+            if fields[1].startswith('rw') and len(fields) < 6:
+                maps.append((lo, hi))
+    here = gdb.selected_thread()
+    page = 0
+    try:
+        for thread in inferior.threads():  # default thread stack: 8 MiB below the TLS block at fs_base
+            if thread == here or not (thread.name or '').startswith(('MusyX', 'SDLAudio')):
+                continue
+            thread.switch()
+            sp, tls = int(gdb.parse_and_eval('$rsp')), int(gdb.parse_and_eval('$fs_base'))
+            cand = (tls - 4 * 1024 * 1024) & ~4095  # 4 MiB below the top, 4 MiB above the stack end
+            if tls - 64 * 1024 < sp <= tls and any(lo <= cand and cand + 4096 <= hi for lo, hi in maps):
+                page = cand
+                break
+    finally:
+        here.switch()
+    check(page != 0, 'scratch page (idle thread stack)')
     state['scratch'] = page
     log('SCRATCH', page=page)
 
@@ -533,12 +557,7 @@ class Entry(gdb.Breakpoint):
                 log('ELIGIBLE', n=state['eligible'], this=this, ctx=ctx, index=state['index'])
             if state['eligible'] % SPACING != 1:
                 return False
-            if not state['scratch']:
-                # an inferior call made inside a breakpoint's stop() leaves every other thread stopped (gdb
-                # resumes only the event thread afterwards: the Aurora FIFO worker starves, sz2e); the mmap
-                # runs in the stop observer instead, which resumes the game
-                state['want_scratch'] = True
-                return True
+            make_scratch()
             ztype = gdb.lookup_type('CScriptSafeZone')
             mtype = gdb.lookup_type('CStateManager')
             etype = gdb.lookup_type('CEchoEmitter')
@@ -748,18 +767,6 @@ FIFO_STATE = ['aurora::gx::fifo::detail::sInDisplayList',
               'aurora::gx::fifo::(anonymous namespace)::sWorkerWake']
 
 
-def scratch_stop(event):
-    """stop observer: the one mmap inferior call, outside any stop(), then the game continues"""
-    if not state.get('want_scratch'):
-        return
-    state['want_scratch'] = False
-    try:
-        make_scratch()
-    except Exception as error:
-        log('SCRATCH_FAILED', error=str(error))
-    gdb.post_event(lambda: gdb.execute('continue'))
-
-
 def stall_dump(event):
     """gdb-side stall report: runs in the stop handler after the watchdog's `interrupt`"""
     if not stall['want']:
@@ -878,7 +885,6 @@ def install():
         Mock(symbol(prefix), kind)
     count_lines(think)
     gdb.events.exited.connect(summary)
-    gdb.events.stop.connect(scratch_stop)
     gdb.events.stop.connect(stall_dump)
     threading.Thread(target=stall_watch, daemon=True).start()
 
