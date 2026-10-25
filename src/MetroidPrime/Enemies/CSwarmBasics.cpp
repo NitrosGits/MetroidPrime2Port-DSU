@@ -407,6 +407,14 @@ void CSwarmBasics::StopLocomotionSounds() {
 // @ fn_80_7B7C
 void CSwarmBasics::AllocateSkinnedModels(CStateManager& mgr, CModelData::EWhichModel which) {
   mSkinnedModelStates.clear();
+#ifdef TARGET_PC
+  // A swarm whose ANCS id is invalid has no model (GetModelDataForAnimRes returns null); retail
+  // dereferences it here. Skip the skinned states, as the module's other null-model paths do.
+  if (mModelData.null() || mModelData->GetAnimationData() == nullptr) {
+    mWhichModel = which;
+    return;
+  }
+#endif
   if (mAnimated) {
     uint count = mModelDatas.size();
     mSkinnedModelStates.reserve(count);
