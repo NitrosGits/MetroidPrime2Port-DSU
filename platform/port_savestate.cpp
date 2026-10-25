@@ -13,6 +13,7 @@
 
 #include <SDL3/SDL_mouse.h>
 
+#include "port_mods.h"
 #include "port_overlay.h"
 #include "port_resume_logic.h"
 #include "port_save.h"
@@ -98,6 +99,10 @@ struct State {
 
 std::atomic< int > sSaveRequest{-1};
 std::atomic< int > sLoadRequest{-1};
+// Mods reload: Tick turns the request into a load of the current state; CMainFlow calls
+// ReloadModsNow once the old world is gone, before the new one starts loading.
+std::atomic< bool > sModReloadRequest{false};
+std::atomic< bool > sModReloadPending{false};
 std::atomic< int > sSelected{1};
 std::mutex sMessageMutex;
 std::string sMessage;
@@ -1148,6 +1153,20 @@ void Forget(const CStateManager* mgr) {
   }
 }
 
+void RequestModReload() { sModReloadRequest.store(true); }
+bool ModReloadActive() { return sModReloadRequest.load() || sModReloadPending.load(); }
+
+bool ReloadModsNow() {
+  if (!sModReloadPending.exchange(false)) {
+    return false;
+  }
+  if (gpResourceFactory != nullptr) {
+    gpResourceFactory->GetResLoader().PortReopenPaks(&PortMods::Reload);
+    SetMessage("mods reloaded (" + std::to_string(PortMods::CurrentStatus().overlays) + " disc file(s))");
+  }
+  return true;
+}
+
 void Tick(CStateManager& mgr) {
   sLiveMgr = &mgr;
   TestHook();
@@ -1165,6 +1184,16 @@ void Tick(CStateManager& mgr) {
   }
   if (sResumeLoadRequest.exchange(false)) {
     DoLoad(mgr, kResumeSlot);
+  }
+  if (sModReloadRequest.exchange(false)) {
+    // The current state goes through the undo slot and loads back, which restarts the world.
+    State current;
+    std::string error;
+    if (!Capture(mgr, current, error) || !WriteSlot(kUndoSlot, current, error)) {
+      SetMessage("mods reload failed: " + error);
+    } else if (DoLoad(mgr, kUndoSlot)) {
+      sModReloadPending.store(true);
+    }
   }
   const int save = sSaveRequest.exchange(-1);
   if (save >= 0) {

@@ -13,13 +13,16 @@
 #include "port_mods.h"
 #include "port_logfile.h"
 #include "port_overlay.h"
+#include "port_savestate.h"
 #include "port_settings.h"
+#include "port_textures.h"
 
 #include "MetroidPrime/Player/CGameOptions.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 
 #include <aurora/aurora.h>
 #include <SDL3/SDL_events.h>
+#include <SDL3/SDL_misc.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
@@ -28,6 +31,11 @@
 #include <cstdio>
 #include <filesystem>
 #include <string>
+#include <mutex>
+#if defined(__ANDROID__)
+#include <jni.h>
+#include <SDL3/SDL_system.h>
+#endif
 
 namespace aurora {
 void request_screenshot() noexcept;
@@ -246,7 +254,93 @@ void DrawSpeedrunSection() {
   ImGui::SetItemTooltip("Also splits on each new suit, beam, visor, ball part, key or other upgrade.");
 }
 
-// The mods folder (port_mods.h): the list is what this launch loaded; changes apply on restart.
+#if defined(__ANDROID__)
+// The folder picker's progress, set from the Java copy thread.
+namespace {
+std::mutex sTexturePackStatusMutex;
+std::string sTexturePackStatus;
+} // namespace
+
+std::string TexturePackStatus() {
+  std::lock_guard lock(sTexturePackStatusMutex);
+  return sTexturePackStatus;
+}
+
+void SetTexturePackStatus(std::string status) {
+  std::lock_guard lock(sTexturePackStatusMutex);
+  sTexturePackStatus = std::move(status);
+}
+
+// MetroidPrime2Activity.pickTexturePack opens the system folder picker and copies the chosen folder
+// in the background, reporting back through nativeTexturePackStatus / nativeTexturePackReady.
+void PickTexturePack() {
+  JNIEnv* env = static_cast< JNIEnv* >(SDL_GetAndroidJNIEnv());
+  jobject activity = static_cast< jobject >(SDL_GetAndroidActivity());
+  if (env == nullptr || activity == nullptr) {
+    SetTexturePackStatus("Could not open the folder picker.");
+    return;
+  }
+  jclass cls = env->GetObjectClass(activity);
+  jmethodID method = env->GetMethodID(cls, "pickTexturePack", "(Ljava/lang/String;)V");
+  if (method != nullptr) {
+    // The pack is copied next to the user textures folder, wherever the data folder is.
+    const std::string folder = std::filesystem::path(PortTextures::UserRoot()).parent_path().string();
+    jstring jfolder = env->NewStringUTF(folder.c_str());
+    env->CallVoidMethod(activity, method, jfolder);
+    env->DeleteLocalRef(jfolder);
+  }
+  if (env->ExceptionCheck()) {
+    env->ExceptionClear();
+    SetTexturePackStatus("Could not open the folder picker.");
+  }
+  env->DeleteLocalRef(cls);
+  env->DeleteLocalRef(activity);
+}
+#endif
+
+// The user's texture pack, layered over the built-in set (see port_textures.h). On Android the
+// folder is picked with the system folder picker and copied into the data folder; on the desktop
+// the player fills the folder themselves.
+static void DrawTexturePack() {
+  ImGui::SeparatorText("Textures");
+  ImGui::Text("HD texture set: %s", PortTextures::DeviceName());
+  ImGui::SetItemTooltip("Follows the input last used (xbox, playstation, switch,\n"
+                        "gamecube, standard, keyboard); set MP_TEXTURE_DEVICE to override.");
+  const char* root = PortTextures::UserRoot();
+  if (root[0] == '\0') {
+    ImGui::TextUnformatted("No user texture folder.");
+    return;
+  }
+  const size_t count = PortTextures::UserPackCount();
+  if (count > 0) {
+    ImGui::Text("%zu replacements loaded, over the built-in set.", count);
+  } else {
+    ImGui::TextUnformatted("No texture pack loaded.");
+  }
+#if defined(__ANDROID__)
+  const std::string status = TexturePackStatus();
+  if (!status.empty()) {
+    ImGui::TextWrapped("%s", status.c_str());
+  }
+  if (ImGui::Button("Choose texture pack folder...")) {
+    PickTexturePack();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Remove texture pack")) {
+    PortTextures::RequestUserPackRemoval();
+    SetTexturePackStatus("Texture pack removed.");
+  }
+  ImGui::TextWrapped("The folder is copied into the data folder, so it keeps working if the "
+                     "original is moved. Pick it again after changing it.");
+#else
+  ImGui::TextWrapped("Folder: %s", root);
+  if (ImGui::Button("Reload texture pack")) {
+    PortTextures::RequestUserPackReload();
+  }
+#endif
+}
+
+// The mods folder (port_mods.h): the list is what this launch (or the last reload) loaded.
 void DrawModsSection() {
   ImGui::SeparatorText("Mods");
   const PortMods::Status& status = PortMods::CurrentStatus();
@@ -255,8 +349,8 @@ void DrawModsSection() {
     PortMods::SetEnabled(enabled);
     Changed(true);
   }
-  ItemHelp("Layers the folders in the mods folder over the disc. Mods load at startup, so a "
-           "change here applies after a restart.");
+  ItemHelp("Layers the folders in the mods folder over the disc. Changes apply on Reload mods "
+           "(which rebuilds the room) or after a restart.");
   std::vector< std::string > disabled = PortMods::SplitDisabled(PortMods::Disabled());
   bool changed = enabled != status.active;
   if (status.mods.empty()) {
@@ -284,8 +378,23 @@ void DrawModsSection() {
     }
     changed = changed || (enabled && on) != mod.enabled;
   }
+  const bool reloading = PortSaveState::ModReloadActive();
+  ImGui::BeginDisabled(reloading);
+  if (ImGui::Button(reloading ? "Reloading..." : "Reload mods")) {
+    PortSaveState::RequestModReload();
+  }
+  ImGui::EndDisabled();
+  ImGui::SetItemTooltip("Reads the mods folder again and rebuilds the room, so replaced models,\n"
+                        "textures and sounds show without a restart. Needs a running game.");
+#if !defined(__ANDROID__)
+  ImGui::SameLine();
+  if (ImGui::Button("Open mods folder") && !status.folder.empty()) {
+    const std::string url = "file://" + status.folder;
+    SDL_OpenURL(url.c_str());
+  }
+#endif
   if (changed) {
-    ImGui::TextColored(ThemeBadColor(), "Restart the game to apply.");
+    ImGui::TextColored(ThemeBadColor(), "Reload mods to apply.");
   }
   for (const std::string& message : status.messages) {
     ImGui::TextColored(ThemeBadColor(), "%s", message.c_str());
@@ -296,6 +405,7 @@ void DrawModsSection() {
   ImGui::TextWrapped("Each folder in the mods folder is a mod; later names win. A file at a disc "
                      "path (Metroid5.pak, Audio/..., Video/...) replaces that file, and a "
                      "resource named by id and type (1A2B3C4D.TXTR) replaces it in every PAK.");
+  DrawTexturePack();
 }
 
 // The look of this overlay: the floating window, the theme and the size.

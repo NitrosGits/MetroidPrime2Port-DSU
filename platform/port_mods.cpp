@@ -246,7 +246,20 @@ void SetDisabled(const std::string& list) { sDisabled = list; }
 
 const Status& CurrentStatus() { return sStatus; }
 
+namespace {
+std::string sUserPath;
+// Aurora holds pointers into sFiles while an overlay is registered.
+bool sOverlayRegistered = false;
+}  // namespace
+
 void Initialize(const std::string& userPath) {
+  sUserPath = userPath;
+  if (sOverlayRegistered) {
+    // A reload: take the old overlay off the disc first, so the scan below sees the base disc and
+    // nothing points into the files about to be dropped.
+    aurora_dvd_overlay_files(nullptr, 0, nullptr);
+    sOverlayRegistered = false;
+  }
   sStatus = {};
   sStatus.folder = Folder(userPath);
   sStatus.active = sEnabled;
@@ -433,6 +446,7 @@ void Initialize(const std::string& userPath) {
   aurora_dvd_overlay_callbacks(&callbacks);
   std::vector<s32> entries(overlays.size(), -1);
   aurora_dvd_overlay_files(overlays.data(), overlays.size(), entries.data());
+  sOverlayRegistered = true;
   for (size_t i = 0; i < overlays.size(); ++i) {
     if (entries[i] < 0) {
       Message("Aurora refused " + sFiles[i]->discPath);
@@ -447,5 +461,9 @@ void Initialize(const std::string& userPath) {
   }
   std::fprintf(stderr, "mods: %d disc file(s) served from %s\n", sStatus.overlays, sStatus.folder.c_str());
 }
+
+// Reads the mods folder again with the current settings. The caller (CResLoader::PortReopenPaks)
+// has closed every PAK, so none holds a table of the old overlay.
+void Reload() { Initialize(sUserPath); }
 
 } // namespace PortMods

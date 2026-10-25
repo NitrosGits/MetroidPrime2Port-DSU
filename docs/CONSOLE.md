@@ -24,6 +24,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `overlay <page>[/<sub>]|off` — open the F1 window on a page (name prefixes: `overlay video/qual`)
 - `gpuselftest` — run the GPU self-test next frame; PASS/FAIL lines go to the log
 - `state save|load <slot>` — the F5/F9 save states (load 0 = undo the last load)
+- `reloadmods` — read the mods folder again and rebuild the room (the F1 Mods page's Reload mods button)
 - `resume [status|save|load|clear]` — quick resume (savestates/resume.mp2ss): show, snapshot now, load, delete
 - `skipcine <0|1>` — skip cutscenes the player has not seen (the F1 setting)
 - `hudopacity <echo|dark|scan> <visor|0..100>` — HUD opacity for that visor; `visor` follows the HUD opacity setting

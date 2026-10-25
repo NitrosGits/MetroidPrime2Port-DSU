@@ -109,6 +109,11 @@ public:
   CPakFile* sub_802FBB64(int idx) const;
   CPakFile* GetPakFile(int idx) const;
   void KillLookahead(const CLookaheadRes* cache);
+#ifdef TARGET_PC
+  // Port: closes every PAK, runs `between` (the mods reload), and opens them again in the same
+  // lists and order, so the next read sees what the disc now serves. Nothing may be loading.
+  void PortReopenPaks(void (*between)());
+#endif
 
 private:
   GroupCacheList::iterator FindGroupCache(const CDvdFile* file, uint offset, uint size);
