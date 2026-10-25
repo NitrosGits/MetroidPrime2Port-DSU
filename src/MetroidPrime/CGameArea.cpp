@@ -4,6 +4,7 @@
 #include "Kyoto/CARAMManager.hpp"
 #ifdef TARGET_PC
 #include "Kyoto/Graphics/CCubeSurface.hpp"
+#include "port_pipeline_context.h"
 #endif
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/Graphics/CTexture.hpp"
@@ -992,6 +993,15 @@ bool CGameArea::StartStreamIn(CStateManager& mgr) {
   if (mLoadPaused) {
     return false;
   }
+#ifdef TARGET_PC
+  // A lazy pipeline cache builds the pipelines this area drew last time, in the background.
+  if (mPhase == kP_Allocate) {
+    if (const CWorld* world = mgr.GetWorld()) {
+      aurora_pipeline_prefetch(
+          PortPipelineAreaContext(static_cast< uint32_t >(world->GetWorldAssetId()), mSelfIdx.Value()));
+    }
+  }
+#endif
   const bool loaded = StartStreamingMainArea(mgr);
   return loaded;
 }

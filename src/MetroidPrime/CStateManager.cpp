@@ -85,6 +85,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptDock.hpp"
 #ifdef TARGET_PC
 #include "MetroidPrime/ScriptObjects/CScriptDamageableTrigger.hpp"
+#include "port_pipeline_context.h"
 #endif
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDynamicLight.hpp"
@@ -1323,6 +1324,7 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
     CScopedProfiler playerProfile(rstl::string_l("*2ndPlayerRender"), true);
 #ifdef TARGET_PC
     CPortActorRenderScope presented(*player);
+    CPortPipelineContextScope globalPipelines(AURORA_PIPELINE_CONTEXT_GLOBAL);
 #endif
     player->Render(*this);
   }
@@ -1343,6 +1345,9 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
   }
   {
     CScopedProfiler gunProfile(rstl::string_l("*PlayerGun"), true);
+#ifdef TARGET_PC
+    CPortPipelineContextScope globalPipelines(AURORA_PIPELINE_CONTEXT_GLOBAL);
+#endif
     player->RenderGun(*this, mCameraManager->GetGlobalCameraTranslation(*this, true));
   }
   RenderActorQueue(mStateManagerContainer->mRenderLastUnderGun,

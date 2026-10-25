@@ -7,6 +7,7 @@
 #include "port_freecam.h"
 #include "port_harness.h"
 #include "port_overlay.h"
+#include "port_pipeline_context.h"
 #endif
 
 #include "Kyoto/Audio/CMidiManager.hpp"
@@ -661,6 +662,9 @@ void CMFGame::DrawGui(bool singleViewport) const {
       CScopedProfiler prerenderProfile(rstl::string_l("*GUI_Prerender"), true);
       mGuiManager->PreDraw(*mStateManager, IsCameraActiveFlow());
       CScopedProfiler drawProfile(rstl::string_l("*GUI_Draw"), true);
+#ifdef TARGET_PC
+      CPortPipelineContextScope globalPipelines(AURORA_PIPELINE_CONTEXT_GLOBAL);
+#endif
       mGuiManager->Draw(*mStateManager, i);
       mStateManager->EndPlayerRender();
     }
@@ -718,6 +722,41 @@ void CMFGame::Draw() const {
   if (!mStateManager.IsNull()) {
     mStateManager->Touch();
   }
+#ifdef TARGET_PC
+  // Pipelines the world draws are tagged with the camera's area (issue #187 in MP1); a change of
+  // area asks a lazy pipeline cache to build the new area's recorded pipelines in the background.
+  uint64_t pipelineContext = AURORA_PIPELINE_CONTEXT_FRONTEND;
+  if (!mStateManager.IsNull()) {
+    if (const CWorld* world = mStateManager->GetWorld();
+        world != nullptr && mStateManager->GetNextAreaId() != kInvalidAreaId) {
+      pipelineContext = PortPipelineAreaContext(static_cast< uint32_t >(world->GetWorldAssetId()),
+                                                mStateManager->GetNextAreaId().Value());
+    }
+  }
+  {
+    static uint64_t sLastContext = AURORA_PIPELINE_CONTEXT_FRONTEND;
+    static AuroraPipelineStats sLastStats{};
+    if (pipelineContext != sLastContext) {
+      AuroraPipelineStats stats{};
+      aurora_get_pipeline_stats(&stats);
+      if (sLastContext != AURORA_PIPELINE_CONTEXT_FRONTEND) {
+        std::fprintf(stderr,
+                     "MP2 pipeline context %llx left: %llu skipped draws, %llu new, %llu known, %llu late misses\n",
+                     static_cast< unsigned long long >(sLastContext),
+                     static_cast< unsigned long long >(stats.skippedDraws - sLastStats.skippedDraws),
+                     static_cast< unsigned long long >(stats.newMisses - sLastStats.newMisses),
+                     static_cast< unsigned long long >(stats.knownMisses - sLastStats.knownMisses),
+                     static_cast< unsigned long long >(stats.lateMisses - sLastStats.lateMisses));
+      }
+      sLastStats = stats;
+      sLastContext = pipelineContext;
+      if (pipelineContext != AURORA_PIPELINE_CONTEXT_FRONTEND) {
+        aurora_pipeline_prefetch(pipelineContext);
+      }
+    }
+  }
+  CPortPipelineContextScope pipelineScope(pipelineContext);
+#endif
   const bool singleViewport = mStateManager->IsMultiplayer() &&
                               mStateManager->GetCameraManager(0)->IsInFullScreenCinematic();
 

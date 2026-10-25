@@ -689,6 +689,17 @@ void CmdStatus(CStateManager& mgr, const Args& args, std::string& out) {
                   stats != nullptr ? stats->lastVertSize : 0u,
                   stats != nullptr && stats->drawCallCount < 40 ? "  <- almost nothing drawn" : "");
     out += line;
+    AuroraPipelineStats pipes{};
+    aurora_get_pipeline_stats(&pipes);
+    std::snprintf(line, sizeof(line),
+                  "pipeline cache: %llu skipped draws, misses %llu new %llu known %llu late; %llu prefetches (%llu queued); %u pinned, %u known\n",
+                  static_cast< unsigned long long >(pipes.skippedDraws),
+                  static_cast< unsigned long long >(pipes.newMisses),
+                  static_cast< unsigned long long >(pipes.knownMisses),
+                  static_cast< unsigned long long >(pipes.lateMisses),
+                  static_cast< unsigned long long >(pipes.prefetches),
+                  static_cast< unsigned long long >(pipes.prefetchQueued), pipes.pinned, pipes.known);
+    out += line;
     // Per-frame work counters (aurora/perf.h): render pass breaks by reason (each one is a full
     // colour+depth store and reload on a tiled GPU), GXCopyTex calls by caller (module offsets,
     // addr2line -f -e metroid_prime2_port <offset>), texture cache traffic, extra draws.
