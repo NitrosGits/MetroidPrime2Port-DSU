@@ -147,6 +147,7 @@ CWispTentacle::CWispTentacle(TUniqueId uid, const rstl::string& name, const CEnt
 // @ fn_86_0
 CWispTentacle::~CWispTentacle() {}
 
+// @ fn_86_2A18
 void CWispTentacle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId senderId = msg.GetSenderId();
   switch (msg.GetMessage()) {

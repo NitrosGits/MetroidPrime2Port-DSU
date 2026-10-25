@@ -43,6 +43,11 @@
 @f6800 obj e0024ff01
 @f7000 obj e0024ff02
 @f7100 send e0024ff02 Create
+@f7101 send e0024ff02 Create from u044e
+@f7103 send e0024ff02 Create from u044e
+@f7105 send e0024ff02 Create from u044e
+@f7107 send e0024ff02 Create from u044e
+@f7109 send e0024ff02 Create from u044e
 @f7150 objs CollisionActor
 @f7200 tp 3.8 -39.4 -33.4
 @f7220 fsm e00240036 Flinch
@@ -104,8 +109,20 @@
 @f7840 press x 20
 @f7900 press a 0
 @f7930 fsm e00240036 Search
+@f7935 send e0024ff02 Create from u044e
 @f7940 objs CBomb
-@f7945 send e00240036 Damage from u044e
+@f7942 fsm e00240036
+@f7944 send e00240036 Damage from u044d
+@f7946 send e00240036 Damage from u044d
+@f7948 send e00240036 Damage from u044d
 @f7950 send e00240036 Damage from u044d
+@f7952 send e00240036 Damage from u044d
+@f7954 send e00240036 Damage from u044d
+@f7956 send e00240036 Damage from u044d
+@f7958 send e00240036 Damage from u044d
 @f8000 press a 0
 @f8100 objs CBomb
+@f8110 send e0024ff02 Create from u044e
+@f8120 send e00240036 HitObject from u044e
+@f8125 send e00240036 HitObject from u044e
+@f8130 send e00240036 HitObject from u044e

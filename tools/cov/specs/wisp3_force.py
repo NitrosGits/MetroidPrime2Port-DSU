@@ -137,43 +137,6 @@ def as_null_collision(g):
         think_restore_collision(g)
 
 
-_touch = {'addr': None, 'old': None, 'hit': 0, 'dmg': 0}
-BOMB_UID = 0x6ab  # `objs CBomb` in tools/drivers/wisp3_hall.con's bomb window (ids repeat run to run)
-
-
-def _last_touched(g, value_expr):
-    # rewrite the sender CCollisionActor's mLastTouched (HitObject/Damage read it back), undone at the next entry
-    sender = _read('((CScriptMsg*)$rdx)->mSenderId.value')
-    if sender is None:
-        return
-    try:
-        g.execute('set $ent = ((void*(*)(void*,unsigned short))_ZN13CStateManager10ObjectByIdE9TUniqueId)($rsi, %d)'
-                  % int(sender))
-        addr = int(_read('(long)$ent'))
-        if addr == 0:
-            return
-        _touch['old'] = int(_read('((CCollisionActor*)%d)->mLastTouched.value' % addr))
-        _touch['addr'] = addr
-        _set(g, '((CCollisionActor*)%d)->mLastTouched.value = %s' % (addr, value_expr))
-    except Exception as e:  # noqa: BLE001
-        _log('lastTouched failed: %s' % str(e)[:80])
-
-
-def as_touch(g):
-    if _touch['addr'] is not None:
-        _set(g, '((CCollisionActor*)%d)->mLastTouched.value = %d' % (_touch['addr'], _touch['old']))
-        _touch['addr'] = None
-    m = _msg()
-    if m == 0x58484954:  # HitObject: the sender "touched" the player
-        _touch['hit'] += 1
-        _last_touched(g, '((CStateManager*)$rsi)->mPlayers[0]->mUniqueId.value')
-        _log('2A18 HitObject sender mLastTouched forced to the player (225)')
-    elif m == 0x58444d47:  # Damage: it "touched" a bomb
-        _touch['dmg'] += 1
-        _last_touched(g, str(BOMB_UID))
-        _log('2A18 Damage sender mLastTouched forced to bomb %#x (266)' % BOMB_UID)
-
-
 def think_restore_collision(g):
     # Think dereferences the manager unguarded: put it back before any body runs
     if _coll['restore'] is not None:
@@ -215,17 +178,160 @@ def ctor_eps(g):
         _log('3628 best.first forced 0 (127)')
 
 
+
+# ---- wisp3b: 225/266 (last-touched object) and 176/177/194/211 (Create) at host instructions.
+# Offsets are AcceptScriptMsg+off in build-port-cov at 82625c718 (`gdb -batch -ex 'disassemble /s ...'`).
+#   +0x169 je (mModelData null)      +0x176 je (animation data null)   +0x19a jne (optional spatial primitive set)
+#   +0x213 je (ActorLights null)     +0xd8f jne (CActor cast ok)
+#   +0x370 mov %eax,%esi (HitObject touched id)    +0x3b4 cmp $4,%edx (225's mState == Flinch/Withdraw tests)
+#   +0x5ba mov %eax,%r13d (Damage touched id)      +0x609 or %r14,%rax (bomb || powerBomb)
+# Create entries sent `from u044e` (tools/drivers/wisp3_hall.con) are counted: Create k forces arm k.
+_cr = {'k': 0, 'cur': 0}
+_h = {'n': 0, 'open': False}
+_d = {'n': 0, 'open': False}
+BOMB_UID = 0x6a0  # `objs CBomb` at f7940 of the driver (ids repeat run to run)
+
+
+def as_entry(g):
+    m = _msg()
+    sender = _read('((CScriptMsg*)$rdx)->mSenderId.value')
+    if m == 0x58435254 and sender is not None and int(sender) == 0x44e:
+        _cr['k'] += 1
+        _cr['cur'] = _cr['k']
+        if _cr['k'] == 6:  # opens the Damage window (the live bomb)
+            _d['n'] = 0
+            _d['open'] = True
+        if _cr['k'] == 7:  # opens the HitObject window
+            _h['n'] = 0
+            _h['open'] = True
+        _log('2A18 manual Create #%d' % _cr['k'])
+    else:
+        _cr['cur'] = 0
+
+
+def _zf(g, k, label):
+    if _cr['cur'] == k:
+        _set(g, '$eflags = ((int)$eflags | 0x40)')
+        _log('2A18 forced (%s)' % label)
+
+
+def cr1(g): _zf(g, 1, 'send Create from u044e: mModelData null, 176')
+def cr2(g): _zf(g, 2, 'send Create from u044e: animation data null, 177')
+def cr3(g): _zf(g, 3, 'send Create from u044e: spatial primitive optional empty, 177')
+def cr4(g): _zf(g, 4, 'send Create from u044e: collision actor not a CActor, 194')
+def cr5(g): _zf(g, 5, 'send Create from u044e: ActorLights null, 211')
+
+
+def hit_touched(g):
+    if not _h['open']:
+        return
+    _h['n'] += 1
+    if _h['n'] in (2, 3):
+        pid = _read('((CStateManager*)$r12)->mPlayers[0]->mUniqueId.value')
+        if pid is not None:
+            _set(g, '$eax = %d' % int(pid))
+            _log('2A18 forced (HitObject last-touched id = player %d, hit %d)' % (int(pid), _h['n']))
+
+
+def hit_state(g):
+    if not _h['open']:
+        return
+    if _h['n'] == 2:
+        _set(g, '$edx = 4')
+        _log('2A18 forced (mState = kS_Flinch at the 225 test)')
+    elif _h['n'] == 3:
+        _set(g, '$edx = 6')
+        _log('2A18 forced (mState = kS_Withdraw at the 225 test)')
+
+
+_dm = {'bomb': 0, 'none': 0, 'dbg': 0, 'tries': 0}
+
+
+def _find_bomb(g):
+    # the live CBomb's id: walk the manager's all-objects list (no inferior calls), match the vtable address
+    try:
+        vt = int(gdb.parse_and_eval("(long)&'vtable for CBomb'"))
+        lst = gdb.parse_and_eval('**(CObjectList**)(((CStateManager*)$r12)->mObjectLists.mData + 8)')
+        for idx in range(1024):
+            ent = int(lst['mObjects'][idx]['mEntity'])
+            if ent == 0:
+                continue
+            v = int(gdb.parse_and_eval('*(long*)%d' % ent))
+            if vt <= v <= vt + 0x40:
+                uid = int(gdb.parse_and_eval('((CEntity*)%d)->mUniqueId.value' % ent))
+                _log('findbomb: slot %d ent 0x%x uid 0x%x (vtable CBomb 0x%x, object vptr 0x%x)' % (idx, ent, uid, vt, v))
+                return uid
+        if _dm['dbg'] < 12:
+            _dm['dbg'] += 1
+            nz = [i for i in range(1024) if int(lst['mObjects'][i]['mEntity'])]
+            hi = [(i, hex(int(gdb.parse_and_eval('*(long*)%d' % int(lst['mObjects'][i]['mEntity']))))) for i in nz if i >= 0x290]
+            _log('findbomb: no CBomb vtable 0x%x; list0 count %d, slots>=0x290: %s' % (vt, len(nz), hi[:12]))
+    except Exception as e:  # noqa: BLE001
+        _log('findbomb failed: %s' % str(e)[:120])
+    return None
+
+
+def dmg_touched(g):
+    # Damage/ResistedDamage past the state test: first hit with a live CBomb gets its id as the last-touched
+    # object (the casts then run for real: CBomb non-null); the next hit gets 0xffff (neither cast succeeds).
+    if not _d['open'] or _dm['tries'] > 8:
+        return
+    _dm['tries'] += 1
+    if not _dm['bomb']:
+        uid = _find_bomb(g)
+        if uid is not None:
+            _dm['bomb'] = 1
+            _set(g, '$eax = %d' % uid)
+            _log('2A18 forced (Damage last-touched id = live CBomb %d)' % uid)
+    elif not _dm['none']:
+        _dm['none'] = 1
+        _set(g, '$eax = 0xffff')
+        _log('2A18 forced (Damage last-touched id = none 0xffff: neither CBomb nor CPowerBomb, 266)')
+
+
+def dmg_state(g):
+    # Damage arrives while the wisp is in Sleep/Spawn/Withdraw/Flinch: present a state the 260 test lets through
+    if _d['open'] and _dm['dbg'] < 3:
+        _dm['dbg'] += 1
+        try:
+            sid = int(gdb.parse_and_eval('((CScriptMsg*)$r15)->mSenderId.value'))
+            lst = gdb.parse_and_eval('**(CObjectList**)(((CStateManager*)$r12)->mObjectLists.mData + 8)')
+            ent = int(lst['mObjects'][sid & 0x3ff]['mEntity'])
+            sym = g.execute('info symbol *(long*)%d' % ent, to_string=True) if ent else 'null'
+            _log('dstate dbg: sender 0x%x slot ent 0x%x %s' % (sid, ent, sym.strip()[:60]))
+        except Exception as e:  # noqa: BLE001
+            _log('dstate dbg failed: %s' % str(e)[:100])
+    if _d['open'] and not _dm['none'] and _dm['tries'] <= 8:
+        _set(g, '$eax = 1')
+        _log('2A18 forced (Damage: mState = kS_Patrol-like non-excluded state at the 260 test)')
+
+
+def dmg_or(g):
+    pass
+
+
 CLASS = 'CWispTentacle'
 _ctor = _sym('CWispTentacle::CWispTentacle(')
 _think = _sym('CWispTentacle::Think(')
+_as = _sym('CWispTentacle::AcceptScriptMsg(')
 FORCE = [
     ('13D4 Think inactive/captured', 'CWispTentacle::Think(', [], [think], 0,
      'mActive clear (558), mPirateCaptured set with no pirate (590 -> 479)'),
     ('13D4 Think restore', 'CWispTentacle::Think(', [], [think_restore_collision], 0, 'restore'),
     ('13D4 Think lockon', 'loc:*' + _think + '+0x2a1', [], [think_lockon], 0, 'lockOnSeg 0xff'),
     ('13D4 Think armend', 'loc:*' + _think + '+0x2f4', [], [think_armend], 0, 'armEndSeg 0xff'),
-    ('2A18 lights', 'CWispTentacle::AcceptScriptMsg(', [], [as_lights, as_null_collision], 0,
+    ('2A18 lights', 'CWispTentacle::AcceptScriptMsg(', [], [as_entry, as_lights, as_null_collision], 0,
      'Activate without lights, AIUpdateDisabled without manager'),
+    ('2A18 cr1', 'loc:*' + _as + '+0x169', [], [cr1], 0, 'Create mModelData null'),
+    ('2A18 cr2', 'loc:*' + _as + '+0x176', [], [cr2], 0, 'Create anim data null'),
+    ('2A18 cr3', 'loc:*' + _as + '+0x19a', [], [cr3], 0, 'Create no spatial primitive'),
+    ('2A18 cr4', 'loc:*' + _as + '+0xd8f', [], [cr4], 0, 'Create collision actor not CActor'),
+    ('2A18 cr5', 'loc:*' + _as + '+0x213', [], [cr5], 0, 'Create ActorLights null'),
+    ('2A18 touched', 'loc:*' + _as + '+0x370', [], [hit_touched], 0, 'HitObject touched = player'),
+    ('2A18 state', 'loc:*' + _as + '+0x3b4', [], [hit_state], 0, '225 state Flinch/Withdraw'),
+    ('2A18 dtouched', 'loc:*' + _as + '+0x5ba', [], [dmg_touched], 0, 'Damage touched = bomb'),
+    ('2A18 dstate', 'loc:*' + _as + '+0x552', [], [dmg_state], 0, 'Damage state past 260 test'),
+    ('2A18 dor', 'loc:*' + _as + '+0x609', [], [dmg_or], 0, 'powerBomb non-null'),
     ('3628 portal', 'loc:*' + _ctor + '+0x243', [], [ctor_portal], 0, 'portal arm'),
     ('3628 join', 'loc:*' + _ctor + '+0x392', [], [ctor_join], 0, 'restore'),
     ('3628 inf', 'loc:*' + _ctor + '+0x4e3', [], [ctor_inf], 0, 'time == Infinity'),
