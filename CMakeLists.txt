@@ -530,6 +530,22 @@ if(AURORA_SDL3_TARGET)
     add_test(NAME port_settings_index COMMAND ${Python3_EXECUTABLE} -I
         ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_settings_index.py ${CMAKE_CURRENT_SOURCE_DIR})
     set_tests_properties(port_settings_index PROPERTIES TIMEOUT 30 LABELS port)
+    # Every command in the console's table is documented in docs/CONSOLE.md.
+    add_test(NAME port_console_docs
+        COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/tests/port_console_docs.py
+                ${CMAKE_CURRENT_SOURCE_DIR})
+    set_tests_properties(port_console_docs PROPERTIES TIMEOUT 15 LABELS port)
+    # Every settings.cfg key reads back as written (platform/debug_ui/settings.cpp, kSettingKeys); the game
+    # binary checks itself and exits before starting.
+    add_test(NAME port_settings_roundtrip COMMAND metroid_prime2_port --settings-selftest)
+    set_tests_properties(port_settings_roundtrip PROPERTIES TIMEOUT 30 LABELS port
+        ENVIRONMENT "MP2_USER_PATH=${CMAKE_CURRENT_BINARY_DIR}/settings-selftest/")
+    # F1 > System > Settings > Reset configuration (platform/include/port_config_reset.h). Header-only.
+    add_executable(port_config_reset_tests tests/port_config_reset.cpp)
+    target_include_directories(port_config_reset_tests PRIVATE platform/include)
+    add_test(NAME port_config_reset_tests COMMAND port_config_reset_tests
+        "${CMAKE_CURRENT_BINARY_DIR}/config-reset-test")
+    set_tests_properties(port_config_reset_tests PROPERTIES TIMEOUT 30 LABELS port)
     add_executable(port_touch_pad_tests tests/touch_pad.cpp platform/touch_pad.cpp)
     target_include_directories(port_touch_pad_tests PRIVATE platform/include extern/aurora/include
         $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)

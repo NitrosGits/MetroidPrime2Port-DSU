@@ -157,6 +157,7 @@
 {"System", "", "Overlay", "Menu theme", "look style plain prime imgui"},
 {"System", "", "Overlay", "UI scale", "overlay menu window text size zoom dpi"},
 {"System", "", "Settings", "Save settings now", "settings file unsaved write persist"},
+{"System", "", "Settings", "Reset configuration...", "reset defaults configuration factory"},
 {"System", "", "Memory card", "Back up the card", "save memory card backup"},
 {"System", "", "Log", "Write the log to a file", "logging output stdout stderr debug log file"},
 {"System", "", "Log", "Copy log path", "logging clipboard"},

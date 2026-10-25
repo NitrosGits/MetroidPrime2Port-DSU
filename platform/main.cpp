@@ -29,6 +29,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 #include <vector>
 #include <csignal>
 #if defined(__ANDROID__)
@@ -798,6 +799,14 @@ int main(int argc, char** argv) {
   // Android first, before anything can print: from here on fd 1 and fd 2 reach logcat, which
   // is the only place a device run leaves a record. A no-op on the desktop.
   PortLogBegin();
+
+  // ctest port_settings_roundtrip: every settings.cfg key reads back as written, then exit.
+  if (argc == 2 && std::strcmp(argv[1], "--settings-selftest") == 0) {
+    std::string report;
+    const int result = PortOverlaySettings::SettingsSelfTest(report);
+    std::fputs(report.c_str(), result == 0 ? stdout : stderr);
+    return result;
+  }
 
 #ifdef MP_PORT_COVERAGE
   // A coverage run must leave its .gcda behind however it ends: the clean quit, the harness's

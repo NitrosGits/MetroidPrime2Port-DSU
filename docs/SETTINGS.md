@@ -19,6 +19,15 @@
   console `settings self-test` checks that every key reads back as written. An `MP2_<KEY>`
   environment variable (the key upper-cased, unless listed otherwise below) overrides the file
   for that run. A new key needs a mention here as `key`, or the index check fails.
+  `metroid_prime2_port --settings-selftest` runs the same check without starting the game
+  (ctest `port_settings_roundtrip`).
+- F1 > System > Settings > **Reset configuration...** puts every port setting and control mapping
+  back to its default: after a confirmation it saves the current settings, moves `settings.cfg`,
+  `touch.cfg`, `controls.toml`, `imgui.ini`, `controller_ports.dat`, `keyboard_bindings.dat` and
+  the `*.controller` mapping files into a new `config-backup-<date>-<time>/` folder inside the
+  user folder (older backups are never reused), and exits; the next launch starts from defaults
+  (`platform/include/port_config_reset.h`, test `port_config_reset_tests`). Saves, save states and
+  the card are not touched.
 - `MP2_GODMODE=1` starts with Cheats > God mode on (not saved).
 
 ## Keys

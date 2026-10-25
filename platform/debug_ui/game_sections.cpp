@@ -4,6 +4,7 @@
 
 #include "debug_ui_internal.h"
 
+#include "port_config_reset.h"
 #include "port_freecam.h"
 #include "port_input_remap_ui.h"
 #include "port_livesplit.h"
@@ -14,12 +15,14 @@
 #include "MetroidPrime/Player/CGameOptions.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 
+#include <aurora/aurora.h>
 #include <SDL3/SDL_events.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
 #include <algorithm>
 #include <cstdio>
+#include <filesystem>
 #include <string>
 
 namespace aurora {
@@ -197,6 +200,71 @@ void DrawSettingsSection() {
   ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
   ImGui::TextWrapped("File: %s", path.empty() ? "(no user folder)" : path.c_str());
   ImGui::PopStyleColor();
+
+  static std::string sResetError;
+  ImGui::BeginDisabled(path.empty());
+  if (ImGui::Button("Reset configuration...")) {
+    sResetError.clear();
+    ImGui::OpenPopup("Reset configuration?");
+  }
+  ImGui::EndDisabled();
+  ImGui::SetItemTooltip("Back up and clear every port setting and control mapping.");
+  if (ImGui::BeginPopupModal("Reset configuration?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 30.0f);
+    ImGui::TextUnformatted("This resets ALL port settings and control mappings (keyboard, mouse, touch and "
+                           "controllers) to their defaults on the next launch. The current files are moved to a "
+                           "backup folder inside the user folder, not deleted.");
+    ImGui::TextUnformatted("Save files, save states, the disc image and the data folder location are not "
+                           "touched. Game options (volumes, brightness...) stored inside a save file come back "
+                           "when that save loads.");
+    ImGui::TextUnformatted("The game closes now: progress since the last save station is lost. Start it again to "
+                           "get the defaults.");
+    if (!sResetError.empty()) {
+      ImGui::PushStyleColor(ImGuiCol_Text, ThemeBadColor());
+      ImGui::TextWrapped("Reset failed: %s", sResetError.c_str());
+      ImGui::PopStyleColor();
+    }
+    ImGui::PopTextWrapPos();
+    if (ImGui::Button("Reset and exit")) {
+      // Back up what is current, not what was last saved; a failed write stops here.
+      PortOverlaySettings::MarkDirty();
+      PortOverlaySettings::SaveSettings();
+      if (PortOverlaySettings::Dirty()) {
+        sResetError = "could not save the current settings first, so nothing was moved.";
+      } else {
+        const PortConfigReset::Result result = PortConfigReset::Reset(
+            std::filesystem::path(path).parent_path().empty() ? std::filesystem::path("./")
+                                                              : std::filesystem::path(path).parent_path());
+        if (!result.ok) {
+          sResetError = result.error;
+          if (!result.backupDir.empty()) {
+            sResetError += " Files that could not be restored are in " + result.backupDir + ".";
+          } else {
+            sResetError += " Your configuration files were not moved.";
+          }
+          std::fprintf(stderr, "port: reset configuration failed: %s\n", result.error.c_str());
+        } else {
+          std::fprintf(stderr, "port: reset configuration: %s\n",
+                       result.moved ? ("backup in " + result.backupDir).c_str() : "no files to move");
+          // From here no code path may write the configuration again.
+          PortOverlaySettings::FreezeAfterReset();
+          aurora_disable_config_persistence();
+          if (ImGui::GetCurrentContext() != nullptr) {
+            ImGui::GetIO().IniFilename = nullptr;
+          }
+          SDL_Event quit{};
+          quit.type = SDL_EVENT_QUIT;
+          SDL_PushEvent(&quit);
+          ImGui::CloseCurrentPopup();
+        }
+      }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) {
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+  }
 }
 
 void DrawMemoryCard() {

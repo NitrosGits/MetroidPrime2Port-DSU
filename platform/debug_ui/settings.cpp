@@ -460,6 +460,8 @@ const SettingKey kSettingKeys[] = {
 std::recursive_mutex sMutex;
 std::atomic< bool > sSettingsDirty{false};
 bool sLoaded = false;
+// Set once Reset configuration has moved the file away: nothing may write it back.
+bool sFrozen = false;
 // The text last read from or written to the file: SaveSettings writes only when SettingsText()
 // differs.
 std::string sBaseline;
@@ -602,9 +604,14 @@ void LogSettingChanges(const std::string& before, const std::string& after) {
   }
 }
 
+void FreezeAfterReset() {
+  std::lock_guard< std::recursive_mutex > lock(sMutex);
+  sFrozen = true;
+}
+
 void SaveSettings() {
   std::lock_guard< std::recursive_mutex > lock(sMutex);
-  if (!sLoaded || !sSettingsDirty.load() || PortSettings::FilePath().empty()) {
+  if (!sLoaded || sFrozen || !sSettingsDirty.load() || PortSettings::FilePath().empty()) {
     return;
   }
   sSettingsDirty = false;
