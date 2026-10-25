@@ -138,6 +138,7 @@ void DrawGameSection();
 void DrawCutscenesSection();
 void DrawGameAudio();
 void DrawSpeedrunSection();
+void DrawModsSection();
 void DrawOverlaySection();
 void DrawSettingsSection();
 void DrawMemoryCard();

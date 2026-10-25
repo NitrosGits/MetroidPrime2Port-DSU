@@ -8,6 +8,7 @@
 #include "port_freecam.h"
 #include "port_input_remap_ui.h"
 #include "port_livesplit.h"
+#include "port_mods.h"
 #include "port_logfile.h"
 #include "port_overlay.h"
 #include "port_settings.h"
@@ -191,6 +192,58 @@ void DrawSpeedrunSection() {
     Changed(true);
   }
   ImGui::SetItemTooltip("Also splits on each new suit, beam, visor, ball part, key or other upgrade.");
+}
+
+// The mods folder (port_mods.h): the list is what this launch loaded; changes apply on restart.
+void DrawModsSection() {
+  ImGui::SeparatorText("Mods");
+  const PortMods::Status& status = PortMods::CurrentStatus();
+  bool enabled = PortMods::Enabled();
+  if (ImGui::Checkbox("Load mods", &enabled)) {
+    PortMods::SetEnabled(enabled);
+    Changed(true);
+  }
+  ItemHelp("Layers the folders in the mods folder over the disc. Mods load at startup, so a "
+           "change here applies after a restart.");
+  std::vector< std::string > disabled = PortMods::SplitDisabled(PortMods::Disabled());
+  bool changed = enabled != status.active;
+  if (status.mods.empty()) {
+    ImGui::TextDisabled("No mods in the folder.");
+  }
+  for (const PortMods::ModInfo& mod : status.mods) {
+    const auto found = std::find(disabled.begin(), disabled.end(), mod.name);
+    bool on = found == disabled.end();
+    ImGui::BeginDisabled(!enabled);
+    if (ImGui::Checkbox((mod.name + "##mod").c_str(), &on)) {
+      if (on) {
+        disabled.erase(std::remove(disabled.begin(), disabled.end(), mod.name), disabled.end());
+      } else {
+        disabled.push_back(mod.name);
+      }
+      PortMods::SetDisabled(PortMods::JoinDisabled(disabled));
+      Changed(true);
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (mod.enabled) {
+      ImGui::TextDisabled("%d file(s), %d resource(s)", mod.files, mod.resources);
+    } else {
+      ImGui::TextDisabled("not loaded");
+    }
+    changed = changed || (enabled && on) != mod.enabled;
+  }
+  if (changed) {
+    ImGui::TextColored(ThemeBadColor(), "Restart the game to apply.");
+  }
+  for (const std::string& message : status.messages) {
+    ImGui::TextColored(ThemeBadColor(), "%s", message.c_str());
+  }
+  if (!status.folder.empty()) {
+    ImGui::TextWrapped("Folder: %s", status.folder.c_str());
+  }
+  ImGui::TextWrapped("Each folder in the mods folder is a mod; later names win. A file at a disc "
+                     "path (Metroid5.pak, Audio/..., Video/...) replaces that file, and a "
+                     "resource named by id and type (1A2B3C4D.TXTR) replaces it in every PAK.");
 }
 
 // The look of this overlay: the floating window, the theme and the size.

@@ -15,6 +15,7 @@ void DrawGameTab() {
   DrawCutscenesSection();
   DrawGameAudio();
   DrawSpeedrunSection();
+  DrawModsSection();
 }
 
 void DrawControlsTab() {

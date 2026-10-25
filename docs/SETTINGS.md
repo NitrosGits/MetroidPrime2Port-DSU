@@ -50,6 +50,9 @@ Game page:
   otherwise the waiting hint due soonest shows now.
 - `livesplit`, `livesplit_address`, `livesplit_split_upgrades`: Speedrun > LiveSplit, Server
   (host:port), Split on upgrades; the address's env is `MP2_LIVESPLIT_ADDR`.
+- `mods`, `mods_disabled`: Mods > Load mods and one checkbox per mod folder (`mods_disabled` holds
+  the turned-off folder names, `/`-separated); take effect on restart. Folder: `<user>/mods`, or
+  `MP2_MODS`. See docs/MODS.md.
 - `game_options`: the game's own Options menu (volumes, sound mode, brightness...), stored as a
   hex blob so they survive without a memory card; not an overlay row.
 
