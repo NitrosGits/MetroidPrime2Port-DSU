@@ -9,6 +9,8 @@
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 
 namespace PortPointer {
@@ -470,3 +472,67 @@ std::string Describe(float gx, float gy) {
 }
 
 } // namespace PortGuiHit
+
+namespace PortMinimap {
+namespace {
+float sRect[4] = {};
+bool sValid = false;
+int sRequested = 0;
+} // namespace
+
+bool Enabled() { return PortOverlay::MinimapTap(); }
+
+void SetEnabled(bool enabled) { PortOverlay::SetMinimapTap(enabled); }
+
+void SetRect(bool valid, float x0, float y0, float x1, float y1) {
+  sValid = valid && std::isfinite(x0) && std::isfinite(y0) && std::isfinite(x1) && std::isfinite(y1);
+  sRect[0] = x0;
+  sRect[1] = y0;
+  sRect[2] = x1;
+  sRect[3] = y1;
+}
+
+bool Rect(float out4[4]) {
+  if (!sValid) {
+    return false;
+  }
+  std::copy(sRect, sRect + 4, out4);
+  return true;
+}
+
+bool RectFraction(float out4[4]) {
+  const GXRenderModeObj& mode = CGraphics::GetRenderMode();
+  if (!sValid || mode.fbWidth == 0 || mode.efbHeight == 0) {
+    return false;
+  }
+  out4[0] = sRect[0] / static_cast< float >(mode.fbWidth);
+  out4[1] = sRect[1] / static_cast< float >(mode.efbHeight);
+  out4[2] = sRect[2] / static_cast< float >(mode.fbWidth);
+  out4[3] = sRect[3] / static_cast< float >(mode.efbHeight);
+  return true;
+}
+
+void RequestTap() { ++sRequested; }
+
+bool TakeTap() {
+  if (!Enabled() || !sValid) {
+    sRequested = 0;
+    return false;
+  }
+  if (sRequested > 0) {
+    --sRequested;
+    return true;
+  }
+  PortPointer::Recognizer& g = PortPointer::Gestures();
+  PortPointer::Click click;
+  float gx, gy;
+  if (!g.PeekClick(click) || click.button != PortPointer::kButtonLeft ||
+      !PortPointer::WindowToGui(click.x, click.y, gx, gy) || gx < sRect[0] || gx > sRect[2] ||
+      gy < sRect[1] || gy > sRect[3]) {
+    return false;
+  }
+  g.TakeClick(click);
+  return true;
+}
+
+} // namespace PortMinimap

@@ -9,6 +9,7 @@
 #include "input/port_input_devices.h"
 #include "port_input_bindings.h"
 #include "port_overlay.h"
+#include "port_pointer.h"
 #include "port_touch.h"
 
 #include <jni.h>
@@ -209,15 +210,26 @@ Java_org_metroidprime2_port_TouchControlsView_nativeMessageBoxOpen(JNIEnv*, jcla
 
 JNIEXPORT jboolean JNICALL
 Java_org_metroidprime2_port_TouchControlsView_nativeTouchMapTapEnabled(JNIEnv*, jclass) {
-  return JNI_FALSE;
+  return PortMinimap::Enabled() ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeMinimapRect(JNIEnv*, jclass, jfloatArray) {
-  return JNI_FALSE;
+Java_org_metroidprime2_port_TouchControlsView_nativeMinimapRect(JNIEnv* env, jclass, jfloatArray out) {
+  // x0, y0, x1, y1 as fractions of the screen, then 1 when the minimap is drawn there.
+  float rect[5];
+  if (!PortMinimap::Enabled() || out == nullptr || env->GetArrayLength(out) < 5 ||
+      !PortMinimap::RectFraction(rect)) {
+    return JNI_FALSE;
+  }
+  rect[4] = 1.f;
+  env->SetFloatArrayRegion(out, 0, 5, rect);
+  return JNI_TRUE;
 }
 
 JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeMapTap(JNIEnv*, jclass) {
+  if (PortMinimap::Enabled()) {
+    PortMinimap::RequestTap();
+  }
 }
 
 JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeMapPan(JNIEnv*, jclass,

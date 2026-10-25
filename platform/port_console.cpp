@@ -1291,6 +1291,24 @@ void CmdSticky(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "sticky charge on\n" : "sticky charge off\n";
 }
 
+// minimap: the HUD minimap's tap rect in GUI pixels; maptap: a tap on it (opens the map).
+void CmdMinimap(CStateManager&, const Args&, std::string& out) {
+  float rect[4];
+  char line[128];
+  if (PortMinimap::Rect(rect)) {
+    std::snprintf(line, sizeof(line), "minimap %.1f %.1f %.1f %.1f enabled=%d\n", rect[0], rect[1],
+                  rect[2], rect[3], PortMinimap::Enabled() ? 1 : 0);
+  } else {
+    std::snprintf(line, sizeof(line), "minimap none enabled=%d\n", PortMinimap::Enabled() ? 1 : 0);
+  }
+  out += line;
+}
+
+void CmdMapTap(CStateManager&, const Args&, std::string& out) {
+  PortMinimap::RequestTap();
+  out += "maptap queued\n";
+}
+
 // pointeraim [on|off|<x> <y>]: MP1's console command. on/off is the F1 Controls row
 // (`MP2_POINTER_AIM`); x, y place the pointer (-1..1 of the half view, x right, y down), which
 // holds only while pointer aim is free. Every form prints the state it ends in.
@@ -4287,6 +4305,8 @@ const CommandSpec kCommands[] = {
     {"pointer", CmdPointer,
       "pointer <x> <y> move|click|dclick|tap|dtap|down|up|drag <x1> <y1>|wheel <n>|pinch <r> | back | where | hits\n"
       "                            scripted mouse/touch input for the pointer menus (GUI pixels)\n"},
+    {"minimap", CmdMinimap, "minimap                     the HUD minimap's tap rect (GUI pixels)\n"},
+    {"maptap", CmdMapTap, "maptap                      tap the minimap: opens the map screen\n"},
     {"hintshow", CmdHintShow,
       "hintshow                    show the hint the game would show next (F1 Show current hint)\n"},
     {"walkspeed", CmdWalkSpeed,
