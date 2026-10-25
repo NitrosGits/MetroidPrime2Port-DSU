@@ -12,11 +12,19 @@ public:
   void* Alloc(uint size);
   bool Free(const void* ptr);
 
+#ifdef TARGET_PC
+  // size_t, not uint: see SMediumAllocPuddle::GetPtrOffset.
+  bool PtrWithinPool(const void* ptr) const {
+    return size_t((static_cast< const uchar* >(ptr) - static_cast< uchar* >(mMainData)) /
+                  kAllocatorPointerSize) < size_t(mNumBlocks);
+  }
+#else
   bool PtrWithinPool(const void* ptr) const {
     return static_cast< uint >(
                (static_cast< const uchar* >(ptr) - static_cast< uchar* >(mMainData)) /
                kAllocatorPointerSize) < mNumBlocks;
   }
+#endif
 
   uint GetIndexFromPtr(const void* ptr) const {
     return (static_cast< const uchar* >(ptr) - static_cast< const uchar* >(mMainData)) /
