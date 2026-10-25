@@ -19,6 +19,7 @@
 
 #ifdef TARGET_PC
 #include "MetroidPrime/PortSkipFrontEnd.hpp"
+#include "port_discord.h"
 #endif
 
 CMainFlow::CMainFlow() : CIOWin(rstl::string_l("MainFlow")), mGameState(kCFS_Unspecified) {}
@@ -115,6 +116,9 @@ void CMainFlow::SetGameState(EClientFlowStates state, CArchitectureQueue& queue)
   }
   case kCFS_FrontEnd: {
 #ifdef TARGET_PC
+    // Discord Rich Presence (platform/port_discord.cpp): the front end is "In the menus" until a
+    // world loads and CStateManager::Update reports one.
+    PortDiscord::SetMenu();
     // MP2_SKIP_FRONTEND=1 (see PortSkipFrontEnd.cpp): the state the card was read into starts the
     // game here, in place of the front end's own menu, so nothing below runs on that boot - no
     // FRND front-end world, no StartGameFromFrontEnd. False on every other pass, including the one

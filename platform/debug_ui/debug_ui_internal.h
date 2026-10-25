@@ -127,6 +127,8 @@ inline constexpr bool kInlineHelp = false;
 #endif
 void ItemHelp(const char* text);
 void SameLineAfterHelp();
+// The menu sounds (MP1's): derived from ImGui's state, called at the end of DrawUI.
+void UpdateMenuSounds(bool visible);
 
 // window.cpp
 void DrawUI();
@@ -142,6 +144,11 @@ void DrawModsSection();
 void DrawOverlaySection();
 void DrawSettingsSection();
 void DrawMemoryCard();
+// card_data.cpp: the card import/export rows and the Data folder panel.
+void DrawCardTransfer();
+void DrawDataFolder();
+void DrawDiscordSection();
+void DrawDiscImageSection();
 void DrawLogSection();
 
 // video.cpp

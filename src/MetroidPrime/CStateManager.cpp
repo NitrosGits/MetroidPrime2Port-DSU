@@ -13,10 +13,13 @@
 #include "Kyoto/CPakFile.hpp"
 #include "Kyoto/CFrameDelayedKiller.hpp"
 #include "Kyoto/CResLoader.hpp"
+#include "Kyoto/CSimplePool.hpp"
+#include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/CDummyWorld.hpp"
 #include "MetroidPrime/CMapArea.hpp"
 #include "MetroidPrime/CMapWorld.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAreaProperties.hpp"
+#include "port_discord.h"
 #endif
 #include "Collision/CMRay.hpp"
 #include "Collision/CRayCastResult.hpp"
@@ -3969,6 +3972,100 @@ bool PortUnloadAreasExcept(CStateManager& mgr, CWorld& world, TAreaId keepA, TAr
 } // namespace
 #endif
 
+#ifdef TARGET_PC
+// Discord Rich Presence (platform/port_discord.cpp): the area on top, energy, missiles and item
+// percentage below, so it is fed from the game's own names, not the disc's editor labels.
+namespace {
+struct SPortDiscordNames {
+  CAssetId worldId = kInvalidAssetId;
+  CAssetId areaId = kInvalidAssetId;
+  std::string world;
+  std::string area;
+  TToken< CStringTable >* worldToken = nullptr;
+  TToken< CStringTable >* areaToken = nullptr;
+  int wait = 0;
+  int loading = 0;
+};
+
+SPortDiscordNames* sPortDiscordNames = nullptr;
+
+// Starts loading `id` into `token` when it changed; fills `name` once loaded. Returns false while
+// it is still loading.
+bool PortDiscordName(CAssetId id, CAssetId& loadedId, TToken< CStringTable >*& token,
+                     std::string& name) {
+  if (id != loadedId) {
+    loadedId = id;
+    name.clear();
+    delete token;
+    token = nullptr;
+    if (id != kInvalidAssetId && gpSimplePool != nullptr) {
+      token = rs_new TToken< CStringTable >(gpSimplePool->GetObj(SObjectTag('STRG', id)));
+      token->Lock();
+    }
+  }
+  if (token == nullptr) {
+    return true;
+  }
+  if (!token->IsLoaded()) {
+    return false;
+  }
+  const CStringTable* table = **token;
+  if (name.empty() && table != nullptr && table->GetStringCount() > 0) {
+    name = PortDiscord::GameTextToUtf8(table->GetString(0));
+  }
+  return true;
+}
+
+void PortDiscordTick(const CStateManager& mgr) {
+  if (!PortDiscord::Enabled()) {
+    return;
+  }
+  if (sPortDiscordNames == nullptr) {
+    sPortDiscordNames = new SPortDiscordNames;
+  }
+  SPortDiscordNames& names = *sPortDiscordNames;
+  // Twice a second is plenty: Discord takes an update every few seconds at most.
+  if (names.wait-- > 0) {
+    return;
+  }
+  names.wait = 30;
+  const CWorld* world = mgr.GetWorld();
+  const CPlayerState* playerState = mgr.GetPlayerState();
+  if (world == nullptr || playerState == nullptr) {
+    return;
+  }
+  const TAreaId areaId = world->GetCurrentAreaId();
+  const IGameArea* area = areaId.Value() >= 0 ? world->IGetAreaAlways(areaId) : nullptr;
+  const bool worldReady =
+      PortDiscordName(world->IGetStringTableAssetId(), names.worldId, names.worldToken, names.world);
+  const bool areaReady = PortDiscordName(
+      area != nullptr ? area->IGetStringTableAssetId() : kInvalidAssetId, names.areaId,
+      names.areaToken, names.area);
+  // Keep the last line up while a new name loads, but not forever.
+  if (!(worldReady && areaReady) && names.loading++ < 10) {
+    return;
+  }
+  names.loading = 0;
+  PortDiscord::GameInfo info;
+  info.world = names.world;
+  info.area = names.area;
+  info.worldId = static_cast< uint32_t >(world->IGetWorldAssetId());
+  info.percent = playerState->GetItemPercentageRatio();
+  info.hard = gpGameState != nullptr && gpGameState->GetHardModeEnabled();
+  // Rounded up, so a sliver of energy doesn't read as 0.
+  const float hp = playerState->GetHealthInfo().GetHP();
+  info.energy = static_cast< int >(hp);
+  if (static_cast< float >(info.energy) < hp) {
+    ++info.energy;
+  }
+  if (playerState->GetItemCapacity(CPlayerState::kIT_Missile) > 0) {
+    info.missiles = playerState->GetItemAmount(CPlayerState::kIT_Missile);
+  }
+  PortDiscord::SetGame(info);
+}
+} // namespace
+#endif
+
 void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   mArchQueue = &queue;
 #ifdef TARGET_PC
@@ -4062,6 +4159,9 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
     }
     PortOverlay::SetGameState(gpGameState->CurrentWorldAssetId(), areaNow, w);
     PortOverlay::SetAreaLayers(mCurrentWorldLayerState.GetPtr(), areaNow);
+    // Discord Rich Presence: the area, energy, missiles and item percentage shown on the player's
+    // profile while the desktop Discord client runs (platform/port_discord.cpp).
+    PortDiscordTick(*this);
   } else {
     // A world that is gone (a world teleport's restart) must not leave the overlay drawing the
     // room list of a freed world: the publish clears its snapshot.

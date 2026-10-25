@@ -72,6 +72,8 @@ extern float sRenderScale;
 extern int sAspectMode;
 extern bool sOverlayWindowed;
 extern int sUiTheme;
+extern bool sUiSounds;
+extern bool sDiscord;
 
 } // namespace PortOverlayState
 

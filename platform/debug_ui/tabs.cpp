@@ -71,7 +71,10 @@ void DrawVideoTab() {
 void DrawSystemTab() {
   DrawOverlaySection();
   DrawSettingsSection();
+  DrawDiscImageSection();
   DrawMemoryCard();
+  DrawDataFolder();
+  DrawDiscordSection();
   DrawLogSection();
   ImGui::SeparatorText("About");
   ImGui::TextDisabled("Metroid Prime 2: Echoes native port (G2ME01)");

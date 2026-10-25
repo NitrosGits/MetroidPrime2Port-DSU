@@ -153,6 +153,12 @@ int sAspectMode = PortOverlay::kAspect_Window;
 // (0 auto, 1 Prime, 2 Plain; MP1's 2 is Remastered, which MP2 has no theme for).
 bool sOverlayWindowed = false;
 int sUiTheme = 0;
+// MP1's sUiSounds: the F1 overlay plays the game's own UI SFX (debug_ui/
+// ui_common.cpp, UpdateMenuSounds). Off by default, as MP1's is off for the Plain theme.
+bool sUiSounds = false;
+// MP1's Discord Rich Presence (off by default: it needs the desktop Discord client
+// running). Applied by PortDiscord::Configure from the settings file and the F1 row.
+bool sDiscord = false;
 } // namespace PortOverlayState
 
 using namespace PortOverlayState;
