@@ -151,6 +151,32 @@ class Tests(unittest.TestCase):
         self.assertTrue(w.stop())
         self.assertEqual((self.m.state['think_ok'], self.m.state['failed']), (0, 2))
 
+    def id_window(self, arg=0x8123, ret=0, emitter=0):
+        w = self.window('think')
+        w.id_snap = self.m.Snapshot([('id', 16, 2)], self.mem)
+        w.forced, w.id_stale, w.id_arg, w.id_ret, w.emitter = 'id', 0x8123, arg, ret, emitter
+        self.mem.raw[16:18] = (0x8123).to_bytes(2, 'little')
+        return w
+
+    def test_think_id_arm_restores_and_counts(self):
+        w = self.id_window()
+        self.assertFalse(w.stop())
+        self.assertEqual(bytes(self.mem.raw), self.original)
+        self.assertEqual((self.m.state['id_ok'], self.m.state['failed']), (1, 0))
+
+    def test_think_id_wrong_result_or_branch_fails_but_restores(self):
+        for kw in (dict(arg=0x1), dict(ret=5), dict(emitter=1)):
+            w = self.id_window(**kw)
+            self.assertTrue(w.stop())
+            self.assertEqual(bytes(self.mem.raw), self.original)
+        self.assertEqual((self.m.state['id_ok'], self.m.state['failed']), (0, 3))
+
+    def test_think_id_unwind_restores(self):
+        w = self.id_window()
+        w.out_of_scope()
+        self.assertEqual(bytes(self.mem.raw), self.original)
+        self.assertEqual(self.m.state['failed'], 1)
+
     def test_upc_cbn_arm(self):
         w = self.window('upc')
         w.forced = 'cbn'
@@ -186,7 +212,7 @@ class Tests(unittest.TestCase):
         self.m.summary()
         self.assertTrue(open(os.path.join(self.out, 'pud3.summary.txt')).read().startswith('FAIL'))
         st = self.m.state
-        st.update(nat_think=1, think_ok=1, nat_upc=1, gc_ok=1, upc_cbn_ok=1)
+        st.update(nat_think=1, think_ok=1, id_ok=1, nat_upc=1, gc_ok=1, upc_cbn_ok=1)
         self.m.summary()
         self.assertTrue(open(os.path.join(self.out, 'pud3.summary.txt')).read().startswith('PASS'))
         st['failed'] = 1
