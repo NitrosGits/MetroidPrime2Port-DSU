@@ -109,6 +109,12 @@
 {"Video", "Display", "Display", "Fullscreen (F11)", "full screen window"},
 #endif
 {"Video", "Display", "Display", "Vsync", "vertical sync tearing frame rate fps"},
+{"Video", "Display", "Suit colours", "Suit", "suit colour color customise customize recolour paint varia dark light"},
+{"Video", "Display", "Suit colours", "Primary", "suit colour color primary main"},
+{"Video", "Display", "Suit colours", "Secondary", "suit colour color secondary"},
+{"Video", "Display", "Suit colours", "Armour", "suit colour color armour armor dark"},
+{"Video", "Display", "Suit colours", "Accent", "suit colour color accent trim light"},
+{"Video", "Display", "Suit colours", "Random", "suit colour color random randomise randomize shuffle surprise"},
 {"Video", "Display", "Display", "Aspect ratio", "widescreen 16:9 4:3 stretch"},
 {"Video", "Display", "HUD and view", "Widescreen HUD (spread to edges)", "hud wide ultrawide"},
 {"Video", "Display", "HUD and view", "HUD scale", "interface size shrink"},

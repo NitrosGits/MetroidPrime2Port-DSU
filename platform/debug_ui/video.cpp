@@ -6,6 +6,7 @@
 
 #include "port_input_remap_ui.h"
 #include "port_overlay.h"
+#include "port_suit_colours.h"
 #include "port_video.h"
 
 #include <aurora/aurora.h>
@@ -17,6 +18,9 @@
 #include <bit>
 #include <cmath>
 #include <cstdio>
+#include <optional>
+#include <random>
+#include <string>
 
 namespace PortDebug {
 
@@ -41,6 +45,57 @@ void DrawVideoDisplay() {
     Changed(true);
   }
   ImGui::SetItemTooltip("4:3 keeps the game's own picture; Follow window fills the window's shape.");
+
+  ImGui::SeparatorText("Suit colours");
+  {
+    static int sSuitColoursSuit = 0;
+    const PortSuitColours::Suit& suit = PortSuitColours::SuitInfo(sSuitColoursSuit);
+    if (ImGui::BeginCombo("Suit", suit.name)) {
+      for (int i = 0; i < PortSuitColours::kSuitCount; ++i) {
+        const bool custom = !PortSuitColours::PicksKey(i).empty();
+        const std::string label = std::string(PortSuitColours::SuitInfo(i).name) + (custom ? " *" : "");
+        if (ImGui::Selectable(label.c_str(), i == sSuitColoursSuit)) {
+          sSuitColoursSuit = i;
+        }
+      }
+      ImGui::EndCombo();
+    }
+    ImGui::SetItemTooltip(
+        "Each suit's colours, saved per suit (* = changed). Recoloured from your disc at\n"
+        "startup, so the change shows everywhere it is used. A mod's own suit textures are\n"
+        "left alone. The Light Suit is mostly colourless: only its accents change.");
+    for (int slot = 0; slot < suit.slots; ++slot) {
+      ImGui::PushID(slot);
+      const std::optional< uint32_t > picked = PortSuitColours::Colour(sSuitColoursSuit, slot);
+      const uint32_t shown = picked ? *picked : PortSuitColours::DefaultColour(sSuitColoursSuit, slot);
+      float rgb[3] = {float((shown >> 16) & 255) / 255.f, float((shown >> 8) & 255) / 255.f,
+                      float(shown & 255) / 255.f};
+      if (ImGui::ColorEdit3(suit.slotNames[slot], rgb, ImGuiColorEditFlags_NoInputs)) {
+        uint32_t value = 0;
+        for (const float c : rgb) {
+          value = (value << 8) | uint32_t(std::clamp(std::lround(c * 255.f), 0l, 255l));
+        }
+        PortSuitColours::SetColour(sSuitColoursSuit, slot, value);
+        Changed(true);
+      }
+      ImGui::SameLine();
+      ImGui::BeginDisabled(!picked);
+      if (ImGui::SmallButton("Reset")) {
+        PortSuitColours::SetColour(sSuitColoursSuit, slot, std::nullopt);
+        Changed(true);
+      }
+      ImGui::EndDisabled();
+      ImGui::PopID();
+    }
+    if (ImGui::Button("Random")) {
+      PortSuitColours::Randomise(sSuitColoursSuit, std::random_device{}());
+      Changed(true);
+    }
+    ImGui::SetItemTooltip("Random colours for every slot of this suit; restart to see them.");
+    if (PortSuitColours::Pending(true)) {
+      ImGui::TextDisabled("Restart the game to apply the suit colours.");
+    }
+  }
 
   ImGui::SeparatorText("HUD and view");
   bool hudWide = sHudWide;
