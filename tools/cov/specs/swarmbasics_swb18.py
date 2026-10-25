@@ -36,7 +36,7 @@ import os
 state = {'pending': None, 'done': False, 'scenario': None, 'sound': [], 'busy': False,
          'expect_sound': None, 'expect_bounds': None, 'active': [], 'trigger': None,
          'applies': 0, 'restores': 0, 'restore_fail': 0, 'release_fail': 0, 'sound_calls': 0,
-         'closest': 0, 'effects': 0, 'err': ''}
+         'closest': 0, 'effects': 0, 'soft_fail': 0, 'err': ''}
 
 def log(event, **data):
     with open(os.path.join(os.environ['COV_OUT'], 'swb18.jsonl'), 'a') as f:
@@ -52,6 +52,17 @@ def check(value, label):
     if not value:
         log('FAIL', label=label)
         raise gdb.GdbError(label)
+
+def verify(value, label):
+    """An oracle.  In SWB18_SOFT=1 runs a mismatch is logged and the fixture continues, so one
+    diagnostic launch shows every scenario; a run without SWB18_SOFT fails on the first one."""
+    if value:
+        return
+    if os.environ.get('SWB18_SOFT') == '1':
+        state['soft_fail'] += 1
+        log('SOFT-FAIL', label=label)
+        return
+    check(False, label)
 
 def write(lv, rhs):
     gdb.execute('set var %s = %s' % (lv, rhs), to_string=True)
@@ -182,10 +193,10 @@ class Sound(gdb.Breakpoint):
         hit = [name for name in ('direction', 'maxdist', 'falloff', 'flags', 'sfx', 'maxvol',
                                  'minvol', 'area', 'acoustics', 'looped')
                if actual[name] != expected[name]]
-        check(not hit, 'sound parameter ' + ','.join(hit) + ' in ' + str(state['scenario']))
-        check(any(all(abs(a - b) <= 1e-6 for a, b in zip(actual['pos'], p))
-                  for p in state['active']),
-              'emitted position is an active boid translation')
+        verify(not hit, 'sound parameter ' + ','.join(hit) + ' in ' + str(state['scenario']))
+        verify(any(all(abs(a - b) <= 1e-6 for a, b in zip(actual['pos'], p))
+                   for p in state['active']),
+               'emitted position is an active boid translation in ' + str(state['scenario']))
         state['sound_calls'] += 1
         record = dict(scenario=state['scenario'], params=actual)
         state['sound'].append(record)
@@ -323,11 +334,17 @@ class Run(gdb.Command):
                 expected = nearest([centres[heads[name]] for name in names], pos)
                 nans = any(math.isnan(v) for v in pos)
                 if nans:
-                    check(result == (0., 0., 0.), 'unordered query returns zero')
+                    ok = result == (0., 0., 0.)
                 else:
-                    check(near(result, expected), 'closest output ' + label)
+                    ok = near(result, expected)
                 state['closest'] += 1
-                log('CLOSEST_RESULT', scenario=label, actual=result, expected=expected)
+                log('CLOSEST_RESULT', scenario=label, actual=result, expected=expected, ok=ok,
+                    query=pos,
+                    heads=[iv('(long)((CSwarmBasics::CBoid**)&' + data + ')[%d]' % slot(name))
+                           for name in heads.values()],
+                    extent=[float(ev(S + 'mBoundingBoxExtent.m' + axis)) for axis in 'XYZ'],
+                    translation=list(translation(S + 'mTransform')))
+                verify(ok, 'closest output ' + label)
             set_heads(['first', 'second'])
 
         # ---- fn_80_7E4 UpdateEffects: real CAnimData, controlled nodes -------------------------
@@ -394,8 +411,8 @@ class Run(gdb.Command):
                         gdb.execute('call ((CSwarmBasics*)%d)->UpdateEffects(*((CStateManager*)%d),'
                                     '*((CAnimData*)%d),%d)' % (this, mgr, anim, max_volume),
                                     to_string=True)
-                        check(len(state['sound']) - before == expected_calls,
-                              'emitter count ' + label)
+                        verify(len(state['sound']) - before == expected_calls,
+                               'emitter count ' + label)
                         state['effects'] += 1
                         log('EFFECTS_RESULT', scenario=label, emitter_calls=expected_calls)
                     finally:
@@ -409,10 +426,10 @@ class Run(gdb.Command):
 
 def finished(event):
     summary = ('SUMMARY exit: closest=%d effects=%d sound_calls=%d applies=%d restores=%d '
-               'restore_fail=%d release_fail=%d done=%s err=%s'
+               'restore_fail=%d release_fail=%d soft_fail=%d done=%s err=%s'
                % (state['closest'], state['effects'], state['sound_calls'], state['applies'],
                   state['restores'], state['restore_fail'], state['release_fail'],
-                  state['done'], state['err'] or '-'))
+                  state['soft_fail'], state['done'], state['err'] or '-'))
     log('EXIT', summary=summary)
     with open(os.path.join(os.environ['COV_OUT'], 'swb18_summary.txt'), 'w') as f:
         f.write(summary + '\n')
