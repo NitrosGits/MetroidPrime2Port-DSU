@@ -43,6 +43,19 @@ struct SLdrKralee {
   bool initiallyInvisible;               // 0x738d1c80
 };
 
+// @ fn_37_BF8  (inline; the retail body is exactly these stores, r31 = the sldr base: the three
+// nested ctors at +0x0/+0x40/+0x284, 0xC0C/0xC14/0xC1C)
+// flavor +0x3C = 0 (0xC68 stw). patterned: +0x40 mass 25 (rodata_0), +0x44 speed 3, +0x48 turnSpeed
+// 720, +0x4C detectionRange 5, +0x50 detectionHeightRange 5, +0x54 detectionAngle 90, +0x58
+// minAttackRange 4, +0x5C maxAttackRange 20, contactDamage +0x74 dI_WeaponType 9 (0xCC0 li r0,0x9),
+// +0x78 dI_Damage 10, +0x80 dI_KnockBackPower 5, +0x84 damageWaitTime 3, +0x8C
+// health.hI_KnockBackResistance 2 (0xD0C stfs f6, rodata_20 = 2.0), +0x1EC collisionRadius 0.2,
+// +0x1F0 collisionHeight 5, +0x204 unknown_0xe287d8dd 0. actorInformation: +0x298 ambientColor
+// (0xD1C bl __ct__6CColorFffff with rodata_2C = 1.0 four times, 0xD30 stw) and +0x2E8 visorFlags
+// 0xf (0xD34 li r0,0xf). Kralee's 19 floats +0x2FC..+0x344: 2.5 2.5 360 180 120 0.4 1 0.02 1 1
+// 0 0 0 0 2.5 10 10 1 50 (rodata_30,30,34,38,3C,40,2C,44,2C,2C,28,28,28,28,30,1C,1C,2C,48).
+// +0x348/+0x34C particle ids -1, +0x350/+0x354 sounds -1 (0xC20 li r0,-0x1, stw at 0xC28/0xC38/
+// 0xC48/0xC58: retail sets both sounds), +0x358/+0x359 bools 0 (0xDFC/0xE00 stb).
 inline SLdrKralee::SLdrKralee()
 : editorProperties()
 , patterned()

@@ -37,6 +37,7 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
     {"WarpOutExit", static_cast< CPatterned::StateMachine::CodeFunc >(&CKralee::WarpOutExit)},
 };
 
+// @ fn_37_244C
 CKralee::CKralee(TUniqueId uid, const rstl::string& name, CEntityInfo& info, const CTransform4f& xf,
                  const CModelData& modelData, const CPatternedInfo& patternedInfo,
                  const CActorParameters& actorParams, float stickyReach, float floorTurnSpeed,
@@ -403,6 +404,7 @@ bool CKralee::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_37_13C
 CEntity* LoadKralee(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrKralee sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrKralee.inc"

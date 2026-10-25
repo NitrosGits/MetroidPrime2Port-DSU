@@ -60,15 +60,16 @@ Open arms (cpp line), so these bodies stay unmarked:
 
 | function | open arms |
 |---|---|
-| ctor 244C | 81 1/3, 87, 90 (invalid warp particle ids; both shipped Kralees have them) |
+| ctor 244C | 81 1/3, 87, 90 — **resolved and marked in the third pass** (kral2): the shipped ids are valid, the open edge is the skip arm |
 | PreRender 1080 | 267 (!mAlive: a killed Kralee is deleted before its next PreRender) |
 | AddToRenderer 1018 | 282 1/6 (!mAlive) |
 | WarpIn 117C | 301 1/3, 304 1/2 (invalid locator, data), 306 1/2 |
 | Patrol 20DC | 313 3/4 (switch default, dead: EStateMsg has three values), 326 1/2 (no waypoint, data) |
 | WarpOut 1DB8 | 352 3/4 (default, dead), 361 0/2 (CanIssueCommand true, timing) |
-| LoadKralee 13C | 408 (no model data) |
+| LoadKralee 13C | 408 (no model data) — **marked in the third pass** (kral2): dead by the whole-disc scan |
 
-Not driven arm by arm: the SLdr ctor and dtor, `__sinit`, the weak copies (H) and fn_37_1398 (unreferenced).
+Not driven arm by arm: the SLdr dtor, `__sinit`, the weak copies (H) and fn_37_1398 (unreferenced). The SLdr
+ctor is `inline` in SLdrKralee.hpp and is marked (third pass).
 
 ## Smoke family (proposal)
 
@@ -86,9 +87,86 @@ the kr1 base run (`gcov_report.py build-port-cov /tmp/opencode/kral_{a,f,g}/gcov
 |---|---|---|---|
 | 20DC Patrol | 11/12 -> **marked** | `FORCE_INNER` on `CPatterned::GetConnectedObject`: it answers kInvalidUniqueId while Patrol runs, so `*waypoint == kInvalidUniqueId` (line 329's no-waypoint arm) | 316:3/4 dead: the msg switch covers 0x2190/0x21AC/0x222C and EStateMsg has three values |
 | 1DB8 WarpOut | 8/9 -> **marked** | `FORCE_INNER` on `CAnimationState::CanIssueCommand`: it answers true while WarpOut runs (the generate command arm at line 364) | 355:3/4 dead: the same three-value msg switch |
-| 244C ctor | 13/16 | - | 81:1/3 (an inlined guard on the init list's last line), 87:1/2 and 90:1/2: the shipped Kralees carry invalid warp particle ids, so the `!= kInvalidAssetId` arms need a valid id; the `mWarpInParticleEffect`/`mWarpOutParticleEffect` writes at the ctor entry (FORCE_RET phases 1/0/3, valid and invalid) did not move either arm |
-| 13C LoadKralee | 9/10 | - | 411:1/2 (the null modelData return): `modelData.m_valid = 0` in a FORCE_RET write is accepted at the entry but the restore cannot see the local ("No symbol modelData in current context"), and the arm stays untaken - the optional is not addressable at -O2 |
-| BF8 SLdrKralee ctor | - | - | `inline` in SLdrKralee.hpp:46, no standalone body to mark (its retail defaults are kr1's fix) |
+| 244C ctor | 13/16 | - | 81:1/3, 87:1/2, 90:1/2. The FORCE_RET writes at the ctor entry did not move them because the init list overwrites the members from the stack arguments; see the third pass: both ids are VALID in all ten disc placements, so 87/90's open edge is the skip arm, dead by data |
+| 13C LoadKralee | 9/10 | - | 411:1/2 (the null modelData return): `modelData.m_valid = 0` in a FORCE_RET write is accepted at the entry but the restore cannot see the local ("No symbol modelData in current context"), and the arm stays untaken - the optional is not addressable at -O2. Third pass: dead by data (every placement's ancs is a real ANCS) |
+| BF8 SLdrKralee ctor | - | - | its retail defaults are kr1's fix; it is `inline` in SLdrKralee.hpp and IS markable — marked in the third pass (kral2), which also maps every store of the body |
 
 Marked this pass: Patrol and WarpOut. The PreRender/AddToRenderer/WarpIn rows the earlier table listed
 were marked before this pass.
+
+## Third pass (kral2, 2026-10-25)
+
+Marks three rows: fn_37_13C LoadKralee, fn_37_BF8 SLdrKralee ctor (a header-inline body can carry a marker,
+precedent SLdrDarkCommando.hpp:14) and fn_37_244C the ctor. The deciding evidence is a whole-disc scan, not the
+two 0B Kralees: `tools/scan_kralee_props.py` (read-only over `tools/echoes_disc.py`).
+
+**Scan** (10 KRAL placements: 0b_temple_hall 2, 02_temple_exploration L3 4, 0k_temple_hall 1, 04_sand_mining L2 3):
+ancs 0x34c0fb32 (ANCS, present) and **warpIn 0x884ab091 / warpOut 0x533a9efa (both PART, present) on all ten**,
+visibleTime/invisibleTime 0.0 on all ten, no unknown property id. Therefore:
+
+- kr1's and kral1's "both shipped Kralees carry invalid warp particle ids" is **backwards**. The `!= kInvalidAssetId`
+  arms (cpp 88/91) are the ones every load takes; the open edge is the *skip* arm, which needs a placement that omits
+  the property (the loader default is kInvalidAssetId, SLdrKralee.hpp:61-62; SLdrKralee.inc:100-107 reads it) — no
+  placement on the disc does.
+- LoadKralee's `if (!modelData) return nullptr` (cpp 415): LdrToModelData (ScriptLoader.cpp:446-459) returns an empty
+  optional only when both `GetResourceTypeById` answers are 0. The model argument is kInvalidAssetId
+  (`CResLoader.cpp:208-214` answers 0 for an id in no pak) and every placement's ancs is a real ANCS, so the arm is
+  dead by data — the same proof, for the same arm, as CFlyingPirate's (CFlyingPirate.cpp:2103).
+- The SLdr ctor does have a body to mark: `inline SLdrKralee::SLdrKralee()` at SLdrKralee.hpp:59.
+
+**SLdrKralee ctor (BF8) store map** — retail r31 = the sldr base; rodata labels are the module's:
+
+| retail offset | member | value | asm |
+|---|---|---|---|
+| +0x0 / +0x40 / +0x284 | editorProperties / patterned / actorInformation | the nested ctors | 0xC0C/0xC14/0xC1C |
+| +0x3C | flavor | 0 | 0xC68 |
+| +0x40..+0x5C | patterned mass, speed, turnSpeed, detectionRange, detectionHeightRange, detectionAngle, minAttackRange, maxAttackRange | 25, 3, 720, 5, 5, 90, 4, 20 | rodata_0/4/8/C/C/10/14/18 |
+| +0x74/+0x78/+0x80 | contactDamage dI_WeaponType / dI_Damage / dI_KnockBackPower | 9 / 10 / 5 | 0xCC0 `li r0,0x9`, rodata_1C, rodata_C |
+| +0x84 / +0x8C | damageWaitTime / health.hI_KnockBackResistance | 3 / 2 | rodata_4 / 0xD0C rodata_20 (kr1 fix) |
+| +0x1EC/+0x1F0/+0x204 | collisionRadius / collisionHeight / unknown_0xe287d8dd | 0.2 / 5 / 0 | rodata_24 / rodata_C / rodata_28 |
+| +0x298 | actorInformation.lighting.ambientColor | CColor(1,1,1,1) | 0xD1C `bl __ct__6CColorFffff` with rodata_2C x4, 0xD30 stw (kr1 fix) |
+| +0x2E8 | actorInformation.visor.visorFlags | 0xf | 0xD34/0xD40 (kr1 fix) |
+| +0x2FC..+0x344 | the 19 Kralee floats | 2.5 2.5 360 180 120 0.4 1 0.02 1 1 0 0 0 0 2.5 10 10 1 50 | rodata_30,30,34,38,3C,40,2C,44,2C,2C,28x4,30,1C,1C,2C,48 |
+| +0x348/+0x34C/+0x350/+0x354 | warpInParticleEffect / warpOutParticleEffect / warpInSound / warpOutSound | -1, -1, -1, -1 | 0xC20 `li r0,-0x1`, stw at 0xC28/0xC38/0xC48/0xC58 (the sounds are the TARGET_PC block) |
+| +0x358/+0x359 | initiallyPaused / initiallyInvisible | 0 / 0 | 0xDFC/0xE00 stb |
+
+Every declared member is stored once, in declaration order (the TARGET_PC block's four stores are the retail
+0xD0C-0xD40 group), so the host header equals the retail body. The ctor is not a standalone symbol in the port: the
+load ran it inline — SLdrKralee.hpp:59-103 all count 2 in the coverage build, from the two placements 0B loads.
+
+**Runs** (both 0 `[port] caught` / `reach-stub`, exit 0; coverage binary sha256 9611da74...):
+
+    BUILD=$PWD/build-port-cov SECS=2400 tools/cov/run.sh tools/cov/specs/kralee.py /tmp/opencode/kral2-ev/nat \
+      3bfa3eff,0b_temple_hall --con tools/cov/specs/kralee.con --frames 1300
+    BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/force_ret.py tools/cov/force.sh \
+      tools/cov/specs/kral2_force.py /tmp/opencode/kral2-ev/force 3bfa3eff,0b_temple_hall \
+      --con tools/cov/specs/kralee.con --fast --frames 1300
+    python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/kral2-ev/nat/gcov \
+      /tmp/opencode/kral2-ev/force/gcov --module Kralee
+
+| body | lines/branches (merged) | untaken | verdict |
+|---|---|---|---|
+| 244C ctor | 40/40, 13/16 | 82:1/3, 88:1/2, 91:1/2 | **marked** (all three proved, below) |
+| 13C LoadKralee | 13/13, 9/10 | 415:1/2 | **marked** (dead by data) |
+| BF8 SLdr ctor | SLdrKralee.hpp:59-103 all count 2 | - | **marked** |
+
+The ctor's three open edges:
+
+- **88:1/2, 91:1/2** are the skip arms: gcov's fall-through edge is the `push_back_unsafe` body and it ran twice
+  (`branch 1 taken 2 (fallthrough)`, `branch 2 taken 0`), the untaken edge being the `cmp $0xffffffff` / `je`
+  (host 0xf28020 and 0xf28040), i.e. the id-invalid case no placement has.
+- **82:1/3** is the init list's last line (`, mWarpEffectTransform(CTransform4f::Identity()) {`), which holds no
+  source condition: its two annotated blocks are calls (`gcov -a` prints `call 0 returned 2` and `call 3 returned 2`
+  for that line), and the untaken arc (gcno block 6 -> 37) lands on the exception-dispatch block whose only line is
+  the closing brace (CKralee.cpp:98) and which jumps into the `.cold` landing pads. It is the same call/exception
+  arc pair gcov labels `(throw)` on lines 84/86/87 of this body, so it is not a source arm. (gcov's JSON omits the
+  throw flag on this one arc, which is why `gcov_report` lists it.)
+
+**415:1/2** is LoadKralee's null return (gcno block 63 -> 73, the direction the two spawns rule out). kral2's force
+attempt failed for a reason worth recording: `LdrToModelData` returns `rstl::optional_object<CModelData>` by value,
+so the hidden return pointer takes rdi and the animation-set reference is in **rcx, not rdx** — the log's
+`set failed (*(unsigned int*)((char*)4294967295))` is rdx holding the CAssetId argument. Dead by data instead.
+
+Earlier bodies (AcceptScriptMsg, Think, PreRender, AddToRenderer, WarpIn, Patrol, WarpOut, ~CKralee,
+SetupStateMachine, WarpOutExit, the three triggers, SetFuncPtrs, RELMain/RELExit) are marked from kr1/kral1; their
+arms were not re-driven this pass.
