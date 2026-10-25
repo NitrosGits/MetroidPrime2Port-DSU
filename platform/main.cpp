@@ -70,6 +70,7 @@ extern void* gPortGameHeapHi;
 #include "port_settings.h"
 #include "port_build_info.h"
 #include "port_console.h"
+#include "port_disc_verify.h"
 #include "port_entry.h"
 #ifdef MP_PORT_COVERAGE
 // The gcov flush hook of a coverage build (CMake option MP_PORT_COVERAGE). The normal build does
@@ -1039,6 +1040,8 @@ int main(int argc, char** argv) {
 #endif
   }
   std::printf("metroid_prime2_port: disc mounted: %s\n", discImage.c_str());
+  // F1 > System > Disc image checks the file the game is playing (platform/port_disc_verify.cpp).
+  PortDiscVerify::SetImagePath(discImage);
   // The mods folder layers over the disc through Aurora's overlays; the game caches PAK tables
   // when it boots, so this runs after the mount and before anything reads the disc.
   PortMods::Initialize(touchUser != nullptr ? touchUser : std::string());

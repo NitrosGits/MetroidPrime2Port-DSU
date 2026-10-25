@@ -5,6 +5,7 @@
 
 #include "../port_overlay_internal.h"
 
+#include "port_discord.h"
 #include "port_env.h"
 #include "port_livesplit.h"
 #include "port_mods.h"
@@ -397,6 +398,10 @@ const SettingKey kSettingKeys[] = {
     {"livesplit_split_upgrades",
      [](const std::string& value) { PortLiveSplit::SetSplitUpgrades(ParseBool(value)); },
      [](std::ostream& out) { WriteBool(out, PortLiveSplit::SplitUpgrades()); }, false, "1", "0"},
+    // Discord Rich Presence (port_discord.h): the background thread is started by Configure, here
+    // and in LoadSettings, so the saved value is live from the first frame.
+    BoolKey< &sDiscord >("discord"),
+    BoolKey< &sUiSounds >("ui_sounds"),
     // Mods folder (port_mods.h): read at startup only.
     {"mods", [](const std::string& value) { PortMods::SetEnabled(ParseBool(value)); },
      [](std::ostream& out) { WriteBool(out, PortMods::Enabled()); }, false, "1", "0"},
@@ -579,6 +584,8 @@ void LoadSettings() {
     ApplySettingsText(lines);
   }
   sBaseline = SettingsText();
+  // Discord Rich Presence starts with the settings, not with the first F1 visit.
+  PortDiscord::Configure(sDiscord);
   // The settings in effect go to the log from LogSettings, once the log file has started.
 }
 

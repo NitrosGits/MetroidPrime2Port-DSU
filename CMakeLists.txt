@@ -464,7 +464,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp
         platform/port_gyro_motion.cpp
         platform/port_dynamic_res.cpp platform/port_video.cpp
-        platform/debug_ui/cheats.cpp platform/debug_ui/controls.cpp platform/debug_ui/debug.cpp
+        platform/debug_ui/card_data.cpp platform/debug_ui/cheats.cpp platform/debug_ui/controls.cpp platform/debug_ui/debug.cpp
         platform/debug_ui/game_sections.cpp platform/debug_ui/performance.cpp platform/debug_ui/randomizer.cpp
         platform/debug_ui/savestates.cpp platform/debug_ui/search.cpp platform/debug_ui/settings.cpp
         platform/debug_ui/tabs.cpp platform/debug_ui/ui_common.cpp platform/debug_ui/video.cpp
@@ -472,7 +472,10 @@ if(AURORA_SDL3_TARGET)
         platform/port_touch.cpp platform/port_touch_jni.cpp platform/touch_pad.cpp
         platform/input/port_input_remap_ui.cpp
         platform/input/port_input_devices.cpp
-        platform/port_textures.cpp platform/port_prompts.cpp)
+        platform/port_textures.cpp platform/port_prompts.cpp
+        platform/port_discord.cpp
+        platform/port_disc_verify.cpp
+        platform/port_disc_verify_core.cpp)
     # port_crash.cpp prints MP_BUILD_REVISION in its report.
     add_dependencies(mp_port_audio port_build_info)
     target_include_directories(mp_port_audio PRIVATE

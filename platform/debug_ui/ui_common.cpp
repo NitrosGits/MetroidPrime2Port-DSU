@@ -1,11 +1,16 @@
-// F1 overlay: the window's style, theme and scale, controller navigation, and the row helpers
-// (ItemHelp). The Prime 1 port's debug_ui/ui_common.cpp, with its Prime and Plain themes (no
-// Remastered), without its menu sounds (no MP2 effect ids yet) and its GPU self-test. State and
-// helpers shared with the other parts are in debug_ui_internal.h.
+// F1 overlay: the window's style, theme and scale, controller navigation, the row helpers
+// (ItemHelp) and the menu sounds. The Prime 1 port's debug_ui/ui_common.cpp, with its Prime and
+// Plain themes (no Remastered) and its menu sounds, without its GPU self-test. State and helpers
+// shared with the other parts are in debug_ui_internal.h.
 #include "debug_ui_internal.h"
 
 #include "port_env.h"
 #include "port_input_remap_ui.h"
+
+#include "Kyoto/Audio/CSfxManager.hpp"
+#include "MetroidPrime/SFX/UI.h"
+#include "MetroidPrime/SFX/UI3.h"
+#include "MetroidPrime/SFX/UIMemory.h"
 
 #include <SDL3/SDL.h>
 #include <dolphin/pad.h>
@@ -336,6 +341,99 @@ void ItemHelp(const char* text) {
 void SameLineAfterHelp() {
   if (!kInlineHelp) {
     ImGui::SameLine();
+  }
+}
+
+// Menu sounds, MP1's debug_ui.cpp: the game's own UI SFX, so the overlay sounds like the pause
+// screen it imitates. ImGui's state is read once a frame instead of every widget being hooked:
+//   open  -> SFXui_x_pause_00   (the pause screen opening)
+//   close -> SFXui_x_pause_01   (the same screen closing)
+//   click / activate (button, checkbox, combo, tab, selectable) -> SFXui_x_invchoos_00 (choose)
+//   keyboard/pad focus move  -> SFXui_x_invscrol_00 (scroll between inventory items)
+//   back (Esc, pad B)        -> SFXui_x_invback_00
+// The overlay holds the simulation, not the audio, so these play with F1 up. Nothing plays before
+// a world is up (the sfx manager is the game's) or with the Plain theme, as in MP1.
+namespace {
+
+enum MenuSound { kMenuOpen, kMenuClose, kMenuChoose, kMenuMove, kMenuBack };
+
+// `always` skips the rate limit: opening and closing are rare and must not be swallowed by the
+// press that caused them.
+void PlayMenuSound(MenuSound sound, bool always = false) {
+  if (!sUiSounds || ResolveTheme() == kThemePlain || sWorldId == 0) {
+    return;
+  }
+  static uint64_t sLastMs = 0;
+  const uint64_t now = SDL_GetTicks();
+  if (!always && sLastMs != 0 && now - sLastMs < 50) {
+    return;
+  }
+  sLastMs = now;
+  ushort id = 0;
+  switch (sound) {
+  case kMenuOpen:
+    id = SFXui_x_pause_00_oneshot;
+    break;
+  case kMenuClose:
+    id = SFXui_x_pause_01_oneshot;
+    break;
+  case kMenuChoose:
+    id = SFXui_x_invchoos_00_oneshot;
+    break;
+  case kMenuMove:
+    id = SFXui_x_invscrol_00_oneshot;
+    break;
+  case kMenuBack:
+    id = SFXui_x_invback_00_oneshot;
+    break;
+  }
+  CSfxManager::SfxStart(id, 127, 64, CSfxManager::kAllAreas, false, false,
+                        CSfxManager::kMedPriority);
+}
+
+} // namespace
+
+// Derives the sounds from ImGui's own state once a frame: a new active item is a press (a held
+// slider is one press, not one per frame), and a nav focus change with the nav cursor showing is a
+// keyboard or pad move (mouse hover never moves nav focus or shows the cursor). `visible` is
+// whether the overlay is open this frame; called at the end of DrawUI.
+void UpdateMenuSounds(bool visible) {
+  static bool sWasVisible = false;
+  static ImGuiID sPrevActive = 0;
+  static ImGuiID sPrevNav = 0;
+  if (visible != sWasVisible) {
+    sWasVisible = visible;
+    sPrevActive = sPrevNav = 0;
+    // A back press that closes the overlay is the close, not a second sound: this branch returns
+    // before the back check below, and the close ignores the rate limit.
+    PlayMenuSound(visible ? kMenuOpen : kMenuClose, true);
+    return;
+  }
+  if (!visible || ImGui::GetCurrentContext() == nullptr) {
+    return;
+  }
+  ImGuiContext& g = *ImGui::GetCurrentContext();
+  const ImGuiID active = g.ActiveId;
+  const ImGuiID nav = g.NavId;
+  bool pressed = active != 0 && active != sPrevActive;
+  if (pressed && g.ActiveIdWindow != nullptr) {
+    // Dragging a window by its title, or a scrollbar, is not a choice.
+    ImGuiWindow* window = g.ActiveIdWindow;
+    pressed = active != window->MoveId &&
+              active != ImGui::GetWindowScrollbarID(window, ImGuiAxis_X) &&
+              active != ImGui::GetWindowScrollbarID(window, ImGuiAxis_Y);
+  }
+  const bool moved = nav != 0 && nav != sPrevNav && g.NavCursorVisible && active == 0;
+  const bool back = ImGui::IsKeyPressed(ImGuiKey_Escape, false) ||
+                    ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false);
+  sPrevActive = active;
+  sPrevNav = nav;
+  if (back) {
+    PlayMenuSound(kMenuBack);
+  } else if (pressed) {
+    PlayMenuSound(kMenuChoose);
+  } else if (moved) {
+    PlayMenuSound(kMenuMove);
   }
 }
 

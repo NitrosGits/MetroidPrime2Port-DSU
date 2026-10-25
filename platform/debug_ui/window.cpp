@@ -377,6 +377,7 @@ void DrawUI() {
   DrawShaderCompilationToast();
   if (!sVisible) {
     sTouchScroll = TouchScroll{};
+    UpdateMenuSounds(false);
     return;
   }
   UpdateUiScale(static_cast< float >(PortOverlay::UiScale()) / 100.f);
@@ -391,6 +392,7 @@ void DrawUI() {
   if (!open) {
     sVisible = false;
   }
+  UpdateMenuSounds(sVisible);
 }
 
 } // namespace PortDebug

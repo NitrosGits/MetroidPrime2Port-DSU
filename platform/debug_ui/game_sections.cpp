@@ -5,6 +5,8 @@
 #include "debug_ui_internal.h"
 
 #include "port_config_reset.h"
+#include "port_disc_verify.h"
+#include "port_discord.h"
 #include "port_freecam.h"
 #include "port_input_remap_ui.h"
 #include "port_livesplit.h"
@@ -22,6 +24,7 @@
 #include <imgui_internal.h>
 
 #include <algorithm>
+#include <cfloat>
 #include <cstdio>
 #include <filesystem>
 #include <string>
@@ -259,6 +262,10 @@ void DrawOverlaySection() {
   }
   ItemHelp("The overlay's look. Auto is the Metroid Prime pause-screen style; Plain is stock Dear "
            "ImGui.");
+  // MP1's ui_sounds row: the game's own UI SFX for open, close, choose, focus move and back.
+  Changed(ImGui::Checkbox("Menu sounds", &sUiSounds));
+  ItemHelp("Plays the game's own menu sounds for opening, closing and moving through this window. "
+           "Not with the Plain theme.");
   // Multiplies the display's own scale (UpdateUiScale); the product is clamped to 1..4, so on a
   // desktop at scale 1 only values above 100% make the window larger.
   Changed(ImGui::SliderInt("UI scale", &sUiScale, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax, "%d%%"));
@@ -346,11 +353,117 @@ void DrawSettingsSection() {
   }
 }
 
+// The whole disc image check (port_disc_verify.h): MP1's System > Disc image section, without its
+// "Replace disc image" (that picks a new file to copy, which this port's mount loop already does
+// on a failed boot).
+void DrawDiscImageSection() {
+  using PortDiscVerify::State;
+  ImGui::SeparatorText("Disc image");
+  const PortDiscVerify::Result r = PortDiscVerify::Snapshot();
+  const bool running = r.state == State::Running;
+  if (const std::string image = PortDiscVerify::ImagePath(); !image.empty()) {
+    ImGui::TextWrapped("Disc image: %s", image.c_str());
+  }
+  ImGui::BeginDisabled(running);
+  if (ImGui::Button("Check disc image")) {
+    PortDiscVerify::Start();
+  }
+  ImGui::EndDisabled();
+  if (running) {
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel##disc")) {
+      PortDiscVerify::Cancel();
+    }
+    ImGui::ProgressBar(static_cast< float >(r.Progress()), ImVec2(-FLT_MIN, 0.0f));
+  }
+  switch (r.state) {
+  case State::Idle:
+    ImGui::TextWrapped("Compares the whole disc image with the known dump of this release to find "
+                       "damage. Runs in the background and takes a minute or two; the result goes "
+                       "to the log.");
+    break;
+  case State::Running:
+    ImGui::TextWrapped("Checking the disc image (%.0f%%)...", r.Progress() * 100.0);
+    break;
+  case State::Cancelled:
+    ImGui::TextWrapped("The check was cancelled.");
+    break;
+  case State::Error:
+    ImGui::TextWrapped("The disc image couldn't be checked: %s.", r.error.c_str());
+    break;
+  case State::Done:
+    if (r.Ok()) {
+      ImGui::TextWrapped("This disc image is complete and unaltered (G2ME01, %s).",
+                         r.revision.c_str());
+      ImGui::TextDisabled("SHA-1 %s", r.sha1.c_str());
+    } else if (!r.known) {
+      ImGui::TextWrapped("This disc image is not a release the port has a record of.");
+      ImGui::TextDisabled("SHA-1 %s", r.sha1.c_str());
+    } else if (r.bad.empty()) {
+      ImGui::TextWrapped("Every part of this %s image matches, but the file does not end where the "
+                         "original does.",
+                         r.revision.c_str());
+    } else {
+      ImGui::TextWrapped("This disc image is damaged: %zu of %u MiB differ from %s (%u of them are "
+                         "blank).",
+                         r.bad.size(), r.chunks, r.revision.c_str(), r.zeroed);
+      if (!r.files.empty()) {
+        std::string files;
+        for (size_t i = 0; i < r.files.size() && i < 8; ++i) {
+          files += (i ? ", " : "") + r.files[i];
+        }
+        if (r.files.size() > 8) {
+          files += ", ...";
+        }
+        ImGui::TextWrapped("Damaged: %s", files.c_str());
+      }
+      ImGui::TextWrapped("Copy the disc image again; this part of it is damaged.");
+    }
+    break;
+  }
+}
+
+// Discord Rich Presence (port_discord.h): MP1's Game > Discord section. The presence itself is
+// fed from CStateManager::Update; this row only turns it on and reports what the background
+// thread is doing.
+void DrawDiscordSection() {
+  if (!PortDiscord::Supported()) {
+    return;
+  }
+  ImGui::SeparatorText("Discord");
+  bool discord = sDiscord;
+  if (ImGui::Checkbox("Rich Presence", &discord)) {
+    sDiscord = discord;
+    PortDiscord::Configure(discord);
+    Changed(true);
+  }
+  ItemHelp("Shows the area, energy, missiles and item percentage on your Discord profile while the "
+           "desktop Discord client runs. Nothing is sent when it is not running.");
+  switch (PortDiscord::Status()) {
+  case PortDiscord::kStatus_Off:
+    ImGui::TextDisabled("off");
+    break;
+  case PortDiscord::kStatus_Connecting:
+    ImGui::TextUnformatted("connecting...");
+    break;
+  case PortDiscord::kStatus_Connected:
+    ImGui::TextColored(ThemeGoodColor(), "connected");
+    break;
+  case PortDiscord::kStatus_Failed:
+    ImGui::TextColored(ThemeBadColor(), "%s", PortDiscord::LastError().c_str());
+    break;
+  }
+  if (sDiscord) {
+    ImGui::TextDisabled("Showing: %s", PortDiscord::CurrentText().c_str());
+  }
+}
+
 void DrawMemoryCard() {
   ImGui::SeparatorText("Memory card");
   Changed(ImGui::Checkbox("Back up the card", &sCardBackup));
   ItemHelp("Copies the save file into save-backups before each card write; `save import latest` on "
            "the console puts one back.");
+  DrawCardTransfer();
 }
 
 void DrawLogSection() {

@@ -206,5 +206,16 @@ System and Debug:
   (desktop), Menu theme, UI scale.
 - `card_backup`: System > Memory card > Back up the card: copies the save file into
   `save-backups` before each card write (console `save import latest` restores one).
+- `ui_sounds`: System > Overlay > Menu sounds: the game's own pause-screen SFX for opening, closing,
+  choosing, moving and backing out of the overlay (off by default; not with the Plain theme).
+- `discord`: System > Discord > Rich Presence: area, energy, missiles and item percentage on the
+  Discord profile through the local desktop client's IPC socket (off by default; silent without a
+  client).
+- System > Disc image > Check disc image (no key): hashes the mounted disc in the background against
+  the known G2ME01 chunk table (`tools/disc_chunk_table.py`).
+- System > Memory card: Import file... / Export to folder... (`.gci` of this release through
+  PortSave, current save copied to save-backups first), Import from / Export to Dolphin or
+  PrimeHack (their GC/USA/Card A folder), Open card folder. System > Data folder: user folder,
+  card and backup paths, Open data folder. No keys.
 - `log_file`: System > Log > Write the log to a file.
 - `photo_supersample`, `photo_speed`: Debug > Photo > Supersample, Camera speed.
