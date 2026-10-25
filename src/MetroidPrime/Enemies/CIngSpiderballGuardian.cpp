@@ -205,7 +205,7 @@ void CIngSpiderballGuardian::Think(float dt, CStateManager& mgr) {
   }
 }
 
-// fn_35_303C
+// @ fn_35_303C
 void CIngSpiderballGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                              EUserEventType type, float dt) {
   bool handled = false;
