@@ -27,6 +27,10 @@ import sys
 
 # Widgets in the overlay that check (c) skips: they are not F1 settings.
 EXCLUDED = {
+    # Photo mode's floating panel (DrawPhotoUI), not an F1 page.
+    "FOV": "photo mode panel, not an F1 page",
+    "Roll": "photo mode panel, not an F1 page",
+    "%dx": "photo mode shot-size radio, not an F1 page",
 }
 
 INDEX = pathlib.Path("platform/port_settings_index.inc")
