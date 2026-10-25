@@ -61,6 +61,7 @@ bool sFastMorph = false;
 int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
 int sHintDelay = 0;
 bool sSpringBall = false;
+bool sQuickResume = true;
 bool sLockOnToggle = false;
 bool sStickyCharge = false;
 bool sAutoAim = true;
@@ -752,6 +753,17 @@ void SetWalkSpeed(int percent) {
 bool SpringBall() {
   ReadEnv();
   return EnvBool("MP2_SPRING_BALL", sSpringBall);
+}
+
+bool QuickResume() {
+  ReadEnv();
+  return EnvBool("MP2_QUICK_RESUME", sQuickResume);
+}
+
+void SetQuickResume(bool enabled) {
+  ReadEnv();
+  sQuickResume = enabled;
+  Persist();
 }
 
 void SetSpringBall(bool enabled) {

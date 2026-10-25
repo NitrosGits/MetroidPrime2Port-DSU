@@ -85,6 +85,16 @@ void DrawSaveStatesTab() {
     ImGui::EndTable();
   }
 
+  bool quickResume = sQuickResume;
+  if (ImGui::Checkbox("Quick resume###quick-resume", &quickResume)) {
+    sQuickResume = quickResume;
+    MarkDirty();
+  }
+  ItemHelp("On quitting during play, a resume state is written, and the next launch asks \"Resume "
+           "where you left off?\" Yes restores it like a save state; No keeps it. Nothing is "
+           "written in cutscenes, during world transitions, while Samus is dead or on the title "
+           "screen.");
+
   const PortSaveState::Info undo = PortSaveState::SlotInfo(PortSaveState::kUndoSlot);
   ImGui::BeginDisabled(!undo.exists);
   if (ImGui::Button("Undo last load")) {

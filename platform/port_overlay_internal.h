@@ -19,6 +19,7 @@ extern bool sFastMorph;
 extern int sWalkSpeed;
 extern int sHintDelay;
 extern bool sSpringBall;
+extern bool sQuickResume;
 extern bool sLockOnToggle;
 extern bool sStickyCharge;
 extern bool sRapidCharge;
