@@ -10,6 +10,12 @@
 # D CoinCollector (1), E DamageOverTime (10), F PersistentCounterReset (4), G the native echo
 # watcher with the visor-mask, team-bit and other-visor arms. Slice ppx1: H = M06_ShootingGallery natural PLCTs
 # + `gameevent` (spp_m06.con), I = D with a fake CGMCoin for Think's SetCanRespawn arm (spp_force_I.con).
+# Launch 1 of ppx1 EXECUTED run H (spp_m06.con, tools/cov/force_ret.py, build-port-cov binary sha256 9b8ae971...ed834) and hung
+# at frame 232 (the persistent per-Think `1C44 hp back` stop on 21 proxies). The three files were last written 01:54:22 before
+# the run's forced.log (01:54:58) and have not changed since; their sha256 at commit 5a89fc961 (= the executed bytes by mtime,
+# no copy was taken then): this spec 6ea20c1a...cecde2d2, spp_m06.con 919c7728...271cb, spp_force_I.con (not executed) 0099eda7...cfcd.
+# Launch 2 runs J (spp_m06_J.con, tools/cov/force_ret_spp.py): M06 with the Think forces restricted by ONLY to the CoinCollector
+# e080000a8 and no persistent writes; the fixture and its sha256 are copied into the run dir.
 import os
 
 CLASS = 'CScriptPlayerProxy'
@@ -130,6 +136,39 @@ elif RUN == 'H':
          'near the time limit on alternate calls'),
         ('2644 counter', OG, GIA, 2, {0: [('$rax', '500')], 1: [('$rax', '0')]},
          'item amounts 500 / 0 on alternate calls'),
+    ]
+elif RUN == 'J':
+    # M06_ShootingGallery natural PLCTs. Think's COIN arm on the natural CoinCollector e080000a8 (the only object the
+    # ONLY filter lets the Think entries touch: idle, mCoinsToDrop 0): even calls mask 0 (invalid first player),
+    # odd calls a fake CGMCoin (built in the proxy's spare bytes at +0x230, vtable of the real mode, restored at the
+    # return) so SetCanRespawn's inline write lands in scratch. OnGameEvent forces (|all) are per call, restored.
+    ONLY = '(($this->mEditorId.value & 0x3ffffff) == 0xa8)'
+    OG = 'CScriptPlayerProxy::OnGameEvent('
+    MH = '$mgr->mPlayerStates[0]->mHealth.mHealth'
+    IDLE = '($this->mCoinsToDrop == 0 && $this->mPendingCoins == 0 && $this->mProxyType == 1)'
+    FAKE = '((char*)$this + 0x230)'
+    GM = '*(long*)((char*)gpGameState + 0x260)'
+    FORCE_RET = [
+        ('2644 overkill|all', OG, 2,
+         [(0, [(MH, '-50.0'), ('$this->mFloatParameter2', '10.0')]),
+          (1, [(MH, '99.0'), ('$this->mFloatParameter2', '0.0')])],
+         'HP -50 and overkill threshold 10 on odd calls; HP 99 and threshold 0 on even calls (restored at the return)'),
+        ('1C44 COIN arm', THINK, 2,
+         [(0, [(MASK, '%s ? 0 : %s' % (IDLE, MASK))]),
+          (1, [('*(long*)%s' % FAKE, '%s ? %s : *(long*)%s' % (IDLE, GM, FAKE)),
+               ('*(long*)(%s + 0x68)' % FAKE, '%s ? (long)(%s + 0x10) : *(long*)(%s + 0x68)' % (IDLE, FAKE, FAKE)),
+               (GM, '%s ? (long)%s : %s' % (IDLE, FAKE, GM))])],
+         'idle: mask 0 (even calls) | fake COIN mode with a valid first player (odd calls)'),
+    ]
+    FORCE_INNER = [
+        ('2644 coin limit|all', OG, 'CGMCoin::GetCoinLimit(', 1,
+         {0: [('$rax', '$this->mCoinsToDrop % 2 == 0 ? 0 : 100')]}, 'limit 0 when mCoinsToDrop even, else 100'),
+        ('2644 near time limit|all', OG, 'CGMCoin::IsNearTimeLimit(', 2, {0: [('$rax', '1')], 1: [('$rax', '0')]},
+         'near the time limit on alternate calls'),
+        ('2644 counter|all', OG, GIA, 2, {0: [('$rax', '500')], 1: [('$rax', '0')]},
+         'item amounts 500 / 0 on alternate calls'),
+        ('1C44 COIN mode', THINK, 'CGMSinglePlayer::GetGameModeType(', 1,
+         {0: [('$rax', '%s ? 0x434f494e : $rax' % IDLE)]}, "'COIN' while idle"),
     ]
 elif RUN == 'I':
     # Agon 05_portalpuzzle EchoVisorWatcher as CoinCollector (as D), COIN mode with a valid first player on
