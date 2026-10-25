@@ -947,6 +947,37 @@ int main(int argc, char** argv) {
                                   port::EnvInt("MP_PIPELINE_TRIM_SEVERE_MIB", 512));
   }
 
+  // SDL3 reaches for its Wayland backend whenever a Wayland display is reachable, and does so even
+  // without WAYLAND_DISPLAY - it falls back to the default socket in XDG_RUNTIME_DIR. Under GNOME
+  // that backend never returns from SDL_ShowWindow: it dispatches pending events, libdecor's
+  // client-side decoration configure re-enters GTK layout from inside that dispatch, and the
+  // process spins at 100% before the first frame is ever presented (MP1 found it by backtrace; see
+  // its docs/NATIVE_PORT.md "A Wayland session hangs at startup"). Nothing in the port can fix
+  // that, so whenever an X display is available ask for the X11 backend instead. SDL_VIDEODRIVER
+  // still wins, which is also how anyone who wants Wayland opts back in, and MP2_HEADLESS's
+  // "offscreen" above is honoured the same way.
+#if !defined(__ANDROID__)
+  {
+    const char* requested = SDL_GetHint(SDL_HINT_VIDEO_DRIVER);
+    const char* x11 = std::getenv("DISPLAY");
+    const auto present = [](const char* v) { return v != nullptr && v[0] != '\0'; };
+    const bool unnamed = !present(requested);
+    if (unnamed && present(x11)) {
+      SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
+      std::fprintf(stderr,
+                   "port: using SDL's x11 video driver on %s; its wayland backend hangs on window "
+                   "creation under GNOME (libdecor). Set SDL_VIDEODRIVER to override.\n",
+                   x11);
+    } else if (unnamed) {
+      // Nothing to fall back to: SDL will use Wayland, and on GNOME that is the hang above. Say so
+      // before the silence, since there is no way to tell from inside the hang.
+      std::fputs("port: no DISPLAY set, so SDL will use its wayland backend, which hangs on window "
+                 "creation under GNOME (libdecor). Run under an X display, or set SDL_VIDEODRIVER "
+                 "yourself.\n",
+                 stderr);
+    }
+  }
+#endif
   // F1 > Video > Compatibility (PortVideo, f1b): OpenGL ES, the storage clamp, the low-power
   // adapter and the driver workarounds' Dawn toggles, all read when the GPU device is made.
   PortVideo::BeginGpuStart(config.userPath != nullptr ? config.userPath : "", config);
