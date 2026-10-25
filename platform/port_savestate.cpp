@@ -12,6 +12,7 @@
 #include "port_savestate.h"
 
 #include "port_overlay.h"
+#include "port_resume_logic.h"
 #include "port_save.h"
 #include "port_warp.h"
 
@@ -38,9 +39,11 @@
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPersistentOptions.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/Player/CWorldState.hpp"
 
 #include <atomic>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -87,6 +90,7 @@ struct State {
   std::string room;
   std::vector< uint8_t > blob;
   RoomState roomState; // empty for a version 1 state
+  PortResume::Header resumeHeader; // a quick-resume file only (ReadSlot)
 };
 
 std::atomic< int > sSaveRequest{-1};
@@ -132,8 +136,10 @@ void SetMessage(const std::string& message) {
 // The last manager Tick ran on, cleared by its destructor (Forget): the quit path's resume write
 // runs between updates, outside any Tick.
 CStateManager* sLiveMgr = nullptr;
-// A quick resume being loaded: its file is deleted once Samus is back, as MP1 does.
+// A quick resume being loaded (its file stays until the next snapshot replaces it, as in MP1);
+// the running marker then says "resumed <savedAt>" so a crash right after is noticed.
 bool sResuming = false;
+int64_t sResumingSavedAt = 0;
 
 std::string SlotName(int slot) {
   return slot == kResumeSlot ? std::string("the resume state") : "slot " + std::to_string(slot);
@@ -292,7 +298,15 @@ bool ReadSlot(int slot, State& s, std::string& error) {
     error = SlotName(slot) + " is empty";
     return false;
   }
-  const std::string bytes((std::istreambuf_iterator< char >(file)), std::istreambuf_iterator< char >());
+  std::string bytes((std::istreambuf_iterator< char >(file)), std::istreambuf_iterator< char >());
+  if (slot == kResumeSlot) {
+    std::string inner;
+    if (!PortResume::UnwrapContainer(bytes, s.resumeHeader, inner)) {
+      error = path + ": not a resume file";
+      return false;
+    }
+    bytes = std::move(inner);
+  }
   if (!Decode(bytes, s, error)) {
     error = path + ": " + error;
     return false;
@@ -300,8 +314,8 @@ bool ReadSlot(int slot, State& s, std::string& error) {
   return true;
 }
 
-bool WriteSlot(int slot, const State& s, std::string& error) {
-  const std::string path = SlotPath(slot);
+// Atomic: a temp file, then a rename, so a crash mid-write leaves the old file.
+bool WriteFile(const std::string& path, const std::string& bytes, std::string& error) {
   if (path.empty()) {
     error = "no user directory, so no save state folder";
     return false;
@@ -311,7 +325,6 @@ bool WriteSlot(int slot, const State& s, std::string& error) {
   const std::string temp = path + ".tmp";
   {
     std::ofstream file(temp, std::ios::binary | std::ios::trunc);
-    const std::string bytes = Encode(s);
     file.write(bytes.data(), static_cast< std::streamsize >(bytes.size()));
     if (!file) {
       error = "cannot write " + temp;
@@ -324,6 +337,18 @@ bool WriteSlot(int slot, const State& s, std::string& error) {
     return false;
   }
   return true;
+}
+
+bool WriteSlot(int slot, const State& s, std::string& error) {
+  std::string bytes = Encode(s);
+  if (slot == kResumeSlot) {
+    PortResume::Header h;
+    h.fileIdx = gpGameState != nullptr ? gpGameState->SystemOptions().GetSaveIdx() : 0;
+    h.cardSerial = gpGameState != nullptr ? gpGameState->GetCardSerial() : 0;
+    h.savedAt = s.savedAt;
+    bytes = PortResume::WrapContainer(h, bytes);
+  }
+  return WriteFile(SlotPath(slot), bytes, error);
 }
 
 // --- game side -------------------------------------------------------------------------------
@@ -487,6 +512,15 @@ bool DoLoad(CStateManager& mgr, int slot) {
     SetMessage(what + " failed: world " + id + " is not on this disc");
     return false;
   }
+  if (slot == kResumeSlot) {
+    // A resume belongs to one card file of one card: loading it into another game would hand that
+    // game this one's items and map.
+    if (s.resumeHeader.fileIdx != gpGameState->SystemOptions().GetSaveIdx() ||
+        !PortResume::Matches(s.resumeHeader, gpGameState->GetCardSerial())) {
+      SetMessage(what + " failed: it is from another memory card file");
+      return false;
+    }
+  }
   std::string undo;
   if (slot != kUndoSlot && slot != kResumeSlot) {
     State current;
@@ -507,8 +541,227 @@ bool DoLoad(CStateManager& mgr, int slot) {
   sPlace.state = s;
   sPlace.oldMgr = &mgr;
   sPlace.oldWorld = mgr.World();
+  if (slot == kResumeSlot) {
+    sResuming = true;
+    sResumingSavedAt = s.savedAt;
+  }
   SetMessage("loading " + SlotName(slot) + " (" + s.room + ")" + undo);
   return true;
+}
+
+// --- quick resume (MP1's port_resume) --------------------------------------------------------
+//
+// While the game runs safely, a snapshot of it is taken in memory and written at once to
+// `<user>/savestates/resume.mp2ss` (a temp file and a rename), so a crash or kill -9 leaves the
+// last one. A `running` marker next to it, written at launch and removed at a clean exit, tells the
+// next launch the last run crashed; after a resume it reads "resumed <savedAt>", and a crash that
+// finds its own snapshot still marked so makes the prompt default to No (the snapshot may be what
+// crashes the game).
+
+bool ResumeActive() {
+  if (!PortOverlay::QuickResume()) {
+    return false;
+  }
+  const char* env = std::getenv("MP2_RESUME");
+  const bool forced = env != nullptr && std::strcmp(env, "1") == 0;
+  if (env != nullptr && std::strcmp(env, "0") == 0) {
+    return false;
+  }
+  // A test run that MP2_FRAMES ends would otherwise hand its end state to the next one on the same
+  // user directory; those write one only when asked to (MP2_RESUME=1).
+  return forced || std::getenv("MP2_FRAMES") == nullptr;
+}
+
+std::mutex sSnapMutex;
+struct Snapshot {
+  bool have = false;
+  std::string bytes; // the container, as it is written
+  std::string room;
+  int64_t key = 0; // world and area, to tell "the same room"
+  int fileIdx = -1;
+  int64_t savedAt = 0;
+  uint32_t gen = 0;
+  uint32_t writtenGen = 0;
+  std::chrono::steady_clock::time_point taken;
+};
+Snapshot sSnap;
+
+bool sInit = false;
+bool sLastRunCrashed = false;
+std::string sLastMarker;
+
+std::string MarkerPath() {
+  const std::string folder = Folder();
+  return folder.empty() ? std::string() : folder + "/running";
+}
+
+void WriteMarker(const std::string& text) {
+  const std::string path = MarkerPath();
+  if (path.empty()) {
+    return;
+  }
+  std::error_code ec;
+  std::filesystem::create_directories(Folder(), ec);
+  std::ofstream file(path, std::ios::binary | std::ios::trunc);
+  file << text << '\n';
+}
+
+void ResumeQuitCleanly() {
+  const std::string path = MarkerPath();
+  if (!path.empty()) {
+    std::error_code ec;
+    std::filesystem::remove(path, ec);
+  }
+}
+
+// Once, when the user directory is known: reads a marker left by a crashed run, writes ours.
+void EnsureInit() {
+  if (sInit || !ResumeActive()) {
+    return;
+  }
+  const std::string path = MarkerPath();
+  if (path.empty()) {
+    return;
+  }
+  sInit = true;
+  std::error_code ec;
+  if (std::filesystem::exists(path, ec)) {
+    sLastRunCrashed = true;
+    std::ifstream file(path);
+    std::getline(file, sLastMarker);
+    while (!sLastMarker.empty() && (sLastMarker.back() == '\r' || sLastMarker.back() == ' ')) {
+      sLastMarker.pop_back();
+    }
+    SetMessage("resume: the last run did not quit cleanly");
+  }
+  WriteMarker("running");
+  std::atexit(ResumeQuitCleanly);
+}
+
+void ResumeMarkResumed(int64_t savedAt) {
+  if (sInit) {
+    WriteMarker(PortResume::ResumedMarker(savedAt));
+  }
+}
+
+// Writes the held snapshot unless it was written already. Any thread.
+void FlushSnapshot() {
+  std::string bytes;
+  uint32_t gen = 0;
+  {
+    std::lock_guard< std::mutex > lock(sSnapMutex);
+    if (!sSnap.have || sSnap.writtenGen == sSnap.gen) {
+      return;
+    }
+    bytes = sSnap.bytes;
+    gen = sSnap.gen;
+  }
+  std::string error;
+  if (!WriteFile(SlotPath(kResumeSlot), bytes, error)) {
+    SetMessage("resume: not written - " + error);
+    return;
+  }
+  std::lock_guard< std::mutex > lock(sSnapMutex);
+  if (sSnap.gen == gen) {
+    sSnap.writtenGen = gen;
+  }
+}
+
+// Why a snapshot cannot be taken now, or nullptr.
+const char* ResumeSkipReason(CStateManager& mgr) {
+  if (const char* why = NotReady(mgr)) {
+    return why;
+  }
+  const CPlayerState* ps = mgr.GetPlayerState();
+  if (ps == nullptr || !ps->IsPlayerAlive()) {
+    return "Samus is dead";
+  }
+  CCameraManager* cameras = mgr.CameraManager(0);
+  if (cameras != nullptr && cameras->IsInCinematicCamera()) {
+    return "a cutscene is playing";
+  }
+  if (mgr.GetWantsToEnterSaveGameScreen() || mgr.GetWantsToEnterMapScreen() ||
+      mgr.GetWantsToEnterPauseScreen() || mgr.GetWantsToEnterLogBookScreen() ||
+      mgr.GetWantsToEnterMessageScreen()) {
+    return "a screen is about to open";
+  }
+  return nullptr;
+}
+
+// Captures the running game into the held snapshot and writes it.
+bool TakeSnapshot(CStateManager& mgr) {
+  State s;
+  std::string error;
+  if (!Capture(mgr, s, error)) {
+    return false;
+  }
+  PortResume::Header h;
+  h.fileIdx = gpGameState->SystemOptions().GetSaveIdx();
+  h.cardSerial = gpGameState->GetCardSerial();
+  h.savedAt = s.savedAt;
+  {
+    std::lock_guard< std::mutex > lock(sSnapMutex);
+    sSnap.bytes = PortResume::WrapContainer(h, Encode(s));
+    sSnap.room = s.room;
+    sSnap.key = (static_cast< int64_t >(s.worldId) << 32) ^ static_cast< uint32_t >(s.areaIndex);
+    sSnap.fileIdx = h.fileIdx;
+    sSnap.savedAt = h.savedAt;
+    sSnap.taken = std::chrono::steady_clock::now();
+    sSnap.have = true;
+    ++sSnap.gen;
+  }
+  FlushSnapshot();
+  return true;
+}
+
+// Every game update: takes a snapshot when one is due.
+void TickResume(CStateManager& mgr) {
+  EnsureInit();
+  if (!sInit || !ResumeActive()) {
+    return;
+  }
+  static const char* sLastWhy = nullptr;
+  static int64_t sRoomKey = 0;
+  static std::chrono::steady_clock::time_point sRoomSince;
+  static bool sHaveRoom = false;
+  const auto now = std::chrono::steady_clock::now();
+  const char* why = ResumeSkipReason(mgr);
+  if (why != sLastWhy) {
+    sLastWhy = why;
+    if (why != nullptr) {
+      SetMessage(std::string("resume: no snapshot while ") + why);
+    }
+  }
+  if (why != nullptr) {
+    sHaveRoom = false; // the time in a room counts from when it is safe again
+    return;
+  }
+  CWorld& world = *mgr.World();
+  const int64_t key = (static_cast< int64_t >(world.IGetWorldAssetId()) << 32) ^
+                      static_cast< uint32_t >(world.GetCurrentAreaId().Value());
+  if (!sHaveRoom || key != sRoomKey) {
+    sHaveRoom = true;
+    sRoomKey = key;
+    sRoomSince = now;
+  }
+  bool have;
+  bool sameRoom;
+  double sinceSnapshot;
+  const int fileIdx = gpGameState->SystemOptions().GetSaveIdx();
+  {
+    std::lock_guard< std::mutex > lock(sSnapMutex);
+    if (sSnap.have && sSnap.fileIdx != fileIdx) {
+      sSnap.have = false; // another card file: the snapshot belongs to a game that was left
+    }
+    have = sSnap.have;
+    sameRoom = have && sSnap.key == key;
+    sinceSnapshot = have ? std::chrono::duration< double >(now - sSnap.taken).count() : 0.0;
+  }
+  if (PortResume::RefreshDue(true, have, sameRoom,
+                             std::chrono::duration< double >(now - sRoomSince).count(),
+                             sinceSnapshot)) {
+    TakeSnapshot(mgr);
+  }
 }
 
 // Put Samus back once the rebuilt world runs.
@@ -574,11 +827,10 @@ void TickPlacement(CStateManager& mgr) {
   }
   SetMessage("loaded " + s.room);
   if (sResuming) {
-    // MP1's rule: a resume state is used once. The next clean quit writes a fresh one.
+    // The file stays until the next snapshot replaces it: a crash before then still resumes.
     sResuming = false;
-    std::error_code ec;
-    std::filesystem::remove(SlotPath(kResumeSlot), ec);
-    SetMessage("resume: Samus is back in " + s.room + "; the resume state is used up");
+    ResumeMarkResumed(sResumingSavedAt);
+    SetMessage("resume: Samus is back in " + s.room);
   }
   if (!s.roomState.areas.empty()) {
     sRoom = RoomRestore();
@@ -756,66 +1008,138 @@ void TestHook() {
   }
 }
 
-bool ResumeEnabled() {
-  const char* env = std::getenv("MP2_RESUME");
-  return env == nullptr || std::strcmp(env, "0") != 0;
-}
+std::atomic< bool > sResumeAccepted{false};
+std::atomic< bool > sResumeLoadRequest{false};
+std::atomic< bool > sResumeSnapshotRequest{false};
 
-// Quick resume, read side: the first time a front-end-skipped launch is ready, the resume state
-// replaces the card's save. An explicit boot warp (MP2_WORLD / MP2_TELEPORT) wins over it.
+// Quick resume, read side. Two ways in: the prompt's Yes (sResumeAccepted; the front end is skipped
+// into the same card file and this loads the resume over it once the game runs), or an
+// MP2_SKIP_FRONTEND launch, which loads it without asking. An explicit boot warp (MP2_WORLD /
+// MP2_TELEPORT) wins over both.
 void ResumeCheck(CStateManager& mgr) {
   static bool decided = false;
   if (decided || NotReady(mgr) != nullptr) {
     return;
   }
+  const bool accepted = sResumeAccepted.load();
   decided = true;
+  if (!accepted) {
+    if (!ResumeActive() || !PortSkipFrontEnd::Started()) {
+      return;
+    }
+    if (std::getenv("MP2_WORLD") != nullptr || std::getenv("MP2_TELEPORT") != nullptr) {
+      SetMessage("resume: a boot warp (MP2_WORLD/MP2_TELEPORT) was asked for; the resume state waits");
+      return;
+    }
+  }
   const std::string path = SlotPath(kResumeSlot);
   std::error_code ec;
   if (path.empty() || !std::filesystem::exists(path, ec)) {
     return;
   }
-  if (!ResumeEnabled()) {
-    SetMessage("resume: MP2_RESUME=0, so the card's save stays (" + path + " is kept)");
-    return;
-  }
-  if (!PortSkipFrontEnd::Started()) {
-    SetMessage("resume: the front end was not skipped, so the card's save stays");
-    return;
-  }
-  if (std::getenv("MP2_WORLD") != nullptr || std::getenv("MP2_TELEPORT") != nullptr) {
-    SetMessage("resume: a boot warp (MP2_WORLD/MP2_TELEPORT) was asked for; the resume state waits");
-    return;
-  }
   SetMessage("resume: found " + path + "; loading it instead of the card's save");
-  sResuming = DoLoad(mgr, kResumeSlot);
+  DoLoad(mgr, kResumeSlot);
 }
 
-void ResumeSave(bool frameLimit) {
-  if (Folder().empty() || !ResumeEnabled()) {
-    return;
+bool ResumeOffer(ResumeInfo& out) {
+  if (!ResumeActive()) {
+    return false;
   }
-  // A test run that MP2_FRAMES ended would otherwise hand its end state to the next test run on the
-  // same user directory; those write one only when asked to (MP2_RESUME=1).
-  const char* env = std::getenv("MP2_RESUME");
-  if (frameLimit && (env == nullptr || std::strcmp(env, "1") != 0)) {
-    return;
-  }
-  if (sLiveMgr == nullptr) {
-    SetMessage("resume: not written - no game running at quit");
-    return;
-  }
+  EnsureInit();
   State s;
   std::string error;
-  if (!Capture(*sLiveMgr, s, error) || !WriteSlot(kResumeSlot, s, error)) {
-    SetMessage("resume: not written - " + error);
+  if (!ReadSlot(kResumeSlot, s, error) || s.worldId == kInvalidAssetId ||
+      s.areaAssetId == kInvalidAssetId) {
+    return false;
+  }
+  out.room = s.room;
+  out.savedAt = s.savedAt;
+  out.fileIdx = s.resumeHeader.fileIdx;
+  out.crashedAfterThis = sLastRunCrashed;
+  out.crashedAgain = PortResume::CrashedAgain(sLastRunCrashed, sLastMarker, s.savedAt);
+  return true;
+}
+
+int ResumeAccept(const ResumeInfo& info) {
+  sResumeAccepted.store(true);
+  SetMessage("resume: accepted (" + info.room + ", file " + std::to_string(info.fileIdx) + ")");
+  return info.fileIdx;
+}
+
+void ResumeClear() {
+  {
+    std::lock_guard< std::mutex > lock(sSnapMutex);
+    sSnap = Snapshot();
+  }
+  std::error_code ec;
+  const std::string path = SlotPath(kResumeSlot);
+  if (!path.empty()) {
+    std::filesystem::remove(path, ec);
+  }
+  SetMessage("resume: cleared");
+}
+
+std::string ResumeStatus() {
+  std::string out = std::string("quick resume ") + (PortOverlay::QuickResume() ? "on" : "off") +
+                    (ResumeActive() ? "" : " (inactive this run)");
+  State s;
+  std::string error;
+  if (ReadSlot(kResumeSlot, s, error)) {
+    out += "; file: " + s.room + ", card file " + std::to_string(s.resumeHeader.fileIdx) +
+           ", saved " + std::to_string(s.savedAt);
+  } else {
+    out += "; no file (" + error + ")";
+  }
+  std::lock_guard< std::mutex > lock(sSnapMutex);
+  out += sSnap.have ? "; snapshot held (" + sSnap.room + (sSnap.writtenGen == sSnap.gen ? ", written)" : ", unwritten)")
+                    : "; no snapshot held";
+  out += sLastRunCrashed ? "; the last run crashed" : "; the last run quit cleanly";
+  return out;
+}
+
+void RequestResumeSnapshot() { sResumeSnapshotRequest.store(true); }
+void RequestResumeLoad() { sResumeLoadRequest.store(true); }
+
+void ResumeSave(bool frameLimit) {
+  (void)frameLimit; // ResumeActive keeps a test run from writing one
+  if (Folder().empty() || !ResumeActive()) {
     return;
   }
-  SetMessage("resume: wrote " + SlotPath(kResumeSlot) + " (" + s.room + ")");
+  const bool safe = sLiveMgr != nullptr && ResumeSkipReason(*sLiveMgr) == nullptr;
+  bool haveSnapshot;
+  {
+    std::lock_guard< std::mutex > lock(sSnapMutex);
+    haveSnapshot = sSnap.have;
+  }
+  switch (PortResume::ChooseWrite(safe, haveSnapshot)) {
+  case PortResume::Write::Fresh:
+    if (TakeSnapshot(*sLiveMgr)) {
+      SetMessage("resume: wrote " + SlotPath(kResumeSlot));
+    }
+    break;
+  case PortResume::Write::Snapshot:
+    FlushSnapshot();
+    SetMessage("resume: the game is not in a safe moment; kept the last snapshot");
+    break;
+  case PortResume::Write::Nothing:
+    SetMessage("resume: not written - no game running, no snapshot");
+    break;
+  }
+}
+
+void ResumeFlush() { FlushSnapshot(); }
+
+void ResumeShutdown() {
+  FlushSnapshot();
+  ResumeQuitCleanly();
 }
 
 void Forget(const CStateManager* mgr) {
   if (sLiveMgr == mgr) {
     sLiveMgr = nullptr;
+    // The snapshot belongs to the game that went away; the file stays.
+    std::lock_guard< std::mutex > lock(sSnapMutex);
+    sSnap.have = false;
   }
 }
 
@@ -827,6 +1151,15 @@ void Tick(CStateManager& mgr) {
     TickPlacement(mgr);
   } else if (sRoom.active) {
     TickRoom(mgr);
+  }
+  TickResume(mgr);
+  if (sResumeSnapshotRequest.exchange(false)) {
+    SetMessage(TakeSnapshot(mgr) ? "resume: snapshot written"
+                                  : std::string("resume: no snapshot - ") +
+                                        (ResumeSkipReason(mgr) != nullptr ? ResumeSkipReason(mgr) : "capture failed"));
+  }
+  if (sResumeLoadRequest.exchange(false)) {
+    DoLoad(mgr, kResumeSlot);
   }
   const int save = sSaveRequest.exchange(-1);
   if (save >= 0) {

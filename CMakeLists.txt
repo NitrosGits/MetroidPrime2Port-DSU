@@ -558,6 +558,11 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_hold_toggle_tests PRIVATE platform/include)
     add_test(NAME port_hold_toggle_tests COMMAND port_hold_toggle_tests)
     set_tests_properties(port_hold_toggle_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # Quick resume's pure rules (platform/include/port_resume_logic.h). Header-only.
+    add_executable(port_resume_logic_tests tests/port_resume_logic.cpp)
+    target_include_directories(port_resume_logic_tests PRIVATE platform/include)
+    add_test(NAME port_resume_logic_tests COMMAND port_resume_logic_tests)
+    set_tests_properties(port_resume_logic_tests PROPERTIES TIMEOUT 30 LABELS port)
     # The presentation rules (platform/include/port_presentation_rules.h): snapshot freshness, the
     # actor blend's snap rules and the morph ball's pivoted blend. Header-only.
     add_executable(port_presentation_rules_tests tests/port_presentation_rules.cpp)

@@ -88,7 +88,7 @@ void DrawSaveStatesTab() {
   bool quickResume = sQuickResume;
   if (ImGui::Checkbox("Quick resume###quick-resume", &quickResume)) {
     sQuickResume = quickResume;
-    MarkDirty();
+    PortOverlaySettings::MarkDirty();
   }
   ItemHelp("On quitting during play, a resume state is written, and the next launch asks \"Resume "
            "where you left off?\" Yes restores it like a save state; No keeps it. Nothing is "

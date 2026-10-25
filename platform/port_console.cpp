@@ -4000,6 +4000,26 @@ void CmdState(CStateManager&, const Args& args, std::string& out) {
          " requested (the log's [savestate] lines say how it went)\n";
 }
 
+// resume [status|save|load|clear]: quick resume (savestates/resume.mp2ss), the same one the quit
+// path and the splash-screen prompt use.
+void CmdResume(CStateManager&, const Args& args, std::string& out) {
+  const std::string_view action = args.size() > 1 ? args[1] : std::string_view("status");
+  if (action == "status") {
+    out += PortSaveState::ResumeStatus() + "\n";
+  } else if (action == "save") {
+    PortSaveState::RequestResumeSnapshot();
+    out += "snapshot requested (the log's [savestate] lines say how it went)\n";
+  } else if (action == "load") {
+    PortSaveState::RequestResumeLoad();
+    out += "load of the resume state requested (see the [savestate] lines)\n";
+  } else if (action == "clear") {
+    PortSaveState::ResumeClear();
+    out += "resume state deleted\n";
+  } else {
+    Fail("usage: resume [status|save|load|clear]");
+  }
+}
+
 void CmdItems(CStateManager& mgr, const Args&, std::string& out) {
   const CPlayerState* state = mgr.GetPlayerState(0);
   if (state == nullptr) {
@@ -4107,6 +4127,8 @@ const CommandSpec kCommands[] = {
       "gpuselftest                 run the GPU self-test next frame; PASS/FAIL lines go to the log\n"},
     {"state", CmdState,
       "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"},
+    {"resume", CmdResume,
+      "resume [status|save|load|clear] quick resume (savestates/resume.mp2ss): show, snapshot now, load, delete\n"},
     {"skipcine", CmdSkipCine,
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"},
     {"gunoffset", CmdGunOffset,

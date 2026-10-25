@@ -57,15 +57,40 @@ std::string LastMessage();
 // Called on the game thread at the start of every CStateManager update (from PortConsole::Tick).
 void Tick(CStateManager& mgr);
 
-// Quick resume (MP1's resume.mpss): `<user>/savestates/resume.mp2ss`. ResumeSave captures the
-// running game on a clean quit (PortPumpEvents, when the window closes or MP2_FRAMES ends the run);
-// the next launch that skips the front end (MP2_SKIP_FRONTEND=1) loads it instead of the card's
-// save, once, if its world is on the disc, and deletes it when Samus is back. MP2_RESUME=0 turns
-// both sides off. An explicit boot warp (MP2_WORLD / MP2_TELEPORT) leaves the file for later.
-// `frameLimit` is the MP2_FRAMES exit of a test run, which writes one only with MP2_RESUME=1.
+// Quick resume (MP1's resume.mpss): `<user>/savestates/resume.mp2ss`, the MPRS container of
+// port_resume_logic.h around a state, plus the card file and card it came from. While the game
+// runs safely a snapshot is taken (2 s into a room, then every 30 s) and written at once, so a
+// clean quit, a crash or kill -9 all leave one; a `running` marker beside it tells the next launch
+// the last run crashed. The next launch offers it (the prompt over the splash screen, below);
+// Yes boots into the same card file and loads it. MP2_RESUME=0 or the quick_resume setting off
+// turn all of it off; a test run (MP2_FRAMES) writes none unless MP2_RESUME=1; MP2_SKIP_FRONTEND
+// launches load it without asking, as before. An explicit boot warp (MP2_WORLD / MP2_TELEPORT)
+// leaves the file for later. The file is kept until the next snapshot replaces it.
+//
+// ResumeSave: the quit path (PortPumpEvents). Writes a fresh snapshot when the game is in a safe
+// moment, else the last one held. `frameLimit` is the MP2_FRAMES exit of a test run.
 void ResumeSave(bool frameLimit = false);
-// ~CStateManager: the quit path must not capture from a destroyed manager.
+// SDL background / terminate events (any thread): write the held snapshot / also remove the marker.
+void ResumeFlush();
+void ResumeShutdown();
+// ~CStateManager: the quit path must not capture from a destroyed manager; drops the snapshot.
 void Forget(const CStateManager* mgr);
+
+struct ResumeInfo {
+  std::string room;
+  int64_t savedAt = 0;
+  int fileIdx = 0;
+  bool crashedAfterThis = false; // the last run did not quit cleanly
+  bool crashedAgain = false;     // ... and it died right after resuming this very snapshot
+};
+// Is there a resume to offer (on, a readable file)? Reads the marker of the last run once.
+bool ResumeOffer(ResumeInfo& out);
+// The player said yes: the game loads the resume once it runs. Returns the card file to boot into.
+int ResumeAccept(const ResumeInfo& info);
+void ResumeClear();
+std::string ResumeStatus();
+void RequestResumeSnapshot(); // console: take and write a snapshot now
+void RequestResumeLoad();     // console: load the resume file
 
 // --- room state (platform/port_savestate_room.cpp), game thread only -------------------------
 
