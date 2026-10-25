@@ -132,6 +132,9 @@ void CParticleElectric::CalculatePoints() {
   if (mElecDesc->mIEMT) {
     mElecDesc->mIEMT->GetValue(mCurrentFrame, pos, vel);
   }
+#ifdef TARGET_PC
+  pos = PortSpreadSpawn(pos);
+#endif
   if (mOverrideIPos) {
     pos = *mOverrideIPos;
   }
@@ -152,6 +155,9 @@ void CParticleElectric::CalculatePoints() {
   if (mElecDesc->mFEMT) {
     mElecDesc->mFEMT->GetValue(mCurrentFrame, fpos, fvel);
   }
+#ifdef TARGET_PC
+  fpos = PortSpreadSpawn(fpos);
+#endif
   if (mOverrideFPos) {
     fpos = *mOverrideFPos;
   }
@@ -429,7 +435,7 @@ void CParticleElectric::RenderLines() {
   // Draw the lines at the transform between the last two ticks when uncapped (the fractal itself
   // still changes once per tick).
   CTransform4f lineXf = CTransform4f::Translate(mGlobalTranslation) * mGlobalOrientation *
-                        CTransform4f::Translate(mTranslation) * mOrientation;
+                        CTransform4f::Translate(PortSpreadTranslation()) * mOrientation;
   const float t = CCameraManager::GetPresentationInterpolation();
   if (t >= 0.f && t < 1.f && PortOverlay::ParticleInterpolation() &&
       !CActor::PortRenderScopeActive() &&
@@ -771,10 +777,17 @@ void CParticleElectric::BuildBounds() {
       bounds.Include(mLineManagers[it->mIdx]->mBounds);
     }
     if (!bounds.Invalid()) {
+#ifdef TARGET_PC
+      mSystemBounds.Include(bounds.GetTransformedAABox(
+          CTransform4f::Translate(mGlobalTranslation) * mGlobalOrientation *
+          CTransform4f::Translate(PortSpreadTranslation()) * mOrientation *
+          CTransform4f::Scale(mGlobalScale)));
+#else
       mSystemBounds.Include(
           bounds.GetTransformedAABox(CTransform4f::Translate(mGlobalTranslation) *
                                      mGlobalOrientation * CTransform4f::Translate(mTranslation) *
                                      mOrientation * CTransform4f::Scale(mGlobalScale)));
+#endif
     }
   }
   if (mHaveGPSM) {
@@ -913,9 +926,46 @@ void CParticleElectric::SetLocalScale(const CVector3f& scale) {
   mLocalScaleDirty = true;
 }
 
+#ifdef TARGET_PC
+// Only the bolt end points spread: the GPSM/EPSM generators sit on those points already, and the
+// tangents keep the authored bend.
+void CParticleElectric::PortSetSpawnSpread(const CVector3f& spread, const CVector3f& origin) {
+  if (spread == mPortSpawnSpread && origin == mPortSpawnOrigin) {
+    return;
+  }
+  mPortSpawnSpread = spread;
+  mPortSpawnOrigin = origin;
+  mTransformDirty = true;
+}
+
+// The translation is in the system's axes (inside the global orientation), as the spread is.
+CVector3f CParticleElectric::PortSpreadTranslation() const {
+  if (mPortSpawnSpread == CVector3f(1.f, 1.f, 1.f)) {
+    return mTranslation;
+  }
+  return mPortSpawnOrigin +
+         CVector3f::ByElementMultiply(mTranslation - mPortSpawnOrigin, mPortSpawnSpread);
+}
+
+// The bolt points are turned by the local orientation into the system's axes, which the spread
+// is along.
+CVector3f CParticleElectric::PortSpreadSpawn(const CVector3f& pos) const {
+  if (mPortSpawnSpread == CVector3f(1.f, 1.f, 1.f)) {
+    return pos;
+  }
+  const CTransform4f rot = mOrientation.GetRotation();
+  return rot.GetQuickInverse() * (CTransform4f::Scale(mPortSpawnSpread) * (rot * pos));
+}
+#endif
+
 void CParticleElectric::UpdateCachedTransform() {
+#ifdef TARGET_PC
+  mCachedXf = CTransform4f::Translate(mGlobalTranslation) * mGlobalOrientation *
+              CTransform4f::Translate(PortSpreadTranslation()) * mOrientation;
+#else
   mCachedXf = CTransform4f::Translate(mGlobalTranslation) * mGlobalOrientation *
               CTransform4f::Translate(mTranslation) * mOrientation;
+#endif
   mTransformDirty = false;
 }
 

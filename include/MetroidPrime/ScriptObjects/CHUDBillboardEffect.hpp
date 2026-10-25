@@ -56,6 +56,11 @@ private:
   bool mAdjustDepthRange : 1;
   bool mFinishing : 1;
   float mTimeoutTimer; // 0x17c
+#ifdef TARGET_PC
+  // The spread last given to the generator, which passes it down to its children.
+  CVector3f mPortSpawnSpread{1.f, 1.f, 1.f};
+  void PortUpdateSpawnSpread(const CStateManager& mgr);
+#endif
 };
 CHECK_SIZEOF(CHUDBillboardEffect, 0x180)
 

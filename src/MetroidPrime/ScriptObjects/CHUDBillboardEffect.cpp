@@ -19,9 +19,35 @@
 int CHUDBillboardEffect::g_BillboardCount = 0;
 int CHUDBillboardEffect::g_IndirectTexturedBillboardCount = 0;
 
+#ifdef TARGET_PC
+// Port: the effects are authored to fill a 4:3 view (GetScaleForPOV). Wider screens keep the
+// vertical FOV and extend sideways, narrower ones extend vertically (Vert+), so spread where the
+// particles and bolts spawn along the extended axis. Scaling the system instead would stretch
+// every sprite and bolt with it.
+void CHUDBillboardEffect::PortUpdateSpawnSpread(const CStateManager& mgr) {
+  CVector3f spread(1.f, 1.f, 1.f);
+  const float kMinAspect = 4.f / 3.f;
+  const float aspect =
+      mgr.GetCameraManager(mPlayerIndex)->GetCurrentCamera(mgr, true)->GetAspectRatio();
+  if (aspect > kMinAspect) {
+    spread.SetX(aspect / kMinAspect);
+  } else if (aspect > 0.f) {
+    spread.SetZ(kMinAspect / aspect);
+  }
+  if (spread == mPortSpawnSpread) {
+    return;
+  }
+  mPortSpawnSpread = spread;
+  mGenerator->PortSetSpawnSpread(spread, mGenerator->GetTranslation());
+}
+#endif
+
 void CHUDBillboardEffect::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     mgr.SetActorAreaId(*this, mgr.GetWorld()->GetCurrentAreaId());
+#ifdef TARGET_PC
+    PortUpdateSpawnSpread(mgr);
+#endif
     float oldGenRate = mGenerator->GetGeneratorRate();
     mGenerator->SetGeneratorRate(oldGenRate * CalcGenRate());
     mGenerator->Update(dt);

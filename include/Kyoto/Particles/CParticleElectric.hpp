@@ -109,6 +109,9 @@ public:
   void SetOverrideFVel(const CVector3f& vec) { mOverrideFVel = vec; }
   static void SetGlobalSeed(ushort seed) { sSeed = seed; }
   static ushort GetGlobalSeed() { return sSeed; }
+#ifdef TARGET_PC
+  void PortSetSpawnSpread(const CVector3f& spread, const CVector3f& origin) override;
+#endif
 
 private:
   void SetupLineGXMaterial();
@@ -181,6 +184,11 @@ private:
   // Presentation smoothing (particle_interpolation, MP1's FRAME_INTERPOLATION.md phase 6): the
   // line transform the last two ticks drew. Child swooshes and generators smooth themselves.
   PortTickPair< CTransform4f > mPortLineXf{CTransform4f::Identity()};
+  CVector3f mPortSpawnSpread{1.f, 1.f, 1.f};
+  CVector3f mPortSpawnOrigin{0.f, 0.f, 0.f};
+  // mTranslation with its offset from the parent's translation spread.
+  CVector3f PortSpreadTranslation() const;
+  CVector3f PortSpreadSpawn(const CVector3f& pos) const;
 #endif
 };
 CHECK_SIZEOF(CParticleElectric, 0x460)

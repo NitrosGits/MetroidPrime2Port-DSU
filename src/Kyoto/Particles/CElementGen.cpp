@@ -747,6 +747,22 @@ void CElementGen::UpdateExistingParticles() {
   }
 }
 
+#ifdef TARGET_PC
+// The children take it from the update loop, before their own update, around this system's
+// translation. A particle system sits on its parent's translation, so it needs no origin.
+void CElementGen::PortSetSpawnSpread(const CVector3f& spread, const CVector3f&) {
+  mPortSpawnSpread = spread;
+}
+
+// `rel` is a new particle's offset from the system origin.
+CVector3f CElementGen::PortSpreadSpawn(const CVector3f& rel) const {
+  if (mPortSpawnSpread == CVector3f(1.f, 1.f, 1.f)) {
+    return rel;
+  }
+  return CVector3f::ByElementMultiply(rel, mPortSpawnSpread);
+}
+#endif
+
 void CElementGen::CreateNewParticles(int count) {
   if (!sStaticListInitialized) {
     Initialize();
@@ -791,13 +807,23 @@ void CElementGen::CreateNewParticles(int count) {
       particle.mEndFrame += mCurFrame;
       if (mLoadedGenDesc->mEMTR) {
         mLoadedGenDesc->mEMTR->GetValue(mCurFrame, particle.mPos, particle.mVel);
+#ifdef TARGET_PC
+        particle.mPos = PortSpreadSpawn(mOrientation.Rotate(particle.mPos) + mPOFS) +
+                        (mGlobalScaleTransformInverse * mLocalScaleTransformInverse) * mTranslation;
+#else
         particle.mPos =
             mOrientation.Rotate(particle.mPos) +
             (mGlobalScaleTransformInverse * mLocalScaleTransformInverse) * mTranslation + mPOFS;
+#endif
         particle.mVel = mOrientation.Rotate(particle.mVel);
       } else {
+#ifdef TARGET_PC
+        particle.mPos = PortSpreadSpawn(mPOFS) +
+                        (mGlobalScaleTransformInverse * mLocalScaleTransformInverse) * mTranslation;
+#else
         particle.mPos =
             (mGlobalScaleTransformInverse * mLocalScaleTransformInverse) * mTranslation + mPOFS;
+#endif
         particle.mVel = CVector3f::Zero();
       }
       particle.mPrevPos = particle.mPos;
@@ -1066,6 +1092,9 @@ void CElementGen::UpdateChildParticleSystems(double dt) {
     rstl::vector< CParticleGen* >::iterator it = mActivePartChildren.begin();
     while (it != mActivePartChildren.end()) {
       CParticleGen* child = *it;
+#ifdef TARGET_PC
+      child->PortSetSpawnSpread(mPortSpawnSpread, mTranslation);
+#endif
       child->Update(dt);
       if (child->IsSystemDeletable() == true) {
         delete child;

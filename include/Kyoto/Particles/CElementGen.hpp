@@ -290,8 +290,11 @@ public:
   // The owner's global translation has been presented this tick (the HUD's billboards follow
   // the presented camera already, so they must not blend again).
   void PortGlobalIsPresented();
+  void PortSetSpawnSpread(const CVector3f& spread, const CVector3f& origin) override;
 
 private:
+  CVector3f mPortSpawnSpread{1.f, 1.f, 1.f};
+  CVector3f PortSpreadSpawn(const CVector3f& rel) const;
   bool PortBeginPresent(CVector3f& savedGlobal);
   bool PortSpawnOffset(CVector3f& offset) const;
   void PortShiftNewborns(const CVector3f& shift);

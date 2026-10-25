@@ -29,6 +29,12 @@ public:
   virtual void SetParticleEmission(bool emission) = 0;
   virtual void SetModulationColor(const CColor& col) = 0;
   virtual void SetGeneratorRate(float rate) {}
+#ifdef TARGET_PC
+  // Scales where new particles (or bolt end points) spawn in the system's local axes, without
+  // scaling the particles themselves: HUD effects use it to cover a view wider than 4:3. `origin`
+  // is the parent's translation: a child placed off it (SSPO/SEPO) has its offset spread too.
+  virtual void PortSetSpawnSpread(const CVector3f& spread, const CVector3f& origin) {}
+#endif
   // Names of the draw-flag methods are hypotheses based on the sDrawFlags/sDrawMask Wii exports.
   virtual void SetDrawFlags(uint flags) { mDrawFlags = flags; }
   virtual const CTransform4f& GetOrientation() const = 0;
