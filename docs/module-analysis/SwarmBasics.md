@@ -844,3 +844,30 @@ Still open in this slice, with what is measured and what each needs:
 |---|---|---|
 | 220C Touch | 48/72 lines, 49/93 branches, unmarked | 93 branch rows over three independent paths: the `CLightComboProjectile` arm (`CanCreateRay`, `CreateRay`, the `xa8_`/`xaa_` pair) needs a real Sunburst projectile in the air; the `CEnergyProjectile` arm needs a charge/beam projectile hit plus its explode-reflect `kWCR_EnemyNormal` branch; the player path needs the cannon-ball (`kIT_CannonBall`) and screw-attack states and the `mDamageCooldownTimer` arm. A forced-call fixture is not enough here: it has to drive real projectiles through the real collision callbacks, so this body needs its own slice (a Sunburst/seeker driver plus a `Touch` spec), not a row in this one |
 | A1BC GetModelDataForAnimRes | inlined into the ctor (objdiff None, no gcov entry), unmarked | the body is `animRes.GetId() != kInvalidAssetId ? CModelData(animRes) : CModelDataNull()`, and a `static` free function inlined into its only caller cannot be called natively. The invalid-id arm needs a **constructor call with an invalid asset id** - i.e. a real actor whose SLdr resolves no model - which no shipped swarm provides, and the ctor's own marker (fn_80_8FE0) does not distinguish the two sides. Needs either a `-fno-inline`-style build of just this unit with a documented reason, or a fixture that calls the ctor with a fabricated `CAnimRes` (a real caller-visible path, so it needs a decision by the orchestrator, not this lane) |
+
+## swb17: Render 53/53 lines, 56/56 branches; HardwareLight 8/8, 5/5; PreRenderBoid 8/8, 8/8 - all three marked
+
+Base `298119d8b`, branch `decomp/swb17`. Fixture `tools/cov/specs/swb17_render.py` (selftest
+`swb17_render_selftest.py`), drivers `tools/drivers/swb17.con` (Torvus `3dfd2249,0g_swamp_hall` layer 3,
+CPlantScarabSwarm) and `swb17_sand.con` (Agon `42b935e4,01_sand_entrance` layer 2, CFlyerSwarm). Merged
+gcda of runs 3 + 6 + 9 (`gcov_report.py build-port-cov <run3> <run6> <run9> --module SwarmBasics`).
+
+- **Render windows** (every 2nd Render call, first active in-frustum boid = outlier head, retained frame,
+  `_Finish` armed before the writes, LIFO restore with readback): phases A-G force
+  `mEnableLighting`/`mUseSoftwareLight`/`mThinkCounter`/head `mInFrustum`/`mActive`, F clears the head's
+  `mActive` when SoftwareLight returns (the 1227 arm); H forces GetRenderAlphaBufferAlpha to 0; LA/LD/LB set
+  `CGraphics::mLightActive=1` after DisableAllLights returns (the 1178-1180 light-combo arm; Render reads
+  `GetLightMask` after it and it is otherwise always 0); N nulls `mDisplayList.mPtr` (1175 false arm).
+  The oracle counts Hardware/SoftwareLight hits per window by caller-frame ownership and compares with
+  the closed form from the partition cells and the outlier chain: 0 count failures, 0 restore failures.
+- **N only on a CFlyerSwarm** (`SWB17_DL0=1`): only the base `RenderBoid` has the TARGET_PC null guard;
+  CPlantScarab/Metaree/Bacteria/IngBlob/SnakeWeed/LightSwarm overrides draw through the list (run4 crashed
+  in `CSwarmDisplayList::Draw this=0`). Run 6: all 12 phases OK, 6 N windows.
+- **PreRenderBoid 1072 (idx<32)**: `tools/scan_swarm_anims.py` - all 42 shipped swarm placements (34 FSWM,
+  4 IBSM, 1 MSWM, 3 PSSM) have a valid ANCS, so the model list is non-empty and `idx <= 3`: the false side is
+  a host-only guard for PPC `slw >= 32 -> 0`. Not reachable by shipped content; forced anyway: the `empty`
+  window writes `mModelDatas.mCount=0` and `mIndex=40` on the argument boid (read back, restored at return):
+  279 windows in run 9, no CachePose call, no fault. The `freeze` arm (68+ natural hits) is the other edge.
+- asmcheck: HardwareLight and PreRenderBoid clean. Render reports 3 benign findings: two `BIT 0x3D2C` are
+  `clrlwi r0,r0,30` of `x170` = `mThinkCounter & 3` (misread as x173 bits), `XCALL RenderBoid` is the
+  `bctrl vcall(this)+0xa8`; the two NOPOS lines are the bitfield `mEnableLighting`/`mUseSoftwareLight`.

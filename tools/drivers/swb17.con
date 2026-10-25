@@ -1,0 +1,8 @@
+# Torvus 0g_swamp_hall layer 3 (CPlantScarabSwarm, 50 boids), for swb17 (Render/HardwareLight/
+# PreRenderBoid forcing): the swarm only has to be alive and drawn; god mode keeps its contact damage off.
+@f220 layer 3
+@f300 god 1
+@f340 tp -157.4 -63.1 39.5
+@f360 visor combat
+@f500 objs swarm
+@f1100 objs swarm
