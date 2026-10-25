@@ -11,6 +11,14 @@
 #include "MetroidPrime/ScriptLoader/Structs/SLdrEditorProperties.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrPatternedAITypedef.hpp"
 
+// @ fn_3_7DDC (implicit copy ctor; retail 0x7DDC-0x7E6F, called from the grenade ctor at 0x9094)
+// Retail copies exactly these 15 members in declaration order, widths included: +0x0/+0x4/+0x8 stfs
+// -> preFireIdleTime, minAttackRange, maxAttackRange; +0xC stw and +0x10/+0x14/+0x18 stfs ->
+// grenadeDamage (dI_WeaponType int, then the damage/radius/knockback floats); +0x1C/+0x20/+0x24 stw
+// -> grenadeExplosion, grenadeEffect, grenadeTrail; +0x28..+0x34 stfs -> grenadeMass,
+// unknown_0xed086ce0, grenadeMinLaunchSpeed, grenadeMaxLaunchSpeed; +0x38 stw -> grenadeNumBounces;
+// +0x3C stfs -> eMPDuration; +0x40/+0x44 stw -> sound_GrenadeBounce, sound_GrenadeExplode. sizeof
+// 0x48 on both sides (no slot picked up from padding, no member skipped); branch-free.
 struct SLdrDarkCommandoEMPData {
   SLdrDarkCommandoEMPData();
   ~SLdrDarkCommandoEMPData();
@@ -137,6 +145,13 @@ inline void LoadTypedefDarkCommandoEMPData(SLdrDarkCommandoEMPData& sldrThis, CI
   }
 }
 
+// @ fn_3_7D40 (implicit copy ctor; retail 0x7D40-0x7DDB, reached through the main struct's copy at +0x98)
+// Retail copies exactly these 8 members in declaration order: +0x0/+0x4/+0x8 stfs ->
+// postFireIdleTime, minAttackRange, maxAttackRange; +0xC stw + 0x10/0x14/0x18 stfs -> damage;
+// +0x1C/+0x20 stw -> projectile, moldEffect; +0x24 stw + 0x28/0x2C/0x30 stfs -> moldDamage;
+// +0x34/+0x38 stfs, +0x3C/+0x40/+0x44 stw, +0x48 stb -> sound_Mold (maximumDistance, fallOff,
+// sound_Id, maxVolume, minVolume, useRoomAcoustics). sizeof 0x4C on both sides, nothing skipped;
+// branch-free.
 struct SLdrDarkCommandoChargeBeamData {
   SLdrDarkCommandoChargeBeamData();
   ~SLdrDarkCommandoChargeBeamData();
@@ -214,6 +229,14 @@ inline void LoadTypedefDarkCommandoChargeBeamData(SLdrDarkCommandoChargeBeamData
   }
 }
 
+// @ fn_3_797C (implicit copy ctor; retail 0x797C-0x7A83, reached through the main struct's copy at +0xE4)
+// Plain range +0x0-0x4C then two nested copies. +0x0/+0x4/+0x8/+0xC stfs -> unknown_0xa0d037ee,
+// unknown_0x4f522994, shadowDashSpeed, shadowDecoyHP; +0x10 stw -> shadowDecoyFx;
+// +0x14..+0x28, +0x2C..+0x40, +0x44..+0x58 -> sound_ShadowDecoy, sound_Cloak, sound_DeCloak
+// (SLdrAudioPlaybackParms: float, float, int, int, int, bool each); the two
+// __ct__23SLdrDamageVulnerabilityFRC23SLdrDamageVulnerability calls at +0x5C and +0x1B8 ->
+// shadowDecoyVulnerability, shadowDashVulnerability (29 SLdrWeaponVulnerability entries, 0x15C).
+// sizeof 0x314 on both sides, no member skipped; branch-free apart from the member ctor calls.
 struct SLdrDarkCommandoShadowDashData {
   SLdrDarkCommandoShadowDashData();
   ~SLdrDarkCommandoShadowDashData();
@@ -302,6 +325,13 @@ inline void LoadTypedefDarkCommandoShadowDashData(SLdrDarkCommandoShadowDashData
   }
 }
 
+// @ fn_3_7880 (implicit copy ctor; retail 0x7880-0x797B, called from the CDarkCommando ctor at 0x7018)
+// +0x0/+0x4/+0x8/+0xC stfs -> lurkChance, tauntChance, eMPAttackChance, chargeBeamAttackChance;
+// +0x10 stw + 0x14/0x18/0x1C stfs -> bladeDamage; +0x20..+0x34 and +0x38..+0x4C ->
+// sound_ImpactRagDoll, sound_HurledDeath (SLdrAudioPlaybackParms, six slots each); then the three
+// nested copies at +0x50, +0x98, +0xE4 -> eMPGrenadeAttackInfo (EMPData), chargeBeamAttackInfo,
+// shadowDashInfo. sizeof 0x3F8 on both sides: the ten declared members, no padding slot copied,
+// none skipped.
 struct SLdrDarkCommandoData {
   SLdrDarkCommandoData();
   ~SLdrDarkCommandoData();
