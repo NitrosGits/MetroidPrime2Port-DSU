@@ -221,11 +221,15 @@ void CCameraManager::UpdateCameras(float dt, CStateManager& mgr) {
   // The first-person camera takes its FOV once, when it is built (CCameraManager.cpp:108), so a live
   // change is applied here: mFirstPersonFov is what a rebuilt camera reads, and SetFovAndTarget moves
   // the one in use. A cinematic camera animates its own FOV from its spline, so it is left alone.
+  // Back to 0 (Retail) restores the game's own FOV once, so the reset applies without a slider move.
+  static float sPortLastFov = 0.f;
   const float portFov = PortOverlay::FirstPersonFov();
-  if (portFov > 0.f && mFirstPersonFov != portFov) {
-    mFirstPersonFov = portFov;
+  const float wantFov = portFov > 0.f ? portFov : sPortLastFov > 0.f ? sFirstPersonFOV : 0.f;
+  sPortLastFov = portFov;
+  if (wantFov > 0.f && mFirstPersonFov != wantFov) {
+    mFirstPersonFov = wantFov;
     if (mFpCamera != nullptr && !IsInCinematicCamera()) {
-      mFpCamera->SetFovAndTarget(portFov);
+      mFpCamera->SetFovAndTarget(wantFov);
     }
   }
 #endif
