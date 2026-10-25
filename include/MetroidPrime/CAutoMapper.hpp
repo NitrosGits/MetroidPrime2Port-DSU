@@ -129,6 +129,9 @@ public:
   void SetCurWorldAssetId(int worldId);
   void UnmuteAllLoopedSounds();
   void ProcessControllerInput(const CFinalInput& input, CStateManager& mgr);
+#ifdef TARGET_PC
+  void PortPointerInput(CFinalInput& input, const CStateManager& mgr);
+#endif
   void Update(float dt, CStateManager& mgr);
   void Draw(const CStateManager& mgr, const CTransform4f& xf, float alpha) const;
   void OnNewInGameGuiState(EInGameGuiState state, CStateManager& mgr);

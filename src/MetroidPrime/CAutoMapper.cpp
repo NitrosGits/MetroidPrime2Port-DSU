@@ -50,6 +50,29 @@
 #include "rstl/math.hpp"
 #include <float.h>
 
+#ifdef TARGET_PC
+#include "port_pointer.h"
+#include "port_pointer_menu.h"
+
+#include <math.h>
+#include <utility>
+
+// Port: pointer input for the map screens. The gestures of a frame are queued here and applied
+// by ProcessMapRotateInput / ProcessMapZoomInput / ProcessMapPanInput with the stick input.
+namespace {
+// Degrees the map turns per GUI pixel of a left drag; the map's height in GUI pixels for the pan.
+const float kPortMapDegPerPx = 0.4f;
+const float kPortMapViewPx = 480.f;
+float sPortMapPanX = 0.f;
+float sPortMapPanY = 0.f;
+bool sPortMapPanHeld = false;
+float sPortMapRotX = 0.f;
+float sPortMapRotY = 0.f;
+float sPortMapTwist = 0.f;
+float sPortMapPinch = 1.f;
+} // namespace
+#endif
+
 static const char* const skFRME_MapScreen = "FRME_MapScreen";
 static const char* const skFRME_MapScreenBackground = "FRME_MapScreenBackground";
 
@@ -689,7 +712,81 @@ void CAutoMapper::UpdateHintNavigation(float dt, CStateManager& mgr) {
   }
 }
 
+#ifdef TARGET_PC
+void CAutoMapper::PortPointerInput(CFinalInput& input, const CStateManager& mgr) {
+  sPortMapPanX = sPortMapPanY = sPortMapRotX = sPortMapRotY = sPortMapTwist = 0.f;
+  sPortMapPinch = 1.f;
+  sPortMapPanHeld = false;
+  const bool universe = mState == kAMS_MapScreenUniverse;
+  if ((!universe && mState != kAMS_MapScreen) || !IsInPlayerControlState() ||
+      IsRenderStateInterpolating() || !PortPointerMenu::Begin()) {
+    return;
+  }
+  if (mTransitionState == kTS_Idle && PortPointerMenu::TakeBack()) {
+    PortPointerMenu::PressB(input);
+  }
+  if (mLoadingDummyWorld || mHintSteps.size() > 0 || mTransitionState != kTS_Idle) {
+    return;
+  }
+
+  PortPointerMenu::ViewMotion m;
+  if (PortPointerMenu::TakeViewMotion(m)) {
+    float panX = m.panX;
+    float panY = m.panY;
+    float rotX = m.rotateX;
+    float rotY = m.rotateY;
+    // map_swap_fingers: on touch one finger pans and two rotate.
+    if (PortPointer::TouchIsLast() && PortPointer::MapSwapFingers()) {
+      std::swap(panX, rotX);
+      std::swap(panY, rotY);
+    }
+    sPortMapPanX = panX;
+    sPortMapPanY = panY;
+    sPortMapRotX = rotX;
+    sPortMapRotY = rotY;
+    sPortMapTwist = m.twist;
+    if (m.zoom != 0.f) {
+      sPortMapPinch = static_cast< float >(pow(2.0, 0.5 * m.zoom));
+    }
+  }
+  // A held pan drag (right or middle button, a pan gesture) keeps the map from drifting back
+  // to its area.
+  PortPointer::Recognizer& g = PortPointer::Gestures();
+  const bool touchPan = PortPointer::MapSwapFingers() ? g.FingerCount() == 1 : g.FingerCount() >= 2;
+  sPortMapPanHeld =
+      sPortMapPanX != 0.f || sPortMapPanY != 0.f ||
+      (g.Dragging() &&
+       (touchPan || (g.Buttons() & (PortPointer::kButtonRight | PortPointer::kButtonMiddle))));
+
+  // A tap on the corner A prompt presses A (world map <-> area map), as the button does.
+  if (mFrmeInitialized != nullptr && (universe || HasCurrentMapUniverseWorld(mgr))) {
+    const CGuiWidget* icon = mFrmeInitialized->FindWidget("textpane_right1");
+    const CGuiWidget* label = mFrmeInitialized->FindWidget("textpane_right");
+    if ((icon != nullptr && PortPointerMenu::TakeClickOn(icon)) ||
+        (label != nullptr && PortPointerMenu::TakeClickOn(label))) {
+      PortPointerMenu::PressA(input);
+    }
+  }
+  // A tap on the light/dark switch prompt presses X.
+  if (mFrmeInitialized != nullptr && CanSwitchLightDarkWorld()) {
+    const CGuiWidget* icon = mFrmeInitialized->FindWidget("textpane_xicon");
+    const CGuiWidget* label = mFrmeInitialized->FindWidget("textpane_xicon1");
+    if ((icon != nullptr && PortPointerMenu::TakeClickOn(icon)) ||
+        (label != nullptr && PortPointerMenu::TakeClickOn(label))) {
+      PortPointerMenu::PressX(input);
+    }
+  }
+}
+#endif
+
+#ifdef TARGET_PC
+void CAutoMapper::ProcessControllerInput(const CFinalInput& frameInput, CStateManager& mgr) {
+  CFinalInput portInput = frameInput;
+  PortPointerInput(portInput, mgr);
+  const CFinalInput& input = portInput;
+#else
 void CAutoMapper::ProcessControllerInput(const CFinalInput& input, CStateManager& mgr) {
+#endif
   if (!IsRenderStateInterpolating() && IsInPlayerControlState()) {
     if (mLoadingDummyWorld) {
       CheckDummyWorldLoad(mgr);
@@ -982,6 +1079,31 @@ void CAutoMapper::ProcessMapRotateInput(const CFinalInput& input, const CStateMa
     break;
   }
 
+#ifdef TARGET_PC
+  if (sPortMapTwist != 0.f) {
+    const CEulerAngles eulers = CEulerAngles::FromQuaternion(mRenderState0.mCamOrientation);
+    CAbsAngle angZ = CAbsAngle::FromRadians(eulers.GetZ());
+    angZ += CRelAngle::FromRadians(sPortMapTwist);
+    mRenderState0.mCamOrientation = CQuaternion::YXZRotation(
+        CRelAngle::FromRadians(0.f), CRelAngle::FromRadians(eulers.GetX()),
+        CRelAngle::FromRadians(angZ.AsRadians()));
+  }
+  if (sPortMapRotX != 0.f || sPortMapRotY != 0.f) {
+    const CEulerAngles eulers = CEulerAngles::FromQuaternion(mRenderState0.mCamOrientation);
+    CAbsAngle angX = CAbsAngle::FromRadians(eulers.GetX());
+    CAbsAngle angZ = CAbsAngle::FromRadians(eulers.GetZ());
+    angZ -= CRelAngle::FromDegrees(sPortMapRotX * kPortMapDegPerPx);
+    angX -= CRelAngle::FromDegrees(sPortMapRotY * kPortMapDegPerPx);
+    float angXDeg = angX.AsDegrees();
+    if (angXDeg > 180.f)
+      angXDeg -= 360.f;
+    angX = CAbsAngle::FromDegrees(CMath::Clamp(gpTweakAutoMapper->GetMinCamRotateX(), angXDeg,
+                                               gpTweakAutoMapper->GetMaxCamRotateX()));
+    mRenderState0.mCamOrientation = CQuaternion::YXZRotation(
+        CRelAngle::FromRadians(0.f), CRelAngle::FromRadians(angX.AsRadians()),
+        CRelAngle::FromRadians(angZ.AsRadians()));
+  }
+#endif
   if (up > 0.f || down > 0.f || left > 0.f || right > 0.f) {
     float deltaFrames = 60.f * input.DeltaTime();
     SetShouldRotatingSoundBePlaying(true);
@@ -1053,6 +1175,12 @@ void CAutoMapper::ProcessMapZoomInput(const CFinalInput& input, const CStateMana
     mZoomState = kZS_Out;
   }
 
+#ifdef TARGET_PC
+  if (sPortMapPinch != 1.f) {
+    mRenderState0.mCamDist = GetClampedMapScreenCameraDistance(mRenderState0.mCamDist / sPortMapPinch);
+  }
+#endif
+
   if (oldDist == mRenderState0.mCamDist)
     SetShouldZoomingSoundBePlaying(false);
   else
@@ -1067,7 +1195,20 @@ void CAutoMapper::ProcessMapPanInput(const CFinalInput& input, const CStateManag
   float right = gpGameState->ControlMapper().GetAnalogInput(CControlMapper::kC_MapMoveRight, input);
 
   CMatrix3f camRot = mRenderState0.mCamOrientation.BuildTransform();
+#ifdef TARGET_PC
+  // A drag moves the area point against the pointer, along the camera's right and up; the view
+  // height is two yScale (the visible world height at the focus distance, as in Draw).
+  CVector3f touchPan(0.f, 0.f, 0.f);
+  if (sPortMapPanX != 0.f || sPortMapPanY != 0.f) {
+    const float camAngleRad = mRenderState0.mCamAngle * (1.f / 360.f) * (2.f * M_PIF);
+    const float yScale = mRenderState0.mCamDist / float(tan(M_PIF / 2.f - 0.5f * camAngleRad));
+    const float worldPerPx = 2.f * yScale / kPortMapViewPx;
+    touchPan = CVector3f(-sPortMapPanX * worldPerPx, 0.f, sPortMapPanY * worldPerPx);
+  }
+  if (forward > 0.f || back > 0.f || left > 0.f || right > 0.f || sPortMapPanHeld) {
+#else
   if (forward > 0.f || back > 0.f || left > 0.f || right > 0.f) {
+#endif
     float deltaFrames = 60.f * input.DeltaTime();
     float speed = GetFinalMapScreenCameraMoveSpeed();
     int flags = 0;
@@ -1110,7 +1251,11 @@ void CAutoMapper::ProcessMapPanInput(const CFinalInput& input, const CStateManag
     }
 
     CVector3f dirVec = speed * (deltaFrames * CVector3f(right - left, 0.f, forward - back));
+#ifdef TARGET_PC
+    CVector3f newPoint = mRenderState0.mAreaPoint + camRot * (dirVec + touchPan);
+#else
     CVector3f newPoint = mRenderState0.mAreaPoint + camRot * dirVec;
+#endif
     if ((newPoint - mRenderState0.mAreaPoint).Magnitude() > input.DeltaTime()) {
       SetShouldPanningSoundBePlaying(true);
     } else {
