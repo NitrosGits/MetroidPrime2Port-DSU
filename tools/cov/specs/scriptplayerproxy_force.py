@@ -14,6 +14,7 @@
 # at frame 232 (the persistent per-Think `1C44 hp back` stop on 21 proxies). The three files were last written 01:54:22 before
 # the run's forced.log (01:54:58) and have not changed since; their sha256 at commit 5a89fc961 (= the executed bytes by mtime,
 # no copy was taken then): this spec 6ea20c1a...cecde2d2, spp_m06.con 919c7728...271cb, spp_force_I.con (not executed) 0099eda7...cfcd.
+# Slice ppx3, launch 1: run M (spp_m06_M.con) = run L plus the Think coin/wrap/visor arms, follower on/off, inactive proxy.
 # Launch 4 (ppx2, run L): restore through the address, COIN forced only while the entry installed a force (launch 3 = run K crashed: IDLE turned true mid-call).
 # Launch 3 (slice ppx2) runs J again with the fake vtable word fixed to `**(long**)GM` (launch 2 crashed at pc 0 writing GM there).
 # Launch 2 runs J (spp_m06_J.con, tools/cov/force_ret_spp.py): M06 with the Think forces restricted by ONLY to the CoinCollector
@@ -139,7 +140,7 @@ elif RUN == 'H':
         ('2644 counter', OG, GIA, 2, {0: [('$rax', '500')], 1: [('$rax', '0')]},
          'item amounts 500 / 0 on alternate calls'),
     ]
-elif RUN == 'J':
+elif RUN in ('J', 'M'):
     # M06_ShootingGallery natural PLCTs. Think's COIN arm on the natural CoinCollector e080000a8 (the only object the
     # ONLY filter lets the Think entries touch: idle, mCoinsToDrop 0): even calls mask 0 (invalid first player),
     # odd calls a fake CGMCoin (built in the proxy's spare bytes at +0x230, vtable of the real mode, restored at the
@@ -176,6 +177,29 @@ elif RUN == 'J':
          # true mid-call (the drop branch empties mCoinsToDrop) and run K crashed on the real mode taken for a CGMCoin
          {0: [('$rax', '(%s == 0 || %s == (long)%s) ? 0x434f494e : $rax' % (MASK, GM, FAKE))]}, "'COIN' while the entry forced the mask or the fake mode"),
     ]
+    if RUN == 'M':
+        # slice ppx3 (spp_m06_M.con): run L plus Think's other live arms on e080000a8, call numbers counted over its own
+        # Thinks: the 900 wrap (50), pending coins with HP 0 (100, 101; paid at 102), coins to drop 1500 (clamp, chunks
+        # 100/50/10, 150), 75 (400) and 7 (amount < chunk, 550), the visor-watcher case as type 8 with mask 0 (701, 703:
+        # odd calls, where the COIN entry leaves the mask alone; CheckVisors' loop sends nothing). OnGameEvent's coin arm
+        # gets coins per kill 10 and damage per coin 1.0 on e080000a8 (restored).
+        FORCE_RET += [
+            ('1C44 coins', THINK, 1000000,
+             [(50, [('!$this->mTime', '899.99')]), (100, [('!$this->mPendingCoins', '5')]),
+              (150, [('!$this->mCoinsToDrop', '1500')]), (400, [('!$this->mCoinsToDrop', '75')]),
+              (550, [('!$this->mCoinsToDrop', '7')])],
+             'mTime 899.99 (call 50), 5 pending (100), coins to drop 1500 (150), 75 (400), 7 (550)'),
+            ('1C44 dead player', THINK, 1000000, [(p, [(MH, '0.0')]) for p in (100, 101)], 'HP 0 on calls 100, 101'),
+            ('1C44 visor case', THINK, 1000000, [(p, [('$this->mProxyType', '8'), (MASK, '0')]) for p in (701, 703)],
+             'type 8 (echo visor watcher) with mask 0 on calls 701, 703'),
+            ('2644 coin params', OG, 1, [(0, [('$this->mIntParameter2', '10'), ('$this->mFloatParameter1', '1.0')])],
+             'coins per kill 10, damage per coin 1.0'),
+        ]
+        FORCE_INNER += [
+            ('1C44 amplifier', THINK, GIA, 1,
+             {0: [('$rax', '$this->mCoinsToDrop < 700 && $this->mCoinsToDrop > 300 && $rax == 0 ? 1 : $rax')]},
+             'amplifier (and counter) 1 while 300 < coins to drop < 700'),
+        ]
 elif RUN == 'I':
     # Agon 05_portalpuzzle EchoVisorWatcher as CoinCollector (as D), COIN mode with a valid first player on
     # idle Thinks: a fake CGMCoin (vtable of the real mode, mPlayers.mItems at +0x68 -> scratch) sits in the
@@ -251,3 +275,8 @@ SPEC = [
     ('OnGameEvent', 'CScriptPlayerProxy::OnGameEvent(', [], 'max=400'),
     ('2F10 ~CListener', 'CScriptPlayerProxy::CListener::~CListener(', [], 'max=400'),
 ]
+if RUN == 'M':
+    SPEC += [
+        ('188 LoadPlayerController', 'LoadPlayerController(', [], 'max=400'),
+        ('0 ~CScriptPlayerProxy (2F10 inline)', 'CScriptPlayerProxy::~CScriptPlayerProxy(', [], 'max=400'),
+    ]
