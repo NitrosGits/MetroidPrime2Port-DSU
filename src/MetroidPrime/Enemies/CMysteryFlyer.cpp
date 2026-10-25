@@ -602,6 +602,11 @@ void CMysteryFlyer::UpdateSteering(CStateManager& mgr, float dt) {
 }
 
 // fn_45_170
+// @ fn_45_170
+// Proof (mfly4, binary e7c9ce37a0af, runs mfly4_n1+f1+f2, gcov 10/10 lines, 9/10 arms): every other arm ran
+// naturally in 0e_temple_hall and 05_portalpuzzle. The one untaken edge is the `!modelData` return: it needs
+// the wasp's ANCS id (property 0xe25fb08c) in no pak, and tools/scan_mysteryflyer_loader.py shows all 9
+// shipped placements carry ANCS 0xc98c5e5f (present), 0 unknown property ids - dead by data.
 CEntity* LoadMysteryFlyer(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrMysteryFlyer sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrMysteryFlyer.inc"
