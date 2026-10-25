@@ -331,6 +331,8 @@ add_library(mp_platform OBJECT
     platform/port_settings.cpp
     platform/port_mods.cpp
     platform/port_mods_pak.cpp
+    platform/port_suit_colours.cpp
+    platform/port_suit_colours_disc.cpp
     platform/input/port_input_engine.cpp
     platform/input/port_input_bindings.cpp
     platform/glibc_compat.c)
@@ -548,6 +550,10 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_mods_tests PRIVATE platform/include)
     add_test(NAME port_mods_tests COMMAND port_mods_tests)
     set_tests_properties(port_mods_tests PROPERTIES TIMEOUT 15 LABELS port)
+    add_executable(port_suit_colours_tests tests/port_suit_colours.cpp platform/port_suit_colours.cpp)
+    target_include_directories(port_suit_colours_tests PRIVATE platform/include)
+    add_test(NAME port_suit_colours_tests COMMAND port_suit_colours_tests)
+    set_tests_properties(port_suit_colours_tests PROPERTIES TIMEOUT 15 LABELS port)
     add_executable(port_config_reset_tests tests/port_config_reset.cpp)
     target_include_directories(port_config_reset_tests PRIVATE platform/include)
     add_test(NAME port_config_reset_tests COMMAND port_config_reset_tests
