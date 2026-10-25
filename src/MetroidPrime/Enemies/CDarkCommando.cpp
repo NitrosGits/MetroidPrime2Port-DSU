@@ -40,6 +40,18 @@ typedef CPatterned::StateMachine::TriggerFunc TriggerFunc;
 typedef CPatterned::StateMachine::StateFunc StateFunc;
 typedef CPatterned::StateMachine::CodeFunc CodeFunc;
 
+// Retail `__sinit_CDarkCommando_cpp` (0x9A1C-0x9ED4) accounts for exactly three tables, the
+// grenade material list and one string. Tables: 81 `.data` word copies (`stw` 0x9B30-0x9E18 = 27
+// entries x {adjust 0, vtoff -1, fn}) for .data 0x164 (13 states, `lis` 0x9A38), 0x58 (7 triggers,
+// `lis` 0x9A90) and 0x288 (7 code funcs, `lis` 0x9CA4 = the host's `skCodes`). Material list (.bss
+// 0x20, 8 B): zeroed at 0x9E1C/0x9E20, then two `__shl2i` calls build the mask - 0x9E24 with shift
+// 0x3B and 0x9E5C with shift 0x23, OR-ed in at 0x9E4C/0x9E54 and 0x9E84/0x9E8C - i.e.
+// 1<<kMT_Solid | 1<<kMT_Projectile, the host's `skGrenadeMaterials(GrenadeSolidMaterial,
+// GrenadeProjectileMaterial)` (CDarkCommando.cpp:79-81). String "DarkCommando.rel": string_l
+// 0x9E90, copy ctor 0x9EA0 into .bss 0xC, __register_global_object 0x9EB4 (chain .bss 0x0),
+// internal_dereference 0x9EBC = the host's skRELName (line 131). Frame stmw r14 0x9A28 (0x90,
+// lmw 0x9EC0); no branch.
+// @ fn_3_9A1C
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"StateOver", static_cast< TriggerFunc >(&CDarkCommando::StateOver)},
     {"ShouldTaunt", static_cast< TriggerFunc >(&CDarkCommando::ShouldTaunt)},
