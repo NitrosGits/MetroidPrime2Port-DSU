@@ -108,9 +108,18 @@ class ForceBp(gdb.Breakpoint):
             try:
                 v = gdb.parse_and_eval(lv)
                 old = repr(float(v)) if v.type.strip_typedefs().code == gdb.TYPE_CODE_FLT else str(int(v))
+                # restore through the object's address: a class name in the lvalue may not parse in the frame of the
+                # return (run K: `((CScriptPlayerProxy*)N)->mFloatParameter2` was a syntax error there)
+                rlv = lv
+                t = v.type.strip_typedefs()
+                if t.name and t.code in (gdb.TYPE_CODE_FLT, gdb.TYPE_CODE_INT, gdb.TYPE_CODE_BOOL):
+                    try:
+                        rlv = '*(%s*)%d' % (t.name, int(v.address))
+                    except (gdb.error, TypeError):
+                        rlv = lv
                 gdb.execute('set var %s = %s' % (lv, val))
                 if not keep:
-                    saved.append((lv, old))
+                    saved.append((rlv, old))
             except gdb.error as e:
                 log('%s: set failed (%s): %s' % (self.label, lv, str(e)[:60]))
         try:

@@ -14,6 +14,7 @@
 # at frame 232 (the persistent per-Think `1C44 hp back` stop on 21 proxies). The three files were last written 01:54:22 before
 # the run's forced.log (01:54:58) and have not changed since; their sha256 at commit 5a89fc961 (= the executed bytes by mtime,
 # no copy was taken then): this spec 6ea20c1a...cecde2d2, spp_m06.con 919c7728...271cb, spp_force_I.con (not executed) 0099eda7...cfcd.
+# Launch 4 (ppx2, run L): restore through the address, COIN forced only while the entry installed a force (launch 3 = run K crashed: IDLE turned true mid-call).
 # Launch 3 (slice ppx2) runs J again with the fake vtable word fixed to `**(long**)GM` (launch 2 crashed at pc 0 writing GM there).
 # Launch 2 runs J (spp_m06_J.con, tools/cov/force_ret_spp.py): M06 with the Think forces restricted by ONLY to the CoinCollector
 # e080000a8 and no persistent writes; the fixture and its sha256 are copied into the run dir.
@@ -171,7 +172,9 @@ elif RUN == 'J':
         ('2644 counter|all', OG, GIA, 2, {0: [('$rax', '500')], 1: [('$rax', '0')]},
          'item amounts 500 / 0 on alternate calls'),
         ('1C44 COIN mode', THINK, 'CGMSinglePlayer::GetGameModeType(', 1,
-         {0: [('$rax', '%s ? 0x434f494e : $rax' % IDLE)]}, "'COIN' while idle"),
+         # only while the entry installed a force: the mask is 0 (even calls) or the fake mode is in place (odd calls); IDLE can turn
+         # true mid-call (the drop branch empties mCoinsToDrop) and run K crashed on the real mode taken for a CGMCoin
+         {0: [('$rax', '(%s == 0 || %s == (long)%s) ? 0x434f494e : $rax' % (MASK, GM, FAKE))]}, "'COIN' while the entry forced the mask or the fake mode"),
     ]
 elif RUN == 'I':
     # Agon 05_portalpuzzle EchoVisorWatcher as CoinCollector (as D), COIN mode with a valid first player on
