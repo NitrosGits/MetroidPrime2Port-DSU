@@ -14,7 +14,8 @@
 # at frame 232 (the persistent per-Think `1C44 hp back` stop on 21 proxies). The three files were last written 01:54:22 before
 # the run's forced.log (01:54:58) and have not changed since; their sha256 at commit 5a89fc961 (= the executed bytes by mtime,
 # no copy was taken then): this spec 6ea20c1a...cecde2d2, spp_m06.con 919c7728...271cb, spp_force_I.con (not executed) 0099eda7...cfcd.
-# Slice ppx3, launch 1: run M (spp_m06_M.con) = run L plus the Think coin/wrap/visor arms, follower on/off, inactive proxy.
+# Slice ppx3, launch 1: run M (spp_m06_M.con) = run L plus the Think coin/wrap/visor arms, follower on/off, inactive proxy;
+# it crashed at Think call 100 (entry order, see the M block). Launch 2 runs M with its entries before the COIN entry.
 # Launch 4 (ppx2, run L): restore through the address, COIN forced only while the entry installed a force (launch 3 = run K crashed: IDLE turned true mid-call).
 # Launch 3 (slice ppx2) runs J again with the fake vtable word fixed to `**(long**)GM` (launch 2 crashed at pc 0 writing GM there).
 # Launch 2 runs J (spp_m06_J.con, tools/cov/force_ret_spp.py): M06 with the Think forces restricted by ONLY to the CoinCollector
@@ -182,8 +183,10 @@ elif RUN in ('J', 'M'):
         # Thinks: the 900 wrap (50), pending coins with HP 0 (100, 101; paid at 102), coins to drop 1500 (clamp, chunks
         # 100/50/10, 150), 75 (400) and 7 (amount < chunk, 550), the visor-watcher case as type 8 with mask 0 (701, 703:
         # odd calls, where the COIN entry leaves the mask alone; CheckVisors' loop sends nothing). OnGameEvent's coin arm
-        # gets coins per kill 10 and damage per coin 1.0 on e080000a8 (restored).
-        FORCE_RET += [
+        # gets coins per kill 10 and damage per coin 1.0 on e080000a8 (restored). These entries come first: gdb runs the
+        # entries of one site in breakpoint order, so the COIN entry's IDLE test sees these writes (launch 1 put them after it:
+        # call 100 got mask 0 from the COIN entry, then 5 pending, and Think read PlayerState(-1)).
+        FORCE_RET[:0] = [
             ('1C44 coins', THINK, 1000000,
              [(50, [('!$this->mTime', '899.99')]), (100, [('!$this->mPendingCoins', '5')]),
               (150, [('!$this->mCoinsToDrop', '1500')]), (400, [('!$this->mCoinsToDrop', '75')]),
