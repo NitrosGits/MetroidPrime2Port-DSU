@@ -1286,6 +1286,8 @@ int sFpsCap = 0;
 bool sShowShaderCompilation = true;
 bool sShowMenuHint = true;
 bool sPerPixelLighting = false;
+PortGraphicsBackend::EGraphicsBackend sGraphicsBackend = PortGraphicsBackend::kGraphicsBackend_Auto;
+PortGraphicsBackend::EGraphicsBackend sGraphicsBackendAtStart = PortGraphicsBackend::kGraphicsBackend_Auto;
 bool sOpenGles = false;
 bool sOpenGlesAtStart = false;
 int sStorageClamp = -1;
@@ -1352,6 +1354,11 @@ bool PerPixelLighting() {
 bool OpenGles() {
   ReadEnv();
   return EnvBool("MP2_OPENGLES", sOpenGles);
+}
+
+PortGraphicsBackend::EGraphicsBackend GraphicsBackend() {
+  ReadEnv();
+  return sGraphicsBackend;
 }
 
 int StorageClamp() {

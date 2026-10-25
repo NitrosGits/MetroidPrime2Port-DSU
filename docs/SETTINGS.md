@@ -205,6 +205,11 @@ Video > Quality and Frame rate:
 
 Video > Compatibility (read once, when the GPU starts: a change applies after a restart):
 
+- `graphics_backend` (`auto`, `d3d12`, `vulkan`, `d3d11`; Windows only, MP1 sync 17): Renderer.
+  Auto leaves the choice to Aurora (Direct3D 12, then Vulkan, then Direct3D 11); an explicit API is
+  tried first and falls back to that order when it cannot start, leaving the setting alone. Env
+  `MP2_GRAPHICS_BACKEND` overrides it for one run (an unknown value warns and keeps the setting).
+  Stored everywhere, ignored off Windows.
 - `opengles`: Use OpenGL ES (shown only where Aurora has the backend); env `MP2_OPENGLES`. A start
   that crashes leaves the marker `opengles_starting` in the user folder and the next start goes
   back to the default backend.

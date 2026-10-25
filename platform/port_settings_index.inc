@@ -152,6 +152,9 @@
 {"Video", "Frame rate", "Frame rate", "Smooth animation", "interpolation pose models"},
 {"Video", "Frame rate", "Frame rate", "Smooth effects", "interpolation particles weather"},
 {"Video", "Frame rate", "Frame rate", "Smooth look", "interpolation camera mouse"},
+#if defined(_WIN32)
+{"Video", "Compatibility", "Compatibility", "Renderer", "renderer graphics api backend direct3d d3d12 d3d11 vulkan compatibility"},
+#endif
 {"Video", "Compatibility", "Compatibility", "Use OpenGL ES", "gles opengl android compatibility driver"},
 {"Video", "Compatibility", "Compatibility", "Adreno shader fix", "adreno shader fix qualcomm android gpu"},
 {"Video", "Compatibility", "Compatibility", "Low-power GPU", "integrated gpu power battery adapter igpu"},
