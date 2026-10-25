@@ -213,6 +213,13 @@ const bool CParticleSwoosh::Update(double dt) {
 void CParticleSwoosh::SetOrientation(const CTransform4f& orientation) {
   mOrientation = orientation;
   mInvOrientation = mOrientation.GetQuickInverse();
+#ifdef TARGET_PC
+  // An undersized swoosh (!IsLargeEnough) never fills the ring; retail wrote
+  // through the empty vector into low memory.
+  if (mSwooshes.empty()) {
+    return;
+  }
+#endif
   mSwooshes[mCurParticle].mOrientation = mOrientation;
 }
 
@@ -1364,6 +1371,10 @@ void CParticleSwoosh::PortSetSpawnSpread(const CVector3f& spread, const CVector3
 
 void CParticleSwoosh::UpdateSwooshTranslation(const CVector3f& translation) {
 #ifdef TARGET_PC
+  // SetTranslation reaches here for an undersized swoosh too (see SetOrientation).
+  if (mSwooshes.empty()) {
+    return;
+  }
   const CVector3f spawn =
       mPortSpawnSpread == CVector3f(1.f, 1.f, 1.f)
           ? translation
