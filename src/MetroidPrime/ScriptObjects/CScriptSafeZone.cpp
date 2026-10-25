@@ -180,6 +180,7 @@ void CScriptSafeZone::SetLowPassFilter(bool enabled) {
   }
 }
 
+// @ fn_66_3A40
 void CScriptSafeZone::Think(float dt, CStateManager& mgr) {
   bool moved = false;
   if (mMobile && GetTransformDirtySpare()) {
