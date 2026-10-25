@@ -1494,6 +1494,13 @@ float VertPlusFov(float fovDegrees, float aspect) {
   return 2.f * atanf(halfTan) * 180.f / 3.14159265f;
 }
 
+int FourThreeWidth(int width, int height) {
+  if (height <= 0) {
+    return width;
+  }
+  return AspectMode() == kAspect_4_3 ? width : height * 4 / 3;
+}
+
 void Draw() {
   TickFps();
   if (const int milli = sPendingWheelMilli.exchange(0, std::memory_order_relaxed); milli != 0) {

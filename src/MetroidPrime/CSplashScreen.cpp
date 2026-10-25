@@ -43,8 +43,21 @@ static CVector2f SplashToScreen(const CVector2f& point, bool healthWarning) {
   const float borderY = (videoHeight - 448.f) * 0.5f;
   const float imageHeight = CGraphics::Is50Hz() ? 528.f : 448.f;
   const GXRenderModeObj& mode = CGraphics::GetRenderMode();
+#ifdef TARGET_PC
+  // Port (MP1 f5796fc2e): the logo art is authored for a 4:3 screen, so lay it out at the width
+  // shown at 4:3 and centre that band: a wide framebuffer pillarboxes the logos instead of
+  // stretching them, and 4:3 is unchanged (the scale is 1 with no offset there).
+  const int refWidth = PortOverlay::FourThreeWidth(static_cast< int >(mode.fbWidth),
+                                                  static_cast< int >(mode.xfbHeight));
+  const float xScale = static_cast< float >(refWidth) / 660.f;
+  const float xOffset = 0.5f * static_cast< float >(static_cast< int >(mode.fbWidth) - refWidth);
+  const float x =
+      xOffset +
+      (borderX + 666.f * point.GetX() / 608.f - (videoWidth - 660.f) / 2.f) * xScale;
+#else
   const float x = (borderX + 666.f * point.GetX() / 608.f - (videoWidth - 660.f) / 2.f) *
                   (float(int(mode.fbWidth)) / 660.f);
+#endif
   const float healthWarningTop = -23.f;
   const float y = healthWarning ? 448.f * (point.GetY() - healthWarningTop) / 471.f : point.GetY();
   return CVector2f(x, (borderY + 448.f * (448.f - y) / imageHeight - borderY) *
@@ -307,8 +320,17 @@ void CSplashScreen::Draw() const {
                       bottomRight.GetY());
   } else if (tex != nullptr) {
     const CViewport& viewport = CGraphics::GetViewport();
+#ifdef TARGET_PC
+    // Port (MP1 f5796fc2e): pillarbox the full-screen splash at its 4:3 shape instead of
+    // stretching it across a wider viewport.
+    const int fourThree = PortOverlay::FourThreeWidth(viewport.mWidth, viewport.mHeight);
+    const int drawWidth = fourThree < viewport.mWidth ? fourThree : viewport.mWidth;
+    CGraphics::Render2D(*tex, viewport.mLeft + (viewport.mWidth - drawWidth) / 2, viewport.mTop,
+                        drawWidth, viewport.mHeight, color);
+#else
     CGraphics::Render2D(*tex, viewport.mLeft, viewport.mTop, viewport.mWidth, viewport.mHeight,
                         color);
+#endif
   }
 
   const CViewport viewport = CGraphics::GetViewport();

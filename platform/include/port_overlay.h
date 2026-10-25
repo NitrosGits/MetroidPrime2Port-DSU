@@ -469,6 +469,11 @@ float AspectWiden();
 // does): the vertical field of view in degrees that shows the authored horizontal extent on a
 // framebuffer `aspect` wide. Wider than the authored aspect, or non-positive input, returns fov.
 float VertPlusFov(float fovDegrees, float aspect);
+// The framebuffer width that is shown at the game's 4:3 for the given height (MP1's
+// PortDebug::FourThreeWidth): the width itself in 4:3 mode, where 640x448 is displayed at 4:3,
+// else height * 4 / 3, since the widened framebuffers have square pixels. Fits 4:3 art into a
+// wider viewport: 4:3 art keeps its shape in a band of that width, centred.
+int FourThreeWidth(int width, int height);
 bool Visible();
 // Builds the window. Call once per presented frame, inside the open Aurora frame.
 void Draw();
