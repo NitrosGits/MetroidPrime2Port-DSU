@@ -1172,12 +1172,12 @@ bool DynamicRes() {
 
 int DynamicResTarget() {
   ReadEnv();
-  return EnvIntIn("MP2_DYNAMIC_RES_TARGET", sDynamicResTarget, 0, 240);
+  return EnvIntIn("MP2_DYNAMIC_RES_TARGET", sDynamicResTarget, 0, kFpsCapMax);
 }
 
 float DynamicResMin() {
   ReadEnv();
-  return EnvFloatIn("MP2_DYNAMIC_RES_MIN", sDynamicResMin, 0.5f, 1.f);
+  return EnvFloatIn("MP2_DYNAMIC_RES_MIN", sDynamicResMin, kDynamicResMinLowest, 4.f);
 }
 
 int UpscaleSharpen() {

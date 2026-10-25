@@ -101,7 +101,7 @@ Video > Display:
 Video > Quality and Frame rate:
 
 - `msaa`, `aniso`, `render_scale`: Quality > Anti-aliasing (1 or 4), Anisotropic filtering (env
-  `MP2_ANISO`), EFB scale (0 = Auto render scale).
+  `MP2_ANISO`), Resolution scale (0 = Auto render scale).
 - `frame_limit`: Frame rate > 60 FPS cap (target).
 - `smooth_frames`, `pose_interpolation`, `particle_interpolation`, `look_interpolation`: Frame
   rate > Smooth uncapped frames, Smooth animation, Smooth effects, Smooth look.
@@ -110,10 +110,14 @@ Video > Quality and Frame rate:
   `MP2_SHOW_MENU_HINT`.
 - `per_pixel_lighting`: Quality > Per-pixel lighting (Aurora lights per pixel); env
   `MP2_PER_PIXEL_LIGHTING`.
-- `dynamic_res`, `dynamic_res_target`, `dynamic_res_min`: Quality > Dynamic resolution, Target
-  (0 = display rate, else 30..240 fps), Lowest scale (0.5..1); env `MP2_DYNAMIC_RES`,
-  `MP2_DYNAMIC_RES_TARGET`, `MP2_DYNAMIC_RES_MIN`. `MP2_DYNRES_GPU_TIMES=0` steers on the frame
-  rate alone, without GPU timestamps.
+- `dynamic_res`, `dynamic_res_target`, `dynamic_res_min`: Quality > Dynamic resolution (Off, Auto,
+  User; the mode is `dynamic_res` with `render_scale`: Auto goes up to the window's own scale
+  (`render_scale` 0), User up to the "Maximum resolution scale" set), Frame rate target (0 =
+  Display, the display's rate, else 30..500 fps; never above the frame rate cap), Minimum
+  resolution scale (0.25..the top, 4 at most; the sliders show the lines drawn, 1x being 480p);
+  env `MP2_DYNAMIC_RES`, `MP2_DYNAMIC_RES_TARGET`, `MP2_DYNAMIC_RES_MIN`. Auto starts over when the
+  window is resized and does nothing while its top is not above the minimum (F1 says so).
+  `MP2_DYNRES_GPU_TIMES=0` steers on the frame rate alone, without GPU timestamps.
 - `upscale_sharpen` (`off`, `dynamic`, `always`), `upscale_sharpen_amount` (0..100): Quality >
   Sharpen when upscaled, Sharpening; env `MP2_UPSCALE_SHARPEN`, `MP2_UPSCALE_SHARPEN_AMOUNT`.
 - `fps_cap`: Frame rate > FPS cap with the 60 FPS cap off (0 = Unlimited, else 30..500); env

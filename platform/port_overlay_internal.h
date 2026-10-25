@@ -76,7 +76,7 @@ namespace PortOverlayState {
 
 extern bool sDynamicRes;
 extern int sDynamicResTarget;   // fps; 0 = the display's refresh rate (60 under the cap)
-extern float sDynamicResMin;    // 0.5, 0.75 or 1
+extern float sDynamicResMin;    // kDynamicResMinLowest to 4
 extern int sSharpenMode;        // 0 off, 1 while dynamic resolution has lowered the scale, 2 always
 extern int sSharpenAmount;      // 0..100
 extern int sFpsCap;             // with the 60 FPS cap off; 0 = unlimited
