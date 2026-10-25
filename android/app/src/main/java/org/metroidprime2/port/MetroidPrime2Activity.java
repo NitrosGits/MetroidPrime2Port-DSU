@@ -114,6 +114,12 @@ public final class MetroidPrime2Activity extends SDLActivity {
     }
 
     private static final int REQUEST_TEXTURE_PACK = 0x7e57;
+    // A disc picked after Android destroyed the activity behind the picker reaches a new
+    // launch, which drops it: SDL's dialog state died with the old process. The picker's
+    // request code is kept here, and such a pick is left in PENDING_DISC_FILE for the
+    // native side's next start (platform/main.cpp).
+    private static final String DISC_PICK_PREFS = "disc_pick";
+    private static final String PENDING_DISC_FILE = "pending_disc_uri";
 
     // Texture pack picker (platform/debug_ui/game_sections.cpp, nativeTexturePack* in
     // platform/port_touch_jni.cpp): the folder is copied to <user>/user_textures.new, which
@@ -149,7 +155,35 @@ public final class MetroidPrime2Activity extends SDLActivity {
             }
             return;
         }
+        android.content.SharedPreferences discPick = getSharedPreferences(DISC_PICK_PREFS, MODE_PRIVATE);
+        if (discPick.getInt("request", Integer.MIN_VALUE) == requestCode) {
+            discPick.edit().remove("request").commit();
+            Uri disc = data != null && resultCode == RESULT_OK ? data.getData() : null;
+            if (disc != null && !isFileDialogPending(requestCode)) {
+                try (OutputStream out = new FileOutputStream(new File(getFilesDir(), PENDING_DISC_FILE))) {
+                    out.write(disc.toString().getBytes(StandardCharsets.UTF_8));
+                    Log.i(TAG, "Kept a disc picked before the activity was recreated: " + disc);
+                } catch (IOException e) {
+                    Log.w(TAG, "Could not keep the disc picked before the activity was recreated", e);
+                }
+                return;
+            }
+        }
         super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    // Remembers which dialog is the disc picker (opening, with filters; the texture pack
+    // uses its own intent) in storage that outlives the process. commit, not apply: the
+    // process can be gone before an apply is written.
+    @Override
+    protected void onFileDialogShown(String[] filters, boolean forWrite, int requestCode) {
+        android.content.SharedPreferences.Editor edit = getSharedPreferences(DISC_PICK_PREFS, MODE_PRIVATE).edit();
+        if (!forWrite && filters != null && filters.length > 0) {
+            edit.putInt("request", requestCode);
+        } else {
+            edit.remove("request");
+        }
+        edit.commit();
     }
 
     // A copy rather than reading through the URI: the grant can be revoked, and the loader needs
