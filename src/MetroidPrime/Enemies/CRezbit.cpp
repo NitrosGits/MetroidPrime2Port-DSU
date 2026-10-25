@@ -249,7 +249,12 @@ void CRezbit::Render(const CStateManager& mgr) const {
       if (projectile) {
         const float distance = (center - projectile->GetTranslation()).Magnitude();
         const float ratio = distance / mData.missileDeflectRadius;
+#ifdef TARGET_PC
+        mgr.DrawSpaceWarp(projectile->PortPresentedPoint(projectile->GetTranslation()),
+                          1.f - CMath::Clamp(0.f, ratio, 1.f));
+#else
         mgr.DrawSpaceWarp(projectile->GetTranslation(), 1.f - CMath::Clamp(0.f, ratio, 1.f));
+#endif
       }
     }
   }

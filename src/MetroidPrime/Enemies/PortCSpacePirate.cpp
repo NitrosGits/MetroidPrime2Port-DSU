@@ -1495,7 +1495,7 @@ void CSpacePirate::Render(const CStateManager& mgr) const {
     // 0x3814-0x3830: sin(pi (rodata BC4) * mColor's alpha (u8 at 0x44f * rodata BB4 1/255)).
     const float warp = CMath::FastSinR(3.1415927f * mColor.GetAlpha());
     // 0x3840-0x385C: at the bounding box's centre.
-    mgr.DrawSpaceWarp(GetBoundingBox().GetCenterPoint(), warp);
+    mgr.DrawSpaceWarp(PortPresentedPoint(GetBoundingBox().GetCenterPoint()), warp);
   }
   // 0x3868: the scoped time provider.
   CTimeProvider timeProvider(time);

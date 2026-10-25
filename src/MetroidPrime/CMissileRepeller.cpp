@@ -112,8 +112,13 @@ void CMissileRepeller::Render(const CStateManager& mgr, const CActor& actor) con
     if (projectile) {
       const float distance = (center - projectile->GetTranslation()).Magnitude();
       const float ratio = distance / mRadius;
+#ifdef TARGET_PC
+      mgr.DrawSpaceWarp(projectile->PortPresentedPoint(projectile->GetTranslation()),
+                        mSpaceWarpStrength * (1.f - rstl::min_val(ratio, 1.f)));
+#else
       mgr.DrawSpaceWarp(projectile->GetTranslation(),
                         mSpaceWarpStrength * (1.f - rstl::min_val(ratio, 1.f)));
+#endif
     }
   }
 }
