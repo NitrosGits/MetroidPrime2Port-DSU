@@ -301,6 +301,19 @@ private:
   void PortRestoreNewborns();
   CVector3f PortLinePos(const CParticle& particle) const;
 
+  // A line of newborns (the grapple beam's segments) is moved by the blend of its two ends'
+  // shifts, by where each lies between them (world space ends); set before Render, one draw.
+  CVector3f mPortLineEnd[2];
+  CVector3f mPortLineShift[2];
+  bool mPortLineShiftSet = false;
+  void PortShiftNewbornsAlongLine();
+
+public:
+  void PortSetNewbornLineShift(const CVector3f& firstEnd, const CVector3f& lastEnd,
+                               const CVector3f& firstShift, const CVector3f& lastShift);
+
+private:
+
   // Tick generation of the last update that took exactly one whole step (0 = not one).
   uint mPortStepGeneration = 0;
   uint mPortGlobalGeneration = 0;
