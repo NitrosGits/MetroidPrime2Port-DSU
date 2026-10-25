@@ -255,7 +255,8 @@ JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeMapRo
 
 JNIEXPORT jboolean JNICALL
 Java_org_metroidprime2_port_TouchControlsView_nativePointerMenuActive(JNIEnv*, jclass) {
-  return JNI_FALSE;
+  // A pointer-driven screen (pause menus, map) is up: the view hands its touches to SDL.
+  return PortPointer::ScreenActive() ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeTapUpdateToast(

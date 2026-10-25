@@ -10,6 +10,7 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdio>
 
@@ -18,7 +19,7 @@ namespace {
 
 Recognizer sGestures;
 SDL_WindowID sWindowId = 0;
-double sScreenActiveTime = -1.0;
+std::atomic< double > sScreenActiveTime{-1.0};  // also read on Android's UI thread (port_touch_jni.cpp)
 bool sScriptMoved = false;
 // A console "down … touch" holds the script finger until "up".
 bool sScriptFingerDown = false;
@@ -238,7 +239,10 @@ bool MouseIsLast() { return sGestures.LastDevice() == Device::Mouse; }
 bool TouchIsLast() { return sGestures.LastDevice() == Device::Touch; }
 
 void NoteScreenActive() { sScreenActiveTime = Now(); }
-bool ScreenActive() { return Enabled() && sScreenActiveTime >= 0.0 && Now() - sScreenActiveTime < 0.3; }
+bool ScreenActive() {
+  const double t = sScreenActiveTime.load();
+  return Enabled() && t >= 0.0 && Now() - t < 0.3;
+}
 
 void ScriptMove(float gx, float gy) {
   float x = 0.f, y = 0.f;

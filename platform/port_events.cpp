@@ -422,7 +422,8 @@ bool PortPumpEvents() {
     if (event->type == AURORA_SDL_EVENT) {
       PortDebug::PhotoTouchEvent(event->sdl);
     }
-    if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_MOUSE_MOTION) {
+    if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_MOUSE_MOTION &&
+        event->sdl.motion.which != SDL_TOUCH_MOUSEID && event->sdl.motion.which != SDL_PEN_MOUSEID) {
       // Relative motion only, which is what SDL reports while the port holds capture; the
       // game consumes the resulting aim in CPlayer/CFirstPersonCamera.
       PortMouse::AddMotion(event->sdl.motion.xrel, event->sdl.motion.yrel);
@@ -432,9 +433,11 @@ bool PortPumpEvents() {
     // listed here: the overlay's own pad arrives as an added device too, and treating that as
     // physical hid the controls the moment they attached. Physical pads are found instead by
     // the scan in `PortTouch::BeginFrame`, which can tell a virtual device from a real one.
+    // Nor is a click SDL makes from a touch (pointer screens hand their fingers to SDL).
     if (event->type == AURORA_SDL_EVENT &&
         (event->sdl.type == SDL_EVENT_KEY_DOWN ||
-         event->sdl.type == SDL_EVENT_MOUSE_BUTTON_DOWN)) {
+         (event->sdl.type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
+          event->sdl.button.which != SDL_TOUCH_MOUSEID && event->sdl.button.which != SDL_PEN_MOUSEID))) {
       PortTouch::NotePhysicalInput();
     }
     // MP1's F10: the 60 FPS cap on and off.
