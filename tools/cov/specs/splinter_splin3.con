@@ -1,0 +1,16 @@
+# 07_temple_mothlordsanctuary layer 2 for splinter_splin3.py: six Splinters, one the Alpha (Mega, eid 0x080200ff,
+# engaged spit + mVisorEffect); its constructor runs at the layer load.  Wake them, force Sidestep (ChooseEvasion
+# refills mEvadeChecks) a few times, then delete each right after the last evasion (DeleteObjectRequest -> D0).
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f302 layer 2
+@f305 objs Splinter
+@f306 send e080200ff Activate; send e0802029f Activate; send e0802029c Activate; send e0802029d Activate; send e0802029e Activate; send e080202ab Activate
+@f310 tp 2 -38 -17.5
+@f330 send e080200ff Alert; send e0802029f Alert; send e0802029c Alert; send e0802029d Alert; send e0802029e Alert; send e080202ab Alert
+@f340 fsm e080200ff Sidestep; fsm e0802029f Sidestep; fsm e0802029c Sidestep; fsm e0802029d Sidestep; fsm e0802029e Sidestep; fsm e080202ab Sidestep
+@f360 fsm e080200ff Sidestep; fsm e0802029f Sidestep; fsm e0802029c Sidestep; fsm e0802029d Sidestep; fsm e0802029e Sidestep; fsm e080202ab Sidestep
+@f380 fsm e080200ff Taunt; fsm e0802029f Taunt; fsm e0802029c Taunt; fsm e0802029d Taunt; fsm e0802029e Taunt; fsm e080202ab Taunt
+@f400 fsm e080200ff Sidestep; fsm e0802029f Sidestep; fsm e0802029c Sidestep; fsm e0802029d Sidestep; fsm e0802029e Sidestep; fsm e080202ab Sidestep
+@f402 objs Splinter
+@f404 send e080200ff Delete; send e0802029f Delete; send e0802029c Delete; send e0802029d Delete; send e0802029e Delete; send e080202ab Delete
+@f500 objs Splinter; objs SplinterAcidSac
