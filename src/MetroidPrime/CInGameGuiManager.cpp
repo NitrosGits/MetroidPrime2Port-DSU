@@ -245,8 +245,8 @@ void PortPublishMinimapRect(const CGuiWidget* widget, const CTransform4f& world)
   PortMinimap::SetRect(ok, x0 - padX, y0 - padY, x1 + padX, y1 + padY);
 }
 } // namespace
-#endif
 
+#endif
 void CInGameGuiManager::Draw(const CStateManager& mgr) const {
 #ifdef TARGET_PC
   PortMinimap::SetRect(false, 0.f, 0.f, 0.f, 0.f);

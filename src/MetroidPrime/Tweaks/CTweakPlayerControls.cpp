@@ -1,6 +1,5 @@
 #include "MetroidPrime/Tweaks/CTweakPlayerControls.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrTweakPlayerControls.hpp"
-
 #ifdef TARGET_PC
 #include "port_overlay.h"
 #endif
