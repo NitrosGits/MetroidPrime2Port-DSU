@@ -5,7 +5,8 @@
 #   COV_GDB_SCRIPT=tools/cov/force_ret.py BUILD=$PWD/build-port-cov tools/cov/force.sh \
 #     tools/cov/specs/flyingpirate_fp4c.py <out> 1baa96c2,01_cliff_entrance \
 #     --con tools/cov/specs/flyingpirate_fp3_cliff.con --fast --frames 4200
-#import os
+#
+import os
 _here = os.path.dirname(os.environ['COV_SPEC'])
 for _f in ('flyingpirate_fp3.py', 'flyingpirate_fp4.py'):
     exec(compile(open(os.path.join(_here, _f)).read(), _f, 'exec'))
