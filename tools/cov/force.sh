@@ -89,7 +89,7 @@ env DISPLAY="$DISP" SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw SDL_AUDIODRIVER=dum
   MP2_CONSOLE="$PORT" "${EXTRA[@]}" COV_SPEC="$SPEC" COV_NM="$OUT/nm.txt" COV_OUT="$OUT" \
   timeout -k 10 "${SECS:-900}" gdb -q -batch -nx \
     -ex 'set pagination off' -ex 'set confirm off' -ex 'handle SIGPIPE SIGUSR1 SIGUSR2 SIG32 SIG33 nostop noprint pass' \
-    -ex "source ${COV_GDB_SCRIPT:-$ROOT/tools/cov/force.py}" -ex run -ex 'bt 20' \
+    -ex "source ${COV_GDB_SCRIPT:-$ROOT/tools/cov/force.py}" -ex run -ex 'bt 20' -ex 'thread apply all bt 12' \
     --args ./metroid_prime2_port > "$OUT/game.log" 2>&1 &
 GDB=$!
 trap 'kill -TERM "$GDB" 2>/dev/null' TERM INT

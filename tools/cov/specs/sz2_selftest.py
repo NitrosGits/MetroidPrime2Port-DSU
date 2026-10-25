@@ -255,7 +255,8 @@ class Tests(unittest.TestCase):
         mem.raw[40:48] = (0x7777).to_bytes(8, 'little')
         m = self.m
         m.state['scratch'] = 64
-        m.ev = lambda e: 40 if e.startswith('&') else 0
+        reg = self.fake_xmm()
+        m.ev = lambda e: reg['v'] if e == '$xmm0.v4_float[0]' else (40 if e.startswith('&') else 0)
         m.iv = lambda e: int.from_bytes(mem.raw[40:48], 'little')
         m.zone_expr = lambda this, member: member
         m.write_float = m.write_int = m.write_bit = lambda *a, **k: None
@@ -284,8 +285,61 @@ class Tests(unittest.TestCase):
         self.assertEqual(int.from_bytes(self.mem.raw[40:48], 'little'), 0x7777)
 
     def test_every_case_has_no_emitter_guard(self):
-        src = open(Path(__file__).with_name('sz2_think.py')).read()
-        self.assertNotIn("state['skipped_emitter'] += 1\n                return False", src)
+        with open(Path(__file__).with_name('sz2_think.py')) as f:
+            self.assertNotIn("state['skipped_emitter'] += 1\n                return False", f.read())
+
+    def fake_xmm(self):
+        """a fake $xmm0 float lane: gdb.execute('set var $xmm0.v4_float[0] = x') and ev('$xmm0...')"""
+        import struct
+        reg = {'v': 0.0166666675}
+        def execute(cmd):
+            assert cmd.startswith('set var $xmm0.v4_float[0] = ')
+            reg['v'] = struct.unpack('<f', struct.pack('<f', float(cmd.split('= ')[1])))[0]
+        self.gdb.execute = execute
+        self.m.ev = lambda e: reg['v'] if e == '$xmm0.v4_float[0]' else 0
+        return reg
+
+    def test_dt_written_to_xmm0_with_readback(self):
+        reg = self.fake_xmm()
+        before, after = self.m.write_dt(0.25)
+        self.assertEqual((before, after, reg['v']), (0.0166666675, 0.25, 0.25))
+        self.m.write_dt(0.1)                       # not representable: the readback is the float32
+        self.assertEqual(reg['v'], self.m.f32(0.1))
+
+    def test_dt_readback_mismatch_raises(self):
+        reg = self.fake_xmm()
+        self.gdb.execute = lambda cmd: None        # the write does not land
+        with self.assertRaises(RuntimeError):
+            self.m.write_dt(0.25)
+
+    def test_apply_writes_case_dt_and_judges_against_it(self):
+        w = self.apply_window('inactive-fade')
+        w.apply()
+        reg = {'v': w.dt_written}
+        self.assertEqual((reg['v'], w.dt_written), (0.25, 0.25))
+        self.assertEqual(self.run_model('inactive-fade')[1][0], ('base_think', reg['v']))
+
+    def test_every_case_dt_is_written_not_natural(self):
+        for name, _ in self.m.CASES:
+            self.assertNotEqual(self.case(name)['dt'], 0.0166666675)
+
+    def test_decay_cases_cross_zero_at_case_dt(self):
+        for name in ('inactive-fade-end', 'inactive-fade-end-echo', 'emitter-inactive-fade'):
+            final, calls, _ = self.run_model(name)
+            self.assertEqual(final['act'], 0.0, name)
+            self.assertIn(('lowpass', 0), calls, name)
+
+    def test_finished_window_is_retired(self):
+        w = self.window()
+        w.enabled = True
+        w.judge = lambda: ({}, [], [])
+        w.stop()
+        self.assertFalse(w.enabled)
+        self.assertTrue(w.closed)
+
+    def test_log_has_a_monotonic_time(self):
+        with open(Path(__file__).with_name('sz2_think.py')) as f:
+            self.assertIn("t=round(time.monotonic(), 3)", f.read())
 
 
 if __name__ == '__main__':

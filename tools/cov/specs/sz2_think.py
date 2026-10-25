@@ -19,6 +19,7 @@ import hashlib
 import json
 import os
 import struct
+import time
 from fractions import Fraction
 
 CLASS = 'CScriptSafeZone'
@@ -73,7 +74,7 @@ lines = dict(natural={}, forced={})
 
 def log(event, **values):
     with open(os.path.join(os.environ['COV_OUT'], 'sz2.jsonl'), 'a') as f:
-        f.write(json.dumps(dict(event=event, **values), sort_keys=True) + '\n')
+        f.write(json.dumps(dict(event=event, t=round(time.monotonic(), 3), **values), sort_keys=True) + '\n')
 
 
 def ev(expression):
@@ -288,6 +289,15 @@ def write_bit(mem, base, typ, owner_expr, name, value):
     check(iv(owner_expr + name) == (1 if value else 0), 'forced readback ' + name)
 
 
+def write_dt(value):
+    """Think's dt arrives in xmm0 (SysV, float): write the case dt at the entry, read it back."""
+    before = float(ev('$xmm0.v4_float[0]'))
+    gdb.execute('set var $xmm0.v4_float[0] = %r' % f32(value))
+    after = float(ev('$xmm0.v4_float[0]'))
+    check(after == f32(value), 'forced readback dt %r != %r' % (after, f32(value)))
+    return before, after
+
+
 def read_bit(base, typ, name):
     byte, bit, size = bit_field(typ, name)
     return (int(gdb.selected_inferior().read_memory(base + byte, 1)[0]) >> bit) & 1
@@ -303,6 +313,7 @@ class Window(gdb.FinishBreakpoint):
         super().__init__(frame, internal=True)  # MUST succeed before any mutation
         check(ctx not in state['active'], 'nested owned Think')
         state['active'][ctx] = self
+        self.dt_before = self.dt_written = None
         log('ARM', case=case[0], context=ctx, this=this, originals=snapshot.originals())
 
     def restore(self):
@@ -346,6 +357,7 @@ class Window(gdb.FinishBreakpoint):
                 ptr = int(ev('&' + zone_expr(T, 'mEchoEmitter.mPtr')))
                 mem.write_memory(ptr, bytes(8))  # natural zones all own an emitter: hide it for this window
                 check(iv(zone_expr(T, 'mEchoEmitter.mPtr')) == 0, 'forced readback no emitter')
+            self.dt_before, self.dt_written = write_dt(c['dt'])
         except Exception:
             self.restore()
             raise
@@ -382,7 +394,7 @@ class Window(gdb.FinishBreakpoint):
             check(state['active'].get(self.ctx) is self, 'finish window ownership')
             got, expected, problems = self.judge()
             log('RESULT', case=self.case[0], fields=got, calls=self.calls, expected=expected,
-                problems=problems)
+                problems=problems, dt_natural=self.dt_before, dt_written=self.dt_written)
             state['results'].append((self.case[0], not problems))
             if problems:
                 failure('%s: %s' % (self.case[0], '; '.join(problems)))
@@ -396,11 +408,20 @@ class Window(gdb.FinishBreakpoint):
                 failure(error, True)
                 good = False
             self.closed = True
+            self.retire()
             if state['active'].get(self.ctx) is self:
                 state['active'].pop(self.ctx)
         if good:
             state['index'] += 1
         return not good
+
+    def retire(self):
+        """a finish breakpoint whose stop() returned False stays armed at the caller's return address:
+        disable it so the next Think returns do not re-enter it"""
+        try:
+            self.enabled = False
+        except Exception as error:
+            log('RETIRE_FAIL', case=self.case[0], error=str(error))
 
     def out_of_scope(self):
         if self.closed:
@@ -471,6 +492,8 @@ class Entry(gdb.Breakpoint):
                 state['skipped_emitter'] += 1  # counted only: the natural emitter is never written, the
                 # pointer is replaced (fake page or null) for the window and restored from the snapshot
             state['eligible'] += 1
+            if state['eligible'] <= 400:
+                log('ELIGIBLE', n=state['eligible'], this=this, ctx=ctx, index=state['index'])
             if state['eligible'] % SPACING != 1:
                 return False
             make_scratch()
