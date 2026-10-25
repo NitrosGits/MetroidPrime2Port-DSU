@@ -30,6 +30,7 @@
 #include <math.h>
 #ifdef TARGET_PC
 #include "port_mouse.h"
+#include "port_overlay.h"
 #endif
 
 #include "MetroidPrime/CAnimData.hpp"
@@ -52,11 +53,23 @@ static const float skDashStrafeDistances[] = {11.8f, 30.f, 22.6f, 10.f, 10.f, 10
 static const float skDashClampSpeeds[] = {11.8f, 18.f, 15.f, 10.f, 10.f, 10.f, 10.f, 10.f};
 static const float skOrbitForwardDistances[] = {11.8f, 11.8f, 11.8f, 5.f, 6.f, 5.f, 5.f, 6.f};
 
+#ifdef TARGET_PC
+// walk_speed (PortOverlay::WalkSpeed): on foot, the top speed, the acceleration and the friction
+// are scaled together, so the force law closes the same fraction of the gap each tick and the
+// speed it settles at (and every clamp) is k times retail's, reached in the same time. At 100 the
+// factor is exactly 1.
+static float WalkScale() { return static_cast< float >(PortOverlay::WalkSpeed()) / 100.f; }
+#endif
+
 CVector3f CPlayer::GetDampedClampedVelocityWR() const {
   const float acceleration = GetAcceleration();
   CVector3f localVelocity = GetTransform().TransposeRotate(GetVelocityWR());
   if (mOrbitState == kOS_NoOrbit) {
+#ifdef TARGET_PC
+    float friction = GetTweakPlayer()->GetPlayerTranslationFriction(GetSurfaceRestraint()) * WalkScale();
+#else
     float friction = GetTweakPlayer()->GetPlayerTranslationFriction(GetSurfaceRestraint());
+#endif
     if (GetSurfaceRestraint() == kSR_Air) {
       friction = 3.5f;
       const CVector2f flatVelocity(localVelocity.GetX(), localVelocity.GetY());
@@ -74,8 +87,13 @@ CVector3f CPlayer::GetDampedClampedVelocityWR() const {
       localVelocity.SetX(rstl::min_val(localVelocity.GetX() + friction, 0.f));
     }
   }
+#ifdef TARGET_PC
+  const float maxSpeed = GetTweakPlayer()->GetPlayerTranslationMaxSpeed(GetSurfaceRestraint()) * WalkScale();
+  localVelocity.SetY(CMath::Limit(localVelocity.GetY(), maxSpeed / acceleration));
+#else
   const float maxSpeed = GetTweakPlayer()->GetPlayerTranslationMaxSpeed(GetSurfaceRestraint());
   localVelocity.SetY(CMath::Limit(localVelocity.GetY(), maxSpeed / acceleration));
+#endif
   if (mMovementState == NPlayer::kMS_OnGround) {
     localVelocity.SetZ(0.f);
   }
@@ -257,7 +275,11 @@ void CPlayer::ComputeDash(const CFinalInput& input, float dt, CStateManager& mgr
     return;
   }
   CVector3f useOrbitToPlayer = orbitToPlayer;
+#ifdef TARGET_PC
+  float strafeVelocity = dt * (skStrafeDistances[GetSurfaceRestraint()] * WalkScale());
+#else
   float strafeVelocity = dt * skStrafeDistances[GetSurfaceRestraint()];
+#endif
   if (JumpHeld(input)) {
     mDashButtonHoldTime += dt;
   }
@@ -305,7 +327,12 @@ void CPlayer::ComputeDash(const CFinalInput& input, float dt, CStateManager& mgr
     mDashButtonHoldTime = 0.f;
   }
 
+#ifdef TARGET_PC
+  strafeVelocity =
+      dt * (forwardInput * (skOrbitForwardDistances[GetSurfaceRestraint()] * WalkScale()));
+#else
   strafeVelocity = dt * (forwardInput * skOrbitForwardDistances[GetSurfaceRestraint()]);
+#endif
   orbitPoint += strafeVelocity * -useOrbitToPlayer.AsNormalized();
   const CVector2f flatVelocity(GetVelocityWR().GetX(), GetVelocityWR().GetY());
   const float flatVelocityY = flatVelocity.GetY();
@@ -316,7 +343,11 @@ void CPlayer::ComputeDash(const CFinalInput& input, float dt, CStateManager& mgr
   velocityDelta.SetZ(0.f);
   const float deltaMagnitude = velocityDelta.Magnitude();
   if (deltaMagnitude > FLT_EPSILON) {
+#ifdef TARGET_PC
+    const float acceleration = (270.f * GetAcceleration() * (mSidewaysDashing ? 1.f : WalkScale())) * dt;
+#else
     const float acceleration = (270.f * GetAcceleration()) * dt;
+#endif
     const float accelerationBlend = CMath::Limit(deltaMagnitude / acceleration, 1.f);
     newVelocity = GetVelocityWR() +
                   accelerationBlend * (acceleration * ((1.f / deltaMagnitude) * velocityDelta));
@@ -404,11 +435,19 @@ void CPlayer::ComputeMovement(const CFinalInput& input, CStateManager& mgr, floa
   }
   float forwardForce;
   if (!close_enough(0.f, forwardInput)) {
+#ifdef TARGET_PC
+    const float maxSpeed = GetTweakPlayer()->GetPlayerTranslationMaxSpeed(GetSurfaceRestraint()) * WalkScale();
+    const float friction = GetTweakPlayer()->GetPlayerTranslationFriction(GetSurfaceRestraint()) * WalkScale();
+    const float mass = GetMass();
+    const float acceleration =
+        GetTweakPlayer()->GetMaxTranslationalAcceleration(GetSurfaceRestraint()) * WalkScale();
+#else
     const float maxSpeed = GetTweakPlayer()->GetPlayerTranslationMaxSpeed(GetSurfaceRestraint());
     const float friction = GetTweakPlayer()->GetPlayerTranslationFriction(GetSurfaceRestraint());
     const float mass = GetMass();
     const float acceleration =
         GetTweakPlayer()->GetMaxTranslationalAcceleration(GetSurfaceRestraint());
+#endif
     float frictionSpeed = friction * mass / (dt * acceleration);
     frictionSpeed *= maxSpeed;
     float desiredSpeed = forwardInput * (maxSpeed - frictionSpeed);
@@ -416,19 +455,32 @@ void CPlayer::ComputeMovement(const CFinalInput& input, CStateManager& mgr, floa
     const float forwardFraction = CMath::Clamp(
         -1.f, (desiredSpeed - GetTransform().TransposeRotate(GetVelocityWR()).GetY()) / maxSpeed,
         1.f);
+#ifdef TARGET_PC
+    forwardForce =
+        forwardFraction * GetTweakPlayer()->GetMaxTranslationalAcceleration(GetSurfaceRestraint()) * WalkScale();
+#else
     forwardForce =
         forwardFraction * GetTweakPlayer()->GetMaxTranslationalAcceleration(GetSurfaceRestraint());
+#endif
   } else {
     forwardForce = 0.f;
   }
   forwardForce *= GetAcceleration();
   float strafeForce;
   if (!close_enough(0.f, strafeInput)) {
+#ifdef TARGET_PC
+    const float maxSpeed = GetTweakPlayer()->GetPlayerTranslationMaxSpeed(GetSurfaceRestraint()) * WalkScale();
+    const float friction = GetTweakPlayer()->GetPlayerTranslationFriction(GetSurfaceRestraint()) * WalkScale();
+    const float mass = GetMass();
+    const float acceleration =
+        GetTweakPlayer()->GetMaxTranslationalAcceleration(GetSurfaceRestraint()) * WalkScale();
+#else
     const float maxSpeed = GetTweakPlayer()->GetPlayerTranslationMaxSpeed(GetSurfaceRestraint());
     const float friction = GetTweakPlayer()->GetPlayerTranslationFriction(GetSurfaceRestraint());
     const float mass = GetMass();
     const float acceleration =
         GetTweakPlayer()->GetMaxTranslationalAcceleration(GetSurfaceRestraint());
+#endif
     float frictionSpeed = friction * mass / (dt * acceleration);
     frictionSpeed *= maxSpeed;
     float desiredSpeed = strafeInput * (maxSpeed - frictionSpeed);
@@ -436,8 +488,13 @@ void CPlayer::ComputeMovement(const CFinalInput& input, CStateManager& mgr, floa
     const float strafeFraction = CMath::Clamp(
         -1.f, (desiredSpeed - GetTransform().TransposeRotate(GetVelocityWR()).GetX()) / maxSpeed,
         1.f);
+#ifdef TARGET_PC
+    strafeForce =
+        strafeFraction * GetTweakPlayer()->GetMaxTranslationalAcceleration(GetSurfaceRestraint()) * WalkScale();
+#else
     strafeForce =
         strafeFraction * GetTweakPlayer()->GetMaxTranslationalAcceleration(GetSurfaceRestraint());
+#endif
   } else {
     strafeForce = 0.f;
   }
@@ -482,7 +539,11 @@ void CPlayer::ComputeMovement(const CFinalInput& input, CStateManager& mgr, floa
           CVector3f::Zero() - CVector3f(GetVelocityWR().GetX(), GetVelocityWR().GetY(), 0.f);
       const float magnitude = reverseVelocity.Magnitude();
       if (magnitude > FLT_EPSILON) {
+#ifdef TARGET_PC
+        const float acceleration = dt * (54.f * GetAcceleration() * WalkScale());
+#else
         const float acceleration = dt * (54.f * GetAcceleration());
+#endif
         const float damping = CMath::Limit(magnitude / acceleration, 1.f);
         const CVector3f newVelocity =
             GetVelocityWR() + damping * (acceleration * ((1.f / magnitude) * reverseVelocity));
@@ -884,11 +945,19 @@ float CPlayer::GetBallMaxVelocity() const {
 }
 
 float CPlayer::GetActualFirstPersonMaxVelocity(float dt) const {
+#ifdef TARGET_PC
+  const float friction = GetTweakPlayer()->GetPlayerTranslationFriction(GetSurfaceRestraint()) * WalkScale();
+  const float frictionForce = friction * GetMass();
+  const float maxSpeed = GetTweakPlayer()->GetPlayerTranslationMaxSpeed(GetSurfaceRestraint()) * WalkScale();
+  const float acceleration =
+      GetTweakPlayer()->GetMaxTranslationalAcceleration(GetSurfaceRestraint()) * WalkScale();
+#else
   const float friction = GetTweakPlayer()->GetPlayerTranslationFriction(GetSurfaceRestraint());
   const float frictionForce = friction * GetMass();
   const float maxSpeed = GetTweakPlayer()->GetPlayerTranslationMaxSpeed(GetSurfaceRestraint());
   const float acceleration =
       GetTweakPlayer()->GetMaxTranslationalAcceleration(GetSurfaceRestraint());
+#endif
   return -(frictionForce * maxSpeed / (acceleration * dt) - maxSpeed - friction);
 }
 
@@ -1108,7 +1177,11 @@ float CPlayer::UpdateCameraBob(float dt, CStateManager& mgr) {
     const float rightSpeed = CVector3f::Dot(velocity, GetTransform().GetRight());
     const float forwardSpeed = CVector3f::Dot(velocity, GetTransform().GetForward());
     const float maxSpeed = GetActualFirstPersonMaxVelocity(dt);
+#ifdef TARGET_PC
+    const float strafeSpeed = skStrafeDistances[GetSurfaceRestraint()] * WalkScale();
+#else
     const float strafeSpeed = skStrafeDistances[GetSurfaceRestraint()];
+#endif
     const float maxMagnitude = CMath::SqrtF(strafeSpeed * strafeSpeed + maxSpeed * maxSpeed);
     magnitude = CMath::SqrtF(rightSpeed * rightSpeed + forwardSpeed * forwardSpeed) / maxMagnitude;
     magnitude *= CPlayerCameraBob::GetOrbitBobScale();

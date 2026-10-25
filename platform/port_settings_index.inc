@@ -9,6 +9,7 @@
 {"Game", "", "Cutscenes", "Skippable cutscenes", "skip cinematics movies"},
 {"Game", "", "Cutscenes", "Boot logos", "splash screens intro nintendo retro dolby health warning startup launch"},
 {"Game", "", "Cutscenes", "World name on load", "area name title card splash loading save"},
+{"Game", "", "Cutscenes", "Walk speed", "movement run fast slow strafe velocity samus"},
 {"Game", "", "Audio", "Music volume", "sound bgm level"},
 {"Game", "", "Audio", "Sound effects volume", "sfx level"},
 {"Game", "", "Audio", "Sound mode", "mono stereo surround dolby"},

@@ -58,6 +58,7 @@ bool sLogFile = true;
 // The gameplay tweaks (`MP2_FAST_MORPH`, `MP2_SPRING_BALL`, `MP2_LOCK_ON_TOGGLE`,
 // `MP2_STICKY_CHARGE`), saved in settings.cfg.
 bool sFastMorph = false;
+int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
 bool sSpringBall = false;
 bool sLockOnToggle = false;
 bool sStickyCharge = false;
@@ -715,6 +716,17 @@ bool FastMorph() {
 void SetFastMorph(bool enabled) {
   ReadEnv();
   sFastMorph = enabled;
+  Persist();
+}
+
+int WalkSpeed() {
+  ReadEnv();
+  return EnvIntIn("MP2_WALK_SPEED", sWalkSpeed, kWalkSpeedMin, kWalkSpeedMax);
+}
+
+void SetWalkSpeed(int percent) {
+  ReadEnv();
+  sWalkSpeed = std::clamp(percent, kWalkSpeedMin, kWalkSpeedMax);
   Persist();
 }
 

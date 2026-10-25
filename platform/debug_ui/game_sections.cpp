@@ -93,6 +93,14 @@ void DrawCutscenesSection() {
   }
   ItemHelp("The world's name typed out while a save loads. The first boot's intro text is not "
            "affected.");
+  int walkSpeed = sWalkSpeed;
+  if (ImGui::SliderInt("Walk speed", &walkSpeed, PortOverlay::kWalkSpeedMin,
+                       PortOverlay::kWalkSpeedMax, "%d%%", ImGuiSliderFlags_AlwaysClamp)) {
+    sWalkSpeed = walkSpeed;
+    Changed(true);
+  }
+  ItemHelp("How fast Samus moves on foot, walking, strafing and circle-strafing, in percent of "
+           "the original speed. Jumps, dashes, turning and the Morph Ball are unchanged.");
 }
 
 // The game's own volumes, the same as the pause menu's two sliders.

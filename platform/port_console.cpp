@@ -1000,6 +1000,19 @@ void CmdFastMorph(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "fast morph on\n" : "fast morph off\n";
 }
 
+// walkspeed [50..200]: on-foot movement speed in percent (walk_speed); no argument prints it.
+void CmdWalkSpeed(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    const int value = ArgToInt(args[1], -1);
+    if (value < PortOverlay::kWalkSpeedMin || value > PortOverlay::kWalkSpeedMax) {
+      Fail("usage: walkspeed [50..200]");
+      return;
+    }
+    PortOverlay::SetWalkSpeed(value);
+  }
+  out += "walkspeed " + std::to_string(PortOverlay::WalkSpeed()) + "\n";
+}
+
 // boost: start a boost-ball charge release on the morphed player (what releasing a held A does), so
 // lanes reach boost-hit arms without timing pad input.
 void CmdBoost(CStateManager& mgr, const Args&, std::string& out) {
@@ -4107,6 +4120,8 @@ const CommandSpec kCommands[] = {
       "                            damage stop spawn; value: float for damage, state for generic)\n"},
     {"fastmorph", CmdFastMorph,
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"},
+    {"walkspeed", CmdWalkSpeed,
+      "walkspeed [50..200]         on-foot movement speed in percent (walk_speed); no argument prints it\n"},
     {"springball", CmdSpringBall,
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"},
     {"lockon", CmdLockOn,
