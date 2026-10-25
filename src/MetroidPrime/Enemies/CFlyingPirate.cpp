@@ -2058,6 +2058,20 @@ void CFlyingPirate::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// Port coverage (fp4): ran twice (both cliff FPRT) on the frozen binary sha256 7be93176...,
+// /tmp/opencode/fp4-evidence/run1/gcov, source 6dcb7d5dd (line numbers below are that source's).
+// The function is 95/105 blocks; every non-landing-pad edge is taken except one:
+//  - `if (!modelData) return nullptr;` (line 2052, edge 1): LdrToModelData yields nothing only when
+//    the ANCS asset is invalid; all 18 FPRT placements on the disc (scan.txt, whole disc) carry
+//    ANCS 0x2ecb9fbf, which loads, so the arm is dead by data.
+//  - the `{count=0, 2 edges}` that gcov prints on line 2061 is not a ternary: gcno block 101
+//    (lines 2058/2059/2061, the LdrToDamageInfo temporaries) is entered only by the exception
+//    arcs of blocks 79-83 and 84-89 (flag 0, no fall/tree-normal predecessor), i.e. the cleanup
+//    landing pad; its two out-arcs (to 102 and 104) are the `if engaged` destroy of the
+//    optional_object. The normal path's own destroy (block 95, lines 2051/2075) ran twice.
+//    The 2061 expression itself (movss/mov spills, `call LdrToDamageInfo` at +1383) ran twice.
+// Every other zero edge is an exception landing pad (`throw`).
+// @ fn_22_5D4
 CEntity* LoadFlyingPirate(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrFlyingPirate sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrFlyingPirate.inc"
