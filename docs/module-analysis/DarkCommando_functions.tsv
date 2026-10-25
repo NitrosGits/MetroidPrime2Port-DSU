@@ -134,11 +134,11 @@ offset	fn	size	class	name	slice	what	marker
 076B8	fn_3_76B8	130	H	__ct__Q24rstl61vector<24CWeaponTypeVulnerability	-	weak copy / template instance	no
 077E8	fn_3_77E8	5C	H	CProjectileInfo::~CProjectileInfo	-	weak copy / template instance	no
 07844	fn_3_7844	3C	H	CBoneTracking::~CBoneTracking	-	weak copy / template instance	no
-07880	fn_3_7880	FC	B	SLdrDarkCommandoData::SLdrDarkCommandoData (copy)	dc4	implicit host copy; 100% match; marker/classification pending	no
-0797C	fn_3_797C	108	B	SLdrDarkCommandoShadowDashData::SLdrDarkCommandoShadowDashData (copy)	dc4	implicit host copy; 100% match; marker/classification pending	no
+07880	fn_3_7880	FC	B	SLdrDarkCommandoData::SLdrDarkCommandoData (copy)	dct2	implicit copy; slots map 1:1 (23) to the 10 members, sizeof 0x3F8 both sides	yes
+0797C	fn_3_797C	108	B	SLdrDarkCommandoShadowDashData::SLdrDarkCommandoShadowDashData (copy)	dct2	implicit copy; slots map 1:1 (25) incl. 2 nested vulnerability copies, sizeof 0x314	yes
 07A84	fn_3_7A84	2BC	H	SLdrDamageVulnerability::SLdrDamageVulnerability	-	weak copy / template instance	no
-07D40	fn_3_7D40	9C	B	SLdrDarkCommandoChargeBeamData::SLdrDarkCommandoChargeBeamData (copy)	dc4	implicit host copy; 100% match; marker/classification pending	no
-07DDC	fn_3_7DDC	94	B	SLdrDarkCommandoEMPData::SLdrDarkCommandoEMPData (copy)	dc4	implicit host copy; 100% match; marker/classification pending	no
+07D40	fn_3_7D40	9C	B	SLdrDarkCommandoChargeBeamData::SLdrDarkCommandoChargeBeamData (copy)	dct2	implicit copy; slots map 1:1 (19) to the 8 members, sizeof 0x4C	yes
+07DDC	fn_3_7DDC	94	B	SLdrDarkCommandoEMPData::SLdrDarkCommandoEMPData (copy)	dct2	implicit copy; slots map 1:1 (18) to the 15 members, sizeof 0x48	yes
 07E70	fn_3_7E70	9C	B	CDarkCommandoChargeBeam::~CDarkCommandoChargeBeam	dc1	upstream body (CDarkCommando)	yes
 07F0C	fn_3_7F0C	84	H	fn_3_7F0C	-	unnamed static (weak copy / template instance)	no
 07F90	fn_3_7F90	7C	H	fn_3_7F90	-	unnamed static (weak copy / template instance)	no

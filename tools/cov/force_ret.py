@@ -12,6 +12,7 @@
 #   FORCE_RET = [(label, 'CCommandoPirate::Body(', period, [(phase, [(lvalue, value), ...]), ...],
 #                 'what it forces'), ...]
 # A label ending in `|once` disables its breakpoint after the first call that wrote.
+# `$node`: the 3rd argument (rdx) as a char* (`*(float*)($node + 0x24)`, host layout).
 # `$mgr` / `$P` in an lvalue or value: the CStateManager& argument (rsi) and its first player.
 # An lvalue that starts with '!' is written but not restored (a member the body itself writes,
 # e.g. an animation state the body moves on). A value may test the entry registers
@@ -87,11 +88,13 @@ class ForceBp(gdb.Breakpoint):
         # with other registers, so both are bound to their addresses now)
         mgr = '((CStateManager*)%d)' % int(gdb.parse_and_eval('$rsi'))
         player = '((CPlayer*)%s->mPlayers[0])' % mgr
+        node = '((char*)%d)' % int(gdb.parse_and_eval('$rdx'))  # the 3rd argument (a POI node, ...)
         saved = []
         for lv, val in writes:
             keep = lv.startswith('!')
             lv = lv.lstrip('!')
-            lv, val = [x.replace('$this', this).replace('$P', player).replace('$mgr', mgr) for x in (lv, val)]
+            lv, val = [x.replace('$this', this).replace('$P', player).replace('$mgr', mgr).replace('$node', node)
+                   for x in (lv, val)]
             try:
                 v = gdb.parse_and_eval(lv)
                 old = repr(float(v)) if v.type.strip_typedefs().code == gdb.TYPE_CODE_FLT else str(int(v))

@@ -18,6 +18,15 @@
 #include "rstl/math.hpp"
 #include <float.h>
 
+// Retail `__sinit_CPirateRagDoll_cpp` (0x2EE4-0x32B4) has no FSM table and no stores at all: its 56
+// calls are fourteen four-call string sequences - rstl::string_l (0x2F00, 0x2F40, 0x2F84, 0x2FC8,
+// 0x300C, 0x3050, 0x3094, 0x30D8, 0x311C, 0x3160, 0x31A4, 0x31E8, 0x322C, 0x3270), the copy ctor
+// into each skParts element (+0x10 each), __register_global_object (0x2F24, 0x2F68, ... one chain
+// node per element at .bss 0x0+0xC*i) and internal_dereference on the temporary - over .rodata
+// "Collar", "Neck_1", "R_shoulder", "R_elbow", "R_wrist", "L_shoulder", "L_elbow", "L_wrist",
+// "R_hip", "R_knee", "R_ankle", "L_hip", "L_knee", "L_ankle". Host: the same fourteen literals, in
+// the same order, in `skParts[]` below. Frame stwu 0x2EE4 (-0xF0); no branch.
+// @ fn_50_2EE4
 static const rstl::string skParts[] = {
     rstl::string_l("Collar"),  rstl::string_l("Neck_1"),  rstl::string_l("R_shoulder"),
     rstl::string_l("R_elbow"), rstl::string_l("R_wrist"), rstl::string_l("L_shoulder"),

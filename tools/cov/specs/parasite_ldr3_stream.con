@@ -1,0 +1,16 @@
+# ldr3: LoadParasite (fn_47_1568) with every case arm of SLdrParasite.inc plus `default`.
+# CmdSpawn writes EditorProperties + PatternedAITypedef, then each `prop` as id, size 4, 4-byte
+# value, in order. Float props carry SLdrParasite's own defaults (behaviour unchanged); 12345678 is
+# unknown -> `default` ReadBytes(size 4). The last two props desync on purpose: c3cc437f
+# (initiallyPaused) ReadBool takes only byte 00 of 0x007e397f, so the next id reads 7e 39 7f + the
+# next prop's first id byte ed = 0x7e397fed, size 00 00, and LoadTypedefActorParameters reads count
+# 00 00 (no sub-properties, defaults kept). The top-level count still matches: N props consumed.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/parasite.py <out> \
+#        42b935e4,01_sand_entrance_dark --con <this> --fast --frames 1200
+@f300 god 1
+@f302 layer 2
+@f320 spawn PARA ancs u052d prop be73724a 0 prop 8458b003 10.0 prop 733bd27c 2.5 prop ac47c628 360.0 prop 8e4f7b29 180.0 prop 3d3c1b76 120.0 prop 0e7e3698 0.2 prop d5c25506 0.4 prop 280361aa 6.0 prop 01559f27 2.6 prop d293ebc4 1.0 prop 4841f1de 0.8 prop 61959f0d 0.7 prop ae11f975 0.9 prop 5e6a54b8 0.2 prop 956a1248 1.3 prop 46ac66ab 0.2 prop 4eeec785 40.0 prop 12345678 1 prop c3cc437f 0x007e397f prop ed000000 0
+# No ancs: LdrToModelData gets no animation set, so `!modelData` returns nullptr (1298).
+@f340 spawn PARA
+@f400 objs parasite
+@f800 objs parasite

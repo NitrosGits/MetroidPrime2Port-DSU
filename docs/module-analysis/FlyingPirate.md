@@ -171,5 +171,40 @@ Left unmarked (6):
 | 15DC Think | 28 arms (1865:0/2, 1870:0/2, 1876, 1907, 1909, 1911, 1918, 1928, 1929, 1934, 1939, 1945, 1949, 1950, 1964, 1968, 1969, 1986, 1995, 2021): the frozen/cinematic-cam/aqua/water and burst-fire branches; objdiff 99.98 |
 | 96D4 CFlyingPirate ctor | 219/220/221 (the `(mData.mType & 2) ? 4 : 3` path-find type), 273, 285, 286 (aqua/type variants); objdiff 99.93 |
 | 2738 DoUserAnimEvent | 1782:1/3 (the switch), 1784/1785 (`mIsAttackingObject` and `Token().IsLoaded()`), 1792/1795 (the `!mIsAttackingObject && mIsAquaPirate` homing arm): needs an aqua pirate that is not attacking an object; objdiff 92.1 (the inline token cache, header-side) |
-| 6040 CoverFind | 14/21 lines, 7/22 arms: the whole cover-point loop needs a `CScriptCoverPoint` in the area, and the shipped FPRT areas have none |
+| 6040 CoverFind | 14/21 lines, 7/22 arms: the whole cover-point loop needs a `CScriptCoverPoint` in the area, fp3 correction: cliff_entrance has 18 and sandfalls 3 (see "Coverage (fp3)") |
 | AA84 __sinit_CFlyingPirate_cpp | objdiff 100%, but it is compiler-generated from the trigger/state/code tables: no source line to put a marker on (same as the other modules' __sinit rows) |
+
+## Coverage (fp3, 2026-10-25: 5D4 15DC 2738 6040 96D4)
+
+No row marked: none is objdiff 100% and each keeps untaken arms (below). Fixtures
+`tools/cov/specs/flyingpirate_fp3{.py,_cliff.con}`, scan `tools/scan_flyingpirate_props.py`;
+evidence (binary, gcda, logs) in `/tmp/opencode/fp3-evidence/run{2,3}`. 3 launches: run 1 died on an
+auto_ptr offset bug in the fixture (no data), run 2 = CALLS only, run 3 = CALLS + the cliff fight.
+
+- Disc scan: FPRT types shipped are 0 (10 placements) and 1 (8); no aqua pirate ships, so the
+  `(mType & 2) ? 4 : 3` ctor arm (230) and every `mIsAquaPirate` arm are dead on the disc (forced-only).
+  All 18 FPRT animationInformation ANCS are valid (0x2ecb9fbf): 5D4's `!modelData` return (2052) is dead.
+- Correction to fpir1: the shipped FPRT areas do have cover points: `01_cliff_entrance` 18 COVR
+  (layers 3/4, with its 2 pirates u063e/u0626), `02_sand_sandfalls` 3; none sets 0x20 (ShouldLandHere).
+  Water exists only in two other areas (`08_sand_casualpirates` has type-1 flyers).
+- Forced (CALLS on Think, cliff, run 2+3): CoverFind landing/busy/free/maxDistance 0/1e6 (SetCoverPoint, true
+  result); Think inactive, cinematic enter/both/exit, multiplayer, InFluidId = own uid (cast fails),
+  water-uid scenarios fell through (no water in the area, uid 0xffff), aqua flag, frozen body: all `forced (<label>)`.
+- Merged result (run 2+3): CoverFind 20/22 arms (untaken 1105:0/2 non-cover object in the AiWaypoint list;
+  1119:0/2 `ObjectById(closest id)` cast failing: dead, the id comes from that same list);
+  Think 97/112 (untaken: 1881 body controller already inactive, 1920/1922 water, 1939/1940 `!mAlive` burst, 1950/1960/1961
+  alive/active-physics burst timer, 1975, 1979, 1997/2006 non-alive/special states);
+  DoUserAnimEvent 11/18 (token-not-loaded 1795, locator/attacking-object arms 1793/1796/1803/1806);
+  ctor 59/66 (aqua 230, particle-gen chain 296/297); 5D4 13/16 (2052 dead, 2061 ternaries).
+- Open for a later slice (needs a water area run on `08_sand_casualpirates`, a forced `mAlive=0` Think, and
+  an unloaded-token DoUserAnimEvent).
+
+## Coverage (fp4, 2026-10-25: 96D4 5D4 6040 15DC 2738 all marked)
+
+Frozen binary `/tmp/opencode/fp4-evidence/bin/metroid_prime2_port` sha256 7be93176...2666 (= `build-port-cov`);
+runs `/tmp/opencode/fp4-evidence/run{1-3,4-pre,5-8,12,15,16}`, failed launches run9-11/13-14 (tmpfs quota, logs only).
+Fixtures `tools/cov/specs/flyingpirate_fp4{,b,c,d,e}.py` (committed before each launch).
+- Think 126/126 lines, 112/112 edges; DoUserAnimEvent 23/23, 18/18 (merged, ALL-ARMS).
+- fp3's water scenarios wrote `mTransform.m23`; `GetTranslation()` reads `CActor::mPosition.mZ` (fp4d fixes it).
+- Burst arm 1975 needs `mBurstTimer` 5.0 and a calloc'd `SBurst` in `mBurstFire.mCurBursts`.
+- Remaining zero edges in every row are exception landing pads.

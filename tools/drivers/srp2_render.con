@@ -1,0 +1,8 @@
+# srp2b: CScriptRiftPortal e00070073 (Temple Grounds 12_temple_finalgate). Activate + Increment open
+# the portal, so Render runs every frame; the gdb fixture (tools/cov/specs/srp2_render.py) owns the
+# first four non-early Render calls (natural, maxY forced min arm, forced max arm, natural).
+@f300 god 1; obj e00070073; tp 4.5 118.7 -16.6; face 0
+@f340 send e00070073 Activate; obj e00070073
+@f420 send e00070073 Increment
+@f700 obj e00070073; screenshot
+@f760 obj e00070073; screenshot

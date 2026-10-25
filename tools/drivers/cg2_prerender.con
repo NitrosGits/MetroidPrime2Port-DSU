@@ -1,0 +1,8 @@
+# Safe CHOG recipe from ChozoGhost.md, now using the existing console rules option.
+# No state-machine sweep; only PreRender's seven owned transient fixture calls.
+@f300 god 1
+@f330 spawn CHOG inactive ancs u04d0 1 34 fsm 5652a12f rules 393ca543 prop 54151870 0x681f3907 prop 3a58089c 0x681f3907
+@f332 place e0036ff00 player 6
+@f334 send e0036ff00 Activate
+@f500 obj e0036ff00
+@f650 send e0036ff00 Delete

@@ -164,4 +164,75 @@ Gotchas: a CALLS trigger that fires during area load hangs the run (the dark ala
 `(void*(*)(unsigned long))` cast and the convenience variable set before the first write. objdiff of the bodies: 88-99.6% (AttackPointIsLegal 88.5, ctor 88.3,
 DoUserAnimEvent 90.7, PathFind 91.4); the instruction multisets differ only by stack slots, fmadds / fadds+fmuls, rodata labels and REL-local inline names.
 Header rows marked at objdiff 100%: GetSearchPath 0, ~SLdrSplinter B84, SSpitData dtor B1E4 / operator= B7DC, DeliverCommand BF74 / C040 / C15C.
-Left unmarked: ~CSplinter ABA0 (99.8%), SSurfaceAlignment dtor AF50 (99.7%), SSpitData copy ctor B9DC (99.9%), ~CSplinterAcidSac CCA8 (99.7%), `__sinit` C268.
+Left unmarked: `__sinit` C268. ~CSplinter ABA0 (99.8%), SSurfaceAlignment dtor AF50 (99.7%) and SSpitData copy ctor B9DC (99.9%) are marked by splin3, CCA8 by splin2 (below).
+
+## splin2 (base 8125b144d, 2026-10-25)
+
+gdb spec `tools/cov/specs/splinter_splin2.py` + `.con` (temple hive hall, five splinters/sacs, Delete at f600),
+launches 2/2 (run 1 died on absolute breakpoints in the PIE binary; run 2 used `main`-relative ones). Executed binary
+sha256 375df665..., spec f4d28f57, con 901817c1 (committed unchanged), frozen with the run 2 output in
+`/tmp/opencode/splin2-frozen/` (`run2-out/`). Ownership: guarded physical gdb frame + (inferior, thread) + root.
+The objdiff residuals are relocation names, plus AF50 `li r4,0` vs `-1` (the same behaviour).
+
+| fn | result | evidence / missing arm |
+|---|---|---|
+| ~CSplinterAcidSac CCA8 | marked | 4 owned D0 chains (ClearGraveyard), each mRelToken, mDamageVulnerability, CActor base, then delete(root) in order; the body has no branch |
+| SSpitData copy B9DC | unmarked (splin3 marks it) | 30/30 fields source==copy (forced Mega load, readbacks restored); the engaged mVisorEffect arm (0xBA30/0xBA3C, CToken copy + Lock) never ran: visor_valid 0 in the shipped load, no dead-arm proof |
+| ~CSplinter ABA0 | unmarked (splin3 marks it) | 5 D0 chains in order (forced chain 4: mSpit+mParticle; natural: mStateMachine2; mSac; CPatterned members; CAi; delete). Missing at the time: 0xAC44-0xAC90, which is the mEvadeChecks element loop (not an mAlignment cache: splin3 corrected this label); the D2 path (flag <= 0, 0xACB0) is dead (splin3). The executed classifier rejected each chain |
+| SSurfaceAlignment dtor AF50 | unmarked (splin3 marks it) | entered in every chain; the `beq 0xAF6C` / `ble` arms are dead (splin3), AFA4 without Free is the only live path |
+
+Executed-classifier failure (each splinter chain, the summary says FAIL): one CToken dtor per chain with an offset outside
+the object (+0x1e80, +0x1ef0, -0x1c3e50, -0x1d1230). The evidence shows it belongs to the object: its inline chain is
+`TLockedToken<CScannableObjectInfo>::~TLockedToken | single_ptr<..>::~single_ptr | CPatterned::~CPatterned | CSplinter::~CSplinter`
+in the owned frame, between the token +0x4f8 and the mDamageVulnerability events. The next event frees the same address
+(chain 8: token 0x5555583d1e30, then delete 0x5555583d1e30, both from the single_ptr). So it is the heap pointee of
+CPatterned::mIngScanInfo, not an unrelated call. The spec checks only in-object offsets (0..0xa38), so this
+reclassification is offline only and does not mark ABA0.
+
+B9DC visor arm (offline, `tools/scan_splinter_props.py`, 2026-10-25): the engaged-mVisorEffect copy (0xBA30/0xBA3C)
+is live. Of the 61 SPTR placements in all paks, exactly one is Mega: Metroid2.pak 07_temple_mothlordsanctuary
+layer 2, eid 0x080200ff (the Alpha Splinter), spit 0x0e7759cd, visor 0x31e4c76e (a PART present on the disc). The
+other 60 have mega 0 and an invalid visor. Path: SLdrSplinter.inc case 0x496f191b, then
+CSplinter.cpp:2690 (LoadSplinter passes megaSplinterSpitVisorEffect), then :304-305 (`mSpit = SSpitData(...)` copies into the
+disengaged optional, the copy that run 2 hit inline), then :217 (an id != invalid gives an engaged token). B9DC stays unmarked:
+to exercise the arm, load that room's layer 2 (the run 2 force kept visor invalid).
+
+## splin3 (review base 67f0657d9, 2026-10-25)
+
+gdb spec `tools/cov/specs/splinter_splin3.py` + `.con`: 07_temple_mothlordsanctuary, layer 2 activated with the Alpha
+Splinter (eid 0x080200ff, uid 0x04d8) and five normal splinters, Alert, then Sidestep/Taunt evasions, then Delete all six.
+Launches 2/2 on the same frozen binary, sha256 65ade037... (not a coverage build), kept in `/tmp/opencode/splin3-frozen/`.
+Run 1 (spec 8f47a1f4, `/tmp/opencode/splin3-run1`): everything passed except the visor Lock classifier. Run 2
+(spec 0abdcaac, con 9384deb4, commit 7b7614f1d, `/tmp/opencode/splin3-run2`, which holds a copy of the fixture with SHA256SUMS)
+reported status OK, failed 0, 6/6 chains OK, no pending owners and no open ctor. The final fixture is the one run 2 executed.
+
+| fn | result | evidence |
+|---|---|---|
+| SSpitData copy B9DC | marked | Alpha ctor: 33/33 fields source==copy==snapshot, no key diff. Two owned CToken copies (dst/src +0x10 weapon, +0x48 visor) with rsi==temp+offset. Visor (0xBA30/0xBA3C): dst valid, ref == src ref, dst held 1, src held 1 unchanged, CObjectReference ref/lock 2/2 -> 3/3. Lock hits [tail held_before 0, outer held_before 1] |
+| ~CSplinter ABA0 | marked | 6 owned D0 chains in order; Alpha chain: mSpit visor token, weapon token, mParticle, mStateMachine2, mSac, CPatterned members (mIngScanInfo pointee token, then delete of the same address), mDamageVulnerability, CAi, delete(root). mEvadeChecks count 4 in every chain (0xAC44-0xAC90 loop) |
+| SSurfaceAlignment dtor AF50 | marked | entered in all 6 chains (mark "enter SSurfaceAlignment dtor"); CSurfaceAlignmentHelper mCache is 0 in every chain |
+
+The host copy ctor tail-calls Lock: `CToken::CToken(const CToken&)`+0x20 is `jmp CToken::Lock` when the source holds the lock.
+That Lock reports the CSplinter ctor frame as its caller, at the visor copy's return address. The TLockedToken body's
+`mToken.Lock()` that follows is a no-op (held 1). Run 1 classified both hits as outer; run 2 classifies them by that return pc.
+
+Dead arms: in ABA0, the null-this branch (only the vtable references it, data.s:933), the D2 / flag <= 0 path
+(no subclass, no other construction) and the unrolled block for more than 8 evade checks (AddEvadeCheck caps at 4). In
+AF50, `beq 0xAF6C` and `ble` (the only caller is ABA0 0xAC9C, with this = r30+0x948 non-null and r4 = -1), and
+CSurfaceAlignmentHelper mCache, which the filter ctor (CSurfaceAlignmentHelper.cpp:25, the only one CSplinter.cpp:153/155 uses) sets to null; only the default ctor allocates it.
+
+## ldr1 (base 47e9a7a4a, 2026-10-25)
+
+SLdrSplinter ctor fn_74_C3C marked (include/MetroidPrime/ScriptLoader/SLdrSplinter.hpp), branch-free; the
+port inlines it into LoadSplinter, so objdiff has no body of its own and the proof is the store map: 9
+member ctors (0x0 editorProperties, 0x3c patterned, 0x280 actorInformation, 0x314 attackDamage,
+0x328/0x334 the two animation sets, 0x344 damageInfo, 0x354 ingPossessionData, 0x4d8
+megaSplinterSpitProjectileDamage) and 30 stores, in the same order as the port's init list and body:
+0x38=3, 0x48=32, 0x54=7, 0x58=17, 0x88=2.0, 0x1e8=0.5, 0x1ec=1.0, 0x26c=1 (echo emitter), 0x294=
+CColor(1,1,1,1), 0x2e4=0xf, 0x2f8=0.0, 0x2fc=5, 0x300=18, 0x304=1, 0x308=3, 0x30c=1, 0x310=2, 0x314=11,
+0x318=5.0, 0x324=0, 0x340=-1, 0x4d0=0, 0x4d4=-1, 0x4d8=11, 0x4dc=5.0, 0x4e8=-1, 0x4ec=2.5, 0x4f0=5.0.
+The last two stores, 0x364=150.0 and 0x368=2.0 (rodata_70/rodata_54), are ingPossessionData
+.ingPossessedHealth.health / knock-back resistance: retail writes them in the caller, the port's
+SLdrIngPossessionData ctor writes the same values (src/MetroidPrime/ScriptLoader/Structs/
+SLdrIngPossessionData.cpp:12-13), so the struct ends in the same state. The 0x38 store is the same value
+SLdrEditorProperties' own ctor sets (ScriptLoaderDefinitions.inc:1246). No arm is left unproven.

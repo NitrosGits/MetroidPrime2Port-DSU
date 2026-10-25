@@ -30,7 +30,7 @@ offset	fn	size	class	name	slice	what	marker
 00BE0	fn_26_BE0	54	H	TToken<CModel>::~TToken	-	weak copy / template instance	no
 00C34	fn_26_C34	64	H	rstl::auto_ptr<CAnimData>::~auto_ptr	-	weak copy / template instance	no
 00C98	fn_26_C98	60	H	rstl::optional_object<CModelData>::~optional_object	-	weak copy / template instance	no
-00CF8	fn_26_CF8	70	B	SLdrGlowbug::~SLdrGlowbug	-	upstream body (CGlowbug)	no
+00CF8	fn_26_CF8	70	B	SLdrGlowbug::~SLdrGlowbug	ldr1	upstream body (CGlowbug); objdiff 100%	yes
 00D68	fn_26_D68	E8	B	SLdrGlowbug::SLdrGlowbug	gb2	upstream body (CGlowbug); fixed (TARGET_PC): retail defaults	yes
 00E50	fn_26_E50	5C	B	CGlowbug::ScanVisorRender	gb2	upstream body (CGlowbug)	yes
 00EAC	fn_26_EAC	68	B	CGlowbug::GetScanVisorRenderBounds	gb2	upstream body (CGlowbug)	yes

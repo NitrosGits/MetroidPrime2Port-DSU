@@ -54,14 +54,14 @@ Open arms (cpp line), so these bodies stay unmarked:
 
 | function | open arms |
 |---|---|
-| ctor 2300 | 50 1/4 and 3/4 (invalid animRes, intoAttack -1: data), 65 1/2 (attackAnimation -1: data), 71 1/3 (rs_new null/EH), EH cleanup lines |
-| Think 1B64 | 112 1/2 (no free attack slot: attackerCount 3, live but not hit), 102 3/4 (compound loop condition) |
+| ctor 2300 | 50 1/4 and 3/4 (invalid animRes, intoAttack -1: data), 65 1/2 (attackAnimation -1: data), 71 1/3 (old single_ptr delete continuation/EH; not the allocator), EH cleanup lines. psc9: 50:1 and 50:3 measured with argument fixtures and exact restores + object-state oracles; merged profile 36/36 lines, 24/26 edges; 71:1 dead by the only writer (old single_ptr is null); 65:1 stays open (needs a third ctor call, one area load gives two; the launch budget is spent), so the body is NOT marked (ninth pass is the SLdr ctor; see the tenth pass for this one) |
+| Think 1B64 | 112 1/2 (no free attack slot: attackerCount 3, live but not hit), 102 3/4 (compound loop condition). psc5: 86/90/108 ran; 112 ran only in the second launch's slot-full setup (it is live: CSwarmBasics.cpp:642/1409 deactivate a boid without clearing its slot); 102's second operand and one host static-guard edge are dead. Body marked (arm table in the sixth pass) |
 | PreRenderBoid 12AC | 218 1/2 (slot -1 path), not reached even with the force. psc3: 218:1/2 proved dead in the shipped configuration (4 base models, 3 slots, shared bit 7; only two mask clears, neither of the shared bit). psc4: 229:1/2 ran with a real slot-0 boid after a transient shared pose, so the body is marked (arm table in the fifth pass) |
 | RenderBoid 1254 | slot -1 arm (cpp:241), forced but not reached |
 | ApplySteeringBehaviors 1228 | attacking-boid arm (cpp:254) |
 | BoidCollidedCallback 11C0 | never called |
 | BoidCollidedWithPlayerCallback 1144 | launched arm (cpp:264), forced but not reached |
-| SpawnGrenades C6C | POI arms at cpp:292-295 (combinations of weight, character and value; ANCS data) |
+| SpawnGrenades C6C | POI arms (weight, character, value; ANCS data). psc6 sampled 20/26 and could not prove the rest (the POI buffer is static shared storage); psc7 measured them with a transient node-field fixture on the real first node - 26/26 forced, natural calls unchanged - so the body is marked (arm table in the eighth pass) |
 
 Not driven arm by arm: the SLdr ctor (fixed above) and dtor, plus the weak copies (H).
 
@@ -247,3 +247,387 @@ the listing: the test load is 0x12E4 `lwz r0,0x5f4(r30)` (was 0x12E8) and the cl
 with `stw` at 0x131C (0x1314 is `slw`). The profile above was taken before those line changes, so it maps
 to the pre-marker numbering. RenderBoid 1254 and ApplySteering 1228 markers untouched; strip-diff of the
 non-PC text against 791ddc44e is marker-only, matching build 87 files OK, 94.14% fuzzy / 63.29% matched.
+
+## Sixth pass (psc5, 2026-10-24, base 3b3cd4799)
+
+Two launches (the slice's cap), both `3dfd2249,0g_swamp_hall`, 1200 frames, fast,
+`[port] caught/reach-stub: 0`, `[Inferior 1 (process N) exited normally]`, gcov flushed. Fixtures are lane
+files: `tools/cov/specs/psc5_think.py` (launch 1) and `psc5_think_slotfull.py` (launch 2), drivers
+`psc5_think_0g.con` and `psc5_think_0g2.con`.
+
+Numbering: `// @ fn_49_1B64` was added at cpp:85 after launch 1, so launch 1's profile uses the pre-marker
+line numbers and launch 2's the current ones (one higher from 86 on). Both are given below.
+
+**Launch 1** - read-only except one transient `mAttackerCount = 0` for a single call (restored at the
+body's return through the cached absolute `this`); driver phases: normal fight, the swarm `place`d under
+the floor, Deactivate/Activate.
+
+    think=976 inactive=90 zero_write=1 space_calls=3658 space_false=84
+    profile: 35/35 lines, 48/51 edges, untaken @ 92:3/4, 102:3/4, 112:1/2   (pre-marker numbering)
+
+**Launch 2** - slot-full fixture (below): `35/35 lines, 46/51 edges`, untaken @ 87:1/2, 91:1/2, 93:3/4,
+103:3/4, 109:6/7. Its driver is a plain fight, so it has no Deactivate, no zero-attacker call and no
+under-floor phase; **112 (now 113) is not in that list: the loop-exit edge ran 328 times.** Across the two
+runs every edge of Think ran except the two dead ones (93:3/4 = old 92:3/4, the host static-guard race;
+103:3/4 = old 102:3/4, the loop-invariant operand).
+
+**The cpp:112 correction the review asked for.** The first pass called this arm dead with a free-slot
+argument, and that argument is invalid: `attackers` is a snapshot taken at cpp:93-98 and never incremented
+inside the attack loop, so `attackers < mAttackerCount` does not by itself mean a slot is free when a later
+boid reaches the inner loop - earlier boids of the same call can take slots without changing `attackers`.
+The free-slot invariant also does not hold, because CSwarmBasics deactivates a boid *without clearing its
+attack slot* in two shipped paths: CSwarmBasics.cpp:642 (`boid.mFramesNotOnSurface >= 30`) and
+CSwarmBasics.cpp:1409 (the next waypoint is not a `CScriptWaypoint`). Such a holder keeps `mAttackSlot`
+and `mAttackSlotBoids[i]` while cpp:95 stops counting it, so all three slots can be held with
+`attackers < mAttackerCount`.
+
+What does hold is the timer half: shipped `attackTimer` is 0.5 on all three placements
+(`tools/scan_pssm_props.py`; copied into `mAttackTimer` by the ctor, cpp:38), every allocation sets
+`mTimeSinceLastAttack = 0` (cpp:120), and the gate is `mTimeSinceLastAttack >= mAttackTimer` (cpp:108:
+0x1CF8 `fcmpo`, 0x1CFC `cror eq,gt,eq`, 0x1D00 `bne`), so after the first allocation in a call the gate
+fails for the rest of that call - at most one allocation per call. NaN is safe in the same direction
+(unordered leaves EQ clear, the `bne` skips), and a non-positive `mAttackTimer` is not shipped. The arm
+can run repeatedly in one call when candidates find all three slots held: unsuccessful searches do not
+reset the timer. Only successful allocation is limited to once per call.
+
+Launch 2 built that state directly, on the real object, one call at a time (at most 30 calls, all restored
+at the body's return through cached absolute pointers; no branch forced, no mask write, no game change):
+with all three `mAttackSlotBoids` owned, one holder (active and attacking) had `mActive` set 0 for the call
+and `mTimeSinceLastAttack` set to `mAttackTimer`, so `attackers` dropped to 2 and the attack block ran with
+no free slot.
+
+    slot-full: this=0x5555589fcb00 attempt 1; slots owned by boid indices [0, 1, 2], holder
+      0x7fffaae0d180 set mActive=0 so attackers 3 -> 2 for this call; mTimeSinceLastAttack 0 ->
+      mAttackTimer; models=3 states=3
+    slot-full: restored holder 0x7fffaae0d180 mActive=1 ... mTimeSinceLastAttack bits 0x00000000
+    think=976 attempts=30 written=30
+
+and that run's gcov: current line 113 (`i < mAttackerCount`, pre-marker 112) 1008 back-edges / **328
+condition-false exits**, line 114 (pre-marker 113, slot free) 13 allocations / 995 slot-occupied skips.
+
+| arm (pre-marker / current cpp) | asm | edges | status |
+|---|---|---|---|
+| 86 / 87 GetActive | 0x1BA4 `extrwi. r0,r0,1,24` (x20 & 0x80), 0x1BA8 `beq` -> 0x1E74 | 886/90 (run 1) | both ran (Deactivate) |
+| 90 / 91 mAttackerCount != 0 | 0x1BB4 `cmplwi r0,0`, 0x1BB8 `beq` -> 0x1E38 | 885/1 (run 1) | both: false side forced once; also dead in shipped data (attackerCount 3 everywhere) |
+| 92 / 93 static filter guard | 0x1BD8 `bne` -> 0x1C24; init 0x1BDC-0x1C20 has no other test | 1/884 and 1/0 (both runs) | retail guard both ways; the zero edge is the host `__cxa_guard_acquire()==0` race, dead |
+| 94 / 95 `it != end` | 0x1C58, 0x1C5C | both | ran |
+| 95 / 96 mActive && mAttacking | 0x1C40/0x1C44, 0x1C48/0x1C4C | both | ran |
+| 99 / 100 min_val | 0x1C6C, 0x1C70 | both | ran |
+| 100 / 101 attackers < mAttackerCount | 0x1C84, 0x1C88 `bge` -> 0x1E38 | 845/40 + 970/6 | ran |
+| 102 / 103 `it != end && attackers < count` | 0x1E28 `beq` -> 0x1E38, 0x1E34 `blt` -> 0x1C94 | 42250/845 and 42250/0; 48500/970 and 48500/0 | second operand dead: `attackers` is written only at cpp:93/96 before the loop and cpp:100 guarantees it is < mAttackerCount, so it is loop-invariant |
+| 103 / 104 `!mActive \|\| mAttacking` | 0x1C98/0x1C9C, 0x1CA0/0x1CA4 | both | ran |
+| 107 / 108 MagSquared < proximity^2 | 0x1CE8, 0x1CEC | 7403/5930, 6732/7140 | ran |
+| 108 / 109 timer >= mAttackTimer | 0x1CF8, 0x1CFC, 0x1D00 | 3656/3747, 2051/4681 | ran |
+| 108 / 109 IsSpaceAboveBoidClear | 0x1D14, 0x1D18 | 3572/**84** (run 1) | ran: 84 false answers from the under-floor phase |
+| 110 / 111 angle <= maxAttackAngle | 0x1D58, 0x1D5C, 0x1D60 | both | ran |
+| 112 / 113 `i < mAttackerCount` (loop exhaustion) | 0x1E0C `bdnz` falls through to 0x1E10 after all slots; 0x1D74/0x1D78 is the separate zero-count entry guard | 24/0 (run 1), 1008/**328** (run 2) | **live and run** in launch 2's slot-full setup; natural exhaustion was not observed in these runs |
+| 113 / 114 slot free | 0x1D84, 0x1D88 `bne` -> 0x1E04 | 12/12, 13/995 | ran |
+| 129-131 / 131-133 SpawnGrenades loop | 0x1E6C, 0x1E70 | both | ran |
+
+gcov's JSON has one more edge on cpp:108/109 (a throw edge, 0 hits - the EH landing pad of the inlined
+temporaries); `tools/cov/gcov_report.py` excludes throw edges, which is why that line counts as taken.
+
+Marker: **`// @ fn_49_1B64` at cpp:85** (committed in ba95fc80e; this rework changes docs and lane specs
+only, no source). Profiles are reproducible from the archived inputs in `/tmp/opencode/psc5_evidence`:
+run 1 needs the pre-marker source (`CPlantScarabSwarm.pre-marker.cpp`, sha256 5878b3a7...41b) and its
+matching `.gcno` + `.gcda` (616726d6...c4fc / 55e5c394...2917) - it was rebuilt from that source on
+purpose, because the marker's rebuild invalidates the original notes; run 2 matches the current tree
+(`psc5_r2.matching.gcno` 3d906014...c67b with `psc5_r2.gcda` 98db9467...c3e6, binary
+0f7c0ed4...4794). Raw gcov JSON for both: `psc5_r1_raw.gcov.json`, `psc5_r2_raw.gcov.json`; reports
+`psc5_r{1,2}_gcov_report.txt`.
+
+## Seventh pass (psc6, 2026-10-24, base 41506a1af)
+
+Two launches (the slice's cap), `3dfd2249,0g_swamp_hall`, 1200 frames, fast, **read-only probe, no writes
+at all**, both `[port] caught/reach-stub: 0` and `[Inferior 1 (process N) exited normally]`. Spec and gdb
+side in one lane file, `tools/cov/specs/psc6_grenade_probe.py`, driver `psc6_grenade_0g.con`. The body is
+**not marked**: the six POI arms are still open (measured, not proved dead).
+
+Profile (merged over both launches): SpawnGrenades 29/29 lines, **20/26 edges**, untaken @ 298:1/2,
+299:0/2, 300:0/4, 300:2/4, 300:3/4, 301:1/2 - the same six the earlier passes left open.
+
+What the probe measures: at every SpawnGrenades entry the real slot argument (`$rcx`), the slot's boid
+index, the animation's `mCharIdx`, and the whole int32 POI list the body is about to walk (the static
+`CAnimData::mInt32POINodes` with `count = animData.mPassedIntCount`).
+
+    run 1: calls=2904 no_slot=1816 with_nodes=17 zero_count=1071
+    run 2: calls=2928 no_slot=2214 with_nodes=11 zero_count=703
+    the 28 node-bearing calls (two boots) all walked one node:
+      boidIndex=0 slot=0 animChar=0 passedInt=1 stored=16
+      nodes=[(weight 1.0, charIdx -1, mVal 26, mType 6, nameHash 2203981133)]
+
+Why that is not a dead proof - the list is shared static storage, not a per-animation table:
+
+- `CAnimData::GetInt32POIList` (CAnimData.hpp:196-199) returns `(mPassedIntCount, mInt32POINodes.data())`,
+  and `mInt32POINodes` is a **static** `reserved_vector< CInt32POINode, 16 >` (CAnimData.cpp:40) shared by
+  every CAnimData in the process. It is resized once with default nodes - weight 1.0, character -1,
+  **value 0**, type kPT_EmptyInt32 (CAnimData.cpp:119-121) - and `clear()`ed (not zeroed) when the last
+  CAnimData dies (145-147).
+- Every animation advance *appends into that shared buffer*:
+  `mPassedIntCount += mAnimRoot->GetInt32POIList(time, mInt32POINodes.data(), 16, mPassedIntCount, 0)`
+  (CAnimData.cpp:469-470, 484-485), plus the "pass everything" calls with `CCharAnimTime::Infinity()`
+  (718-719, 754-755, 837-838). The write index is the *advancing object's* count, so entry j holds the
+  j-th node of whichever animation last wrote index j.
+- Order in one tick of `CPlantScarabSwarm::Think` (cpp:85-133): `CSwarmBasics::Think` (CSwarmBasics.cpp:755)
+  -> `UpdateSwarmAnimations` (868) -> virtual dispatch into `CPlantScarabSwarm::UpdateSwarmAnimations`
+  (cpp:150-168), which advances the four base models first (CSwarmBasics.cpp:895-899), then
+  `mAttackModels[i]` for slotted i in slot order, then `mSharedAttackModel` (attack animation #1); then
+  `UpdateAllBoidMovement` (869); back in Think the attack block may `SetPhase(0.f)` one attack model
+  (CAnimData.cpp:1055; that resets only that object's counts, `ResetPOILists` at 442/554/569 does not clear
+  the shared buffer); then the SpawnGrenades loop (cpp:129-132) reads `mAttackModels[i].mPassedIntCount`
+  and walks buffer[0, count). So the node the body walks is normally the *last writer's* node - the shared
+  attack animation - not the into-attack animation whose `animData` is passed, and the buffer can hold any
+  of the animations advanced in that window (any interleaved index).
+- Consequence: the measured tuple describes the buffer state of these two boots at the read instants; it
+  does not enumerate the shipped POI data of every animation that can occupy buffer[0, count) - the four
+  base models' animation, attack animation #2 and the shared attack animation #1, per placement - nor the
+  default value-0 nodes, nor the Infinity() pass-all fills. Proving the six arms dead needs those tables
+  (no POI dumper exists in tools/, and this slice has no launches left).
+
+Corrected RNG bound (the first version of this note had it wrong): `CRandom16::Float()`
+(CRandom16.cpp:43-48) is `1.52590222e-5f * Next()` with `Next() = (mSeed >> 16) & 0xffff` in [0, 65535].
+The float32 constant is 1.5259021893143654e-05, and the correctly rounded float32 product with 65535 is
+**exactly 1.0**, so `Float()` is in **inclusive [0, 1]**. The gate is `<=` (0xCF0 `cror eq,lt,eq`,
+0xCF4 `bne`), so a node with weight exactly 1.0 always passes; only a node with weight < 1 can fail. The
+weight-false arm is therefore live in general and merely unobserved here.
+
+Arm status (retail asm; edge counts from the merged profile):
+
+| arm (asm) | condition | edges | status |
+|---|---|---|---|
+| 0xCAC / 0xCB0 | `boidIndex == -1` -> 0xF88 | 1088 / 1816 | both ran |
+| 0xCC0 / 0xCC8 | `count <= 0` -> 0xF88 | 17 / 1071 | both ran |
+| 0xCCC / 0xCD0 | `nodes == nullptr` -> 0xF88 | 17 / 0 | dead by construction: `data()` is the address of the static `uchar mData[16*sizeof(T)]`, never null |
+| 0xCE4..0xCF4 | `Float() <= node.GetWeight()` -> 0xF78 | 17 / 0 | **open** (unobserved): live for any node with weight < 1 |
+| 0xD00 / 0xD04 | `character == -1` -> 0xD14 | 17 / 0 | **open** (unobserved): live for any node with character >= 0 |
+| 0xD0C / 0xD10 | `character == animData.mCharIdx` -> 0xF78 | 0 / 0 | **open** with 0xD04: the asm skips this compare while character == -1 |
+| 0xD14 / 0xD18 | `node.GetValue() == kUE_ObjectDrop (26)` -> 0xF78 | 17 / 0 | **open** (unobserved): live for any node with value != 26, including the default value-0 nodes |
+| 0xF80 / 0xF84 | loop `i < count` -> 0xCE0 | 17 / 17 | both ran |
+| 0xE14 | retail `grenade == nullptr` -> 0xF18 | - | no host branch (operator new cannot return null here; cpp:312 has no gcov arm) |
+| EH | landing pads of the string / CModelData / CActorParameters temporaries (cpp:310, 311, 313, 314) | 0 | throw edges, excluded by tools/cov/gcov_report.py |
+
+Marker: **removed** (`// @ fn_49_C6C` is gone; the only source change of this pass is reverted). Evidence
+kept in `/tmp/opencode/psc6_evidence`: both runs' `.gcda` (89b16ac0...bb5a, dde0cc47...136b) with the
+matching `.gcno` 3d906014...c67b (one build served both), run-1 source copy (ee9a078a...c3e3), binary
+78dd2b18...fb38, raw gcov JSON, per-line edge extracts and the per-run and merged reports. What would
+close the six arms: log each model's own POI list right after *its* advance (so the buffer writer is known),
+and dump the shipped POI nodes of the base, into-attack (#2) and shared attack (#1) animations for all
+three placements.
+
+## Eighth pass (psc7, 2026-10-24, base f024872f3)
+
+One launch (of the slice's two), `3dfd2249,0g_swamp_hall`, 1200 frames, fast,
+`[port] caught/reach-stub: 0`, `[Inferior 1 (process N) exited normally]`, gcov flushed. Fixture
+`tools/cov/specs/psc7_grenade_fields.py` (spec + gdb side in one lane file), driver reused:
+`psc6_grenade_0g.con`.
+
+    BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/specs/psc7_grenade_fields.py tools/cov/force.sh \
+      tools/cov/specs/psc7_grenade_fields.py /tmp/opencode/psc7_r1 3dfd2249,0g_swamp_hall \
+      --con tools/cov/specs/psc6_grenade_0g.con --fast --frames 1200
+    python3 tools/cov/gcov_report.py build-port-cov /tmp/opencode/psc7_r1/gcov --module PlantScarabSwarm
+
+Profile: SpawnGrenades **29/29 lines, 26/26 edges, ALL-ARMS**.
+
+Fixture, and what its numbers mean: on a node-bearing call only - a claimed slot whose boid is active,
+`animData` non-null and 0 < mPassedIntCount <= 16 (a slot is only ever claimed by a boid that passed
+Think's proximity, timer, space-above and angle gates, cpp:107-110) - it snapshots the RAW words of the
+first node the body will walk (mWeight, mCharIdx, mVal at absolute addresses derived from the static
+`CAnimData::mInt32POINodes` plus the CInt32POINode layout: 0x3f800000 / 0xffffffff / 0x1a), installs a
+FinishBreakpoint *before* any write, then cycles one phase per call and writes back the ORIGINAL words at
+the body's return, reading them back to prove it. Count, pointer, node type, name, slot and object
+ownership are never touched, and the RNG is never forced.
+
+    calls=2928 node_calls=11 writes=9 restored=9 mismatch=0 reentrant=0
+    weight0:        targets 0x00000000/0xffffffff/0x1a   (x3)
+    equal:          targets 0x3f800000/animChar/0x1a     (x2)
+    unequal:        targets 0x3f800000/1/0x1a            (x2, nonnegative character != animChar)
+    nonobjectdrop:  targets 0x3f800000/0xffffffff/0x0    (x2)
+    natural:        no writes                            (x2)
+    every restore: "restored ORIGINAL words [0x3f800000, 0xffffffff, 0x1a] ... (read back
+    [0x3f800000, 0xffffffff, 0x1a])", with no "writer changed the words" note and no reentrancy.
+
+Edges (merged nothing: one run; forced arms are labelled **forced node-field fixture**, not shipped-asset
+behaviour):
+
+| arm (retail asm) | condition | edges | status |
+|---|---|---|---|
+| 0xCAC / 0xCB0 | `boidIndex == -1` -> 0xF88 | 704 / 2224 | ran (natural) |
+| 0xCC0 / 0xCC8 | `count <= 0` -> 0xF88 | 11 / 693 | ran (natural) |
+| 0xCE4..0xCF4 | `Float() <= node.GetWeight()` -> 0xF78 | 8 / **3** | both ran: false side = 3 `weight0` forced calls |
+| 0xD00 / 0xD04 | `character == -1` -> 0xD14 | 4 / **4** | both ran: 4 natural/weight0/nonobjectdrop nodes vs 4 forced equal/unequal nodes |
+| 0xD0C / 0xD10 | `character == animData.mCharIdx` -> 0xF78 | 4/4 and 2/2 | both ways ran (forced equal vs forced unequal) |
+| 0xD14 / 0xD18 | `node.GetValue() == kUE_ObjectDrop (26)` -> 0xF78 | 4 / **2** | both ran: false side = 2 `nonobjectdrop` forced calls |
+| 0xF80 / 0xF84 | loop `i < count` -> 0xCE0 | 11 / 11 | ran |
+| 0xCCC / 0xCD0 | `nodes == nullptr` -> 0xF88 | - | still dead by construction (no gcov edge here): `GetInt32POIList` returns `mInt32POINodes.data()`, the address of the static byte array (CAnimData.cpp:40) |
+| 0xE14 | retail `grenade == nullptr` -> 0xF18 | - | no host branch (operator new cannot return null here) |
+| EH | temporaries' landing pads (cpp:310, 311, 313, 314) | 0 | throw edges, excluded by tools/cov/gcov_report.py |
+
+The `weight0` phase also shows the RNG was non-zero on those calls (all three took the false side), so
+`Float() <= 1.0` keeps passing on the natural node exactly as the inclusive-[0,1] bound says.
+
+Marker: **added** `// @ fn_49_C6C` (cpp:288). Evidence archived before that edit and any rebuild, in
+`/tmp/opencode/psc7_evidence`: `psc7_r1.gcda` 916c1157...21f7, matching `psc7_r1.matching.gcno`
+3d906014...c67b, run source `CPlantScarabSwarm.r1-source.cpp` ee9a078a...c3e3 (identical to the base),
+binary d22c4c0f...3f93, `psc7_r1_raw.gcov.json`, `psc7_r1_spawngrenades_edges.txt`, the fixture log and
+counters, and the report file. The psc6 read-only sample (`/tmp/opencode/psc6_evidence`) is kept as the
+natural-call observation; this pass supersedes its conclusions with the direct measurement.
+
+## Ninth pass (psc8, 2026-10-24, base 9c6e69cbd)
+
+Two launches used (the slice's cap): launch 1 died on a bug in my own fixture (a `%d` format with a
+string width raised a Python exception inside the breakpoint and aborted the inferior - logged in
+`/tmp/opencode/psc8_evidence/psc8_r1_diag_failed.log`); launch 2 is the evidence below. Fixture
+`tools/cov/specs/psc8_sldr_ctor.py` (spec + gdb side in one lane file), driver `psc6_grenade_0g.con`,
+`3dfd2249,0g_swamp_hall`, 1200 frames, fast, `[port] caught/reach-stub: 0`, inferior exited normally.
+
+**Where the ctor lives.** `SLdrPlantScarabSwarm::SLdrPlantScarabSwarm()` has no out-of-line symbol in the
+port build (only `__gcov0._ZN20SLdrPlantScarabSwarmC2Ev` and the destructor), so it is inlined into
+`LoadPlantScarabSwarm`. The oracle therefore breaks in that caller at `SLdrPlantScarabSwarm.inc:3`, whose
+first code address is `LoadPlantScarabSwarm+0x194` (`0xf4faf0+0x194 = 0xf4fc84`, from
+`objdump --dwarf=decodedline`), i.e. after every default store of the inline body (the last is the packed
+ambient colour at `0xf4fc75`) and before the first serialized property is read. The object address comes
+from the DWARF local `sldrThis` (resolved: `0x7fffffffc2f0`); the fallback is the caller's frame base -
+0x450, derived from the same disassembly (host `active` at 0xcc is stored at rbp-0x384; `visorFlags`, host
+0xa8+4, at rbp-0x3a4).
+
+**Value oracle (bit-exact, not just "entered").** 23 fields compared against the source's assignments -
+23 OK, 0 mismatches, one object (the only PSSM placement in 0g):
+
+    active=1; intoAttackAnimation/attackAnimation=0xffffffff;
+    maxAttackAngle=0x41f00000 (30.0f); intoAttackSpeed/attackSpeed/grenadeMass/grenadeLaunchSpeed=
+    0x3f800000 (1.0f); unknown_0xed086ce0=0x3f000000 (0.5f); grenadeNumBounces=3;
+    grenadeExplosionProximity=0x3f000000 (0.5f); the four grenade effects=0xffffffff;
+    grenadeBounceSound=0xffffffff, grenadeExplosionSound=0xffffffff (TARGET_PC overrides);
+    bounce/explosion falloffs=0x0 (0.0f), bounce/explosion max audible=0x42c80000 (100.0f);
+    actorInformation.lighting.ambientColor=0xffffffff (packed CColor(1,1,1,1));
+    actorInformation.visor.visorFlags=0xf.
+
+**Retail stores vs source** (`build/G2ME01/PlantScarabSwarm/asm/.../CPlantScarabSwarm.s`, fn_49_858 base
+r31; the host layout differs, so the mapping is by store identity, not by equal offsets):
+
+| asm store | retail offset | field | source line | expected -> observed |
+|---|---|---|---|---|
+| 0x86C/0x874/0x87C/0x884/0x898 `bl` | +0, +0x3c, +0xb4, +0xc4, +0x2d8 | the five nested struct ctors | 46-50 | constructed (their own bodies) |
+| 0x890, 0x894 `stw r0(-1)` | 0x2b4, 0x2b8 | intoAttackAnimation, attackAnimation | 57, 58 | -1 -> -1 |
+| 0x8A4..0x8C4 `stw r0(-1)` | 0x2ec, 0x2f0, 0x2f4, 0x2f8 | the four grenade effects (kInvalidAssetId) | 51-54 | -1 -> -1 |
+| 0x8C8 `stw r0(-1)` | 0x2fc | grenadeBounceSound | 79 (TARGET_PC) | -1 -> -1 |
+| 0x8CC `stw r0(-1)` | 0x308 | grenadeExplosionSound | 80 (TARGET_PC) | -1 -> -1 |
+| 0x8D0 `bl CColor` + 0x8E4 `stw` | 0x50 | lighting.ambientColor | 81 (TARGET_PC) | packed 0xffffffff -> same (one word: CColor is a packed `uint`) |
+| 0x8F4 `stw r0(0xf)` | 0xa0 | visor.visorFlags | 82 (TARGET_PC) | 0xf -> 0xf |
+| 0x904 `stb r0(1)` | 0xc0 | active | 56 | 1 -> 1 |
+| 0x91C `stfs f0` | 0x2bc | maxAttackAngle | 59 | 30.0f (rodata_4) -> 0x41f00000 |
+| 0x92C, 0x934, 0x93C, 0x940 `stfs f3` | 0x2c0, 0x2c4, 0x2c8, 0x2cc | intoAttackSpeed, attackSpeed, grenadeMass, grenadeLaunchSpeed | 60-63 | 1.0f (rodata_0) -> 0x3f800000 |
+| 0x944 `stfs f2` | 0x2d0 | unknown_0xed086ce0 | 64 | 0.5f (rodata_8) -> 0x3f000000 |
+| 0x948 `stw r0(3)` | 0x2d4 | grenadeNumBounces | 65 | 3 -> 3 |
+| 0x94C `stfs f2` | 0x2e8 | grenadeExplosionProximity | 66 | 0.5f -> 0x3f000000 |
+| 0x950, 0x958 `stfs f1` | 0x300, 0x30c | bounce/explosion falloff | 68, 71 | 0.0f (rodata_C) -> 0 |
+| 0x954, 0x95C `stfs f0` | 0x304, 0x310 | bounce/explosion max audible | 69, 72 | 100.0f (rodata_10) -> 0x42c80000 |
+
+So retail stores -1 where upstream wrote 0 for the two grenade sounds (0x2fc/0x308), 0xf at +0xa0 and the
+packed ambient at +0x50 - exactly the three TARGET_PC overrides - and every other default matches the
+source. No divergence left to fix.
+
+**Coverage of the inline body** (gcov JSON of this run, one instantiation, in CPlantScarabSwarm.cpp):
+`SLdrPlantScarabSwarm::SLdrPlantScarabSwarm()` lines 45-84, execution_count 1, **all lines executed**;
+17 blocks, 8 executed. The nine unexecuted blocks are the compiler's EH landing pads: the only branch
+edges in the body are `(1 fallthrough, 0 jump THROW)` on cpp:47, 48, 49, 50 (the nested struct ctors) and
+81 (the `CColor` temporary) - they need one of those constructors to throw, which none can. There is no
+runtime conditional in the body at all, and `tools/cov/gcov_report.py` excludes throw edges; the ctor's
+live arms are its 23 default stores, all covered and all corroborated by the value oracle. The
+`#ifdef TARGET_PC` alternative (lines 73-84) is compile-time; the PC side ran.
+
+Marker: **added** `// @ fn_49_858` above the inline ctor (header line 45). Evidence frozen before the
+marker and any rebuild in `/tmp/opencode/psc8_evidence`: `psc8_r2.gcda` aa636619...62c3 with matching
+`psc8_r2.matching.gcno` 67faa77e...12dd, run source copies of the .cpp and the .hpp
+(87187b462...2a72), binary bac9be36...046f, `psc8_r2_raw.gcov.json`, the oracle log (23 OK / 0 mismatch)
+and counters, plus the failed launch-1 log.
+## Tenth pass (psc9, 2026-10-24, base d46519246 via 5fcdf04f2)
+
+Branch `decomp/psc9` (this worktree). **Two launches used, both of the slice's cap.** Body **not marked**:
+one legitimate arm (cpp:65, attackAnimation == -1) is still unmeasured.
+
+Files, all lane-local: `tools/cov/specs/psc9_ctor_args.py` (fixture + gdb side), `psc9_ctor_args_selftest.py`
+(mocked-gdb regression), drivers `psc9_ctor_ok.con` (launch 1) and `psc9_ctor_ok2.con` (launch 2, with a
+layer off/on to try for four constructor calls).
+
+**What the fixture does.** The ctor is out-of-line at `_ZN17CPlantScarabSwarmC1...`; in the archived build
+(`build-port-cov`, sha256 cbab51dd...2d15) its source conditions are at symbol+0x32e (`cmpl $0xffffffff,
+0x0(%r13)`, cpp:50 animRes id), +0x342 (`cmpl $0xffffffff,0x1a8(%rsp)`, cpp:50 intoAttackAnimation) and
++0x54f (`cmpl $0xffffffff,0x1b0(%rsp)`, cpp:65 attackAnimation). Per call the fixture patches ONE of them
+for that call only, at the compare, snapshots the 4 raw bytes at the absolute address, installs a
+FinishBreakpoint BEFORE the write, restores the ORIGINAL bytes at the ctor's return and reads them back,
+then checks the CONSTRUCTED object (an output oracle, not an entry count):
+`models/sharedModel/sharedDelta/bitBase/sharedBit`.
+The animRes id is patched only at +0x32e, i.e. after the base `CSwarmBasics` ctor consumed the valid
+resource, so the base ctor is never fed an invalid asset.
+
+**Measured.** Launch 1 (before the fixture's symbol lookup was fixed - it used a stale hardcoded mangled
+name, hit nothing, and its profile is the *natural* construction; game exited normally): natural call,
+all true sides plus the cpp:57 loop. Launch 2 (phase start 1, two placements in ok_swamp_hall, player kept
+60+ units away and both swarms deactivated right after the load so no boid can take a slot into an
+unfilled model list):
+
+    ctor hit 1: this=0x55555880ffc0 phase=invalidAnim
+    invalidAnim: animRes.mAncsId 0x8bb689b4 -> 0xffffffff at 0x7fffffffc210 via DWARF &animRes
+    invalidAnim: restored ORIGINAL animRes.mAncsId at 0x7fffffffc210 = 0x8bb689b4 (read back 0x8bb689b4;
+        before the restore it was 0xffffffff)
+    invalidAnim: object state OK (models=0 sharedModel=0 sharedDelta=0 bitBase=0 sharedBit=0)
+    ctor hit 2: this=0x55555881a690 phase=intoAttackMinus1
+    intoAttackMinus1: intoAttackAnimation 0x2 -> 0xffffffff at 0x7fffffffc0f8 via $rsp+0x1a8
+    intoAttackMinus1: restored ORIGINAL intoAttackAnimation at 0x7fffffffc0f8 = 0x2 (read back 0x2)
+    intoAttackMinus1: object state OK (models=0 sharedModel=0 sharedDelta=0 bitBase=0 sharedBit=0)
+    status=OK hits=2 objects=2 writes=2 restored=2 restore_bad=0 state_ok=2
+
+Merged profile (launch 1 + launch 2, same build): `CPlantScarabSwarm::CPlantScarabSwarm(...)` **36/36
+lines, 24/26 edges**, untaken @ **65:1/2** and **71:1/3**.
+
+| arm | status |
+|---|---|
+| cpp:50 animRes.GetId() != kInvalidAssetId, true and false | both measured (natural; forced invalidAnim with restore + state oracle) |
+| cpp:50 intoAttackAnimation != -1, true and false | both measured (natural; forced intoAttackMinus1) |
+| cpp:57 loop condition both edges | measured (three iterations, 3 back-edges / 1 exit) |
+| cpp:65 attackAnimation != -1, true | measured (natural) |
+| **cpp:65 attackAnimation != -1, false** | **OPEN** - needs one more ctor call with attackAnimation = -1 |
+| cpp:71 `mSharedAttackDeltas = rs_new CAdvancementDeltas(...)` untaken edge | **dead by the only writer** (corrected in the psc9 review fix; the earlier "allocator returned null" reading was wrong): the disassembly is `0xf4f9e3 call _Znwm` (the new object), `0xf4f9e8 mov %rax,%rbp` (kept in rbp), `0xf4f9f2 mov 0x900(%rbx),%rdi` (the **old** `mSharedAttackDeltas.mPtr`), then `0xf4fa15 test %rdi,%rdi` / `0xf4fa18 je` and `0xf4fa28 call _ZdlPvm` - i.e. the branch and the delete belong to `single_ptr::operator=(T*)`'s `delete mPtr;` (include/rstl/single_ptr.hpp:26-30), and the allocation result is never tested. `mSharedAttackDeltas` is a default-constructed `single_ptr` (its `mPtr` is null) and cpp:71 is its only writer, so the old pointer is always null and the delete path cannot be taken. A failing allocation throws (`bad_alloc`) instead of taking any null edge, which is not the justification - the edge is not reached at all |
+| EH edges (cpp:51-53, 58, 66-70, 71 throw continuations) | 0 hits, excluded by tools/cov/gcov_report.py |
+
+Why 65:1 is still open: the ctor runs once per placement load, and one area load has two PSSM placements
+(ok_swamp_hall), so a run gives two ctor calls. `layer off 3` followed by `layer 3` did **not** reload the
+objects (the second load produced no further hits - `psc9_ctor_ok2.con`'s comment said otherwise before the
+psc9 review fix and is now corrected), and the slice's two launches are spent. **The one remaining run is
+PARKED and NOT AUTHORIZED** by the current brief; if it is ever scheduled, it is a fresh load with the
+phase shifted (`PSC9_PHASE_START=2`), the same driver, and the fixture's `attackAnimMinus1` phase expects
+`models=3 sharedModel=0 sharedDelta=0 bitBase=3 sharedBit=0`.
+Caveat for that run: a swarm built without the shared model must never let a boid take an attack slot
+(`UpdateAllBoidMovement`/`PreRenderBoid` would dereference the missing shared deltas/state), which is why
+every phase here keeps the player far and deactivates the swarms.
+
+Evidence frozen before any edit in `/tmp/opencode/psc9_evidence`: both runs' `.gcda` (3cdc0d6b...abdc,
+ab5654e2...bedb) with the one matching `.gcno` (86c70136...fc50), the measured source copy
+(e7a71c84...41f0), the binary hash (cbab51dd...2d15), the ctor disassembly with line numbers
+(`ctor.disasm.txt`), both diag/fixture transcripts, and the merged report. Mocked-gdb regression:
+`python3 tools/cov/specs/psc9_ctor_args_selftest.py` -> 0 scenario failures (natural, forced write+restore,
+post-write readback failure with a successful return restore, write that mutates then raises, a second call
+left unfinished after a successful first, missing FinishBreakpoint with no mutation, unreadable restore,
+pending obligations, state mismatch, wrong binary with no breakpoints installed).
+
+Tooling-only review fix (no boot): the fixture now registers each call's snapshot obligation BEFORE the
+attempted write and keeps it when the write or its readback misbehaves, tracks return/restoration per
+call rather than per phase, refuses to mutate without a successfully created FinishBreakpoint, never
+writes expired stack storage in `out_of_scope` (it reports the obligation unrestored and fails), and its
+summary fails on unreturned calls, unrestored attempts, missing phase writes and install failure. These
+changes and the corrected cpp:71 explanation above were **not** exercised by the two archived boots -
+those ran the earlier fixture and their evidence is untouched.
+
+## Ctor fn_49_2300 (met7, 2026-10-25), marked
+
+Asm (CPlantScarabSwarm.s 2597-2936) compared with cpp:24-75 in order: base `CSwarmBasics(..., true)`; stores
+0x598/0x59c/0x5a0 (attackerCount, proximity, timer from the data struct), 0x5a4 = rodata_1C * maxAttackAngle;
+zeroed vectors at 0x5ac/0x5b8/0x5c8/0x5d8; 0x5fc/0x600 intoAttackSpeed/attackSpeed; the bouncy-grenade ctor
+(mass, speed, damage, ..., b=true); 0x654/0x658 launch speed / explode distance. Guard `animRes id != -1 &&
+intoAttackAnimation != -1`, three reserves, base = mModelDatas.size() (0x490 -> 0x5f8), the per-attacker loop
+(model, delta, loop off + animating on, -1 slot), then the shared model/deltas and bit = base + count. Retail
+repeats the animating-bit store once more per model (idempotent). No mismatch, no TARGET_PC change needed.
+Arms: 24/26 edges measured (psc9). cpp:65 false (attackAnimation == -1) is dead in shipped data: the only
+caller is the loader (cpp:359) and `tools/scan_pssm_props.py` shows attackAnimation = 1 in all 3 placements.
+cpp:71 is dead by the only-writer argument above.

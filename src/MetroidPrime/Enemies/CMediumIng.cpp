@@ -25,6 +25,15 @@
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #endif
 
+// Retail `__sinit_CMediumIng_cpp` (0xA90C-0xB030) writes exactly these three tables and nothing
+// else: `lis` 0xA920/0xAB1C/0xAE3C take the table addresses (.data 0xF8, 0x348, 0x51C), then 150
+// word copies (`stw` 0xA9C8-0xB020) put each entry's member pointer at +4/+8/+0xC as {adjust 0,
+// vtoff -1 (non-virtual), fn = address} - 19 states + 24 triggers + 7 code funcs. Names .rodata
+// 0xE8..0x1A7, 0x1B9..0x31A, 0x325..0x397; every target is a distinct CMediumIng body (all 50
+// already carry their `// @ fn_41_*` marker) except trigger 23 `InPosition`, which is the DOL's
+// CPatterned::InPosition 0x801519C4, exactly what the host resolves. No call, no branch; the only
+// other store is the register save stmw r14 0xA910 (frame 0xC0, restored lmw 0xB024).
+// @ fn_41_A90C
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"PathShagged", static_cast< CPatterned::StateMachine::TriggerFunc >(&CMediumIng::PathShagged)},
     {"IsOffPath", static_cast< CPatterned::StateMachine::TriggerFunc >(&CMediumIng::IsOffPath)},

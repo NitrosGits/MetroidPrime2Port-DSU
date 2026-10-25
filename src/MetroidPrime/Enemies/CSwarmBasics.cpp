@@ -184,6 +184,7 @@ CSwarmBasics::CBoid::CBoid(const CTransform4f& xf, uint index)
 , mAttacking(false)
 , mHasLoopedSound(false) {}
 
+// @ fn_80_A1BC
 static CModelData GetModelDataForAnimRes(const CAnimRes& animRes) {
   return animRes.GetId() != kInvalidAssetId ? CModelData(animRes) : CModelData::CModelDataNull();
 }
@@ -752,6 +753,7 @@ void CSwarmBasics::AddDoorRepulsors(CStateManager& mgr) {
   }
 }
 
+// @ fn_80_50B8
 void CSwarmBasics::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -878,6 +880,7 @@ void CSwarmBasics::Think(float dt, CStateManager& mgr) {
   UpdateSeekerTargets(mgr);
 }
 
+// @ fn_80_5024
 void CSwarmBasics::UpdateAllBoidMovement(CStateManager& mgr, float dt) {
   uint count = mBoids.size();
   if (mAnimated) {
@@ -978,6 +981,7 @@ CAABox CSwarmBasics::BoxForPosition(int x, int y, int z, float margin) const {
                           (z + 1) * size.GetZ() + bounds.GetMinPoint().GetZ() + margin));
 }
 
+// @ fn_80_4538
 void CSwarmBasics::HardwareLight(const CStateManager& mgr, const CAABox& bounds) const {
   CActorLights lights(8, CVector3f::Zero(), 4, 4);
   lights.SetNeedsRelight(true);
@@ -1066,6 +1070,7 @@ void CSwarmBasics::CachePose(CModelData& modelData,
   state.StateToArrays();
 }
 
+// @ fn_80_4194
 void CSwarmBasics::PreRenderBoid(CBoid* boid, uint* drawMask) {
   if (!(boid->mFreezeTimer > 0.f)) {
     int idx = boid->mIndex & (mModelDatas.size() - 1);
@@ -1161,6 +1166,7 @@ void CSwarmBasics::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_80_3B34
 void CSwarmBasics::Render(const CStateManager& mgr) const {
   const int alpha = GetRenderAlphaBufferAlpha(mgr);
   if (alpha != -1) {
@@ -1655,6 +1661,7 @@ struct SSeekerCandidateSorter {
   }
 };
 
+// @ fn_80_1978
 void CSwarmBasics::AssignSeekerBoids(CStateManager& mgr, const rstl::vector< uint >& taken,
                                      uint numNeeded, rstl::vector< uint >& out) {
   float maxDistSq = mgr.GetPlayer(0)->GetOrbitMaxTargetDistance();
@@ -1827,6 +1834,7 @@ int CSwarmBasics::EvaluateActiveBoidCount() const {
   return count;
 }
 
+// @ fn_80_10C0
 CVector3f CSwarmBasics::FindClosestCell(const CVector3f& pos) const {
   float minDistance = FLT_MAX;
   CVector3f result = CVector3f::Zero();
@@ -1990,6 +1998,7 @@ CSfxHandle CSwarmBasics::AddLoopedEmitter(const CVector3f& pos, ushort sfx) {
   return CSfxManager::AddEmitter(parms, GetCurrentAreaId().Value(), true, true);
 }
 
+// @ fn_80_7E4
 void CSwarmBasics::UpdateEffects(CStateManager& mgr, CAnimData& animData, int volume) {
   int count;
   const CSoundPOINode* nodes = animData.GetSoundPOIList(count);
@@ -2080,6 +2089,7 @@ void CSwarmBasics::FreezeBoids(const CVector3f& position, float radius) {
   }
 }
 
+// @ fn_80_168
 void CSwarmBasics::UpdateSeekerTargets(CStateManager& mgr) {
   uint numTargets = mSeekerTargets.size();
   const rstl::reserved_vector< rstl::pair< TUniqueId, float >, 5 >& gunTargets =

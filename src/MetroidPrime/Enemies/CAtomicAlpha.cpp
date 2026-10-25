@@ -22,6 +22,16 @@
 #include "float.h"
 #include "rstl/math.hpp"
 
+// Retail `__sinit_CAtomicAlpha_cpp` (0x2578-0x267C) writes exactly these two tables and nothing
+// else: `lis` 0x2584 and 0x25BC take the table addresses, then 21 word copies (`stw`
+// 0x261C-0x266C) put each entry's member pointer at +4/+8/+0xC as {adjust 0, vtoff -1
+// (non-virtual), fn = address}. Values read from the REL's module-2 relocation lists: names .rodata
+// 0x44/0x54/0x5F/0x68/0x6F/0x78/0x7F, functions .text 0xED8 AggressionCheck, 0x1514 Patrol,
+// 0xCF4 Pathfind, 0xB70 Attack, and the DOL's CPatterned 0x8015223C InMaxRange, 0x80151CA8
+// PathOver, 0x80152820 Dead - the same names, order and targets as below; the name words are
+// static relocations already in the file, not sinit writes. No call, no branch; the only other store
+// is the register save stmw r20 0x2588 (frame 0x40, restored lmw 0x2670).
+// @ fn_2_2578
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"AggressionCheck",
      static_cast< CPatterned::StateMachine::TriggerFunc >(&CAtomicAlpha::AggressionCheck)},

@@ -28,7 +28,7 @@ offset	fn	size	class	name	slice	what	marker
 00C0C	fn_40_C0C	64	H	~auto_ptr	-	rstl weak copy	no
 00C70	fn_40_C70	60	H	~optional_object	-	rstl weak copy	no
 00CD0	fn_40_CD0	A0	B	~SLdrMetroidAlpha	-	upstream body (CMetroid)	no
-00D70	fn_40_D70	1E0	B	SLdrMetroidAlpha	-	upstream body (CMetroid)	no
+00D70	fn_40_D70	1E0	B	SLdrMetroidAlpha	-	upstream body (CMetroid)	yes
 00F50	fn_40_F50	64	B	CanBeIngPossessed	-	upstream body (CMetroid)	no
 00FB4	fn_40_FB4	40	B	OnDockTouch	-	upstream body (CMetroid)	no
 00FF4	fn_40_FF4	8C	B	SetupStateMachine	met1	upstream body (CMetroid)	yes
@@ -48,7 +48,7 @@ offset	fn	size	class	name	slice	what	marker
 02718	fn_40_2718	14C	B	InterpolateToPosRot	met1	upstream body (CMetroid)	yes
 02864	fn_40_2864	664	B	SuckEnergyFromTarget	-	upstream body (CMetroid)	yes
 02EC8	fn_40_2EC8	17C	B	ShouldReleaseFromTarget	-	upstream body (CMetroid)	yes
-03044	fn_40_3044	8	B	fn_40_3044	-	unnamed helper (CMetroid)	no
+03044	fn_40_3044	8	T	fn_40_3044	-	unreferenced (met7): `li r3,0; blr`; no bl, no vtable/data/rodata/ctors reloc to it in Metroid.preplf (readelf -r), not in the CMetroid vtable (data 0x400-0x4b4); dead code, nothing to port	no
 0304C	fn_40_304C	C4	B	DisableSolidCollision	met1	upstream body (CMetroid)	yes
 03110	fn_40_3110	388	B	RestoreSolidCollision	-	upstream body (CMetroid)	no
 03498	fn_40_3498	3C	H	~reserved_vector	-	rstl weak copy	no
@@ -123,11 +123,11 @@ offset	fn	size	class	name	slice	what	marker
 081A0	fn_40_81A0	130	H	vector	-	rstl weak copy	no
 082D0	fn_40_82D0	3C	H	~CPathFindSearch	-	CPathFindSearch weak copy	no
 0830C	fn_40_830C	48	H	~CCollisionPrimitive	-	CCollisionPrimitive weak copy	no
-08354	fn_40_8354	C4	B	CMetroidData	-	upstream body (CMetroid)	no
-08418	fn_40_8418	194	B	CMetroidData	-	upstream body (CMetroid)	no
+08354	fn_40_8354	C4	B	CMetroidData	-	upstream body (CMetroid)	yes
+08418	fn_40_8418	194	B	CMetroidData	-	upstream body (CMetroid)	yes
 085AC	fn_40_85AC	48	B	FaceHugVulnerability	met1	upstream body (CMetroid)	yes
-085F4	fn_40_85F4	3C	B	fn_40_85F4	-	unnamed helper (CMetroid)	no
-08630	fn_40_8630	43C	B	__sinit_CMetroid_cpp	-	upstream body (CMetroid)	no
+085F4	fn_40_85F4	3C	H	fn_40_85F4	-	rstl::optional_object<CAABox>(const CAABox&) (met7): 24-byte copy r4->r3 + valid byte 0x18=1; only caller fn_40_10 CPatterned::GetTouchBounds (CMetroid.s:36, already H); host include/rstl/optional_object.hpp:16 sets m_valid=true and copies the CAABox	no
+08630	fn_40_8630	43C	B	__sinit_CMetroid_cpp	-	upstream body (CMetroid)	yes
 08A6C	fn_40_8A6C	1CC	B	FindAIHintPosition	-	upstream body (CBabyMetroid)	no
 08C38	fn_40_8C38	1C	B	Generate	-	upstream body (CBabyMetroid)	no
 08C54	fn_40_8C54	198	B	Attack	-	upstream body (CBabyMetroid)	no
@@ -158,9 +158,9 @@ offset	fn	size	class	name	slice	what	marker
 09FC0	fn_40_9FC0	24C	B	CBabyMetroid	-	upstream body (CBabyMetroid)	no
 0A20C	fn_40_A20C	C8	H	operator=	-	rstl weak copy	no
 0A2D4	fn_40_A2D4	A4	H	reserve	-	rstl weak copy	no
-0A378	fn_40_A378	98	B	fn_40_A378	-	unnamed helper (CBabyMetroid)	no
-0A410	fn_40_A410	3C	B	fn_40_A410	-	unnamed helper (CBabyMetroid)	no
-0A44C	fn_40_A44C	534	B	__sinit_CBabyMetroid_cpp	-	upstream body (CBabyMetroid)	no
+0A378	fn_40_A378	98	H	fn_40_A378	-	rstl::vector<CWeaponTypeVulnerability>::reserve (met7): if n>cap allocate n*12, uninitialized_copy old, Free old, store items/cap; sole caller fn_40_97F8 (CBabyMetroid.s:1016, vector::operator=, H); host include/rstl/vector.hpp:158 reserve (called from operator= :238) does the same	no
+0A410	fn_40_A410	3C	H	fn_40_A410	-	rstl::uninitialized_copy of 12-byte CWeaponTypeVulnerability (float,int,bool) (met7): sole caller fn_40_A378 (CBabyMetroid.s:1876); host rstl::uninitialized_copy (include/rstl/construct.hpp:157/170, used by vector.hpp:165 reserve and :239 operator=) copies the same fields	no
+0A44C	fn_40_A44C	534	B	__sinit_CBabyMetroid_cpp	-	upstream body (CBabyMetroid)	yes
 0A980	fn_40_A980	C4	T	_unresolved	-	REL runtime	no
 0AA44	fn_40_AA44	24	T	_epilog	-	REL runtime	no
 0AA68	fn_40_AA68	24	T	_prolog	-	REL runtime	no

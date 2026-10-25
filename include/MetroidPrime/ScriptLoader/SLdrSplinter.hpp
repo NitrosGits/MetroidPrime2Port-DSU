@@ -40,6 +40,7 @@ struct SLdrSplinter {
   float unknown_0xb7deaf32;                        // 0xb7deaf32
 };
 
+// @ fn_74_C3C (branch-free; every store and member ctor mapped to the asm)
 inline SLdrSplinter::SLdrSplinter()
 : editorProperties()
 , patterned()

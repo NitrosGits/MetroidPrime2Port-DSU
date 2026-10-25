@@ -3,7 +3,7 @@ offset	fn	size	class	name	slice	what	marker
 0002C	fn_66_2C	24	T	RELExit	sz1	REL runtime (100%)	yes
 00050	fn_66_50	20	T	RELMain	sz1	REL runtime (100%)	yes
 00070	fn_66_70	5C	T	SetRelLoaderFunctionToLoader__Fv	sz1	REL runtime (100%)	yes
-000CC	fn_66_CC	9A4	B	LoadSafeZone__FR13CStateManagerR12CInputStreamR11CEntityInfo	sz1	upstream body (97%); flash args swapped (TARGET_PC)	no
+000CC	fn_66_CC	9A4	B	LoadSafeZone__FR13CStateManagerR12CInputStreamR11CEntityInfo	sz1	upstream body (97%); flash args swapped (TARGET_PC)	yes
 00A70	fn_66_A70	48	H	push_back__Q24rstl35reserved_vector<14CDarkWorldInfo,3>FRC14CDarkWorldInfo	-	weak copy / template instance / unnamed REL-local (100%)	no
 00AB8	fn_66_AB8	20	H	construct<14CDarkWorldInfo>__4rstlFPvRC14CDarkWorldInfo	-	weak copy / template instance / unnamed REL-local (100%)	no
 00AD8	fn_66_AD8	28	H	construct__Q24rstl39construction_policy<14CDarkWorldInfo,0>FPvRC14CDarkWorldInfo	-	weak copy / template instance / unnamed REL-local (100%)	no
@@ -17,10 +17,10 @@ offset	fn	size	class	name	slice	what	marker
 00EFC	fn_66_EFC	20	H	destroy<14CDarkWorldInfo>__4rstlFP14CDarkWorldInfo	-	weak copy / template instance / unnamed REL-local (100%)	no
 00F1C	fn_66_F1C	24	H	destroy_impl<14CDarkWorldInfo>__4rstlFP14CDarkWorldInfo	-	weak copy / template instance / unnamed REL-local (100%)	no
 00F40	fn_66_F40	C8	B	__dt__12SLdrSafeZoneFv	-	upstream body (100%)	no
-01008	fn_66_1008	434	B	__ct__12SLdrSafeZoneFv	sz1	upstream body (68%); loader defaults (TARGET_PC)	no
+01008	fn_66_1008	434	B	__ct__12SLdrSafeZoneFv	sz1	upstream body (68%); loader defaults (TARGET_PC)	yes
 0143C	fn_66_143C	64	B	__dt__15SLdrSafeZoneFogFv	-	upstream body (100%)	no
 014A0	fn_66_14A0	3C	B	__dt__22SLdrSafeZoneAttributesFv	-	upstream body (100%)	no
-014DC	fn_66_14DC	154	B	__ct__22SLdrSafeZoneAttributesFv	sz1	upstream body (66%); loader defaults (TARGET_PC)	no
+014DC	fn_66_14DC	154	B	__ct__22SLdrSafeZoneAttributesFv	sz1	upstream body (66%); loader defaults (TARGET_PC)	yes
 01630	fn_66_1630	74	B	LdrToSafeZoneFog__FRC15SLdrSafeZoneFog	sz1	upstream body (100%)	yes
 016A4	fn_66_16A4	178	B	LoadTypedefSafeZoneFog__FR15SLdrSafeZoneFogR12CInputStream	-	upstream body (100%)	no
 0181C	fn_66_181C	3C8	B	LoadTypedefSafeZoneAttributes__FR22SLdrSafeZoneAttributesR12CInputStream	-	upstream body (100%)	no
@@ -86,7 +86,7 @@ offset	fn	size	class	name	slice	what	marker
 0635C	fn_66_635C	58	H	__dt__11CMayaSplineFv	-	weak copy / template instance / unnamed REL-local (100%)	no
 063B4	fn_66_63B4	54	H	__dt__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
 06408	fn_66_6408	70	B	__dt__19SLdrSafeZoneCrystalFv	-	upstream body (100%)	no
-06478	fn_66_6478	158	B	__ct__19SLdrSafeZoneCrystalFv	sz1	upstream body (70%); loader defaults (TARGET_PC)	no
+06478	fn_66_6478	158	B	__ct__19SLdrSafeZoneCrystalFv	sz1	upstream body (70%); loader defaults (TARGET_PC)	yes
 065D0	fn_66_65D0	78	H	__ct__22SSafeZoneCrystalModelsFRC10CModelDataRC10CModelDataRC10CModelDataRC10CModelData	sz1	weak copy / template instance / unnamed REL-local (100%)	yes
 06648	fn_66_6648	80	B	GetScannableObjectInfo__22CScriptSafeZoneCrystalCFv	-	upstream body (100%)	no
 066C8	fn_66_66C8	FC	B	LoadScannableInfo__FUi	-	upstream body (100%)	no
@@ -121,4 +121,4 @@ offset	fn	size	class	name	slice	what	marker
 0891C	fn_66_891C	108	B	CreateEffect__FUi	-	upstream body (100%)	no
 08A24	fn_66_8A24	98	H	reserve__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>Fi	-	weak copy / template instance / unnamed REL-local (100%)	no
 08ABC	fn_66_8ABC	5C	H	uninitialized_copy<Q24rstl124pointer_iterator<15CMayaSplineKnot,Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P15CMayaSplineKnot>__4rstlFQ24rstl124pointer_iterator<15CMayaSplineKnot,Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl124pointer_iterator<15CMayaSplineKnot,Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P15CMayaSplineKnot	-	weak copy / template instance / unnamed REL-local (100%)	no
-08B18	fn_66_8B18	-	B	__sinit_CScriptSafeZoneCrystal_cpp	-	upstream body (82%)	no
+08B18	fn_66_8B18	-	B	__sinit_CScriptSafeZoneCrystal_cpp	-	upstream body (82%)	yes

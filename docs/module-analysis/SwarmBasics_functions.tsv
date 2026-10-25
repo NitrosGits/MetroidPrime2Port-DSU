@@ -19,7 +19,7 @@ offset	fn	size	class	name	slice	what	marker
 0078C	fn_80_78C	4	B	CSwarmBasics::BoidCollidedCallback	-	upstream body (CSwarmBasics)	no
 00790	fn_80_790	8	B	CSwarmBasics::ShouldBuildAreaCollisionCacheForPartition	swarm1	upstream body (CSwarmBasics)	yes
 00798	fn_80_798	4C	B	CSwarmBasics::GetAreaCollisionCacheForPartition	swarm1	upstream body (CSwarmBasics)	yes
-007E4	fn_80_7E4	1E8	B	CSwarmBasics::UpdateEffects	-	upstream body (CSwarmBasics)	no
+007E4	fn_80_7E4	1E8	B	CSwarmBasics::UpdateEffects	-	upstream body (CSwarmBasics)	yes
 009CC	fn_80_9CC	D0	B	CSwarmBasics::AddLoopedEmitter	swarm1	upstream body (CSwarmBasics)	yes
 00A9C	fn_80_A9C	70	B	CSwarmBasics::CanStartLoopedSound	-	upstream body (CSwarmBasics)	no
 00B0C	fn_80_B0C	A4	B	CSwarmBasics::UpdateLoopedSoundPositions	-	upstream body (CSwarmBasics)	no
@@ -28,7 +28,7 @@ offset	fn	size	class	name	slice	what	marker
 00CB0	fn_80_CB0	198	B	CSwarmBasics::UpdateClosestPartitionLoopedSounds	swarm1	upstream body (CSwarmBasics)	yes
 00E48	fn_80_E48	124	B	CSwarmBasics::UpdateLoopedSounds	swarm1	upstream body (CSwarmBasics)	yes
 00F6C	fn_80_F6C	154	B	CSwarmBasics::GetClosestPartitionList	swarm1	upstream body (CSwarmBasics)	yes
-010C0	fn_80_10C0	1C0	B	CSwarmBasics::FindClosestCell	-	upstream body (CSwarmBasics)	no
+010C0	fn_80_10C0	1C0	B	CSwarmBasics::FindClosestCell	-	upstream body (CSwarmBasics)	yes
 01280	fn_80_1280	40	B	CSwarmBasics::EvaluateActiveBoidCount	-	upstream body (CSwarmBasics)	no
 012C0	fn_80_12C0	164	B	CSwarmBasics::FreezeCollision	-	upstream body (CSwarmBasics)	no
 01424	fn_80_1424	44	B	CSwarmBasics::RenderParticles	-	upstream body (CSwarmBasics)	no
@@ -61,15 +61,15 @@ offset	fn	size	class	name	slice	what	marker
 0383C	fn_80_383C	124	B	CSwarmBasics::ApplySeparation	-	upstream body (CSwarmBasics)	no
 03960	fn_80_3960	CC	B	CSwarmBasics::ApplySeparation	-	upstream body (CSwarmBasics)	no
 03A2C	fn_80_3A2C	108	B	CSwarmBasics::BuildBoidNearList	-	upstream body (CSwarmBasics)	no
-03B34	fn_80_3B34	46C	B	CSwarmBasics::Render	-	upstream body (CSwarmBasics)	no
+03B34	fn_80_3B34	46C	B	CSwarmBasics::Render	-	upstream body (CSwarmBasics)	yes
 03FA0	fn_80_3FA0	98	B	CSwarmBasics::AddToRenderer	-	upstream body (CSwarmBasics)	no
 04038	fn_80_4038	F0	B	CSwarmBasics::DrawBoidSkinnedModel	-	upstream body (CSwarmBasics)	no
 04128	fn_80_4128	6C	B	CSwarmBasics::RenderBoid	-	upstream body (CSwarmBasics)	no
-04194	fn_80_4194	7C	B	CSwarmBasics::PreRenderBoid	-	upstream body (CSwarmBasics)	no
+04194	fn_80_4194	7C	B	CSwarmBasics::PreRenderBoid	-	upstream body (CSwarmBasics)	yes
 04210	fn_80_4210	68	B	CSwarmBasics::CachePose	-	upstream body (CSwarmBasics)	no
 04278	fn_80_4278	8	B	CSwarmBasics::CanRenderUnsorted	swarm1	upstream body (CSwarmBasics)	yes
 04280	fn_80_4280	2B8	B	CSwarmBasics::SoftwareLight	swarm1	upstream body (CSwarmBasics)	yes
-04538	fn_80_4538	108	B	CSwarmBasics::HardwareLight	-	upstream body (CSwarmBasics)	no
+04538	fn_80_4538	108	B	CSwarmBasics::HardwareLight	-	upstream body (CSwarmBasics)	yes
 04640	fn_80_4640	138	B	CSwarmBasics::PreRender	-	upstream body (CSwarmBasics)	no
 04778	fn_80_4778	1CC	B	CSwarmBasics::BoxForPosition	swarm1	upstream body (CSwarmBasics)	yes
 04944	fn_80_4944	114	B	CSwarmBasics::GetListAt	swarm1	upstream body (CSwarmBasics)	yes
@@ -77,8 +77,8 @@ offset	fn	size	class	name	slice	what	marker
 04D80	fn_80_4D80	C	H	rstl::vector<unsigned int, rstl::rmemory_allocator>::clear	-	weak copy / template instance	no
 04D8C	fn_80_4D8C	174	B	CSwarmBasics::MoveBoid	-	upstream body (CSwarmBasics)	no
 04F00	fn_80_4F00	124	B	CSwarmBasics::UpdateSwarmAnimations	-	upstream body (CSwarmBasics)	no
-05024	fn_80_5024	94	B	CSwarmBasics::UpdateAllBoidMovement	-	upstream body (CSwarmBasics)	no
-050B8	fn_80_50B8	768	B	CSwarmBasics::Think	-	upstream body (CSwarmBasics)	no
+05024	fn_80_5024	94	B	CSwarmBasics::UpdateAllBoidMovement	swb16	upstream body (CSwarmBasics)	yes
+050B8	fn_80_50B8	768	B	CSwarmBasics::Think	swb16	upstream body (CSwarmBasics)	yes
 05820	fn_80_5820	7C	H	CAreaCollisionCache::CAreaCollisionCache	-	weak copy / template instance	no
 0589C	fn_80_589C	50	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::~reserved_vector	-	weak copy / template instance	no
 058EC	fn_80_58EC	84	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::destroy_elements	-	weak copy / template instance	no
@@ -161,7 +161,7 @@ offset	fn	size	class	name	slice	what	marker
 09FFC	fn_80_9FFC	130	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::vector	-	weak copy / template instance	no
 0A12C	fn_80_A12C	54	H	CHealthInfo::CHealthInfo	-	weak copy / template instance	no
 0A180	fn_80_A180	3C	H	rstl::reserved_vector<CSwarmBasics::CBoid*, 125>::~reserved_vector	-	weak copy / template instance	no
-0A1BC	fn_80_A1BC	44	B	GetModelDataForAnimRes	-	upstream body (CSwarmBasics)	no
+0A1BC	fn_80_A1BC	44	B	GetModelDataForAnimRes	-	upstream body (CSwarmBasics)	yes
 0A200	fn_80_A200	34	B	CompareBoidsByListenerDistance	-	upstream body (CSwarmBasics)	no
 0A234	fn_80_A234	34	H	CompareBoidsByListenerDistanceReverse	-	weak copy / template instance	no
 0A268	fn_80_A268	2C	H	CompareBoidRefsByListenerDistance	-	weak copy / template instance	no

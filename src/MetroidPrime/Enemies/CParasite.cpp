@@ -47,6 +47,18 @@ static const SSphereJointInfo skIceJoints[] = {{"Skeleton_Root", 0.f}};
 
 static EMaterialTypes skContactMaterial = kMT_Solid;
 
+// Retail `__sinit_CParasite_cpp` (0x766C-0x7A44) accounts for two tables, four float statics and
+// `lastParasite`. Tables: `lis` 0x776C/0x78A4 take .data 0x64 (8 triggers) and 0x18C (14 states);
+// 66 word copies (`stw` 0x77DC-0x7A28 = 22 entries x {adjust 0, vtoff -1, fn}) - same names, order
+// and targets as the host, all 22 marked. The floats are the host's four initialisers evaluated in
+// the same order: `lfs` .rodata 0x1C (2.5f) / DOL 0x8041B758 (24.525f = 9.81f*2.5f =
+// kDefaultGravityAccel) -> SqrtF (DOL 0x802CDF30) at 0x7690, times .rodata 0x14 (2.0f) at 0x76B4 ->
+// skAttackTime @ .bss 0x5C; .rodata 0x88 (15.0f) / skAttackTime at 0x76C8 -> skAttackVelocity
+// @ 0x60; the same SqrtF again at 0x76D8 gives skRetreatTime @ 0x64; .rodata 0x60 (3.0f) /
+// skRetreatTime at 0x7714 -> skRetreatVelocity @ 0x68, and `lastParasite` (.bss 0x6C) = 0 at
+// 0x7A2C. Identical constants and operations to CParasite.cpp:37-40 and:82. Frame stmw r14 0x7684
+// (0x80, lmw 0x7A30); no branch.
+// @ fn_47_766C
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"AnimOver", static_cast< CPatterned::StateMachine::TriggerFunc >(&CParasite::AnimOver)},
     {"Landed", static_cast< CPatterned::StateMachine::TriggerFunc >(&CParasite::Landed)},
@@ -81,6 +93,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
 
 static TUniqueId lastParasite = TUniqueId(0, 0);
 
+// @ fn_47_6770
 CParasite::CParasite(TUniqueId uid, const rstl::string& name, EFlavorType flavor, CEntityInfo& info,
                      const CTransform4f& xf, const CModelData& mData, const CPatternedInfo& pInfo,
                      EBodyType bodyType, float maxTelegraphReactDist, float advanceWpRadius,
@@ -1275,6 +1288,7 @@ void CParasite::UpdateShell(CStateManager& mgr, int state) {
   }
 }
 
+// @ fn_47_1568
 CEntity* LoadParasite(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrParasite sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrParasite.inc"
@@ -1304,6 +1318,7 @@ CEntity* LoadParasite(CStateManager& mgr, CInputStream& input, CEntityInfo& info
       LdrToActorParameters(sldrThis.actorInformation));
 }
 
+// @ fn_47_CF8
 CEntity* LoadBrizgee(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrBrizgee sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrBrizgee.inc"
@@ -1330,6 +1345,7 @@ CEntity* LoadBrizgee(CStateManager& mgr, CInputStream& input, CEntityInfo& info)
       LdrToActorParameters(sldrThis.actorInformation));
 }
 
+// @ fn_47_148
 CEntity* LoadCrystallite(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrCrystallite sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrCrystallite.inc"

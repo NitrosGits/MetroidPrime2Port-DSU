@@ -35,7 +35,7 @@ gdb.execute('set $lm_busy = 0')
 gdb.execute('set $lm_done = 0')
 gdb.execute('set $lm_team = -1')
 
-STEPS = os.environ.get('LUM2_STEPS', 'cbn,basic,sun,zone,trig,knee,hop,more,team2,msg,collide,dead').split(',')
+STEPS = os.environ.get('LUM2_STEPS', 'cbn,basic,sun,zone,trig,knee,hop,more,team2,msg,collide,dead,lum4').split(',')
 
 bp = gdb.Breakpoint(addr('CLumite::Think('))
 bp.condition = ('$lm_busy == 0 && $lm_done == 0 && ((CLumite*)$rdi)->mActive && ((CLumite*)$rdi)->mAlive '

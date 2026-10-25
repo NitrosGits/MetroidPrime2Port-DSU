@@ -1,0 +1,21 @@
+# Agon 05_portalpuzzle (42b935e4): layer 2 holds six War Wasps (MYSF e081202de/df, e08120329/2a/2b, e081201cc),
+# layer 3 and 12 each hold a ScriptTeamAiMgr (e0c120433 on L3). For mfly4: the wasps' AreaLoaded runs
+# JoinTeam with a TeamAiMgr present (natural first call: id invalid -> GetAssociatedTeamId -> join),
+# the Activate/Alert/damage steps give the Damage/Alert arms, a second layer load re-delivers AreaLoaded.
+@f300 god 1; give missile 50; layer 3
+@f500 layer 2
+@f800 objs MysteryFlyer; objs ScriptTeamAiMgr
+@f900 send e081202de Activate; send e081202df Activate; send e08120329 Activate; send e0812032a Activate; send e0812032b Activate; send e081201cc Activate
+@f1000 send e081202de Alert; send e081202df Alert
+@f1400 obj e081202de; obj e081202df
+@f1600 layer 12
+@f2000 objs MysteryFlyer; objs ScriptTeamAiMgr
+@f2100 damage e081202de 1 0 power
+@f2110 obj e081202de
+@f2150 damage e081202de 1 0 power
+@f2200 damage e081202de 1 0 power
+@f2250 damage e081202df 1 0 power
+@f2300 damage e081202df 1 0 power
+@f2350 fsm e081202de Hover; fsm e081202df Hover; fsm e08120329 Hover; fsm e0812032a Hover; fsm e0812032b Hover; fsm e081201cc Hover
+@f2700 kill e081202de
+@f2800 objs MysteryFlyer

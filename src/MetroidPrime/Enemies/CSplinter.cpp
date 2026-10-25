@@ -38,6 +38,13 @@ static const char* const skAcidSackLocator = "AcidSack_LCTR_SDK";
 static const char* const skEyeLocator = "Eye_LCTR";
 static const char* const skEyesEffect = "Eyes";
 
+// Retail `__sinit_CSplinter_cpp` (0xC268-0xCCA8, no branches or calls) writes only these two
+// tables: 219 stores of {adjust 0, vtable offset, 0} virtual mfps for 46 triggers (.data 0x238)
+// and 27 states (.data 0x65C); every name pairs with the same-named virtual. Retail order differs
+// at triggers 16-18 (InHeckleRange, IsDarkSplinter, IsHeckler) and 37-38 (ShouldEmergeFromCocoon,
+// ShouldDrop); Set{State,Trigger}Functions and the port lookups go by name, so only
+// the console's listing order differs. /tmp/opencode/reports/spsi.md.
+// @ fn_74_C268
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"AlertMessageReceived",
      static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplinter::AlertMessageReceived)},

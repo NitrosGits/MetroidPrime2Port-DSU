@@ -19,6 +19,7 @@
 #include "REL/REL_Setup.h"
 #include <float.h>
 
+// @ fn_48_402C
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"Attacked", static_cast< CPatterned::StateMachine::TriggerFunc >(&CPillBug::Attacked)},
     {"Bombed", static_cast< CPatterned::StateMachine::TriggerFunc >(&CPillBug::Bombed)},
@@ -303,6 +304,7 @@ void CPillBug::BuildPath(CStateManager& mgr) {
   }
 }
 
+// @ fn_48_2FE4
 bool CPillBug::HasInnerPathLoop(CStateManager& mgr) const {
   const TUniqueId start = CheckConnectedObject(mgr, kSS_Patrol, kSM_Follow);
   TUniqueId current = start;
@@ -443,6 +445,7 @@ bool CPillBug::Landed(CStateManager& mgr, const CTriggerData& data) const { retu
 // @ fn_48_2930
 bool CPillBug::HitPlayer(CStateManager& mgr, const CTriggerData& data) const { return mHitPlayer; }
 
+// @ fn_48_274C
 bool CPillBug::CloseToPath(CStateManager& mgr, const CTriggerData& data) const {
   if (mgr.Random()->Next() & 3) {
     return false;
@@ -801,6 +804,7 @@ void CPillBug::Pause(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_48_130
 CEntity* LoadPillBug(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrPillBug sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrPillBug.inc"

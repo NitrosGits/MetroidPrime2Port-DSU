@@ -39,7 +39,7 @@ The `riftportal.con` driver runs these steps, in order:
 
 The run reports 0 `[port] caught` and 0 `reach-stub`, and exits with 0.
 
-Marked: the ctor, the dtor, LoadRiftPortal, SetActive, PreRenderAllViewports, PreRender, CopyFrameBufferRegion,
+Marked: Render (srp4), AdvanceModel (srp2, below), the ctor, the dtor, LoadRiftPortal, SetActive, PreRenderAllViewports, PreRender, CopyFrameBufferRegion,
 AddToRenderer, AcceptScriptMsg, Think and UpdateProjectiles, plus SetFuncPtrs, RELMain and RELExit, which are trivial
 and equivalent to the asm. These three are not built in the port (MONOLITHIC); they are marked as in Kralee. Every
 0% arm in a marked body is dead for one of these reasons:
@@ -49,7 +49,7 @@ and equivalent to the asm. These three are not built in the port (MONOLITHIC); t
 | data: both placements have the same properties, and the only writer is the loader | UpdateProjectiles attraction 0 (86) and 2 (111). Every `HasAnimation()` false arm: Think 146/154/158/165/168, AcceptScriptMsg 178-238, Render 441/483/487/502, PreRender 513. Render `!mRipPortal` (274) and AddToRenderer `mRipPortal` false (251). Load's missing-model arms and the LdrToModelData empty-optional arms |
 | caller: CStateManager.cpp:824 calls Render/AddToRenderer only for active actors with models | Render `IsNull`/`!GetActive` (274), AddToRenderer `GetActive` false (251) |
 | caller: the only call passes halfSize false and dest null | CopyFrameBufferRegion 265/267 |
-| arithmetic | UpdateProjectiles 109 (CanBeNormalized false inside a 2-unit radius with toCenter != 0); Render 345 (Clamp of offsets already in [-1,1]) |
+| arithmetic | Render 300, the clampedY min arm (`maxY < -1`, srp4): `CMath::Clamp(0, 1+maxY, 2)` has the same `fcmpo`/`ble` shape as the clampedX instance at 0xFE4-0x1060 (min 0.0 from rodata 2C, max 2.0 from 34, 1.0 from 30), whose min arm ran; no value-dependent branch follows, and a NaN takes `ble` to the max check exactly like the host. The srp2 forced fixture was dropped, nothing launched in srp4 beyond the natural run (`/tmp/opencode/srp4-a`); UpdateProjectiles 109 (CanBeNormalized false inside a 2-unit radius with toCenter != 0); Render 345 (Clamp of offsets already in [-1,1]) |
 | writer: the CModel ctor always sets mModelInstance (DolphinCModel.cpp:307/328) | Render `cubeModel == nullptr` (414/439; retail `cmplwi r29,0` at 0x168C) |
 | compiler artifacts | inline deref/get helper arms, the static-guard arm, EH "throw" arms |
 
@@ -57,9 +57,31 @@ Open (unmarked):
 
 | function | open arm |
 |---|---|
-| Render C88 | 299, the clampedY min arm (`maxY < -1`): every corner must be below the screen while the portal's point bounds stay visible. Close-ups, drops and an `aim 0 0..60` pitch sweep at 12, 6 and 4 units did not reach it |
-| AdvanceModel 23F8 | 130, the POI loop: the particle POI count was always 0. It depends on the ANCS EVNT data, which has not been scanned |
 | CanRenderUnsorted C30 | never called |
+
+## AdvanceModel fn_64_23F8 (srp2, 2026-10-25), marked
+
+Natural runs never gave a particle POI count > 0, so the loop was driven by a forced fixture
+(`tools/cov/specs/srp2_advancemodel.py`, driver `tools/drivers/srp2_advancemodel.con`, area
+`3bfa3eff,12_temple_finalgate`, 800 frames GPU, 1 launch, 0 caught/reach-stub, exit 0). Each case is one natural
+AdvanceModel call (incandescent model), owned by guarded frame equality + inferior/thread. After
+AdvanceParticles returns inside that frame (retail 0x2468) the static POI array, mPassedParticleCount and for
+the null arm the CModelData animation pointer are written (snapshot first, restored with readbacks at the
+return: 7/7 restores, 0 errors). The actual `CParticleDatabase::SetParticleEffectState(hash, true, mgr)` calls
+(this = &animData->mParticleDB, active 1, same mgr) were recorded. The retail loop reads the static
+`mParticlePOINodes` array (lbl_8040B2E0+4) with stride 0x44, count at animData+0x29c, charIdx at node+0x24, hash at node+8.
+
+| arm (retail offset) | case | actual calls |
+|---|---|---|
+| no animation `0x2474` | forced (null-anim: pointer 0, count 2) | none |
+| count <= 0 `0x248C` | forced zero, forced -3 | none |
+| charIdx == -1 `0x24A8` | forced mixed4/single-any | hashes A1; E1 (second any-node skipped by count 1) |
+| charIdx == animData idx `0x24B8` | forced mixed4/last-only (idx 0) | A3; F3 |
+| charIdx other `0x24B8` taken | forced mixed4/all-skipped/last-only | none for those nodes |
+| loop back/exit `0x24E0` | mixed4 (4 iterations), last-only (3) | order preserved |
+
+Evidence: /tmp/opencode/srp2-a (srp2.jsonl). Executed binary frozen at /tmp/opencode/srp2-frozen/executed-binary,
+sha256 faa409bc...2de058; the fixture executed is the committed one (comment-only source change after the run).
 
 ## Smoke family (proposal)
 

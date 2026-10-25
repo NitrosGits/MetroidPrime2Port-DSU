@@ -33,6 +33,7 @@ struct SLdrPillBug {
   float unknown_0xcf4ea141;                    // 0xcf4ea141
 };
 
+// @ fn_48_AA4
 inline SLdrPillBug::SLdrPillBug()
 : editorProperties()
 , patterned()
@@ -63,6 +64,7 @@ inline SLdrPillBug::SLdrPillBug()
 #endif
 }
 
+// @ fn_48_A1C
 inline SLdrPillBug::~SLdrPillBug() {}
 
 #endif

@@ -24,7 +24,7 @@ offset	fn	size	class	name	slice	what	marker
 01CE4	fn_64_1CE4	4B0	B	CScriptRiftPortal::AcceptScriptMsg(CStateManager&, const CScriptMsg&)	srp1	cpp:175	yes
 02194	fn_64_2194	214	B	CScriptRiftPortal::Think(float, CStateManager&)	srp1	cpp:140	yes
 023A8	fn_64_23A8	50	H	rc_ptr deleting dtor	-	weak/template copy	no
-023F8	fn_64_23F8	108	B	CScriptRiftPortal::AdvanceModel(CModelData&, CStateManager&, float)	srp1	particle POI loop (cpp:124)	no
+023F8	fn_64_23F8	108	B	CScriptRiftPortal::AdvanceModel(CModelData&, CStateManager&, float)	srp2	particle POI loop (cpp:124); forced fixture, see note	yes
 02500	fn_64_2500	378	B	CScriptRiftPortal::UpdateProjectiles(CStateManager&, float)	srp1	projectile attraction (cpp:85)	yes
 02878	fn_64_2878	3C	H	weak deleting dtor	-	weak/template copy	no
 028B4	fn_64_28B4	284	B	CScriptRiftPortal::CScriptRiftPortal(...)	srp1	ctor (cpp:41); TARGET_PC tail cpp:63	yes

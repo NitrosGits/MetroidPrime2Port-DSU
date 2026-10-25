@@ -94,6 +94,7 @@ inline SLdrDestructibleBarrier::SLdrDestructibleBarrier()
   barrierStartsDown = false;
 }
 
+// @ fn_13_BA0
 inline SLdrDestructibleBarrier::~SLdrDestructibleBarrier() {}
 
 #endif

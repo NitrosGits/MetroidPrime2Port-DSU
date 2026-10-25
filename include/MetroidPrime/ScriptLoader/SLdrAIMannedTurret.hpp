@@ -10,6 +10,14 @@
 #include "MetroidPrime/ScriptLoader/Structs/SLdrEditorProperties.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrHealthInfo.hpp"
 
+// @ fn_1_4964 (implicit copy ctor; retail 0x4964-0x4A57, called from the CAIMannedTurret ctor at
+// 0x3FD8 for mData(data)). Retail copies exactly these members in declaration order, widths
+// included: +0x0..+0x30 stfs -> the 13 floats maxHorizRotationLeft..attackLeashTimer; +0x34 stw and
+// +0x38/+0x3C/+0x40 stfs -> weaponDamage (dI_WeaponType int, then damage/radius/knockback floats);
+// +0x44 stw -> weaponEffect; +0x48/+0x4C stfs -> health (health, hI_KnockBackResistance);
+// bl SLdrDamageVulnerability copy ctor (fn_1_4A58) at +0x50 -> vulnerability (0x15C); +0x1AC/+0x1B0
+// stw -> stateMachine, telegraphEffect. sizeof 0x1B4 on both sides (host offsets checked with a
+// -fsyntax-only static_assert TU), no slot picked up from padding, no member skipped; branch-free.
 struct SLdrAIMannedTurretData {
   SLdrAIMannedTurretData();
   ~SLdrAIMannedTurretData();
@@ -166,6 +174,13 @@ inline SLdrAIMannedTurret::SLdrAIMannedTurret()
   editorProperties.active = false;
 }
 
+// @ fn_1_5B0
+// Retail body (0x5B0-0x62B; symbol and body agree, __dt__18SLdrAIMannedTurretFv, only caller
+// LoadAIMannedTurret at 0x3DC): between the `this != null` / `flags > 0 -> Free` guards it only runs
+// the member destructors in reverse declaration order: CMayaSpline at +0x234 (patrolVerticalSpline),
+// CMayaSpline at +0x1F0 (patrolHorizSpline), SLdrAIMannedTurretData at +0x3C, SLdrEditorProperties
+// at +0x0. No store, no data-dependent arm: the host's implicit member destruction is the same
+// sequence (the spline destructors free their knot storage).
 inline SLdrAIMannedTurret::~SLdrAIMannedTurret() {}
 
 #endif

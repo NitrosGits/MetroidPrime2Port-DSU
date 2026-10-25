@@ -1,0 +1,9 @@
+# Sand Canyon (42b935e4,08_sand_casualpirates): no shipped DBAR exists (the module is data-dead), so
+# three barriers are spawned with the console, reusing the db1 forced driver's asset choices.  Each
+# spawn runs LoadDestructibleBarrier, whose stack SLdrDestructibleBarrier is destroyed at the loader's
+# return - the only live destruction path of fn_13_BA0.
+@f200 god 1; give missile 50; give chargeBeam 1
+@f210 spawn DBAR d 10 model c809d6aa prop cd4f7e71 3 prop 609c6240 2 prop 1eb90d06 0x5d2926fc prop 982d7fa8 0xcdcbdf04 prop 5371ac0d 0x5d2926fc prop 4e749cb5 0xcdcbdf04 prop 6e4a9d27 0x10 prop bc2381a6 0x11 prop 6575a3d5 0x12 prop c91b0946 0x13 prop 4b2d5a37 0x14
+@f212 spawn DBAR d 20 model 9a3fc483 prop 396660b4 0xffffffff prop 48e25884 0xffffffff prop f1abb2c7 0xffffffff prop 6575a3d5 0x12 prop c91b0946 0x13 prop 4b2d5a37 0x14 prop 4d3109e3 0x01000000
+@f214 spawn DBAR d 30 model c809d6aa prop cd4f7e71 2 prop 609c6240 2 prop 1eb90d06 0x5d2926fc prop 982d7fa8 0xcdcbdf04 prop 5371ac0d 0x5d2926fc prop 4e749cb5 0xcdcbdf04 prop 6e4a9d27 0x10 prop bc2381a6 0x11 prop 6575a3d5 0x12 prop c91b0946 0x13 prop 4b2d5a37 0x14
+@f600 objs DestructibleBarrier

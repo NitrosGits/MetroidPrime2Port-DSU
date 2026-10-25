@@ -87,4 +87,53 @@ Specs (all `42b935e4,02_sand_sandfalls_dark`; rebuild and rerun the three natura
 | LoadSafeZoneCrystal 5730 | 18/18 | forced (each of the four crystal models invalid on successive crystals) |
 
 Header / loader rows marked without a run (objdiff 100%, user rule): ~SLdrSafeZoneAttributes 14A0, LoadTypedefSafeZoneAttributes 181C, ~SLdrSafeZoneFog 143C, LoadTypedefSafeZoneFog 16A4, ~SLdrSafeZone F40,
-~SLdrSafeZoneCrystal 6408, CDarkWorldInfo copy ctor B00 / dtor D80 / LoadOptionalTexture 5400, and the CDarkWorldInfo ctor 51A8 (98.6%, regalloc). Not marked: the `__sinit` row 8B18 (82%).
+~SLdrSafeZoneCrystal 6408, CDarkWorldInfo copy ctor B00 / dtor D80 / LoadOptionalTexture 5400, and the CDarkWorldInfo ctor 51A8 (98.6%, regalloc). Not marked: the `__sinit` row 8B18 (82%) until szl1.
+
+## szl1: loader and property-struct ctors (base b4cbc0d9b, 2026-10-25), marked offline, 0 GPU launches
+
+fn_66_CC, 1008, 14DC, 6478, 8B18 marked. Evidence:
+- Ctors 14DC / 1008 / 6478: every direct `this` store in the retail asm (113 stores after last-store dedupe) was
+  emulated and compared with the host struct, offsets mapped by field name (host layout differs); 0 mismatches.
+  The TARGET_PC defaults (sounds -1, `CColor` 255-truncation, flashSound -1, fog colour, crystal visorFlags) equal retail.
+- CC: the 31 property ids dispatch to the same field offsets as the host SLdrSafeZone (0x3e0.. activation, 0x51c.. fade,
+  0x528 flashTime, 0x52c flashBrightness, 0x530 flashSound ...); ctor float args f1-f4 = 0x3e0-0x3ec, f6 = fadeStart + fadeTime,
+  f8 = 0x52c (flash swap). The infos[] loop matches (normal, hurtful, echo).
+- 8B18: the asm builds Normal(1,Normal,true), PassThrough(0,PassThrough,true) and the two override tables
+  (Power/Annihilator/Light/Dark, then Dark), identical to the host static initialisers (WeaponTypes/EEffect enum values checked).
+- `tools/scan_safezone_props.py` (read-only disc scan): 304 SAFE and 184 SFZC placements parse; 0 SAFE hit the
+  nullptr shell-asset path; ctor flashTime/flashBrightness are 0.5/1, 0.5/0.25, 0.25/0.25 -- all finite and non-zero.
+
+## sz2: Think (fn_66_3A40) — NOT marked
+
+Fixture `tools/cov/specs/sz2_think.py` (+ `sz2_think.con`, `sz2_selftest.py`, 17 offline tests): 37 forced cases (state-timer arms), owned by FinishBreakpoint window (frame equality + inferior/thread), snapshot/restore with readbacks, callee mocks. Model written from the retail asm and the source.
+Launch 1 failed (absolute-address line breakpoints). Launch 2 ran the whole game, but the entry guard `mEchoEmitter.mPtr != 0 -> skip` excluded all 26955 natural Think calls: **0/37 cases ran**, no forced result. Cap 2/2 consumed.
+Natural line hits (26955 calls): only the dark-grow arm (217/221, 6x), the full-shell no-op (222, 13263x), the inactive no-op (250, 13686x) and `UpdateSafeZoneManager` (261, 6x) ran. Never executed: non-dark clear (226), lifetime timer (230), moved block, Echo InformListeners, inactive decay and its zero arm (251-255), emitter off (266), lifetime expiry (273-279), camera-inside change, fog-dirty. Executed binary sha256 2ff8ee13…f12fb, fixture sha256 2dc6c107…fab44e, evidence in `/tmp/opencode/sz2-evidence/`.
+A corrected fixture (do not skip natural emitters; mock only) would be offline-only until run. No behaviour change; no `// @` marker.
+
+### sz2 launch 3 (1d16a88fa fixture, binary sha256 2ff8ee13…f12fb, 68 sites dry-run with static gdb) — still NOT marked
+
+The fixture now hides the natural echo emitter per window (null or fake page, restored from the snapshot) instead of skipping the zone. 17/37 windows ran, then the game stopped advancing (stalled before the first console frame; the 1500 s timeout killed it, rc 124). Cause unknown, not re-runnable (cap 3/3). The fixture never wrote the case `dt` into xmm0, so each judge compared the natural dt (1/60) with 0.25: all 17 FAIL on dt alone.
+Offline re-judgement of the logged results with the logged dt (`tools/cov/specs/sz2_rejudge.py`, offline-only, not an executed verification): 17/17 match the model (fields and ordered skipped calls). Executed forced arms: dark grow (+clamp), full-shell decay/clamp/no-shell/over-full, non-dark clear/zero, lifetime tick and expiry (active/inactive, zero -> remove_zone/delete_object), inactive fade, inactive zero, mobile-dirty-while-inactive.
+Never executed: inactive decay reaching zero (`set_zone_type(0)`/`lowpass(0)`; the two fade-end cases left act 0.026/0.058 at dt=1/60), the moved block (obstruction, light transform), echo `InformListeners`, emitter off/update, camera-inside change and cinematic query, fog-dirty. A further fixture fix (write dt into xmm0 at entry, step through) is offline-only until a launch is authorized.
+
+### sz2c (launches 4 and 5, extra 2/2 consumed; sz2 total 5) — Think still NOT marked
+
+Fixture now writes the case dt into `xmm0` at entry (`write_dt`, readback; logged `dt_natural` 0.016667 vs `dt_written` 0.25) and `Window.retire()` disables the finish breakpoint after its stop (a False-returning FinishBreakpoint stays armed at the caller's return). Selftests: 27, offline. Static dry run on the exact binary (sha256 2ff8ee13…f12fb): 136 location lines = 1 entry + 20 mocks + 47 line counters.
+Launch 5 (fixture sha256 750f882c…07db9, committed ce53c623c): **17/37 windows ran, all 17 match the model with the written dt** (dark grow/clamp, full-shell decay/clamp/no-shell/over-full, non-dark clear/zero, lifetime tick and expiry, inactive fade/zero/mobile-dirty); 17 restores with readbacks, 0 failed, 0 pending. Then the **game itself spins at ~95% CPU** (gdb idle, faulthandler shows no Python frame, `sz2.trace` ends at the last natural `cine_query` mock, no `Entry` hit again, console never reaches f300). Same point in launches 3, 4 and 5 (eligible n=81, window 17): deterministic, cause not found (a window restore leaving state broken, or a game load spin, is unproven either way). The watchdog's SIGSEGV hit the game's forked helper (blocked in a pipe read), so no backtrace; fixed in `sz2_watch.sh` (busiest process of the binary) but unused.
+Never executed (20 cases): moved block (4), mobile-notdirty/notmobile-dirty, echo InformListeners, hurtful zone, emitter live/zero/inactive-fade, camera-inside change (5), fog-dirty (4). Line 255 (inactive-decay end) not hit either. No dead-code proof written for them, so no marker. Next step needs a fresh launch grant with `sz2_watch.sh` (gdb `-p` on the spinning pid, or `SZ2_SPACING=1` with the case order changed so the stall lands after the unrun arms).
+Evidence `/tmp/opencode/sz2-evidence/run4`, `run5` (jsonl, trace, procdump, fixture + sha256, dry-run).
+
+## sz2d (diagnostic, 3 launches, all stalled at window 17)
+
+- A gdb-side stall interrupt dumps `thread apply all bt 30`, the Aurora FIFO state and the last restore. 17 windows matched the model; the last restore (inactive-mobile-dirty) read back exactly. The stall is not in CScriptSafeZone.
+- Cause: the Aurora FIFO worker never wakes. The first `GPUMemory::EnsureAllocation` (first skinned-model draw) spins on `GXReadDrawSync()==0xffff`. Published bytes stay unprocessed (`sProcessed==sStreamBase`), the draw-sync token stays 0, and the worker sleeps in `sWorkerWake.wait(old)` (fifo.cpp:188) with `event` 192 while `sWorkerWake` is 1253. The futex wait does not return. A `GXDrawDone()` before the spin (tried, then reverted) only moved the hang into `drain()`.
+- Not determined: whether it reproduces without gdb (ptrace/futex interaction), or is a libstdc++ atomic-wait or scheduling problem.
+- 20 cases never ran (moved-*, mobile-notdirty, notmobile-dirty, echo-zone, hurtful-zone, emitter-*, inside-*, fog-*, enter-*). `fn_66_3A40` stays UNMARKED. Next: fix or bypass the Aurora worker wait, then re-run with a new launch grant.
+- Evidence: /tmp/opencode/sz2-evidence/run{6,7,8}.
+
+## sz2e: Think (fn_66_3A40) — MARKED (73e4ba56b)
+
+- The sz2d stall was a fixture bug, not Aurora: the inferior call made inside the `stop()` handler (scratch-page mmap) left every other thread stopped, so the FIFO worker starved and main spun in `EnsureAllocation`. The scratch page is now taken from an idle MusyX/SDLAudio thread's stack (sp from /proc/<pid>/task/<tid>/syscall). The timed `wait_for` (1 ms) in extern/aurora/lib/gx/fifo.cpp (a166c5b1b; GOTCHAS re-vendor list) stays as a hardening and was not the cause.
+- Run 18 (evidence /tmp/opencode/sz2-evidence/run18, frozen binary + fixture copies + sha256.txt): 37/37 forced cases ran and match the model (fields, ordered mocked calls, dt written), 37 restores with readbacks, 0 pending/failed. Natural: 26891 calls, 181 skipped-emitter windows.
+- Arms executed: dark grow/clamp/shell decay, non-dark clear, lifetime tick/expiry (Deactivate, RemoveSafeZone, DeleteObjectRequest), inactive fade/end (+echo), moved block (obstruction x2, light cast hit/null/wrong type, SetTransform), mobile/dirty guards, echo InformListeners, emitter live/zero/inactive-fade (emitter_off judged by the mActive bit), camera enter/leave with cinematic query, fog-dirty. Branch table: all forced (forced-arm rule), except the dark-grow/full-shell/inactive no-op arms (natural).
+- asmcheck: only inline-accessor bit-name (x24a/x150) and NOPOS/unported-callee notes; no structural mismatch read.

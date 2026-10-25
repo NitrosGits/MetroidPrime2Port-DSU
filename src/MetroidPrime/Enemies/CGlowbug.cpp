@@ -26,6 +26,16 @@
 static const char* const skGlowEffect = "Glow";           // Guessed name
 static const char* const skDeathGlowEffect = "DeathGlow"; // Guessed name
 
+// Retail `__sinit_CGlowbug_cpp` (0x2DF4-0x2F18) writes exactly these two tables and nothing else:
+// `lis` 0x2E0C and 0x2E40 take the table addresses, then 24 word copies (`stw` 0x2EAC-0x2F08) put
+// each entry's member pointer at +4/+8/+0xC as {adjust 0, vtoff -1 (non-virtual), fn = address}.
+// Values read from the REL's module-26 relocation list: names .rodata 0x3B/0x48/0x57/0x60 and
+// 0x75/0x7C/0x41/0x93, functions .text 0x16A4 ShouldAttack, 0x1658 AttackFinished, 0x16DC AnimOver,
+// 0x160C AttackTelegraphDelay, 0x18F8 Patrol, 0x1740 AttackTelegraph, 0x16FC Attack, 0x10D4 Dead -
+// the same names, order and targets as below; the name words are static relocations already in the
+// file, not sinit writes. No call, no branch; the only other store is the register save stmw r17
+// 0x2E00 (frame 0x50, restored lmw 0x2F0C).
+// @ fn_26_2DF4
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"ShouldAttack", static_cast< CPatterned::StateMachine::TriggerFunc >(&CGlowbug::ShouldAttack)},
     {"AttackFinished",

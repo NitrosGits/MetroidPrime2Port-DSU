@@ -146,6 +146,18 @@ void CEyeBall::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// Retail `__sinit_CEyeBall_cpp` (0x25CC-0x26D0) writes exactly these two tables and nothing else:
+// `lis` 0x25D0 and 0x2610 take the table addresses, then 21 word copies (`stw` 0x2670-0x26C0) put
+// each entry's member pointer at +4/+8/+0xC as a **virtual** mfp {adjust 0, vtoff, fn 0}. Every
+// vtoff indexes the vtable `__vt__8CEyeBall` at .data 0xC4 and that slot resolves by relocation to
+// the same-named function: 0x15C ShouldFire (.text 0x119C), 0x160 ScriptingTriggered (0x1190),
+// 0x158 CloseDelay (0x11B0), 0x14C InActive (0x18E0), 0x148 Active (0x1790), 0x154 Cover (0x11FC),
+// 0x150 Flinch (0x1268) - all seven bodies already carry their `// @ fn_19_*` marker, and the host
+// declares the same seven `virtual` (CEyeBall.hpp:42-48), so its mfps are virtual too (binary:
+// vtoffs 0x2B0/0x2B8/0x2A8, 0x290/0x288/0x2A0/0x298 resolving to the same functions). Names
+// .rodata 0x38/0x43/0x56 and 0x61/0x6A/0x71/0x77, same order as below. No call, no branch; the only
+// other store is stmw r20 0x25DC (frame 0x40, lmw 0x26C4).
+// @ fn_19_25CC
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"ShouldFire", static_cast< CPatterned::StateMachine::TriggerFunc >(&CEyeBall::ShouldFire)},
     {"ScriptingTriggered",

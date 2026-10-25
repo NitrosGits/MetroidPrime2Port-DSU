@@ -31,7 +31,7 @@ offset	fn	size	class	name	slice	what	marker
 01228	fn_22_1228	94	B	~SLdrFlyingPirate	-	upstream body (CFlyingPirate)	no
 012BC	fn_22_12BC	2B4	B	SLdrFlyingPirate	fp2	upstream body (SLdrFlyingPirate.hpp; fp2 TARGET_PC defaults fix) (52.6%)	yes
 01570	fn_22_1570	6C	B	SetupStateMachine	fp1	upstream body (CFlyingPirate)	yes
-015DC	fn_22_15DC	CCC	B	Think	-	upstream body (CFlyingPirate)	no
+015DC	fn_22_15DC	CCC	B	Think	-	upstream body (CFlyingPirate)	yes
 022A8	fn_22_22A8	40	H	Cross	-	CVector3f weak copy (92.1%)	no
 022E8	fn_22_22E8	5C	H	~CBCAdditiveAimCmd	-	CBCAdditiveAimCmd weak copy	no
 02344	fn_22_2344	48	H	~CBodyStateCmd	-	CBodyStateCmd weak copy	no
@@ -43,7 +43,7 @@ offset	fn	size	class	name	slice	what	marker
 02634	fn_22_2634	A8	B	AddToRenderer	fp1	upstream body (CFlyingPirate)	yes
 026DC	fn_22_26DC	3C	H	~optional_object	-	rstl weak copy	no
 02718	fn_22_2718	20	B	PreRenderAllViewports	fp1	upstream body (CFlyingPirate)	yes
-02738	fn_22_2738	2A8	B	DoUserAnimEvent	-	upstream body (CFlyingPirate) (92.1%)	no
+02738	fn_22_2738	2A8	B	DoUserAnimEvent	-	upstream body (CFlyingPirate) (92.1%)	yes
 029E0	fn_22_29E0	48	H	None	-	CImpactVisorEffect weak copy	no
 02A28	fn_22_2A28	B4	H	fn_22_2A28	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
 02ADC	fn_22_2ADC	40	H	fn_22_2ADC	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no

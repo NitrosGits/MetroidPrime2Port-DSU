@@ -21,6 +21,7 @@
 #include "MetroidPrime/SwarmRenderHelpers.hpp"
 #include "MetroidPrime/TGameTypes.hpp"
 
+// @ fn_49_2300
 CPlantScarabSwarm::CPlantScarabSwarm(
     TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
     const CVector3f& boundingBoxExtent, const CTransform4f& xf, const CAnimRes& animRes,
@@ -82,6 +83,7 @@ void CPlantScarabSwarm::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
   CSwarmBasics::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_49_1B64
 void CPlantScarabSwarm::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -284,6 +286,7 @@ void CPlantScarabSwarm::KillBoid(CBoid& boid, CStateManager& mgr, const CWeaponM
   }
 }
 
+// @ fn_49_C6C
 void CPlantScarabSwarm::SpawnGrenades(CStateManager& mgr, CAnimData& animData, int slot) {
   const int boidIndex = mAttackSlotBoids[slot];
   if (boidIndex == -1) {

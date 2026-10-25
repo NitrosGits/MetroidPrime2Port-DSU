@@ -27,6 +27,15 @@
 
 static EMaterialTypes skProximityDamageMaterial = kMT_Solid; // Guessed name
 
+// Retail `__sinit_CIngSpiderballGuardian_cpp` (0x406C-0x4200) writes exactly these three tables and
+// nothing else: `lis` 0x4070 and 0x40C8 take the table addresses, then 30 word copies (`stw`
+// 0x4168-0x41F0) put each entry's member pointer at +4/+8/+0xC as {adjust 0, vtoff -1
+// (non-virtual), fn = address}. Trigger names .rodata 0x78/0x82/0x8A -> .text 0x2D5C/0x2D44/0x2D38;
+// state names .rodata 0x92/0x98/0x9F/0xAE/0xBE -> .text 0x2D34/0x2C08/0x296C/0x25E4/0x2534; code
+// function names .rodata 0xC3/0xD3 -> .text 0x24A0/0x2470 - the same names, order and targets as
+// below; the name words are static relocations already in the file. No call, no branch; the only
+// other store is the register save stmw r14 0x407C (frame 0x70, restored lmw 0x41F4).
+// @ fn_35_406C
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"StateOver",
      static_cast< CPatterned::StateMachine::TriggerFunc >(&CIngSpiderballGuardian::StateOver)},
@@ -196,7 +205,7 @@ void CIngSpiderballGuardian::Think(float dt, CStateManager& mgr) {
   }
 }
 
-// fn_35_303C
+// @ fn_35_303C
 void CIngSpiderballGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                              EUserEventType type, float dt) {
   bool handled = false;
@@ -495,7 +504,7 @@ void CIngSpiderballGuardian::SelectNextWaypoint(CStateManager& mgr) {
   }
 }
 
-// fn_35_19D0
+// @ fn_35_19D0
 void CIngSpiderballGuardian::MoveAlongWaypoints(CStateManager& mgr, float dt) {
   const CScriptWaypoint* waypoint =
       TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(mTargetWaypointId));
@@ -538,7 +547,7 @@ void CIngSpiderballGuardian::MoveAlongWaypoints(CStateManager& mgr, float dt) {
   SetTransform(CTransform4f::LookAt(newPosition, newPosition + direction, newUp));
 }
 
-// fn_35_1878
+// @ fn_35_1878
 void CIngSpiderballGuardian::ApplyProximityDamage(CStateManager& mgr) {
   if (mEffectsActive && mProximityDamageEnabled && mCurDamageRemTime <= 0.f) {
     CPlayer* player = mgr.GetPlayer(0);
@@ -732,7 +741,10 @@ const SLdrIngSpiderballGuardianStruct& CIngSpiderballGuardian::GetPhasePropertie
   }
 }
 
-// fn_35_178
+// @ fn_35_178
+// Dead by data (tools/scan_isg_loader.py): the disc has one ISBG placement (mlvl 1baa96c2), its
+// ancs 0x4e6c079a is an ANCS, so LdrToModelData never returns an empty optional and the
+// `return nullptr` below is never taken; every other arm ran in the natural fight run.
 CEntity* LoadIngSpiderballGuardian(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrIngSpiderballGuardian sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrIngSpiderballGuardian.inc"

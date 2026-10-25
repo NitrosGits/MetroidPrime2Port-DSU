@@ -7,7 +7,7 @@ offset	fn	size	class	name	slice	what	marker
 000A8	fn_33_A8	5D4	B	LoadIngSnatchingSwarm	iss1	upstream body (CIngSnatchingSwarm)	yes
 0067C	fn_33_67C	58	H	SIngSnatchingSwarmData::~SIngSnatchingSwarmData	-	implicit copy / dtor	no
 006D4	fn_33_6D4	70	B	SLdrIngSnatchingSwarm::~SLdrIngSnatchingSwarm	-	SLdr loader (SLdrIngSnatchingSwarm.hpp, swsldr1)	no
-00744	fn_33_744	14C	B	SLdrIngSnatchingSwarm::SLdrIngSnatchingSwarm	-	SLdr loader (SLdrIngSnatchingSwarm.hpp, swsldr1)	no
+00744	fn_33_744	14C	B	SLdrIngSnatchingSwarm::SLdrIngSnatchingSwarm	-	SLdr loader (SLdrIngSnatchingSwarm.hpp, swsldr1)	yes
 00890	fn_33_890	9C	B	CIngSnatchingSwarm::CreateParticle	iss1	upstream body (CIngSnatchingSwarm)	yes
 0092C	fn_33_92C	4C	B	CIngSnatchingSwarm::RemoveSfxEmitter	iss1	upstream body (CIngSnatchingSwarm)	yes
 00978	fn_33_978	A8	B	CIngSnatchingSwarm::UpdateSfxEmitter	iss1	upstream body (CIngSnatchingSwarm)	yes
@@ -23,7 +23,7 @@ offset	fn	size	class	name	slice	what	marker
 01514	fn_33_1514	3C	H	__dt__Q24rstl30reserved_vector<9CVector3f,60>Fv	-	weak copy / template instance	no
 01550	fn_33_1550	120	B	CIngSnatchingSwarm::RandomArcOffset	iss1	upstream body (CIngSnatchingSwarm)	yes
 01670	fn_33_1670	158	B	CIngSnatchingSwarm::MoveTowards	iss1	upstream body (CIngSnatchingSwarm)	yes
-017C8	fn_33_17C8	140	B	CIngSnatchingSwarm::FollowArc	-	upstream body (CIngSnatchingSwarm)	no
+017C8	fn_33_17C8	140	B	CIngSnatchingSwarm::FollowArc	-	upstream body (CIngSnatchingSwarm)	yes (ldr3)
 01908	fn_33_1908	1F0	B	CIngSnatchingSwarm::CalculateArcLength	-	upstream body (CIngSnatchingSwarm)	no
 01AF8	fn_33_1AF8	E8	B	CIngSnatchingSwarm::InitializeStateMachine	-	upstream body (CIngSnatchingSwarm)	no
 01BE0	fn_33_1BE0	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
@@ -36,7 +36,7 @@ offset	fn	size	class	name	slice	what	marker
 0206C	fn_33_206C	400	B	CIngSnatchingSwarm::SetTargetDest	-	upstream body (CIngSnatchingSwarm)	no
 0246C	fn_33_246C	380	B	CIngSnatchingSwarm::SetPlayerDest	-	upstream body (CIngSnatchingSwarm)	no
 027EC	fn_33_27EC	1BC	B	CIngSnatchingSwarm::SetPortalSwarmPath	iss1	upstream body (CIngSnatchingSwarm)	yes
-029A8	fn_33_29A8	2F0	B	CIngSnatchingSwarm::SelectTarget	-	upstream body (CIngSnatchingSwarm)	no
+029A8	fn_33_29A8	2F0	B	CIngSnatchingSwarm::SelectTarget	-	upstream body (CIngSnatchingSwarm)	yes (ldr3)
 02C98	fn_33_2C98	8C	H	__dt__Q24rstl40reserved_vector<16SSnatchCandidate,1024>Fv	-	weak copy / template instance	no
 02D24	fn_33_2D24	290	B	CIngSnatchingSwarm::SnatchTarget	-	upstream body (CIngSnatchingSwarm)	no
 02FB4	fn_33_2FB4	10	H	CPatterned::GetAttackTarget	-	weak copy / template instance	no
@@ -75,7 +75,7 @@ offset	fn	size	class	name	slice	what	marker
 040C8	fn_33_40C8	38	T	fn_33_40C8	-	rstl destroy helper	no
 04100	fn_33_4100	68	T	fn_33_4100	-	rstl destroy helper	no
 04168	fn_33_4168	64	H	CParticleGen::~CParticleGen	-	weak copy / template instance	no
-041CC	fn_33_41CC	690	B	CIngSnatchingSwarm::CIngSnatchingSwarm	-	upstream body (CIngSnatchingSwarm)	no
+041CC	fn_33_41CC	690	B	CIngSnatchingSwarm::CIngSnatchingSwarm	-	upstream body (CIngSnatchingSwarm)	yes (ldr3)
 0485C	fn_33_485C	3C	H	__dt__Q24rstl29reserved_vector<9CVector3f,4>Fv	-	weak copy / template instance	no
 04898	fn_33_4898	78	H	__dt__Q24rstl24auto_ptr<12CParticleGen>Fv	-	weak copy / template instance	no
 04910	fn_33_4910	60	H	__dt__Q24rstl24optional_object<6CToken>Fv	-	weak copy / template instance	no

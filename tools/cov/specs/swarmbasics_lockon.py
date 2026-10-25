@@ -160,7 +160,10 @@ def lockon_fixture(g):
         _log('APPLY %s write failed: %s' % (tag, e))
         return
     st['apply'] += 1
-    _log('APPLY %s boid=0x%x idx=%d of %d was_active=%d camera=0x%x cam_pos=(%.5f,%.5f,%.5f)'
+    # Label corrected in swb11: this field prints `this` (the swarm actor), not a boid, so it reads
+    # `swarm=` now.  The archived /tmp/opencode/swb10 logs still say `boid=` for the same value, and
+    # `idx` (the element used) is the separate field.
+    _log('APPLY %s swarm=0x%x idx=%d of %d was_active=%d camera=0x%x cam_pos=(%.5f,%.5f,%.5f)'
          ' target=(%.5f,%.5f,%.5f) saved=(%.5f,%.5f,%.5f)'
          % (tag, this, idx, count, active, fp, cpos[0], cpos[1], cpos[2],
             target[0], target[1], target[2], pos[0], pos[1], pos[2]))

@@ -121,15 +121,16 @@ void CScriptRiftPortal::UpdateProjectiles(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_64_23F8
 void CScriptRiftPortal::AdvanceModel(CModelData& model, CStateManager& mgr, float dt) {
   model.AdvanceAnimation(dt, mgr, GetAreaIdForPersistence(), true, 0.f);
   model.AdvanceParticles(GetTransform(), dt, mgr);
-  if (CAnimData* animData = model.AnimationData()) {
+  if (CAnimData* animData = model.AnimationData()) { // 0x2470 cmplwi r3,0; beq
     int count;
-    const CParticlePOINode* nodes = animData->GetParticlePOIList(count);
-    for (int i = 0; i < count; ++i) {
-      if (nodes[i].GetCharacterIndex() == -1 ||
-          nodes[i].GetCharacterIndex() == animData->GetCharacterIndex()) {
+    const CParticlePOINode* nodes = animData->GetParticlePOIList(count); // 0x2478 lwz r30,0x29c
+    for (int i = 0; i < count; ++i) { // 0x248C ble (count <= 0 skips); 0x24DC cmpw/blt
+      if (nodes[i].GetCharacterIndex() == -1 || // 0x24A4 cmpwi r4,-1; beq
+          nodes[i].GetCharacterIndex() == animData->GetCharacterIndex()) { // 0x24B4 cmpw r4,0x28c
         animData->GetParticleDB().SetParticleEffectState(nodes[i].GetNameHash(), true, &mgr);
       }
     }
@@ -270,6 +271,7 @@ static void CopyFrameBufferRegion(bool halfSize, void* dest, GXTexFmt format, bo
   CGraphics::SetUseVideoFilter(videoFilter);
 }
 
+// @ fn_64_C88
 void CScriptRiftPortal::Render(const CStateManager& mgr) const {
   if (GetModelData()->IsNull() || !GetActive() || !mRipPortal || (!mOpening && !mOpen)) {
     return;

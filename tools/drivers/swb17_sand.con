@@ -1,0 +1,9 @@
+# Agon 01_sand_entrance layers 0/2 (CFlyerSwarm u041d, base RenderBoid), for swb17: the dl0 phase
+# (null display list) is only survivable by the base RenderBoid guard. Swarm only has to be drawn.
+@f210 layer 2
+@f300 god 1
+@f380 send u041d Activate; send u04ff Activate
+@f420 tp -338.4 -87.7 -6.7
+@f440 visor combat
+@f700 obj u041d
+@f1400 obj u041d

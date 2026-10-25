@@ -28,6 +28,22 @@ const rstl::string CChozoGhost::skSpeedSwooshName = rstl::string_l("SpeedSwoosh"
 
 static EMaterialTypes SolidMaterial = kMT_Solid;
 
+// Retail `__sinit_CChozoGhost_cpp` (0x5620-0x59EC) writes exactly these two tables plus the
+// `skSpeedSwooshName` string. Tables: 69 word copies (`stw` 0x5774-0x59D4) put each entry's member
+// pointer at +4/+8/+0xC as {adjust 0, vtoff -1 (non-virtual), fn = address}; addresses come from
+// `lis` 0x5694/0x567C (.data 0x64 triggers, 0x198 states). Names .rodata 0x84/0x91/0x99/0xA5/0xB0/
+// 0xB8/0xBE/0xCB and 0xDB/0xE1/0xEA/0xF1/0xFA/0xFE/0x10B/0x110/0x11B/0x123/0x129/0x12E/0x135/
+// 0x13C/0x147, functions .text 0x2ED8/0x2F18/0x2908/0x2428/0x38B4/0x23E0/0x23D4/0x23C8 and
+// 0x38E0/0x2B14/0x338C/0x2F24/0x2EEC/0x20D8/0x2188/0x291C/0x2794/0x243C/0x249C/0x37B0/0x3168/
+// 0x2A9C, with `Start` being the DOL's CPatterned::Start 0x8015294C - same names, order and targets
+// as below; all 22 local bodies marked.
+// The extra initialisation is `const rstl::string skSpeedSwooshName`: rstl::string_l (.rodata
+// 0x15A "SpeedSwoosh") at 0x5640, the copy ctor into .bss 0x10 at 0x5650, __register_global_object
+// (dtor text 0x5884, chain .bss 0x0) at 0x5664, internal_dereference on the temporary at 0x566C.
+// Host: the same static (CChozoGhost.cpp:27) with global dtor registration, filled by
+// `_GLOBAL__sub_I_CChozoGhost.cpp` calling rstl::string_l with the same literal.
+// No other store; the only frame traffic is stmw r14 0x5638 (frame 0xA0, lmw 0x59D8).
+// @ fn_8_5620
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"ShouldAttack",
      static_cast< CPatterned::StateMachine::TriggerFunc >(&CChozoGhost::ShouldAttack)},
@@ -295,9 +311,12 @@ uchar CChozoGhost::GetModelAlphau8(const CStateManager& mgr) const {
   return ret & 0xFF;
 }
 
+// @ fn_8_4468
 void CChozoGhost::PreRender(CStateManager& mgr) {
+  // 0x448C-0x44AC: echo enum=1; draw-particles byte 0x421 bit 0x01 = !echo.
   const bool echo = mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Echo;
   mDrawParticles = !echo;
+  // 0x44B4-0x44EC: second actual visor query; echo disables lighting and installs white ambient.
   if (mgr.GetPlayerState(0)->GetActiveVisor(mgr) == CPlayerState::kPV_Echo) {
     SetCalculateLighting(false);
     ActorLights()->BuildConstantAmbientLighting(CColor::White());
@@ -305,22 +324,29 @@ void CChozoGhost::PreRender(CStateManager& mgr) {
     SetCalculateLighting(true);
   }
   CColor color = mColor;
+  // 0x44F4-0x451C: copy actor color, virtual alpha slot 0xC8, unsigned alpha < 255.
   const uchar alpha = GetModelAlphau8(mgr);
   if (alpha < 255 || color.GetRedu8() != 0) {
+    // 0x4520-0x4534: red!=0 selects tint even when alpha==255; otherwise use white.
     if (color.GetRedu8() != 0) {
       const uchar value = rstl::max_val(255 - 2 * color.GetRedu8(), 0);
+      // 0x4538-0x4554: signed 255-2*red clamped at zero, red=255, green=blue=value.
       color.SetRed(static_cast< uchar >(255));
       color.SetGreen(value);
       color.SetBlue(value);
     } else {
+      // 0x455C-0x4564: whole local color becomes White.
       color = CColor::White();
     }
+    // 0x4568-0x45A8: blend=5, material=0, flags=3; RGB from tint, alpha from virtual getter.
     SetModelFlags(CModelFlags::AlphaBlended(
         CColor(color.GetRedu8(), color.GetGreenu8(), color.GetBlueu8(), alpha)));
   } else {
+    // 0x45B0-0x4608: Normal, blend=0/material=0/flags=3, white RGBA=1.
     SetModelFlags(CModelFlags::Normal());
   }
   CActor::PreRender(mgr);
+  // 0x4614 base PreRender; 0x4618-0x4650: actual anim, actor transform, model scale, body controller.
   mBoneTracking.PreRender(mgr, *ModelData()->AnimationData(), GetTransform(),
                           GetModelData()->GetScale(), *mBodyController);
 }

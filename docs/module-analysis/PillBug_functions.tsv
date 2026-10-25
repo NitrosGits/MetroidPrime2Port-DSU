@@ -40,7 +40,7 @@ offset	fn	size	class	name	slice	what	marker
 02014	fn_48_2014	1C0	B	CPillBug::FastPatrol	pb1	upstream body (CPillBug)	yes
 021D4	fn_48_21D4	3C	B	CPillBug::Patrol	pb1	upstream body (CPillBug)	yes
 02210	fn_48_2210	53C	B	CPillBug::PatrolImpl	-	upstream body (CPillBug)	no
-0274C	fn_48_274C	1E4	B	CPillBug::CloseToPath	-	upstream body (CPillBug)	no
+0274C	fn_48_274C	1E4	B	CPillBug::CloseToPath	pbug2	upstream body (CPillBug)	yes
 02930	fn_48_2930	C	B	CPillBug::HitPlayer	pb1	upstream body (CPillBug)	yes
 0293C	fn_48_293C	C	B	CPillBug::Landed	pb1	upstream body (CPillBug)	yes
 02948	fn_48_2948	14	B	CPillBug::AnimOver	pb1	upstream body (CPillBug)	yes

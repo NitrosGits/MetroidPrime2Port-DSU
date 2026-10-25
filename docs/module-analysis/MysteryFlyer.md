@@ -95,13 +95,71 @@ Marked (4):
 | 840 LoadTypedefMysteryFlyerData | objdiff 100%; the compare tree re-read (0x894 0x1559f27, 0x8ac 0xc75998aa, 0x8c0 0x845ef489, 0x8d4 0xcea30138, 0x8e8 0x5f3fffd6, 0x8fc 0x51253ba3, default `input.ReadBytes` at 0x910) is exactly the six C++ cases. gcov 25/28 lines; the only untaken arm is the unknown-property default, data-gated (shipped lists carry only those six ids) |
 | 9B0 ~SLdrMysteryFlyerData | objdiff 100%; the empty inline dtor is the SLdrDamageInfo chain (0x9d8) plus the compiler's null-this (0x9cc) and delete-flag (0x9e0) guards |
 
-Left unmarked (7):
+Left unmarked (6):
 
 | fn | why |
 |---|---|
 | 170 LoadMysteryFlyer | gcov 573:1/2: the `if (!modelData) return nullptr` arm needs LdrToModelData to fail; objdiff 81.4% (the SLdr ctor is inlined here in retail) |
 | 7C4 / A08 | **the REL names and the bodies disagree**: the code at 0x7C4 is an `SLdrMysteryFlyer` deleting dtor (0x7e0 null-this, 0x7ec `__dt__20SLdrMysteryFlyerDataFv`, 0x7f8/0x804/0x810 the three sub-dtors, 0x820 Free) while the symbol there is `__ct__16SLdrMysteryFlyerFv`, and the code at 0xA08 is the `SLdrMysteryFlyerData` ctor (0xa20 `stw -1,0x0`, 0xa24 `__ct__14SLdrDamageInfoFv`, 0xa64 2.0f, 0xa6c 1) while the symbol there is `__dt__16SLdrMysteryFlyerFv`. Our object emits `__ct__16SLdrMysteryFlyerFv` at 0x7C4 (objdiff None) and `__dt__16SLdrMysteryFlyerFv` at 0xA08 (27.8%), so the two names are attached to the wrong bodies in the symbol table. Marking by code would put fn_45_7C4 on `~SLdrMysteryFlyer()` and fn_45_A08 on `SLdrMysteryFlyerData()`; the lane left both alone - orchestrator's call |
 | C10 JoinTeam | 436:1/2, 439:0/2, 440:0/2, 440:1/2: needs a TeamAiMgr in the area (the hall has none), so `GetAssociatedTeamId` never returns an id and the `TCastToPtr<CScriptTeamAiMgr>` arm never runs |
-| 237C DoUserAnimEvent | 141:1/2: needs a FadeIn anim event; no MYSF animation has one |
 | 23B8 AcceptScriptMsg | 125:1/2, 126:1/2: `HasBodyState(pas::kAS_KnockBack)` is false for the War Wasp body and `GetCurrentStateId() != kAS_KnockBack` never sees any other state; the other states (Create/AreaLoaded/Damage/Alert) all ran |
 | 2BF8 __sinit_CMysteryFlyer_cpp | objdiff 100%, but it is compiler-generated from `skTriggers`/`skStates`/`skCodeFuncs`: there is no source line to put a marker on, which is why bulk_mark_matched skips it (no marker for __sinit exists anywhere in src) |
+
+## mfly2 (2026-10-24, base 1219ecb59): fn_45_237C DoUserAnimEvent marked
+
+Source (cpp:138-145): `if (!(type == kUE_FadeIn ? true : false)) CPatterned::DoUserAnimEvent(...)`.
+Retail fn_45_237C (`cmpwi r6,0xe`, the ?: flag idiom, `clrlwi.`/`bne` skip, else
+`bl DoUserAnimEvent__10CPatterned...`) matches it, and the host build has `cmp $0xe,%ecx` at the entry
+block (`jne` to the base call, `ret` on the FadeIn side), so the by-value EUserEventType lives in ecx
+(SysV's fourth integer argument) and is never spilled.
+
+Shipped MYSF animations have no FadeIn event (mf1), and the run showed exactly **one**
+DoUserAnimEvent call in 3100 frames, so the two arms were measured in two launches, with the fixture
+changing ONLY the register that holds the by-value argument on a real invocation:
+
+    MFORCE_CALL=1 (forced): call 1 type 0x0 -> 14 (kUE_FadeIn); ecx snapshot 0x0; returned with
+      baseCalls=0; ecx restored to 0x0 (read back 0x0)
+    MFORCE_CALL=0 (natural-only): call 1 type 0x0; "base DoUserAnimEvent hit from
+      CMysteryFlyer::DoUserAnimEvent (call 1)"; returned with base_hits=1
+
+so the skip arm has a real return (not just an entry) with zero caller-attributed base hits, and the
+natural arm reached the CPatterned base from this function's own call site. No stack write, no fabricated
+call or object, no source probe; the only mutation is `set $ecx`, restored at the return.
+
+Merged gcov (both runs, same build): **fn_45_237C 4/4 lines, 2/2 branches, ALL-ARMS**. Marker added
+(`// @ fn_45_237C`). Mocked-gdb regression `tools/cov/specs/mfly2_douseranimevent_selftest.py` -> 0
+scenario failures (both arms, forced call reaching the base, forced call missing, unreturned call, ecx
+restore mismatch, no natural call, implausible type value, install failure). Evidence
+`/tmp/opencode/mfly2_evidence` (both `.gcda` 52311cdf.../049c158f..., matching `.gcno` 03028ec0..., source
+5eee6f7e..., binary a054cbf4..., `doUserAnimEvent.disasm.txt`, both diag/fixture transcripts).
+
+Independent review: `/tmp/opencode/mfly2-independent/` reproduces 4/4 lines and both branch
+directions from the frozen profiles; source differs only by the marker. Run 1's actual summary is
+`FAIL` solely for no natural call; run 2 supplies that missing arm, rather than retroactively making
+run 1 pass. Both frozen profile hashes, gcno and source hash verify. The current coverage executable
+was rebuilt after evidence capture and no longer matches the recorded run hash; the original binary
+is not frozen. Caller-name attribution is sufficient for these single-entry runs, not proof of
+frame ownership under nesting. The fixture's forced mode still requires a natural call in that run.
+
+## mfly3 (2026-10-25)
+
+- fn_45_A08 / fn_45_7C4: the REL symbol names are swapped. 0xA08 (`__dt__16SLdrMysteryFlyer`) is the
+  `SLdrMysteryFlyerData` constructor, 0x7C4 (`__ct__16SLdrMysteryFlyer`) the `SLdrMysteryFlyer`
+  destructor. Both marked with a store-by-store proof in `SLdrMysteryFlyer.hpp`; no runtime needed.
+- fn_45_170 `LoadMysteryFlyer`: the `!modelData` return and the property-switch default are dead by
+  data (`tools/scan_mysteryflyer_loader.py`: 9 MYSF placements, ANCS present in the area's own pak,
+  0 unknown property or top-level ids). Left unmarked: the other arms still lack a coverage run.
+- fn_45_C10 `JoinTeam`: the port joined on every call; retail skips when the id is already set
+  (`bne` at 0xC40). Fixed under `TARGET_PC`. Unmarked: needs 05_portalpuzzle layers 2+3 (wasps and
+  a TeamAiMgr) driven with coverage, including a second call with the id already set.
+- fn_45_23B8 `AcceptScriptMsg`: KnockBack arms need a forced body-state setup; not attempted.
+
+## mfly4 (2026-10-25): fn_45_170, C10, 23B8 marked
+
+Frozen binary `/tmp/opencode/mfly4-frozen` (sha e7c9ce37…, gcno+gcda of `mfly4_n1`, `_f1`, `_f2`, MANIFEST.sha256).
+Driver `tools/cov/specs/mfly4_portal.con` (05_portalpuzzle layers 2/3/12), fixture `tools/cov/specs/mfly4_forced.py`
+(result-only writes at call returns, single wasp, original recorded, readback, no inferior calls).
+- JoinTeam (6/6 arms): no shipped MYSF links to a TMAI (`tools/scan_mysteryflyer_loader.py`), so the valid-id arms are forced
+  (real TMAI uid, an existing non-team uid, a nonexistent uid); the id-set arm runs naturally via `fsm <wasp> Hover`.
+- AcceptScriptMsg (9/9): HasBodyState is naturally true; forced ZF at the `jne` (state == KnockBack) and al=0.
+- LoadMysteryFlyer (9/10): the `!modelData` return is dead by data (all 9 placements carry the present ANCS 0xc98c5e5f).

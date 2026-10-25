@@ -16,6 +16,19 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "REL/REL_Setup.h"
 
+// Retail `__sinit_CMysteryFlyer_cpp` (0x2BF8-0x2F4C) writes exactly these three tables and nothing
+// else: `lis` 0x2C24/0x2C0C/0x2E10 take the table addresses (.data 0x78, 0x190, 0x248), then 66 word
+// copies (`stw` 0x2CCC-0x2F3C) put each entry's member pointer at +4/+8/+0xC as {adjust 0, vtoff -1
+// (non-virtual), fn = address} - every entry is a direct pointer, no vtoff anywhere. Trigger names
+// .rodata 0x2C/0x36/0x41/0x52/0x61/0x6E/0x74/0x83/0x8C/0x92 -> .text 0x2260/0x2224/0x21DC/0x21AC/
+// 0x20C4/0x20A4/0x202C/0x1FFC/0x1FE0/0x1FD4; state names .rodata 0x9E/0xA4/0xAD/0xB8/0xBF/0xD0/0xD6/
+// 0xDF/0xE6/0xEC -> .text 0x1FD0/0x1E14/0x1BEC/0x1B24/0x1A04/0x1998/0x1850/0x162C/0x13F0/0x15F4;
+// code function names .rodata 0xF1/0xFD -> .text 0x1368/0x1348. Same names, order and targets as
+// below; all 22 bodies already marked, and CMysteryFlyer.hpp declares no virtual at all, so the host
+// arrays are direct pointers too (binary: skTriggers 0x2270160, skStates 0x2270060, skCodeFuncs
+// 0x2270020, adjust 0). No call, no branch; the only other store is the register save stmw r14
+// 0x2BFC (frame 0x90, restored lmw 0x2F40).
+// @ fn_45_2BF8
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"StateOver", static_cast< CPatterned::StateMachine::TriggerFunc >(&CMysteryFlyer::StateOver)},
     {"NearPatrol",
@@ -106,6 +119,11 @@ void CMysteryFlyer::Think(float dt, CStateManager& mgr) {
 }
 
 // fn_45_23B8
+// @ fn_45_23B8
+// Proof (mfly4, binary e7c9ce37a0af, runs mfly4_n1+f1+f2, gcov 24/24 lines, 9/9 arms): natural kSM_Create/
+// AreaLoaded/Damage/Alert; HasBodyState is naturally true, so tools/cov/specs/mfly4_forced.py forces on one
+// wasp its result at the return (original al recorded, readback): call 2 plus ZF=1 at the `jne` after
+// `cmpl $6,0x4e0` (state == KnockBack, skip arm), call 3 al=0 (no KnockBack state). Retail 0x23B8 same shape.
 void CMysteryFlyer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -135,7 +153,7 @@ void CMysteryFlyer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
-// fn_45_237C
+// @ fn_45_237C
 void CMysteryFlyer::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                     EUserEventType type, float dt) {
   if (!(type == kUE_FadeIn ? true : false)) {
@@ -432,7 +450,27 @@ bool CMysteryFlyer::LineOfSight(CStateManager& mgr, const CTriggerData& data) co
 }
 
 // fn_45_C10
+// @ fn_45_C10
+// Proof (mfly4, binary e7c9ce37a0af, runs mfly4_n1+f1+f2, gcov 7/7 lines, 6/6 arms): no shipped MYSF links
+// to a TMAI (tools/scan_mysteryflyer_loader.py), so GetAssociatedTeamId's result is forced at its return by
+// tools/cov/specs/mfly4_forced.py (original ax=0xffff recorded, readback): the real TMAI uid (JoinTeam on
+// the real team), an existing non-team uid and a uid no object has (TCastToPtr null); a later Hover Activate
+// JoinTeam on the same wasp takes the id-already-set arm naturally. Retail 0xC10..0xCBC.
 void CMysteryFlyer::JoinTeam(CStateManager& mgr) {
+#ifdef TARGET_PC
+  // Retail 0xC10: `lhz 0x920; cmplw kInvalidUniqueId; bne -> end` (0xC40), so an id that is already
+  // set skips everything; only when it was invalid: GetAssociatedTeamId, sth 0x920, then (0xC6C beq
+  // -> end) ObjectById/TCastToPtr (0xC88 beq -> end) and JoinTeam(Projectile=2, Unknown=3, Invalid=-1).
+  if (mTeamAiMgrId == kInvalidUniqueId) {
+    mTeamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
+    if (mTeamAiMgrId != kInvalidUniqueId) {
+      if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId))) {
+        team->JoinTeam(*this, CTeamAiRole::kTAR_Projectile, CTeamAiRole::kTAR_Unknown,
+                       CTeamAiRole::kTAR_Invalid);
+      }
+    }
+  }
+#else
   if (mTeamAiMgrId == kInvalidUniqueId) {
     mTeamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
   }
@@ -442,6 +480,7 @@ void CMysteryFlyer::JoinTeam(CStateManager& mgr) {
                      CTeamAiRole::kTAR_Invalid);
     }
   }
+#endif
 }
 
 // fn_45_B68
@@ -563,6 +602,11 @@ void CMysteryFlyer::UpdateSteering(CStateManager& mgr, float dt) {
 }
 
 // fn_45_170
+// @ fn_45_170
+// Proof (mfly4, binary e7c9ce37a0af, runs mfly4_n1+f1+f2, gcov 10/10 lines, 9/10 arms): every other arm ran
+// naturally in 0e_temple_hall and 05_portalpuzzle. The one untaken edge is the `!modelData` return: it needs
+// the wasp's ANCS id (property 0xe25fb08c) in no pak, and tools/scan_mysteryflyer_loader.py shows all 9
+// shipped placements carry ANCS 0xc98c5e5f (present), 0 unknown property ids - dead by data.
 CEntity* LoadMysteryFlyer(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrMysteryFlyer sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrMysteryFlyer.inc"

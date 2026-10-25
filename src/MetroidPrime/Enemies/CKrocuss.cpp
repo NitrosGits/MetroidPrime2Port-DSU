@@ -16,6 +16,19 @@
 #include "REL/REL_Setup.h"
 #include "Weapons/CDecal.hpp"
 
+// Retail `__sinit_CKrocuss_cpp` (0x232C-0x245C) writes exactly these two tables and the wing-light
+// offset vector, and nothing else. `lis` 0x2338 and 0x2380 take the table addresses (.data 0x30,
+// 0x94), then 21 word copies (`stw` 0x23F0-0x2440) put each entry's member pointer at +4/+8/+0xC as
+// {adjust 0, vtoff -1 (non-virtual), fn = address}: triggers .text 0x1690 WingsOpen, 0x1680
+// WingsOpening, 0x166C WingsClosed, 0x1658 WingsClosing; states 0x1738 Patrol, 0x16A4 Sniff, 0x1700
+// Stop (names .rodata 0x5C/0x66/0x73/0x7F and 0x8C/0x93/0x99) - same names, order, targets as below.
+// The vector: `lis` 0x2370/0x2378 take .rodata 0x28/0x2C, `lfs` 0x2390/0x2398 read 0x00000000
+// (0.0f) and 0x3F800000 (1.0f), `lis` 0x2384 takes the object (retail .bss 0x4, `lbl_38_bss_4`, 12 B)
+// and `stfs` 0x2444/0x2448/0x244C store {0.0f, 0.0f, 1.0f}. No call, no branch; the only other store
+// is the register save stmw r17 0x2334 (frame 0x50, lmw 0x2450). Host counterpart: the 12-byte
+// `skWingLightOffset` (.bss) - `_GLOBAL__sub_I_CKrocuss.cpp` writes movq $0 at +0 (x = y = 0.0f) and
+// movl $0x3f800000 at +8 (z = 1.0f), i.e. the same bytes 00 00 00 00 / 00 00 00 00 / 3F 80 00 00.
+// @ fn_38_232C
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"WingsOpen", static_cast< CPatterned::StateMachine::TriggerFunc >(&CKrocuss::WingsOpen)},
     {"WingsOpening", static_cast< CPatterned::StateMachine::TriggerFunc >(&CKrocuss::WingsOpening)},

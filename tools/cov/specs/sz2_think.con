@@ -1,0 +1,8 @@
+# sz2: sandfalls_dark, the player walks through the zone area so the zones Think normally; the gdb
+# spec (sz2_think.py) forces one case per ~25 eligible Think calls and rolls each back.
+# Run: SZ2_SRC=$PWD/src/MetroidPrime/ScriptObjects/CScriptSafeZone.cpp tools/cov/force.sh tools/cov/specs/sz2_think.py <out> 42b935e4,02_sand_sandfalls_dark --con <this> --fast --frames 2400
+@f300 god 1; give darkVisor 1
+@f310 tp -82.3 -62.0 6.0; aim 180 -5
+@f700 tp -120.6 -86.5 -11.0
+@f1000 tp -141.1 -85.9 -10.3; aim 90 -5
+@f1300 tp -82.3 -62.0 6.0

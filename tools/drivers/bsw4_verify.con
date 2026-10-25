@@ -1,0 +1,5 @@
+# Direct verification of otherwise uncalled bsw4 helpers; no bsw3 fixture rerun.
+@f300 god 1; give lightSuit 1
+@f320 send e003d0023 Activate
+@f420 tp 181.9 147.5 -28.9
+@f700 obj e003d0023
