@@ -4,10 +4,13 @@
 
 #include "port_mods.h"
 
+#include "port_suit_colours.h"
+
 #include <aurora/dvd.h>
 #include <dolphin/dvd.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -158,35 +161,6 @@ bool ReadPakHeader(const std::string& hostPath, int32_t entry, std::vector<uint8
   }
 }
 
-// Every .pak on the disc, as (entryNum, path).
-std::vector<std::pair<int32_t, std::string>> DiscPaks() {
-  std::vector<std::pair<int32_t, std::string>> paks;
-  std::vector<std::string> dirs{"/"};
-  while (!dirs.empty()) {
-    const std::string dirPath = dirs.back();
-    dirs.pop_back();
-    DVDDir dir;
-    if (!DVDOpenDir(dirPath.c_str(), &dir)) {
-      continue;
-    }
-    DVDDirEntry entry;
-    while (DVDReadDir(&dir, &entry)) {
-      if (entry.name == nullptr) {
-        continue;
-      }
-      const std::string path = dirPath + entry.name;
-      if (entry.isDir) {
-        dirs.push_back(path + "/");
-      } else if (EndsWith(Lower(path), ".pak")) {
-        paks.emplace_back(int32_t(entry.entryNum), path);
-      }
-    }
-    DVDCloseDir(&dir);
-  }
-  std::sort(paks.begin(), paks.end());
-  return paks;
-}
-
 std::string DiscPathFor(int32_t entry) {
   char path[512];
   if (!DVDConvertEntrynumToPath(entry, path, sizeof(path))) {
@@ -219,6 +193,35 @@ struct Replacement {
 
 } // namespace
 
+// Every .pak on the disc, as (entryNum, path).
+std::vector<std::pair<int32_t, std::string>> DiscPaks() {
+  std::vector<std::pair<int32_t, std::string>> paks;
+  std::vector<std::string> dirs{"/"};
+  while (!dirs.empty()) {
+    const std::string dirPath = dirs.back();
+    dirs.pop_back();
+    DVDDir dir;
+    if (!DVDOpenDir(dirPath.c_str(), &dir)) {
+      continue;
+    }
+    DVDDirEntry entry;
+    while (DVDReadDir(&dir, &entry)) {
+      if (entry.name == nullptr) {
+        continue;
+      }
+      const std::string path = dirPath + entry.name;
+      if (entry.isDir) {
+        dirs.push_back(path + "/");
+      } else if (EndsWith(Lower(path), ".pak")) {
+        paks.emplace_back(int32_t(entry.entryNum), path);
+      }
+    }
+    DVDCloseDir(&dir);
+  }
+  std::sort(paks.begin(), paks.end());
+  return paks;
+}
+
 std::string Folder(const std::string& userPath) {
   std::string dir;
   if (const char* env = std::getenv("MP2_MODS"); env != nullptr && env[0] != '\0') {
@@ -247,6 +250,7 @@ void Initialize(const std::string& userPath) {
   sStatus = {};
   sStatus.folder = Folder(userPath);
   sStatus.active = sEnabled;
+  PortSuitColours::SetServed({});
   if (sStatus.folder.empty()) {
     return;
   }
@@ -327,6 +331,20 @@ void Initialize(const std::string& userPath) {
     }
   }
 
+  // The suits' recoloured textures (port_suit_colours.h): under every mod, with
+  // mods on or off, and a texture a mod brings stays the mod's.
+  {
+    std::array<std::string, PortSuitColours::kSuitCount> served;
+    for (int suit = 0; suit < PortSuitColours::kSuitCount; ++suit) {
+      const PortSuitColours::Picks picks = PortSuitColours::SuitPicks(suit);
+      served[suit] = PortSuitColours::PicksKey(suit, picks);
+      for (PortMods::LooseResource& resource : PortSuitColours::Collect(suit, picks, loose, userPath)) {
+        loose.emplace(std::make_pair(resource.type, resource.id), std::move(resource));
+      }
+    }
+    PortSuitColours::SetServed(served);
+  }
+
   // Which loose resources each PAK takes.
   std::set<std::pair<uint32_t, uint32_t>> used;
   std::map<int32_t, std::shared_ptr<VirtualFile>> patched;
@@ -363,6 +381,9 @@ void Initialize(const std::string& userPath) {
       patched[entry] = std::move(file);
     }
     for (const auto& [key, resource] : loose) {
+      if (looseMod.count(key) == 0) {
+        continue;  // generated (suit colours), not a mod's
+      }
       if (used.count(key) != 0) {
         ++sStatus.mods[looseMod[key]].resources;
       } else {

@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace PortMods {
@@ -45,6 +46,9 @@ bool ParsePakTable(const uint8_t* data, size_t size, PakTable& table, size_t& ne
 // "1A2B3C4D.TXTR" (any case) -> id 0x1A2B3C4D, type 'TXTR'.
 bool ParseLooseName(const std::string& fileName, uint32_t& type, uint32_t& id);
 std::string FourCCString(uint32_t type);
+
+// Every .pak on the base disc, as (entryNum, path), in entry order. The disc must be open.
+std::vector<std::pair<int32_t, std::string>> DiscPaks();
 
 // --- Virtual files ------------------------------------------------------------
 
