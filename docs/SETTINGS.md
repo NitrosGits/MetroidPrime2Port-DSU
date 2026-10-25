@@ -40,6 +40,12 @@ Save states page:
 
 Game page:
 
+- `original_experience`: Cutscenes > Original experience (default off); env
+  `MP2_ORIGINAL_EXPERIENCE`, console `original`. While on, the port's gameplay and cutscene tweaks read
+  as retail and their rows are greyed: skippable cutscenes, world name on load, walk speed, hint
+  delay, scan speed, elevator ride, fast morph, spring ball, toggle lock-on, sticky charge, remastered
+  charge, auto-aim (on). Your saved values are kept and return when it is switched off. Mods, input,
+  video and audio settings are not affected.
 - `skip_cinematics`: Cutscenes > Skippable cutscenes.
 - `boot_logos`: Cutscenes > Boot logos (0 show, 1 skippable, 2 off).
 - `world_name_card`: Cutscenes > World name on load (same values); env `MP2_WORLD_NAME`.
@@ -49,6 +55,17 @@ Game page:
   orbit strafe and approach speeds are all multiplied by it, so she reaches k times the retail speed
   in the same time and stops in the same time. Jump height, sideways dashes, turning, the grapple
   and the Morph Ball are unchanged; speed carries into a jump. At 100 movement is exactly retail.
+- `scan_speed`: Cutscenes > Scan speed (50 to 400 percent, default 100 = retail); env
+  `MP2_SCAN_SPEED`, console `scanspeed`. Scales how fast a scan fills (CPlayer::UpdateScanningState);
+  the visor, scan-point and hint text are unchanged.
+- `elevator_ride`: Cutscenes > Elevator ride (0 original, 1 fast, 2 skip); env `MP2_ELEVATOR_RIDE`
+  (`original|fast|skip`). Fast runs the world-transition ride at double speed; Skip ends it as soon as
+  the next world has loaded (the load itself still takes its time). Text transitions are unchanged.
+- `language`: Cutscenes > Language (0 English, 1 German, 2 French, 3 Spanish, 4 Italian, 5 Dutch,
+  6 Japanese); env `MP2_LANGUAGE`, console `language`. Picks the string-table language (read once at
+  startup, so it applies from the next launch); a table without it falls back to its first language.
+- `igt_timer`: Speedrun > On-screen in-game time; env `MP2_IGT_TIMER`. The save file's play time
+  (stops in cutscenes, menus and loads) in the bottom-right corner while a game runs.
 - `hint_delay`: Cutscenes > Hint delay (0 to 30 minutes, default 0 = the game's own timing); env
   `MP2_HINT_DELAY`. Caps the wait before a hint first shows, also for hints already waiting in a
   loaded save. Needs the in-game hint system on. Show current hint (Cutscenes button; console

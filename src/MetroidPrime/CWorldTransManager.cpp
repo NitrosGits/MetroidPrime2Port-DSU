@@ -37,6 +37,9 @@
 #include "rstl/list.hpp"
 #include "rstl/math.hpp"
 #include <float.h>
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
 
 // Guessed names.
 static CColor sDarkPointLightColor(uchar(80), uchar(49), uchar(130), uchar(255));
@@ -184,6 +187,9 @@ void CWorldTransManager::EnableTransition(const CAnimRes& samusRes, bool renderG
                                           const CTransform4f& cameraTransform,
                                           rstl::optional_object< CToken > soundGroup,
                                           const CDarkWorldInfo* darkWorldInfo) {
+#ifdef TARGET_PC
+  mPortSkipRide = PortOverlay::ElevatorRide() == PortOverlay::kElevatorRide_Skip;
+#endif
   mStopSoon = false;
   mTransType = kTT_Enabled;
   mGoingUp = goingUp;
@@ -268,6 +274,12 @@ void CWorldTransManager::EndTransition() {
 }
 
 void CWorldTransManager::Update(float dt) {
+#ifdef TARGET_PC
+  // Fast ride: the ride's clock (animation, camera splines, dissolve) runs at double speed.
+  if (mTransType == kTT_Enabled && PortOverlay::ElevatorRide() == PortOverlay::kElevatorRide_Fast) {
+    dt *= 2.f;
+  }
+#endif
   mCurTime += dt;
   switch (mTransType) {
   case kTT_Enabled:
@@ -306,6 +318,12 @@ void CWorldTransManager::UpdatePortalTransition(float dt) {
 }
 
 void CWorldTransManager::UpdateEnabled(float dt) {
+#ifdef TARGET_PC
+  // Skip ride: the load is done once the loader asks the text to fade (StartTextFadeOut).
+  if (mPortSkipRide && mStopSoon) {
+    mTransitionFinished = true;
+  }
+#endif
   if (!mModelData.null() && !mModelData->mSamusModelData.IsNull()) {
     if (mStopSoon && !mModelData->mDissolveStarted && mCurTime >= 4.f) {
       mModelData->mDissolveStarted = true;

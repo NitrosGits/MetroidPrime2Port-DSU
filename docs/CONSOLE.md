@@ -38,6 +38,9 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `noise <type> [x y z]` — InformListeners at the player (6 = safe-zone noise)
 - `gameevent <ev> [src] [tgt] [value] [as <proxyType>]` — deliver a game event to every CScriptPlayerProxy listener (ev: score kill generic scan damage stop spawn; value: float for damage, state for generic)
 - `fastmorph <0|1>` — fast morph: the morph transition takes 0.2 s, not a second
+- `scanspeed [50..400]`, `elevator [original|fast|skip]`, `original [0|1]`, `igt [0|1]`, `language [0..6]` — the Game page's
+  scan speed, elevator ride, Original experience and on-screen time (`scan_speed`, `elevator_ride`,
+  `original_experience`, `igt_timer` in SETTINGS.md); no argument prints the value
 - `walkspeed [50..200]` — walk speed in percent (shows the value with no argument); `walk_speed` in SETTINGS.md
 - `pointer <x> <y> move|click|dclick|tap|dtap|down|up [l|r|touch]|drag <x1> <y1> [l|r|touch]|wheel <n>|pinch <ratio>`, `pointer back|where|hits` — scripted mouse/touch input for the pointer menus, in GUI (EFB) pixels as screenshots show them; `where` prints the position and the widget rects under it, `hits` lists the recorded rects
 - `hintshow` — show the hint the game would show next (F1 > Game > Show current hint)

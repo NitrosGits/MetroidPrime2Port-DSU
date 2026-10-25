@@ -1031,6 +1031,67 @@ void CmdWalkSpeed(CStateManager&, const Args& args, std::string& out) {
   out += "walkspeed " + std::to_string(PortOverlay::WalkSpeed()) + "\n";
 }
 
+// scanspeed [50..400]: scan speed in percent (scan_speed); no argument prints it.
+void CmdScanSpeed(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    const int value = ArgToInt(args[1], -1);
+    if (value < PortOverlay::kScanSpeedMin || value > PortOverlay::kScanSpeedMax) {
+      Fail("usage: scanspeed [50..400]");
+      return;
+    }
+    PortOverlay::SetScanSpeed(value);
+  }
+  out += "scanspeed " + std::to_string(PortOverlay::ScanSpeed()) + "\n";
+}
+
+// language [0..6]: the text language (language), read at the next launch; no argument prints it.
+void CmdLanguage(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    const int value = ArgToInt(args[1], -1);
+    if (value < 0 || value > PortOverlay::kLanguageMax) {
+      Fail("usage: language [0..6]");
+      return;
+    }
+    PortOverlay::SetLanguage(value);
+  }
+  out += "language " + std::to_string(PortOverlay::Language()) + "\n";
+}
+
+// elevator [original|fast|skip]: the ride between worlds (elevator_ride); no argument prints it.
+void CmdElevator(CStateManager&, const Args& args, std::string& out) {
+  static const char* const kNames[] = {"original", "fast", "skip"};
+  if (args.size() > 1) {
+    int mode = -1;
+    for (int i = 0; i < 3; ++i) {
+      if (args[1] == kNames[i]) {
+        mode = i;
+      }
+    }
+    if (mode < 0) {
+      Fail("usage: elevator [original|fast|skip]");
+      return;
+    }
+    PortOverlay::SetElevatorRide(mode);
+  }
+  out += std::string("elevator ") + kNames[PortOverlay::ElevatorRide()] + "\n";
+}
+
+// original [0|1]: the Original experience switch (original_experience); no argument prints it.
+void CmdOriginal(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    PortOverlay::SetOriginalExperience(ArgToInt(args[1], 1) != 0);
+  }
+  out += std::string("original ") + (PortOverlay::OriginalExperience() ? "1" : "0") + "\n";
+}
+
+// igt [0|1]: the on-screen in-game time (igt_timer); no argument prints it.
+void CmdIgt(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    PortOverlay::SetIgtTimer(ArgToInt(args[1], 1) != 0);
+  }
+  out += std::string("igt ") + (PortOverlay::IgtTimer() ? "1" : "0") + "\n";
+}
+
 // pointer <x> <y> move|click|dclick|tap|dtap|down|up|drag|wheel|pinch ... | back | where | hits:
 // scripted mouse/touch input for the pointer menus, in GUI (EFB) pixels as screenshots show them.
 void CmdPointer(CStateManager&, const Args& args, std::string& out) {
@@ -4230,6 +4291,16 @@ const CommandSpec kCommands[] = {
       "hintshow                    show the hint the game would show next (F1 Show current hint)\n"},
     {"walkspeed", CmdWalkSpeed,
       "walkspeed [50..200]         on-foot movement speed in percent (walk_speed); no argument prints it\n"},
+    {"scanspeed", CmdScanSpeed,
+      "scanspeed [50..400]         scan speed in percent (scan_speed); no argument prints it\n"},
+    {"language", CmdLanguage,
+      "language [0..6]             text language, from the next launch (language); no argument prints it\n"},
+    {"elevator", CmdElevator,
+      "elevator [original|fast|skip] the ride between worlds (elevator_ride); no argument prints it\n"},
+    {"original", CmdOriginal,
+      "original [0|1]             Original experience: the port's tweaks read as retail (original_experience)\n"},
+    {"igt", CmdIgt,
+      "igt [0|1]                  on-screen in-game time (igt_timer)\n"},
     {"springball", CmdSpringBall,
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"},
     {"lockon", CmdLockOn,

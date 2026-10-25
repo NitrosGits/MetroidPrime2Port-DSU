@@ -357,6 +357,33 @@ void DrawResumePrompt() {
 
 // After the frame's settings are applied (PortOverlay::Draw): saves a changed setting, feeds the
 // pad to ImGui, and draws the window while it is open.
+// The save file's play time in the bottom-right corner while a game runs.
+void DrawIgtTimer() {
+  double seconds = 0.0;
+  if (ImGui::GetCurrentContext() == nullptr || !PortOverlay::IgtTimer() ||
+      !PortOverlay::GameTime(seconds)) {
+    return;
+  }
+  const long long cs = static_cast< long long >(std::floor(seconds * 100.0));
+  char text[32];
+  if (cs >= 360000) {
+    std::snprintf(text, sizeof(text), "%lld:%02lld:%02lld.%02lld", cs / 360000, cs / 6000 % 60,
+                  cs / 100 % 60, cs % 100);
+  } else {
+    std::snprintf(text, sizeof(text), "%lld:%02lld.%02lld", cs / 6000, cs / 100 % 60, cs % 100);
+  }
+  ImDrawList* draw = ImGui::GetForegroundDrawList();
+  ImFont* font = ImGui::GetFont();
+  const ImVec2 display = ImGui::GetIO().DisplaySize;
+  const float size = std::max(ImGui::GetFontSize() * 1.5f, display.y * 0.035f);
+  const ImVec2 extent = font->CalcTextSizeA(size, FLT_MAX, 0.f, text);
+  const float margin = size * 0.6f;
+  const ImVec2 pos(display.x - extent.x - margin, display.y - extent.y - margin);
+  const float shadow = std::max(1.f, size / 12.f);
+  draw->AddText(font, size, ImVec2(pos.x + shadow, pos.y + shadow), IM_COL32(0, 0, 0, 200), text);
+  draw->AddText(font, size, pos, IM_COL32(255, 255, 255, 230), text);
+}
+
 void DrawUI() {
   // Not while a control is held: a dragged slider changes a setting every frame. It is saved the
   // frame the control is let go.
@@ -374,6 +401,7 @@ void DrawUI() {
     DrawResumePrompt();
   }
   DrawMenuHintToast();
+  DrawIgtTimer();
   DrawShaderCompilationToast();
   if (!sVisible) {
     sTouchScroll = TouchScroll{};

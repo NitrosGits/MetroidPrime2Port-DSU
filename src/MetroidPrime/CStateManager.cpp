@@ -2233,6 +2233,7 @@ CStateManager::~CStateManager() {
 #ifdef TARGET_PC
   if (gpGameState != nullptr) {
     PortLiveSplit::GameSessionEnd(gpGameState->GetTotalPlayTime());
+    PortOverlay::ClearGameTime();
   }
   PortSaveState::Forget(this);
 #endif
@@ -4197,7 +4198,13 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
       UpdateHintState(dt);
     }
 #ifdef TARGET_PC
-    // Port: the speedrun timer's LiveSplit feed (game time, upgrade splits).
+    // Port: the F1 in-game timer and Return to title (PortOverlay), and the speedrun timer's
+    // LiveSplit feed (game time, upgrade splits).
+    PortOverlay::NoteGameTime(gpGameState->GetTotalPlayTime());
+    if (PortOverlay::ConsumeReturnToTitleRequest()) {
+      gpMain->SetRestartMode(CMain::kRM_Default);
+      QuitGame();
+    }
     if (!IsMultiplayer() && mPlayerStates[0] != nullptr) {
       static_assert(PortLiveSplit::kItemCount == CPlayerState::kIT_Max, "item count");
       int capacities[PortLiveSplit::kItemCount];
