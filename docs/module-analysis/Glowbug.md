@@ -103,3 +103,12 @@ Not driven arm by arm: the SLdr dtor, `__sinit` and the H copies.
 - Expect three Glowbugs in `objs Glowbug`, then e000500f8 and e000500f0 Dead.
 - e000500f9 is gone after `Delete`.
 - Pass: 0 `[port] caught` / `reach-stub`.
+
+## ldr1 (base 47e9a7a4a, 2026-10-25)
+
+~SLdrGlowbug fn_26_CF8 marked (include/MetroidPrime/ScriptLoader/SLdrGlowbug.hpp). Proof is offline, not a
+run: the port's own build reports it at objdiff 100% (`build/G2ME01/report.json`,
+`__dt__11SLdrGlowbugFv` fuzzy 100.0), and the asm (0xCF8..0xD68) is the implicit dtor's order with the
+delete flag: `addi r3,r30,0x280; li r4,-1; bl ~SLdrActorParameters`, then +0x3c `~SLdrPatternedAITypedef`,
+then +0x0 `~SLdrEditorProperties`, then `extsh. r0,r31; ble; bl Free__7CMemoryFPCv` (delete only when the
+flag is > 0). No branch on any member.

@@ -220,3 +220,19 @@ Dead arms: in ABA0, the null-this branch (only the vtable references it, data.s:
 (no subclass, no other construction) and the unrolled block for more than 8 evade checks (AddEvadeCheck caps at 4). In
 AF50, `beq 0xAF6C` and `ble` (the only caller is ABA0 0xAC9C, with this = r30+0x948 non-null and r4 = -1), and
 CSurfaceAlignmentHelper mCache, which the filter ctor (CSurfaceAlignmentHelper.cpp:25, the only one CSplinter.cpp:153/155 uses) sets to null; only the default ctor allocates it.
+
+## ldr1 (base 47e9a7a4a, 2026-10-25)
+
+SLdrSplinter ctor fn_74_C3C marked (include/MetroidPrime/ScriptLoader/SLdrSplinter.hpp), branch-free; the
+port inlines it into LoadSplinter, so objdiff has no body of its own and the proof is the store map: 9
+member ctors (0x0 editorProperties, 0x3c patterned, 0x280 actorInformation, 0x314 attackDamage,
+0x328/0x334 the two animation sets, 0x344 damageInfo, 0x354 ingPossessionData, 0x4d8
+megaSplinterSpitProjectileDamage) and 30 stores, in the same order as the port's init list and body:
+0x38=3, 0x48=32, 0x54=7, 0x58=17, 0x88=2.0, 0x1e8=0.5, 0x1ec=1.0, 0x26c=1 (echo emitter), 0x294=
+CColor(1,1,1,1), 0x2e4=0xf, 0x2f8=0.0, 0x2fc=5, 0x300=18, 0x304=1, 0x308=3, 0x30c=1, 0x310=2, 0x314=11,
+0x318=5.0, 0x324=0, 0x340=-1, 0x4d0=0, 0x4d4=-1, 0x4d8=11, 0x4dc=5.0, 0x4e8=-1, 0x4ec=2.5, 0x4f0=5.0.
+The last two stores, 0x364=150.0 and 0x368=2.0 (rodata_70/rodata_54), are ingPossessionData
+.ingPossessedHealth.health / knock-back resistance: retail writes them in the caller, the port's
+SLdrIngPossessionData ctor writes the same values (src/MetroidPrime/ScriptLoader/Structs/
+SLdrIngPossessionData.cpp:12-13), so the struct ends in the same state. The 0x38 store is the same value
+SLdrEditorProperties' own ctor sets (ScriptLoaderDefinitions.inc:1246). No arm is left unproven.

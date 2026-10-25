@@ -343,3 +343,49 @@ Grenchler without the asset. `gren.swoosh` / `gren.startbeam` belong to the guar
 same set and order as the port's; the objdiff 87.8% is where MWCC placed the `addic.` member-address checks and the token dtor flag (0 retail / -1 port: only the delete / virtual-base
 bits, CToken has neither). ~SEffectC 11494 the same (0x30 mBeamParticles, 0x24 mSwoosh, 0x14 x14_). Both marked in the header (structural check, no run). ~CGrenchlerTail 14F00: 99.6%,
 vtable symbol name only; marked in CGrenchlerTail.hpp. SLdrGrenchler ctor 13C8 (58%: ~100 property defaults, rodata labels and scheduling) and the `__sinit` rows stay unmarked.
+
+## ldr1 (base 47e9a7a4a, 2026-10-25): the two loader rows, offline
+
+SLdrGrenchler ctor fn_27_13C8 marked (include/MetroidPrime/ScriptLoader/SLdrGrenchler.hpp), branch-free:
+17 member ctors and 67 stores, every store mapped to the port's member in the same order. Fix in
+TARGET_PC: `patterned.echoParameters.isEchoEmitter = true` (0x1530 `li r0,1`; 0x1558 `stb r0,0x26c(r31)`,
+i.e. patterned+0x230). Without it the Grenchler is not an echo emitter (SLdrEchoParameters' ctor sets
+false). Everything else matched: -1 to taillessModel/SkinRules(_Dark) 0x474/0x478/0x494/0x498, the two
+sounds 0x49c/0x4a0, electricEffect 0x4e8, burstProjectile 0x52c, the seven ids 0x540-0x558, beamEffect
+0x584, grappleVisorEffect 0x598, pART_0x54b6bfa1 0x5ac, grappleGuardianEyeGlow 0x5c8,
+alternateScannableInfo 0x5cc; patterned 0x64=100 (leashRadius), 0x84=150, 0x88=2.0, 0x1e8=1.6,
+0x1ec=2.5, 0x1fc=1.0, 0x268=1 (creatureSize), 0x26c=1; actorInformation 0x294=CColor(1,1,1,1), 0x2e4=0xf;
+0x2f8=50, 0x2fc=0, 0x2fd=0; the attack fields 0x4a4-0x4c4, 0x4c8=11/0x4cc=5.0, 0x4d8-0x4e4, 0x4ec=11/
+0x4f0=5.0, 0x4fc=45, 0x518-0x528, 0x530=11/0x534=5.0, 0x588=4, 0x58c/0x590=20, 0x594=10,
+0x59c=11/0x5a0=5.0; and 0x5e0=150.0/0x5e4=2.0 (ingPossessionData.ingPossessedHealth, which the port's
+SLdrIngPossessionData ctor writes, same values). The six patterned stores the port repeats
+(minAttackRange 6, maxAttackRange 11, averageAttackTime 2, attackTimeVariation 1, playerLeashRadius 25,
+playerLeashTime 5) are the DOL ctor's own defaults: `__ct__22SLdrPatternedAITypedefFv` 0x8023EDAC stores
+exactly those (r2-based constants; sdata2 base 0x804223C0: -0x46fc=6.0, -0x46e8=11.0, -0x4720=2.0,
+-0x4738=1.0, -0x46e0=25.0, -0x471c=5.0), matching ScriptLoaderDefinitions.inc:1306-1312, so they are
+no-ops. `0x38=3` likewise equals the SLdrEditorProperties ctor default.
+
+**Shared-code finding (not fixed here, `ScriptLoaderDefinitions.inc` is shared):** the same DOL ctor sets
+`patterned.echoParameters.isEchoEmitter = true` after constructing echoParameters (`bl
+__ct__18SLdrEchoParametersFv` at 0x8023EE70, then 0x8023EF20 `stb r0,0x230(r30)` with r0=1 from
+0x8023EE80), while the
+port's SLdrEchoParameters ctor sets it false and the patterned ctor does not override it. Every loader
+that does not set the flag itself is therefore not an echo emitter in the port. SLdrGlowbug, SLdrSplinter
+and SLdrGrenchler each set it, so those three are right; the fix belongs in
+SLdrPatternedAITypedef::SLdrPatternedAITypedef (ScriptLoaderDefinitions.inc:1300).
+
+LoadGrenchler fn_27_168: already marked at CGrenchler.cpp:4453 (`// @ fn_27_0168`, counted by
+port_progress); this slice supplies the missing proof. New read-only scanner
+`tools/scan_grenchler_loader.py` (all paks, every area and layer): 16 GRCH placements, and in all 16 the
+property list is exactly a subset of the 63 ids retail's dispatch compares against, with all 63 present
+(`unknown id=0`, `ids no placement carries (0)`) -> the `default: ReadBytes` arm (0xBA8) is dead by data
+and every case arm is live; every placement's patterned.animationInformation ancs is a real ANCS
+(0x09ed9cde for the 14 Grenchlers/Dark Grenchlers, 0xc06b1cfe for the two Grapple Guardians) -> the
+`if (!modelData) return nullptr` arm (0xBFC lbz 0x2e0; cmplwi 0; 0xC04 bne; 0xC24 li r3,0) is dead by
+data; tailHitSound and tailDestroyedSound are present and 8277/8276 in all 16 -> both `cmpwi -1` arms
+(0xC58, 0xC70) are dead by data; the `__nw` null arm (0xC4C `mr.; beq 0xF04`) is the usual dead one.
+Reachable-arm comparison, automated: for each of the 63 dispatch ids the retail case's store offset (or
+LoadTypedef base, sldrThis at r1+0x598) equals the port member's offset and the reader matches the member
+type (23 `ReadFloat`, 23 inlined 4-byte id/float-free / normalised 1-byte bool reads and 17
+`LoadTypedef*` sub-loaders) - 63/63, 0 mismatches; the loop head is `lhz` count (0x1B4), `Get<uint>` 4 bytes
+(0x1E4-0x1EC), `ReadUint16` 2 bytes (0x1F8-0x1FC), `addi r16,1; cmpw; blt` (0xBB4-0xBBC).

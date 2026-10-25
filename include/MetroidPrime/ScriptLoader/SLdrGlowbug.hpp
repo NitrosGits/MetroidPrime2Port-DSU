@@ -58,6 +58,7 @@ inline SLdrGlowbug::SLdrGlowbug()
 #endif
 }
 
+// @ fn_26_CF8 (objdiff 100%)
 inline SLdrGlowbug::~SLdrGlowbug() {}
 
 #endif

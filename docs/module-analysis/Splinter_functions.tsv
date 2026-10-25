@@ -23,7 +23,7 @@ offset	fn	size	class	name	slice	what	marker
 00AC0	fn_74_AC0	64	H	fn_74_AC0	-	unnamed (weak copy / template instance)	no
 00B24	fn_74_B24	60	H	fn_74_B24	-	unnamed (weak copy / template instance)	no
 00B84	fn_74_B84	B8	B	SLdrSplinter::~SLdrSplinter	-	upstream body (SLdrSplinter)	no
-00C3C	fn_74_C3C	1D4	B	SLdrSplinter::SLdrSplinter	splin1	upstream body (SLdrSplinter, header inline)	no
+00C3C	fn_74_C3C	1D4	B	SLdrSplinter::SLdrSplinter	ldr1	upstream body (SLdrSplinter, header inline); 30 stores mapped	yes
 00E10	fn_74_E10	254	B	CSplinter::SSpitData::SSpitData	-	upstream body (CSplinter)	no
 01064	fn_74_1064	54	H	fn_74_1064	-	unnamed (weak copy / template instance)	no
 010B8	fn_74_10B8	6C	H	fn_74_10B8	-	unnamed (weak copy / template instance)	no
