@@ -792,12 +792,12 @@ fixture's mock suite are in `/tmp/opencode/swb15-reconcile/`.
 ## swb18: FindClosestCell 12/12 15/15 (ALL-ARMS) and UpdateEffects 26/26 32/34 - both marked
 
 Base `0d8d3aa9f` (298119d8b + a `port` merge), branch `decomp/swb18`. Source change: two `// @`
-marker lines only. Six launches, four of them lost to fixture bugs (recorded, not hidden): run 1
-died in an object-list walk (`gdb.MemoryError`, nothing logged), run 2 passed a `CTransform4f` to
-the CVector3f helper (`no member mX`), run 3 raised `NameError: lo` in the cell-centre helper, run
-4/5 turned on an oracle error of mine (below) and run 5 was the `SWB18_SOFT=1` diagnostic - there
-every arm ran and the whole fixture completed, so it is the run that named the bug. Run 6 is the
-accepted one: `game rc=0`, `caught/reach-stub: 0`, normal inferior exit, `closest=6 effects=8
+marker lines only. Six launches (recorded, not hidden): run 1 died in an object-list walk
+(`gdb.MemoryError`, nothing logged), run 2 passed a `CTransform4f` to the CVector3f helper (`no
+member mX`), run 3 raised `NameError: lo` in the cell-centre helper - three fixture bugs, each
+fixed in its own commit; run 4 was a hard-check launch that stopped on an oracle error of mine (the
+cell-centre margin, below); run 5 was the `SWB18_SOFT=1` diagnostic, where every arm ran, the whole
+fixture completed and the measured centres named that bug; run 6 is the accepted one: `game rc=0`, `caught/reach-stub: 0`, normal inferior exit, `closest=6 effects=8
 sound_calls=3 applies=3 restores=3 restore_fail=0 release_fail=0 soft_fail=0 done=True`
 (`/var/tmp/swb18/run6`, copy in `/tmp/opencode/reports/swb18-evidence/`).
 
