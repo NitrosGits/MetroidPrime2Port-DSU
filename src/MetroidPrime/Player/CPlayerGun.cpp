@@ -72,6 +72,7 @@
 #include "MetroidPrime/PortEfbCopy.hpp"
 #include "port_overlay.h"
 #include "port_power_charge_release.h"
+#include "port_presentation_rules.h"
 #endif
 
 static const TStateMachineState< CPlayerGun >::STriggerFunction skGunTriggerFunctions[] = {
@@ -1376,8 +1377,63 @@ void CPlayerGun::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+#ifdef TARGET_PC
+namespace {
+// The gun's pose relative to the simulation camera (camera shake included, as Render places it).
+CTransform4f PortGunRelativePose(const CStateManager& mgr, const CCameraManager& cameraManager,
+                                 const CTransform4f& gunWorldXf) {
+  return cameraManager.GetSimulationCameraTransform(mgr, true).GetQuickInverse() *
+         CTransform4f::Translate(cameraManager.GetGlobalCameraTranslation(mgr, true)) * gunWorldXf;
+}
+} // namespace
+
+void CPlayerGun::PortSnapshotPresentedPose(const CStateManager& mgr) const {
+  const CCameraManager* cameraManager =
+      GetPlayer(const_cast< CStateManager& >(mgr))->GetCameraManager();
+  if (cameraManager == nullptr) {
+    return;
+  }
+  mPortPrevGunRel = PortGunRelativePose(mgr, *cameraManager, mGunWorldXf);
+  mPortPrevGunGeneration = CActor::PortTickGeneration();
+}
+
+CTransform4f CPlayerGun::PortGunView(const CStateManager& mgr,
+                                     const CTransform4f& worldView) const {
+  const CPlayer* player = GetPlayer(const_cast< CStateManager& >(mgr));
+  const CCameraManager* cameraManager = player->GetCameraManager();
+  if (cameraManager == nullptr || !cameraManager->IsInFPCamera() ||
+      player->GetCameraState() != CPlayer::kCS_FirstPerson ||
+      player->GetMorphballTransitionState() != CPlayer::kMS_Unmorphed) {
+    return worldView;
+  }
+  const float t = CCameraManager::GetPresentationInterpolation();
+  if (t < 0.f) {
+    return worldView;
+  }
+  // The gun is posed at simulation time, against the simulation camera; drawn under the blended
+  // world camera it would shift on screen by the camera's blend every frame. Draw it against the
+  // simulation camera instead, and blend its camera-relative pose (bob, sway, recoil) from the
+  // last tick's by moving the view, so the arm and muzzle effects follow.
+  const CTransform4f simView = cameraManager->GetSimulationCameraTransform(mgr, true);
+  if (t < 1.f && PortSnapshotFresh(mPortPrevGunGeneration, CActor::PortTickGeneration())) {
+    CTransform4f blend = CTransform4f::Identity();
+    CTransform4f cur = CTransform4f::Identity();
+    if (CActor::PortBlendRigid(mPortPrevGunRel,
+                               PortGunRelativePose(mgr, *cameraManager, mGunWorldXf), t, blend,
+                               cur)) {
+      return simView * cur * blend.GetQuickInverse();
+    }
+  }
+  return simView;
+}
+#endif
+
 void CPlayerGun::Render(const CStateManager& mgr, const CVector3f& cameraTranslation,
                         const CModelFlags& flags) const {
+#ifdef TARGET_PC
+  const CTransform4f portWorldView(CGraphics::GetViewMatrix());
+  CGraphics::SetViewPointMatrix(PortGunView(mgr, portWorldView));
+#endif
   const CGraphics::CProjectionState backupProjection(CGraphics::GetProjectionState());
   CGraphics::SetDepthRange(1.f / 32.f, 1.f / 8.f);
   const CTransform4f gunTransform = CTransform4f::Translate(cameraTranslation) * mGunWorldXf;
@@ -1428,7 +1484,15 @@ void CPlayerGun::Render(const CStateManager& mgr, const CVector3f& cameraTransla
   CElementGen* underwaterParticles =
       GetPlayer(const_cast< CStateManager& >(mgr))->GetUnderwaterParticles();
   if (underwaterParticles != nullptr && underwaterParticles->GetParticleCount() > 0) {
+#ifdef TARGET_PC
+    // World-space bubbles: under the world camera, not the gun's.
+    const CTransform4f gunView(CGraphics::GetViewMatrix());
+    CGraphics::SetViewPointMatrix(portWorldView);
     underwaterParticles->Render();
+    CGraphics::SetViewPointMatrix(gunView);
+#else
+    underwaterParticles->Render();
+#endif
   }
 
   const CTransform4f effectView(CGraphics::GetViewMatrix());
@@ -1448,6 +1512,9 @@ void CPlayerGun::Render(const CStateManager& mgr, const CVector3f& cameraTransla
     mMissileSecondaryGenerator->Render();
   }
   CGraphics::SetViewPointMatrix(effectView);
+#ifdef TARGET_PC
+  CGraphics::SetViewPointMatrix(portWorldView);
+#endif
   CGraphics::SetDepthRange(1.f / 8.f, 1.f);
   CGraphics::SetProjectionState(backupProjection);
 }
@@ -3336,6 +3403,8 @@ CPlayerGun::CPlayerGun(TUniqueId playerId, int characterIndex)
 , mPortRapidTimer(0.f)
 , mPortPointerAimValid(false)
 , mPortPointerAimPoint(CVector3f::Zero())
+, mPortPrevGunRel(CTransform4f::Identity())
+, mPortPrevGunGeneration(0)
 {
 #else
 , mBeamLoadRequested(false) {

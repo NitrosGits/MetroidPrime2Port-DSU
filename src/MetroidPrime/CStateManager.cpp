@@ -4195,6 +4195,11 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
       if (CActor* act = static_cast< CActor* >((*actors)[idx]))
         act->PortSnapshotRenderTransform();
     }
+    // And each held gun's pose relative to its camera (CPlayerGun::PortGunView blends from it).
+    for (uint i = 0; i < mNumPlayers; ++i) {
+      if (mPlayers[i] != nullptr && mPlayers[i]->GetPlayerGun() != nullptr)
+        mPlayers[i]->GetPlayerGun()->PortSnapshotPresentedPose(*this);
+    }
   }
 #endif
   mCurTimeMod900 += dt;

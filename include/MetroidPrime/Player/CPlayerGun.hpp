@@ -123,6 +123,12 @@ public:
 #ifdef TARGET_PC
   // Port: the beam in hand, for the console's `shoot` (a harness shot that is a real projectile).
   CGunWeapon* PortCurrentBeam() const { return mCurrentBeam; }
+  // Port: records the gun's camera-relative pose before a tick, so frames drawn between ticks
+  // can blend the bob and sway (MP1's CPlayerGun::PortSnapshotPresentedPose).
+  void PortSnapshotPresentedPose(const CStateManager& mgr) const;
+  // Port: the view the gun is drawn under in first person (the simulation camera, the pose
+  // blended), else worldView (MP1's CPlayerGun::PortGunView).
+  CTransform4f PortGunView(const CStateManager& mgr, const CTransform4f& worldView) const;
   // Port: pointer aim's hit point (MP1's PortSetPointerAimPoint), set by
   // CPlayer::UpdateGunTransform every tick: while valid, a shot heads from its own start to it.
   void PortSetPointerAimPoint(bool valid, const CVector3f& point) {
@@ -371,6 +377,9 @@ private:
   float mPortRapidTimer;
   bool mPortPointerAimValid;
   CVector3f mPortPointerAimPoint;
+  // The camera-relative gun pose before the current tick and the tick generation it belongs to.
+  mutable CTransform4f mPortPrevGunRel;
+  mutable uint mPortPrevGunGeneration;
 #endif
 };
 NESTED_CHECK_SIZEOF(CPlayerGun, CGunMorph, 0x28)
