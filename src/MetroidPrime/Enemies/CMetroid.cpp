@@ -48,6 +48,15 @@ static const char* skJointNameList[] = {
 static const char* const skPirateSuckJoint = "Head_1";
 static const char* const skPirateRootJoint = "Skeleton_Root";
 
+// Retail `__sinit_CMetroid_cpp` (0x8630-0x8A68, one call) builds exactly these four statics:
+// `CWeaponTypeVulnerability(1.0 (.rodata 0x84), kE_Normal 0, false)` at 0x8658 copied to
+// .bss 0x0 as {kWT_PowerBomb 5, 1.0, 0, 0} (skFaceHugOverrides); then 17 trigger, 9 state and
+// 2 code-function entries (.data 0xD0, 0x24C, 0x2F4) - 16 B each: name .rodata reloc, then a
+// {adjust 0, vtable offset -1, fn} mfp, or {0, vtable offset, 0} for the three virtuals
+// (ShouldDodge +328 -> 0x6248, PathFind +332 -> 0x5A5C, Dodge +336 -> 0x4BF4 in the vtable at
+// .data 0x364). Names, order and targets are identical to the tables below. Emulated from the
+// retail asm: /tmp/opencode/reports/met1.md.
+// @ fn_40_8630
 static CDamageVulnerability::TWeaponVulnerability skFaceHugOverrides[] = {
     CDamageVulnerability::TWeaponVulnerability(
         kWT_PowerBomb, CWeaponTypeVulnerability(1.f, CWeaponTypeVulnerability::kE_Normal, false)),

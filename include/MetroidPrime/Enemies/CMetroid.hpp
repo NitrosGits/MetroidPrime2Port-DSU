@@ -13,8 +13,17 @@ class CStateManager;
 // Echoes layout recovered from the Metroid REL copy constructor (0xC8 bytes). Member names follow
 // the generated SLdrMetroidAlpha record where it has one.
 // @ fn_40_918 (implicit dtor, objdiff 100%)
+// @ fn_40_8354 (implicit copy ctor), proved offline against the retail asm 0x8354-0x8418: three
+// CDamageVulnerability copies (retail 0x0/0x30/0x60, host 0x0/0x38/0x70 since the host
+// CDamageVulnerability is 8 bytes bigger, so every later host offset is retail + 0x18), then the
+// floats x90..xa8, the word xac (the asset id) and floats xb0..xc0 in order, then the flag byte xc4.
 class CMetroidData {
 public:
+  // @ fn_40_8418, proved offline against the retail asm 0x8418-0x85AC: the three vulnerabilities
+  // are copy-constructed from args 1-3, then stores x90 x94 x98 x9c xa0 xa4 xa8 (floats), xac (the
+  // asset id word), xb0 xb4 xb8 xbc xc0 (floats) in the parameter order below; the flag byte at xc4
+  // takes (flags & 1) at 0x80 and ((flags >> 1) & 1) at 0x40, the host bitfields xc4_24_ and
+  // mStartsInWall. Same order, same sources.
   CMetroidData(const CDamageVulnerability& frozenVulnerability,
                const CDamageVulnerability& energyDrainVulnerability,
                const CDamageVulnerability& babyMetroidGrowthVulnerability, float x90, float x94,

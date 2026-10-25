@@ -21,6 +21,13 @@ typedef CPatterned::StateMachine::TriggerFunc TriggerFunc;
 typedef CPatterned::StateMachine::StateFunc StateFunc;
 typedef CPatterned::StateMachine::CodeFunc CodeFunc;
 
+// Retail `__sinit_CBabyMetroid_cpp` (0xA44C-0xA97C, no calls) writes only these three tables:
+// 21 triggers (.data 0x614), 12 states (0x7F4) and 3 code functions (0x8D8), 16 B each: name
+// .rodata reloc plus a {0, -1, fn} mfp, or {0, vtable offset, 0} for ShouldDodge +328, PathFind
+// +332, Dodge +336 (CBabyMetroid overrides all three: vtable at .data 0x914, ShouldDodge
+// 0x98C4). Names, order and targets are identical to the tables below. Emulated from the
+// retail asm: /tmp/opencode/reports/met1.md.
+// @ fn_40_A44C
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"StateOver", static_cast< TriggerFunc >(&CMetroid::StateOver)},
     {"AttackOver", static_cast< TriggerFunc >(&CMetroid::AttackOver)},

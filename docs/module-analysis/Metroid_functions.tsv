@@ -28,7 +28,7 @@ offset	fn	size	class	name	slice	what	marker
 00C0C	fn_40_C0C	64	H	~auto_ptr	-	rstl weak copy	no
 00C70	fn_40_C70	60	H	~optional_object	-	rstl weak copy	no
 00CD0	fn_40_CD0	A0	B	~SLdrMetroidAlpha	-	upstream body (CMetroid)	no
-00D70	fn_40_D70	1E0	B	SLdrMetroidAlpha	-	upstream body (CMetroid)	no
+00D70	fn_40_D70	1E0	B	SLdrMetroidAlpha	-	upstream body (CMetroid)	yes
 00F50	fn_40_F50	64	B	CanBeIngPossessed	-	upstream body (CMetroid)	no
 00FB4	fn_40_FB4	40	B	OnDockTouch	-	upstream body (CMetroid)	no
 00FF4	fn_40_FF4	8C	B	SetupStateMachine	met1	upstream body (CMetroid)	yes
@@ -123,11 +123,11 @@ offset	fn	size	class	name	slice	what	marker
 081A0	fn_40_81A0	130	H	vector	-	rstl weak copy	no
 082D0	fn_40_82D0	3C	H	~CPathFindSearch	-	CPathFindSearch weak copy	no
 0830C	fn_40_830C	48	H	~CCollisionPrimitive	-	CCollisionPrimitive weak copy	no
-08354	fn_40_8354	C4	B	CMetroidData	-	upstream body (CMetroid)	no
-08418	fn_40_8418	194	B	CMetroidData	-	upstream body (CMetroid)	no
+08354	fn_40_8354	C4	B	CMetroidData	-	upstream body (CMetroid)	yes
+08418	fn_40_8418	194	B	CMetroidData	-	upstream body (CMetroid)	yes
 085AC	fn_40_85AC	48	B	FaceHugVulnerability	met1	upstream body (CMetroid)	yes
 085F4	fn_40_85F4	3C	B	fn_40_85F4	-	unnamed helper (CMetroid)	no
-08630	fn_40_8630	43C	B	__sinit_CMetroid_cpp	-	upstream body (CMetroid)	no
+08630	fn_40_8630	43C	B	__sinit_CMetroid_cpp	-	upstream body (CMetroid)	yes
 08A6C	fn_40_8A6C	1CC	B	FindAIHintPosition	-	upstream body (CBabyMetroid)	no
 08C38	fn_40_8C38	1C	B	Generate	-	upstream body (CBabyMetroid)	no
 08C54	fn_40_8C54	198	B	Attack	-	upstream body (CBabyMetroid)	no
@@ -160,7 +160,7 @@ offset	fn	size	class	name	slice	what	marker
 0A2D4	fn_40_A2D4	A4	H	reserve	-	rstl weak copy	no
 0A378	fn_40_A378	98	B	fn_40_A378	-	unnamed helper (CBabyMetroid)	no
 0A410	fn_40_A410	3C	B	fn_40_A410	-	unnamed helper (CBabyMetroid)	no
-0A44C	fn_40_A44C	534	B	__sinit_CBabyMetroid_cpp	-	upstream body (CBabyMetroid)	no
+0A44C	fn_40_A44C	534	B	__sinit_CBabyMetroid_cpp	-	upstream body (CBabyMetroid)	yes
 0A980	fn_40_A980	C4	T	_unresolved	-	REL runtime	no
 0AA44	fn_40_AA44	24	T	_epilog	-	REL runtime	no
 0AA68	fn_40_AA68	24	T	_prolog	-	REL runtime	no

@@ -195,4 +195,5 @@ direct calls with field writes, stubs and two spec-local gdb hooks: `$m6_t` make
 | ComputeSuckPlayerPosRot 1DB0 | 28/31 | forced (morph state 2 / 3, transition factor 0.9 / 0.1 / no duration). Untaken: the 3 default arms of the 4-value EPlayerMorphBallState switch |
 
 Header / runtime rows, objdiff 100%, marked without a run: GetSearchPath 0, IsListening 8, ~CMetroidData 918, ~SLdrMetroidAlpha CD0, RELMain 10C, RELExit E8.
-Not marked: the CMetroidData ctors 8354 / 8418, SLdrMetroidAlpha ctor D70 (55%), the unnamed REL-local helpers 3044 / 85F4 / A378 / A410 (0%: template copies), both `__sinit` rows.
+Marked offline (met1b, 2026-10-25, retail asm vs host, no run): the CMetroidData copy / value ctors 8354 / 8418, the SLdrMetroidAlpha ctor D70, and both `__sinit` rows 8630 (CMetroid) / A44C (CBabyMetroid): store emulation of the retail sinits (triggers, states, code functions, the three virtual overrides) matches the host tables name for name, in order. Host layout differs uniformly (CDamageVulnerability +8, rstl::string +0xC), field order is identical.
+Not marked: the unnamed REL-local helpers 3044 (`li r3,0; blr`), 85F4 (a 0x1C-byte struct copy), A378 / A410 (rstl vector reserve / uninitialized_copy of 12-byte elements): template instantiations with no host source body; the host uses its own rstl.
