@@ -68,6 +68,26 @@ void ScriptBack();
 
 } // namespace PortPointer
 
+namespace PortMinimap {
+
+// Tap or click the HUD minimap to open the map screen (the minimap_tap setting). The HUD draw
+// publishes the minimap's screen rect in GUI (EFB) pixels each frame it is shown; the state
+// manager takes a pointer click inside it as the map button.
+bool Enabled();
+void SetEnabled(bool enabled);
+// Game thread, once per HUD draw. valid is false when the minimap isn't shown (morph ball, other
+// visors, cutscenes, the map screen), which also clears the rect.
+void SetRect(bool valid, float x0, float y0, float x1, float y1);
+bool Rect(float out4[4]);
+// The same as fractions of the EFB (0..1), for the Android overlay.
+bool RectFraction(float out4[4]);
+// A console/test tap (`maptap`): opens the map as a click inside the rect would.
+void RequestTap();
+// Game thread, once per input pass: a click landed in the rect (or one was requested). Takes it.
+bool TakeTap();
+
+} // namespace PortMinimap
+
 namespace PortGuiHit {
 
 // From a visible widget's Draw: the box [min, max] (eight corners) in the

@@ -2,6 +2,7 @@
 
 #include "port_prompts.h"
 #include "port_env.h"
+#include "port_overlay.h"
 
 #include "input/port_input_devices.h"
 #include "port_textures.h"
@@ -758,6 +759,9 @@ const char* ActiveDevice() {
   static const char* const env = port::EnvString("MP2_TEXTURE_DEVICE");
   if (env != nullptr && env[0] != '\0') {
     return env;
+  }
+  if (const char* forced = PortOverlay::PromptGlyphs()) {
+    return forced;
   }
   switch (sActiveInput.load(std::memory_order_relaxed)) {
   case ActiveInput::Keyboard:

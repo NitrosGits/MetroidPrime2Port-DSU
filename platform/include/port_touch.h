@@ -22,8 +22,8 @@
 // has MP1's touch rows of Controls > Touch & gyro; the overlay's own Edit button opens the
 // editor and the editor's Layout button cycles the layouts.
 //
-// Not ported, because MP2 has no backend for them: the minimap tap and the map screen's
-// pan/zoom/rotate, pointer menus, the game's own wheel icons (the wheels show text), the
+// Not ported, because MP2 has no backend for them: the map screen's
+// pan/zoom/rotate (the minimap tap is `PortMinimap`, see port_pointer.h), pointer menus, the game's own wheel icons (the wheels show text), the
 // update toast and `touch:` control bindings. Their natives answer "no" (see the JNI file).
 //
 // Every getter here is safe from either thread: the Java view polls on the Android UI thread

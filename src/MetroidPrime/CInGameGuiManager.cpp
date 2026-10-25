@@ -46,6 +46,10 @@
 #ifdef TARGET_PC
 #include "port_freecam.h"
 #include "port_overlay.h"
+#include "port_pointer.h"
+#include "GuiSys/CGuiModel.hpp"
+#include <algorithm>
+#include <float.h>
 #endif
 #include "MetroidPrime/SFX/UI.h"
 
@@ -216,7 +220,37 @@ void CInGameGuiManager::DrawScanVisor(float time, const CStateManager& mgr, cons
   }
 }
 
+#ifdef TARGET_PC
+namespace {
+// Port: project the minimap mask model's bounds to GUI pixels (padded for fat fingers) and publish
+// them, right after the model is drawn so the HUD camera's matrices are still current.
+void PortPublishMinimapRect(const CGuiWidget* widget, const CTransform4f& world) {
+  CAABox box = CAABox::MakeNullBox();
+  const CGuiModel* guiModel = static_cast< const CGuiModel* >(widget);
+  float x0 = FLT_MAX, y0 = FLT_MAX, x1 = -FLT_MAX, y1 = -FLT_MAX;
+  bool ok = guiModel->PortGetBounds(box);
+  for (int i = 0; ok && i < 8; ++i) {
+    float gx, gy;
+    if (!PortGuiHit::Project(world, box.GetPoint(i), gx, gy)) {
+      ok = false;
+      break;
+    }
+    x0 = std::min(x0, gx);
+    x1 = std::max(x1, gx);
+    y0 = std::min(y0, gy);
+    y1 = std::max(y1, gy);
+  }
+  const float padX = 0.15f * (x1 - x0);
+  const float padY = 0.15f * (y1 - y0);
+  PortMinimap::SetRect(ok, x0 - padX, y0 - padY, x1 + padX, y1 + padY);
+}
+} // namespace
+
+#endif
 void CInGameGuiManager::Draw(const CStateManager& mgr) const {
+#ifdef TARGET_PC
+  PortMinimap::SetRect(false, 0.f, 0.f, 0.f, 0.f);
+#endif
   const bool notInCine = !mgr.GetCameraManager(mPlayerIndex)->IsInCinematicCamera();
   float staticAlpha = 0.f;
   const CPlayer& player = *mgr.GetPlayer(mPlayerIndex);
@@ -356,6 +390,10 @@ void CInGameGuiManager::Draw(const CStateManager& mgr) const {
         model->PortRestoreWorldTransform(savedXf, savedValid);
       } else {
         model->Draw(CGuiWidgetDrawParms(1.f, CVector3f::Zero()));
+      }
+      // Port: the minimap's screen rect, for a tap or click that opens the map.
+      if (mAutoMapper->IsFullyInMiniMapState()) {
+        PortPublishMinimapRect(model, mapSpread * model->GetWorldTransform());
       }
     }
     CGraphics::SetDepthWriteMode(true, kE_GEqual, false);

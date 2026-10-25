@@ -150,6 +150,7 @@
 #ifdef TARGET_PC
 #include "port_harness.h"
 #include "port_hold_toggle.h"
+#include "port_pointer.h"
 #include "port_livesplit.h"
 #include "port_overlay.h"
 #include "port_savestate.h"
@@ -3941,6 +3942,12 @@ void CStateManager::ProcessInput(const CFinalInput& input) {
           input.ControllerNumber() == 0 && CanEnterMapScreen()) {
         DeferStateTransition(kSMT_MapScreen);
       }
+#ifdef TARGET_PC
+      // Port: a tap or click on the HUD minimap opens the map as the button does.
+      else if (input.ControllerNumber() == 0 && PortMinimap::TakeTap() && CanEnterMapScreen()) {
+        DeferStateTransition(kSMT_MapScreen);
+      }
+#endif
     }
     if (mNumPlayers == 2 && player >= mNumPlayers) {
       player -= 2;
