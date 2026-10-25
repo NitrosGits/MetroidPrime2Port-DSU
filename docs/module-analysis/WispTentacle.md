@@ -90,7 +90,7 @@ Flinch/Withdraw cycles; a morph-ball bomb window), merged with the wisp2 runs
 | UpdateGrabbedPirate 1B54 | 5/5 | live CSpacePirate beside the wisp, grabbed id = its uid (forced via the connection plus `mPirateCaptured`) | **marked** |
 | Think 13D4 | 17/17 | mActive clear, mPirateCaptured set, `GetLocatorSegId` -> 0xff at the lock-on and arm-end tests (`$r13`, `$rsp+0x60`) | **marked** |
 | SLdr ctor/dtor C1C/BA0 | n/a (branchless) | the loader ran (LoadWispTentacle 12/12 lines) | **marked** in the header, defaults and dtor order read off the asm |
-| AcceptScriptMsg 2A18 | 100/108 | + 253 (mCollisionManager nulled, restored before Think), 242 (`mActorLights.mPtr` nulled at Activate) | **unmarked**, below |
+| AcceptScriptMsg 2A18 | 100/108 | + 253 (mCollisionManager nulled, restored before Think), 242 (`mActorLights.mPtr` nulled at Activate) | marked in wisp3b (below) |
 
 AcceptScriptMsg open arms: 225:3/6, 225:5/6 and 266:0/2 need a CCollisionActor whose
 `GetLastTouchedObject` is the player (HitObject) or a CBomb/CPowerBomb (Damage). Tried: `send ... from`
@@ -102,3 +102,26 @@ primitive are true for the WISP model, 211 is followed by an unguarded `ActorLig
 were not forced.
 
 Source: markers only (13D4, 1B54, 3628, C1C, BA0).
+
+## wisp3b: AcceptScriptMsg 2A18 (98/98 lines, 108/108 branches, marked)
+
+Evidence `/tmp/opencode/wisp3b/f17` (spec `tools/cov/specs/wisp3_force.py`, driver
+`tools/drivers/wisp3_hall.con`, `tools/cov/force.sh ... --fast --frames 8400`), merged with the wisp3
+runs `/tmp/opencode/wisp3/{frc3,frc,nat}/gcov` (253 and 242 come from those): `gcov_report.py
+build-port-cov /tmp/opencode/wisp3b/f17/gcov /tmp/opencode/wisp3/{frc3,frc,nat}/gcov --module
+WispTentacle` -> ALL-ARMS. caught / reach-stub = 0 in f17 `drive.log`, `forced.log`, `game.log`; no
+"never ran" in `drive.log`. All forced arms are labelled `forced (<cmd>)` in `f17/forced.log`:
+
+- 176, 177 (both arms), 194, 211: a real `send e0024ff02 Create from u044e` (the wisp's collision
+  actor, a live sender) with the host test result rewritten at the instruction (`+0x169/+0x176/+0x19a/
+  +0xd8f/+0x213`), one Create per arm. These arms are guarded in the ctor and need a half-built wisp,
+  so they stay reachable only by forcing; the Creates skip assignments or only build another manager.
+- 225:3/6, 225:5/6: `HitObject from u044e`; `+0x370` sets the last-touched id to the player uid
+  and `+0x3b4` sets mState to Flinch / Withdraw.
+- 266:0/2: `Damage from u044d` (the collision actor, not u044e). The wisp is in a state that skips the
+  260 test, so `+0x552` presents a non-excluded state; `+0x5ba` then sets the last-touched id to the
+  live CBomb (found by vtable match in the manager's object list, no inferior calls) and, on the next
+  hit, to 0xffff (neither cast succeeds). The CBomb/CPowerBomb casts run for real.
+
+Gotchas: the ids differ run to run, so the bomb is looked up live; an inferior call to
+`GetObjectById` returned null from the hook and `info symbol` finds no vtable symbols here.

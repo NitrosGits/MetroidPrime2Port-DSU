@@ -68,7 +68,7 @@ offset	fn	size	class	name	slice	what	marker
 0295C	fn_86_295C	24	B	CWispTentacle::ShouldPatrol(CStateManager&, const CTriggerData&) const	wisp1	upstream body	yes
 02980	fn_86_2980	2C	B	CWispTentacle::ShouldSleep(CStateManager&, const CTriggerData&) const	wisp1	upstream body	yes
 029AC	fn_86_29AC	6C	B	CWispTentacle::SetupStateMachine(CStateManager&)	wisp1	upstream body	yes
-02A18	fn_86_2A18	8FC	B	CWispTentacle::AcceptScriptMsg(CStateManager&, const CScriptMsg&)	wisp1	AcceptScriptMsg: 100/108 branches (wisp3); open 176/177/194/211 dead-arm, 225/266 touched-bomb/player	no
+02A18	fn_86_2A18	8FC	B	CWispTentacle::AcceptScriptMsg(CStateManager&, const CScriptMsg&)	wisp1	AcceptScriptMsg: 108/108 branches, 98/98 lines (wisp3+wisp3b, forced arms labelled in the note)	yes
 03314	fn_86_3314	38	H	rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>::push_back_unsafe(const CJointCollisionDescription&)	-	weak copy / template instance	no
 0334C	fn_86_334C	20	H	rstl::construct<CJointCollisionDescription>(void*, const CJointCollisionDescription&)	-	weak copy / template instance	no
 0336C	fn_86_336C	28	H	rstl::construction_policy<CJointCollisionDescription, 0>::construct(void*, const CJointCollisionDescription&)	-	weak copy / template instance	no
