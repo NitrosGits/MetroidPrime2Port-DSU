@@ -6,7 +6,6 @@
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrTextPane.hpp"
 #include "rstl/math.hpp"
-
 #ifdef TARGET_PC
 #include "port_pointer.h"
 #include <string.h>

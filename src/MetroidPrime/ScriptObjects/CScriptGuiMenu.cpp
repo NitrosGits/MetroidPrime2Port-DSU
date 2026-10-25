@@ -137,7 +137,6 @@ void CScriptGuiMenu::PortPointerInput(CStateManager& mgr) {
   }
 }
 #endif
-
 // @ fn_60_8878
 void CScriptGuiMenu::Think(float dt, CStateManager& mgr) {
 #ifdef TARGET_PC
