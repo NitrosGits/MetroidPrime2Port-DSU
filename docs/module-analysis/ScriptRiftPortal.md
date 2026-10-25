@@ -39,7 +39,7 @@ The `riftportal.con` driver runs these steps, in order:
 
 The run reports 0 `[port] caught` and 0 `reach-stub`, and exits with 0.
 
-Marked: AdvanceModel (srp2, below), the ctor, the dtor, LoadRiftPortal, SetActive, PreRenderAllViewports, PreRender, CopyFrameBufferRegion,
+Marked: Render (srp4), AdvanceModel (srp2, below), the ctor, the dtor, LoadRiftPortal, SetActive, PreRenderAllViewports, PreRender, CopyFrameBufferRegion,
 AddToRenderer, AcceptScriptMsg, Think and UpdateProjectiles, plus SetFuncPtrs, RELMain and RELExit, which are trivial
 and equivalent to the asm. These three are not built in the port (MONOLITHIC); they are marked as in Kralee. Every
 0% arm in a marked body is dead for one of these reasons:
@@ -49,7 +49,7 @@ and equivalent to the asm. These three are not built in the port (MONOLITHIC); t
 | data: both placements have the same properties, and the only writer is the loader | UpdateProjectiles attraction 0 (86) and 2 (111). Every `HasAnimation()` false arm: Think 146/154/158/165/168, AcceptScriptMsg 178-238, Render 441/483/487/502, PreRender 513. Render `!mRipPortal` (274) and AddToRenderer `mRipPortal` false (251). Load's missing-model arms and the LdrToModelData empty-optional arms |
 | caller: CStateManager.cpp:824 calls Render/AddToRenderer only for active actors with models | Render `IsNull`/`!GetActive` (274), AddToRenderer `GetActive` false (251) |
 | caller: the only call passes halfSize false and dest null | CopyFrameBufferRegion 265/267 |
-| arithmetic | UpdateProjectiles 109 (CanBeNormalized false inside a 2-unit radius with toCenter != 0); Render 345 (Clamp of offsets already in [-1,1]) |
+| arithmetic | Render 300, the clampedY min arm (`maxY < -1`, srp4): `CMath::Clamp(0, 1+maxY, 2)` has the same `fcmpo`/`ble` shape as the clampedX instance at 0xFE4-0x1060 (min 0.0 from rodata 2C, max 2.0 from 34, 1.0 from 30), whose min arm ran; no value-dependent branch follows, and a NaN takes `ble` to the max check exactly like the host. The srp2 forced fixture was dropped, nothing launched in srp4 beyond the natural run (`/tmp/opencode/srp4-a`); UpdateProjectiles 109 (CanBeNormalized false inside a 2-unit radius with toCenter != 0); Render 345 (Clamp of offsets already in [-1,1]) |
 | writer: the CModel ctor always sets mModelInstance (DolphinCModel.cpp:307/328) | Render `cubeModel == nullptr` (414/439; retail `cmplwi r29,0` at 0x168C) |
 | compiler artifacts | inline deref/get helper arms, the static-guard arm, EH "throw" arms |
 
@@ -57,7 +57,6 @@ Open (unmarked):
 
 | function | open arm |
 |---|---|
-| Render C88 | UNMARKED; fixture `tools/cov/specs/srp2_render.py` (driver `srp2_render.con`, selftest `srp2_render_selftest.py`, 13 tests) forces xmm2=maxY (-1.5 min, +1.5 max) at the post-loop clamp (host d349f1 = Render+897, retail 0xFF8) and checks GXSetTexCopySrc/PSMTX44Trans; launches exhausted (3/3, 2026-10-25): srp2b died at breakpoint install (absolute address in a PIE binary), srp2c (`/tmp/opencode/srp2-c`, binary sha256 badf8607...3df06) completed 0 cases: 80 windows returned early (guard term not logged; portal inactive until f340, not opening until f420), the 81st reached the site and APPLY logged, then FAIL "one GXSetTexCopySrc, got 0" (cause undetermined) and the halt skipped the f700/f760 screenshots. A future run needs per-breakpoint hit/caller logging, a logged guard term per early return, a non-halting failure mode, and a driver that waits for an open portal before arming. Arm 299, the clampedY min arm (`maxY < -1`): every corner must be below the screen while the portal's point bounds stay visible. Close-ups, drops and an `aim 0 0..60` pitch sweep at 12, 6 and 4 units did not reach it |
 | CanRenderUnsorted C30 | never called |
 
 ## AdvanceModel fn_64_23F8 (srp2, 2026-10-25), marked

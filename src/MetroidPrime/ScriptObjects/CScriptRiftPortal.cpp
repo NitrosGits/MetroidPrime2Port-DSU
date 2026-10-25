@@ -271,6 +271,7 @@ static void CopyFrameBufferRegion(bool halfSize, void* dest, GXTexFmt format, bo
   CGraphics::SetUseVideoFilter(videoFilter);
 }
 
+// @ fn_64_C88
 void CScriptRiftPortal::Render(const CStateManager& mgr) const {
   if (GetModelData()->IsNull() || !GetActive() || !mRipPortal || (!mOpening && !mOpen)) {
     return;
