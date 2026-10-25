@@ -1,0 +1,18 @@
+# ldr2: 01_sand_entrance_dark (layer 2) - the two Crystallites (u052d u04fc, CParasite
+# kPT_Crystallite 10) load LoadCrystallite (fn_47_148), and a console `spawn PARA` with a
+# borrowed ANCS loads LoadParasite (fn_47_1568) with CParasite kPT_Parasite 0, the ctor's
+# other `default` switch edge (no PARA placement exists on the disc).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/parasite.py <out> \
+#        42b935e4,01_sand_entrance_dark --con <this> --fast --frames 3600
+@f300 god 1; give missile 50
+@f302 layer 2
+@f310 objs parasite; obj u052d
+@f320 spawn PARA ancs u052d
+@f330 place u052d player 5; place u04fc player 8
+@f400 objs parasite
+@f700 obj u052d; obj u04fc
+@f1000 shoot u052d; shoot u04fc
+@f1600 place u052d player 3; place u04fc player 3
+@f2200 damage u052d 50; damage u04fc 50 missile
+@f2600 objs parasite
+@f3300 objs parasite
