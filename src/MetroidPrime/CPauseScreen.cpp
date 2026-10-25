@@ -24,6 +24,7 @@
 #include "MetroidPrime/Tweaks/CTweakPlayerRes.hpp"
 
 #include "GuiSys/CAuiBitmapMeter.hpp"
+#include "GuiSys/CGuiCamera.hpp"
 #include "GuiSys/CGuiFrame.hpp"
 #include "GuiSys/CGuiFrameLoader.hpp"
 #include "GuiSys/CGuiTextPane.hpp"
@@ -337,6 +338,14 @@ void CPauseScreen::InitializeFrameGlue() {
   mRightStickInstructions = static_cast< CGuiTextPane* >(mFrame->FindWidget("textpane_right"));
   mRightStickInstructions->TextSupport().SetFontColor(
       gpTweakGui->GetLogBookLegendWindowFontColor());
+#ifdef TARGET_PC
+  // Port: on a wide screen the window grows with it and the side panel slides to the right edge
+  // (CGuiFrame::SetSpreadPanel); the corner labels hug their corner.
+  mFrame->GetFrameCamera()->SetSpreadable(true);
+  mFrame->SetSpreadPanel(-0.86f, 0.313f, mFrame->FindWidget("model_frame"), -0.60f, 0.10f);
+  mFrame->SetSpreadPanelSide(mFrame->FindWidget("textpane_percent"), -1.f);
+  mFrame->SetSpreadPanelSide(mFrame->FindWidget("textpane_percent1"), 1.f);
+#endif
   mFrameLoader = nullptr;
   mTransitionState = kTS_FadeIn;
   mAlpha = 0.f;
