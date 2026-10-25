@@ -380,6 +380,8 @@ def render_body(g):
             g.execute('set var %s = %d' % (expr, value))
             if _i(g, expr) != value:
                 raise RuntimeError('forced readback mismatch ' + expr)
+        if 'dl0' in extras:
+            w['done'].add('dl0')  # forced value read back; the false arm itself is proven by gcov
     except Exception as error:
         st['err'] += 1
         _fail('write-failed:' + w['tag'])
@@ -490,9 +492,13 @@ def prb_body(g):
     st = _st
     st['prb'] += 1
     n = st['prb'] % PRB_PERIOD
-    if n not in (PRB_OFFSET, PRB_OFFSET + 1):
+    # 'empty' fires on every PRB_PERIOD//2-th call whose boid has mIndex > 31 (checked below)
+    if n == PRB_OFFSET:
+        mode = 'freeze'
+    elif n % (PRB_PERIOD // 2) == 0:
+        mode = 'empty'
+    else:
         return
-    mode = 'freeze' if n == PRB_OFFSET else 'empty'
     try:
         frame = g.newest_frame()
         if not _frame_name(frame).startswith(_PRB.rstrip('(')):
