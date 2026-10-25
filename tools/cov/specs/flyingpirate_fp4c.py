@@ -29,6 +29,8 @@ CALLS = [
         ([('$this->mIsAttackingObject', '0'), ('$this->mIsAquaPirate', '1')], ANIM % 0),
         ([('$this->mIsAttackingObject', '1'), ('$this->mIsAquaPirate', '1')], ANIM % 0),
         (NOTLOADED, ANIM % 0),
+        # cached item null, the object reference loaded: `||` takes its right operand true
+        ([NOTLOADED[0]], ANIM % 0),
         ([], ANIM % 0, NOCREATE),
         ([], ANIM % 19),
         ([], ANIM % 7),
