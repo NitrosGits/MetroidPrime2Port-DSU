@@ -1206,6 +1206,10 @@ CScriptSafeZone* CLumite::FindSafeZone(CStateManager& mgr, const CVector3f& posi
   return nullptr;
 }
 
+// @ fn_39_1EA0
+// Proof (lum4): all edges run (previous-hint-not-a-hint forced via lumite_lum2_lum4.gdb) except the
+// static CMaterialFilter guard's __cxa_guard_acquire==0 edge: host-only, single-threaded logic never races
+// the init; retail MWCC uses a plain init$ byte (lbz/extsb./bne 0x20BC-0x20C4, stb 0x210C), no acquire/abort.
 bool CLumite::ChooseHop(CStateManager& mgr) {
   if (mHop.mCandidates.empty()) {
     BuildHopCandidates(mgr);
@@ -1225,10 +1229,21 @@ bool CLumite::ChooseHop(CStateManager& mgr) {
       if (score > mHop.mChosenScore) {
         const CVector3f start = GetTranslation() + 0.5f * GetTransform().GetUp();
         const CVector3f toHint = hint->GetTranslation() - start;
+#ifdef TARGET_PC
+        // Retail (fn_39_1EA0): bne after CanBeNormalized, ble after fcmpo(Magnitude()-1.0, 1.0)
+        // (lfsu/lfs of lbl_39_rodata_14 = 1.0 twice) and beq after the LOS call all skip the accept
+        // path, so a hint is taken only when all three pass.
+        bool clear = false;
+#else
         bool clear = true;
+#endif
         if (toHint.CanBeNormalized()) {
           const float length = toHint.Magnitude() - 1.f;
+#ifdef TARGET_PC
+          if (length > 1.f) {
+#else
           if (length > 0.f) {
+#endif
             static const CMaterialFilter filter =
                 CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
             clear = CGameCollision::RayStaticLineOfSightTest(mgr, start, toHint.AsNormalized(),
@@ -1263,6 +1278,10 @@ bool CLumite::ChooseHop(CStateManager& mgr) {
   return mHop.mHopSelected || mHop.mHopFailed;
 }
 
+// @ fn_39_2244
+// Proof (lum4): all edges run (IsHurtful-true forced via lumite_lum2_lum4.gdb) except `!zone->GetActive()`:
+// dead, FindSafeZone (zone->GetActive() in its return condition) returns only active zones and nothing
+// runs between the call and this test.
 void CLumite::BuildHopCandidates(CStateManager& mgr) {
   if (mHop.mChosenHintId != kInvalidUniqueId) {
     if (CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(mHop.mChosenHintId))) {
@@ -1317,6 +1336,8 @@ void CLumite::BuildHopCandidates(CStateManager& mgr) {
 
 // Death
 
+// @ fn_39_12B4
+// Proof (lum4): ALL-ARMS, 23/23 lines 17/17 branches; IsDead-true via CBSDie, Deactivate default arm real.
 void CLumite::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {

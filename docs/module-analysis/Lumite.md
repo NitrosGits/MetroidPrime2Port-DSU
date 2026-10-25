@@ -145,3 +145,27 @@ chosen hint that is no hint, was also not reached), BuildHopCandidates 1306:3/6,
 FindSafeZone returns only active zones; the IsHurtful-true arm was not reached although `IsHurtful` was forced true),
 Dead 1341:2/4 (the compiler's speculative devirtualisation of `GetCurrentState()->IsDead()`: it compares the vtable slot with the
 exe's `CBodyState::IsDead`, and every REL-module vtable holds the module's own copy, so the inlined-base edge never runs).
+
+## lum4 (2026-10-25): the last three B rows marked
+
+Evidence: gcov of runs r1 (full steps), r3, r5 (`LUM2_STEPS=lum4`) under `/tmp/opencode/lum4/`, merged with
+`tools/cov/gcov_report.py build-port-cov ... --module Lumite`; one coverage build, frozen at `../lum4-frozen/`
+(binary sha256 `a3de8cbd765033ea37e27b4bca338cbf8d4c950467b59792ec9a6b9889f84aff`, gcno.tar `09bc2566...b209c`), built from 27584092c;
+later commits touch only fixtures. Fixture `lumite_lum2_lum4.gdb` sha256 `9b187417...b1eb0` = commit 8c12fbb80 (r5; r3 = 33dd4f916, `44dd214d...7450`).
+
+Source change (TARGET_PC only, commit 27584092c): ChooseHop started with `clear = true` and tested `length > 0`; retail
+(0x2154-0x215C CanBeNormalized, 0x2168-0x2178 `Magnitude()-1.0 > 1.0`, 0x21F8-0x2200 LOS) rejects a hint failing any test.
+
+| arm | forced (how) |
+|---|---|
+| ChooseHop: previous hint is no hint | forced (`lumite_lum2_lum4.gdb`: d in 0.5/1.5/3/6 x prev 0xffff / other hint / self id) |
+| BuildHopCandidates: IsHurtful true | forced (same gdb: each zone mActive=1 temporarily, `$lm_rf_hurt` -1/0/1; candidates 16 -> 10) |
+| Dead: IsDead-true (devirtualisation edge) and Deactivate default arm | forced (same gdb: `mDie` state `kAS_Death`, `mIsDead=1`, then Dead(Update)); Dead is ALL-ARMS 23/23 lines, 17/17 branches |
+
+Argued (not run): ChooseHop `static const CMaterialFilter` guard, `__cxa_guard_acquire` returning 0 is host-only and needs a
+second thread racing the init; game logic is single-threaded. Retail 0x20BC-0x210C is a plain `init$` byte (`lbz`/`extsb.`/`bne`,
+`stb` after construction), no acquire/abort path. BuildHopCandidates `!zone->GetActive()`: FindSafeZone returns only zones that
+passed `zone->GetActive()` (CLumite.cpp:1194) and nothing runs between the call (1319) and the test (1320); gcov shows the
+branch taken 0 times with IsHurtful reached 103 times.
+
+Marked (3): Dead 12B4, ChooseHop 1EA0, BuildHopCandidates 2244.
