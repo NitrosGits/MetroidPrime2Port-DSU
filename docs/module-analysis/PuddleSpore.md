@@ -87,7 +87,7 @@ Six dirs merge with
 | 2DA4 WeaponHitsWeakSpot | 9/10 at pud1; **10/10 at pud5, marked** (see pud5 section) | 257:3/4 (open, WeaponHits false) by the pud2 fixture; the below-box (260:1/4) and above-box (260:3/4) geometric sides by the pud5 fixture, `PUD5_SIDE=below` / `above` |
 | 23F0 UpdatePlayerContact | 35/42 at pud1; **39/42 at pud3** (see pud3 section) | 311:1/2, 338:1/2 (cast null, as 19C4), 341:1/2 (no touch bounds), 353/358/382 (hasGroundCollider false: the player always has kMT_GroundCollider here), 370:1/2 (zero-length push direction) |
 | 34E0 Think | 15/18 at pud1; **17/18 at pud3, marked at pud4** (see pud4 section) | 97:1/2 and 99:1/6 need mShockWaveSfx == 0, but `CSfxHandle(0)` makes mID `(++mRefCount << 14) | 0` (CSfxHandle.cpp:5), never 0; 104:1/2 needs the player exactly at the wave's x/y (0x3678 CanBeNormalized) |
-| 42C LoadPuddleSpore | 12/16 at pud1..pud5, left unmarked (see pud5 section) | 686:1/2 (modelData null, a real arm: needs an unresolvable model+ancs id), 707:2/6 (the `unknown_0x5cdc877d` ternary: one value never loaded), 694:2/4 and 694:3/4 (the block reached only through the EH landing pads) |
+| 42C LoadPuddleSpore | 16/16 lines, 14/16 branches at pud6 (null+flag+none on one frozen binary), MARKED | 694:2/4 and 694:3/4 only: host GCC EH-cleanup edges, argued in the pud6 section |
 
 Fixes in this pass (TARGET_PC only):
 
@@ -233,3 +233,18 @@ bug (`mTouchBounds.min.z`; the members are `mZ`), nothing was written (fail-clos
 - 42C: not marked. Untaken: 686:1/2 (`modelData` null -> return nullptr; forceable by writing an unresolvable asset id into
   `animationInformation.ancs` at the LdrToModelData call, not run), 707:2/6 (the `unknown_0x5cdc877d` ternary: the data of this area
   only loads one value), 694:2/4 and 694:3/4 (reached only from the exception landing pads). Next: one launch per arm.
+
+## pud6 (2026-10-25, base 36a653369): LoadPuddleSpore 42C marked
+
+- Fixture `tools/cov/specs/pud6_load.py` (selftest `pud6_load_selftest.py`, 18 scenarios), `PUD6_ARM=null|flag|none`. `null` writes an unresolvable id
+  (0xDEAD0001) into the `animationInformation.ancs` word of the LdrToModelData call (the model is already kInvalidAssetId, so one unresolvable id
+  empties the optional) and restores it after; `flag` inverts `unknown_0x5cdc877d` for the 707 ternary and restores; `none` is observe-only.
+- Runs (GPU, one frozen binary sha256 aad566019695b46d555196357b33e3a8f86ee2fc61448f8fca2493db1e836139): null, flag, none. The first null launch failed
+  on a fixture bug (it required a second natural load, the area makes one): preserved as /tmp/opencode/pud6-fail1. The `none` run was an extra baseline
+  (the natural flag side was not in null+flag). Evidence /tmp/opencode/pud6-frozen (binary, gcda, gcno, fixtures, diag logs, gcov_report.txt).
+- Null entity: the caller (CScriptObjectLoaderHelper.cpp:70-85) turns nullptr into `SGeneratedObject(kInvalidEditorId, kInvalidUniqueId, nullptr)`, adds
+  nothing to the manager and skips the leftover bytes; the game ran to the end (rc 0, full frame count).
+- Merged: 16/16 lines, 14/16 branches. 694:2/4 and 694:3/4 are the conditional pair on the EH cleanup chain after the two throwing calls of line 694
+  (raw gcov branches 2 and 5 are the throw edges, count 0); the pair is reachable only through landing pads, as in the `.cold` part of the function
+  (conditionals next to `_Unwind_Resume$plt`). Retail MWCC has no such edges; same class as BacteriaSwarm.md:125, CommandoPirate.md:1994.
+- asmcheck: same classes of finding as other marked ports (unported callee citations, condition count of a host-lowered function).
