@@ -192,7 +192,7 @@ class EntryBp(gdb.Breakpoint):
             problem('call %d: position address unresolved (%s)' % (call['id'], pos))
             return
         base = '((CPuddleSpore*)0x%x)' % this
-        min_z, max_z = evf(base + '->mTouchBounds.min.z'), evf(base + '->mTouchBounds.max.z')
+        min_z, max_z = evf(base + '->mTouchBounds.min.mZ'), evf(base + '->mTouchBounds.max.mZ')
         up_z, sine = evf(base + '->mTransform.m22'), evf(base + '->mData.mHitDetectionSine')
         if not all(isinstance(v, float) for v in (min_z, max_z, up_z, sine)):
             problem('call %d: live geometry unreadable (min.z=%s max.z=%s up.z=%s sine=%s), nothing '

@@ -126,7 +126,7 @@ class FakeGdb(types.ModuleType):
             return MODEADDR
         if e == '$rsi':
             return POS
-        for key, name in (('min.z', 'mTouchBounds.min.z'), ('max.z', 'mTouchBounds.max.z'),
+        for key, name in (('min.z', 'mTouchBounds.min.mZ'), ('max.z', 'mTouchBounds.max.mZ'),
                           ('m22', 'mTransform.m22'), ('sine', 'mData.mHitDetectionSine')):
             if e.endswith('->' + name):
                 v = self.geom[key]
