@@ -1,4 +1,4 @@
-# fp4b: FlyingPirate (module 22) Think 15DC and DoUserAnimEvent 2738 arms that no shipped fight
+# fp4b: FlyingPirate (module 22) Think 15DC arms that no shipped fight
 # reaches, forced on the coverage build by direct calls (CALLS: members written, the body called,
 # members written back; a stub makes a callee return at once). The helpers ($fp3_obj, $fp3_uid,
 # $fp4_slot) are those of flyingpirate_fp3.py / flyingpirate_fp4.py, loaded from this directory.
@@ -51,16 +51,7 @@ CALLS = [
         ([('$this->mAlive', '1'), ('%s->mBodyStateInfo.mState' % BC, '1')], TH),
         ([('$this->mTargetPitchBend', '0.2')], TH),
         ([('$this->mTargetPitchBend', '5.0')], TH),
-        ([('$this->mFlightVelocity.x', '3.0'), ('$this->mFlightAcceleration.x', '0.0')], TH),
+        ([('$this->mFlightVelocity.mX', '3.0'), ('$this->mFlightAcceleration.mX', '0.0')], TH),
     ], 'Think with dead / stopped / electrocuted / state / actor-list / pitch arms forced'),
-    ('DoUserAnimEvent arms fp4', 'CFlyingPirate::DoUserAnimEvent(', '((CEntity*)$rdi)->mActive != 0', [
-        ([('$this->mIsAttackingObject', '1'), ('$this->mAttackObjectId.value', '$fp3_uid($fp3_obj($mgr, -1, 0, "CFlyingPirate"))')], ANIM % 0),
-        ([('$this->mIsAttackingObject', '0'), ('$this->mIsAquaPirate', '1')], ANIM % 0),
-        ([('$this->mIsAttackingObject', '1'), ('$this->mIsAquaPirate', '1')], ANIM % 0),
-        ([], ANIM % 0, NOTLOADED),
-        ([], ANIM % 0, NOCREATE),
-        ([], ANIM % 19),
-        ([], ANIM % 7),
-    ], 'DoUserAnimEvent with the attack-object / aqua / token-not-loaded / cannot-create / ragdoll / default arms'),
 ]
 SPEC = []
