@@ -25,6 +25,14 @@ static const char* skBeamLocators[] = {
     "bomb4_LCTR",
 };
 
+// Retail `__sinit_CAtomicBeta_cpp` (0x2458-0x24A0) writes exactly this table and nothing else:
+// `lis` 0x2468 takes the table address, then 6 word copies (`stw` 0x2484-0x2498) put each entry's
+// member pointer at +4/+8/+0xC as {adjust 0, vtoff -1 (non-virtual), fn = address}. Values read
+// from the REL's module-5 DOL relocation list: names .rodata 0x44 "Patrol" and 0x4B "Dead", both
+// CPatterned from the DOL (0x80152924 Patrol, 0x80152820 Dead) - the same names, order and targets
+// as below; the name words are static relocations already in the file, not sinit writes. No call,
+// no branch, no other store (skBeamLocators is a constant initialiser in .data, not written).
+// @ fn_5_2458
 static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Patrol", static_cast< CPatterned::StateMachine::StateFunc >(&CPatterned::Patrol)},
     {"Dead", static_cast< CPatterned::StateMachine::StateFunc >(&CPatterned::Dead)},

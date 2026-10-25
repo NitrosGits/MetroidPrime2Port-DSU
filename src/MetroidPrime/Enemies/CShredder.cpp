@@ -23,6 +23,14 @@
 #include <float.h>
 #include <math.h>
 
+// Retail `__sinit_CShredder_cpp` (0x2888-0x2940) writes exactly these two tables and nothing else:
+// `lis` 0x2890 and 0x28B4 take the table addresses, then 12 word copies (`stw` 0x28F8-0x2924) put
+// each entry's member pointer at +4/+8/+0xC as {adjust 0, vtoff -1 (non-virtual), fn = address}.
+// Values read from the REL's module-68 relocation list: names .rodata 0x4C/0x51/0x5A/0x67, functions
+// .text 0x1DDC/0x1728/0x14F0/0xF80 - the same names, order and targets as below; the name words are
+// static relocations already in the file, not sinit writes. No call, no branch; the only other stores
+// are the register spills 0x2898/0x28A8/0x28B8/0x28BC into the 0x20-byte frame (stwu 0x2888).
+// @ fn_68_2888
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"ShouldWakeUp",
      static_cast< CPatterned::StateMachine::TriggerFunc >(&CShredder::ShouldWakeUp)},
