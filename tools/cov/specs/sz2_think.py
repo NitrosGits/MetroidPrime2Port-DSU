@@ -728,6 +728,16 @@ def summary(event):
         failure('incomplete sz2 run')
 
 
+# the Aurora FIFO and draw-sync state a render-side spin (GPUMemory::EnsureAllocation) waits on
+FIFO_STATE = ['aurora::gx::fifo::detail::sInDisplayList',
+              'aurora::gx::fifo::detail::sBufferSize',
+              'aurora::gx::fifo::(anonymous namespace)::sFrameActive',
+              'aurora::gx::fifo::(anonymous namespace)::sPublished',
+              'aurora::gx::fifo::(anonymous namespace)::sProcessed',
+              'aurora::gx::fifo::(anonymous namespace)::sStreamBase',
+              'aurora::gx::(anonymous namespace)::sDrawSyncToken']
+
+
 def stall_dump(event):
     """gdb-side stall report: runs in the stop handler after the watchdog's `interrupt`"""
     if not stall['want']:
@@ -742,6 +752,8 @@ def stall_dump(event):
     run('thread apply all bt 30')
     run('info registers rip rsp')
     run('x/6i $pc')
+    for name in FIFO_STATE:
+        run("print '%s'" % name)
     this = stall['this']
     out.append('### last restore ' + json.dumps(stall['restore'], default=str))
     out.append('### state index=%d eligible=%d restores=%d active=%d' % (

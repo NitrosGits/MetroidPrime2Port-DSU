@@ -352,6 +352,8 @@ class Tests(unittest.TestCase):
         self.assertEqual(cmds[-1], 'kill')
         self.assertIn('mActivation', text)
         self.assertIn('print *(CScriptSafeZone*)64', cmds)
+        for name in self.m.FIFO_STATE:  # the render-side state is dumped too
+            self.assertIn("print '%s'" % name, cmds)
         self.assertFalse(self.m.stall['want'])
         cmds.clear()
         self.m.stall_dump(None)  # not requested: a normal stop is left alone
