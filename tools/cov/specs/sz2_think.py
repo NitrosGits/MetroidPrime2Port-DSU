@@ -510,20 +510,22 @@ def make_scratch():
             lo, hi = (int(x, 16) for x in fields[0].split('-'))
             if fields[1].startswith('rw') and len(fields) < 6:
                 maps.append((lo, hi))
-    here = gdb.selected_thread()
     page = 0
-    try:
-        for thread in inferior.threads():  # default thread stack: 8 MiB below the TLS block at fs_base
-            if thread == here or not (thread.name or '').startswith(('MusyX', 'SDLAudio')):
-                continue
-            thread.switch()
-            sp, tls = int(gdb.parse_and_eval('$rsp')), int(gdb.parse_and_eval('$fs_base'))
-            cand = (tls - 4 * 1024 * 1024) & ~4095  # 4 MiB below the top, 4 MiB above the stack end
-            if tls - 64 * 1024 < sp <= tls and any(lo <= cand and cand + 4096 <= hi for lo, hi in maps):
-                page = cand
-                break
-    finally:
-        here.switch()
+    # other threads are still running inside stop(): gdb cannot read their registers, but a thread
+    # sleeping in a syscall has its stack pointer in /proc/<pid>/task/<tid>/syscall ("nr args... sp pc")
+    for thread in inferior.threads():
+        if not (thread.name or '').startswith(('MusyX', 'SDLAudio')):
+            continue
+        try:
+            with open('/proc/%d/task/%d/syscall' % (inferior.pid, thread.ptid[1])) as f:
+                fields = f.read().split()
+            sp = int(fields[-2], 16)
+        except (OSError, ValueError, IndexError):
+            continue
+        cand = (sp - 4 * 1024 * 1024) & ~4095  # default 8 MiB thread stack, sp near its top
+        if any(lo <= cand and cand + 4096 <= hi for lo, hi in maps):
+            page = cand
+            break
     check(page != 0, 'scratch page (idle thread stack)')
     state['scratch'] = page
     log('SCRATCH', page=page)
