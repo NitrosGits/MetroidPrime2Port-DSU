@@ -945,6 +945,11 @@ void CMain::EnsureWorldPakReady(CAssetId id) {
       }
     }
     if (notFound) {
+#ifdef TARGET_PC
+      // Port: the stash frees the PAK's resource table, which the loader's one-entry cache
+      // (mCachedResInfo) may point into; RemovePakFile clears it for the same reason.
+      loader.ClearCache();
+#endif
       pak.sub_80323554();
     } else {
       pak.EnsureWorldPakReady();
