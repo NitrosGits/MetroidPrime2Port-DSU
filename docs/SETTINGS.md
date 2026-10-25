@@ -37,6 +37,17 @@ Game page:
 - `skip_cinematics`: Cutscenes > Skippable cutscenes.
 - `boot_logos`: Cutscenes > Boot logos (0 show, 1 skippable, 2 off).
 - `world_name_card`: Cutscenes > World name on load (same values); env `MP2_WORLD_NAME`.
+- `walk_speed`: Cutscenes > Walk speed (50 to 200 percent, default 100 = retail); env
+  `MP2_WALK_SPEED`, console `walkspeed`. Scales how fast Samus moves on foot: the top speed,
+  acceleration and friction of walking and strafing (on the ground, in the air and in water) and the
+  orbit strafe and approach speeds are all multiplied by it, so she reaches k times the retail speed
+  in the same time and stops in the same time. Jump height, sideways dashes, turning, the grapple
+  and the Morph Ball are unchanged; speed carries into a jump. At 100 movement is exactly retail.
+- `hint_delay`: Cutscenes > Hint delay (0 to 30 minutes, default 0 = the game's own timing); env
+  `MP2_HINT_DELAY`. Caps the wait before a hint first shows, also for hints already waiting in a
+  loaded save. Needs the in-game hint system on. Show current hint (Cutscenes button; console
+  `hintshow`) shows the hint the game would show next: a hint already on screen comes back,
+  otherwise the waiting hint due soonest shows now.
 - `livesplit`, `livesplit_address`, `livesplit_split_upgrades`: Speedrun > LiveSplit, Server
   (host:port), Split on upgrades; the address's env is `MP2_LIVESPLIT_ADDR`.
 - `game_options`: the game's own Options menu (volumes, sound mode, brightness...), stored as a
