@@ -1,0 +1,18 @@
+# ScriptPlayerActor spa3: hive03_dark (3bfa3eff) e001b013d with the grapple beam; after the grapple
+# models are loaded (f700) re-activate the actor several times so SetupEnvFx (forced to rain by
+# tools/cov/specs/spa3_force.py) builds the projected shadow while mGrappleModelData is live
+# (PreRender HasGrappleModelData arms).
+@f260 layer 2
+@f300 god 1; give grappleBeam 1
+@f340 send e001b013d Activate
+@f700 obj e001b013d
+@f720 send e001b013d Increment
+@f760 send e001b013d Deactivate
+@f800 send e001b013d Activate
+@f900 send e001b013d Deactivate
+@f940 send e001b013d Activate
+@f1000 send e001b013d Deactivate
+@f1040 send e001b013d Activate
+@f1100 take grappleBeam
+@f1200 send e001b013d Deactivate
+@f1300 send e001b013d Delete

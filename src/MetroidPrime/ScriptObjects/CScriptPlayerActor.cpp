@@ -169,6 +169,7 @@ void CScriptPlayerActor::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& m
   CScriptActor::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_61_2630 forced (tools/cov/specs/spa3_force.py: Think arms; spa3_templedark.con, spa3_backup_delete.con)
 void CScriptPlayerActor::Think(float dt, CStateManager& mgr) {
   CPlayer* player = mgr.GetPlayer(0);
   CPlayerState* playerState = player->GetPlayerState();
@@ -520,6 +521,7 @@ int CScriptPlayerActor::GetSuitCharIdx(const CStateManager& mgr,
   return charIdx;
 }
 
+// @ fn_61_C30 forced (tools/cov/specs/spa3_force.py: grapple alias + shadow/backup arms; beam model aliased as grapple model, count lowered)
 void CScriptPlayerActor::PreRender(CStateManager& mgr) {
   if (mBackupModelData) {
     if (mDeallocateBackupCountdown == 0) {
@@ -545,6 +547,7 @@ void CScriptPlayerActor::SetActive(const bool active) {
   SetDrawEnabled(true);
 }
 
+// @ fn_61_AB8 forced (tools/cov/specs/spa3_force.py: rain/no-shadow arms)
 void CScriptPlayerActor::SetupEnvFx(CStateManager& mgr, bool set) {
   if (set) {
     const CEnvFxManager* envFx = mgr.GetEnvFxManager();
@@ -562,6 +565,7 @@ void CScriptPlayerActor::SetupEnvFx(CStateManager& mgr, bool set) {
   }
 }
 
+// @ fn_61_970 forced (tools/cov/specs/spa3_force.py: sia_not_player clears mIsPlayerActor on a chain actor)
 void CScriptPlayerActor::SetIntoStateManager(CStateManager& mgr, bool set) {
   const TUniqueId selfId = GetUniqueId();
   if (!set && mgr.GetPlayerActorHead() == selfId) {
