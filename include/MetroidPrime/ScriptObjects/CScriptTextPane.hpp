@@ -57,5 +57,4 @@ CHECK_SIZEOF(CScriptTextPane, 0xeb8)
 // GUI-pixel bounds of the text pane id as drawn this frame, or false.
 bool PortTextPaneBounds(TUniqueId id, float& x0, float& y0, float& x1, float& y1);
 #endif
-
 #endif
