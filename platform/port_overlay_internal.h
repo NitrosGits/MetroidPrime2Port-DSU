@@ -115,6 +115,8 @@ void LogSettings();
 void SaveSettings();
 void MarkDirty();
 bool Dirty();
+// After Reset configuration moved the files away: SaveSettings writes nothing more this run.
+void FreezeAfterReset();
 // The environment variable that overrides `key`.
 std::string EnvName(const std::string& key);
 // Writes every key and reads it back; the report lines go to `report`. Returns 0 when all pass. It
