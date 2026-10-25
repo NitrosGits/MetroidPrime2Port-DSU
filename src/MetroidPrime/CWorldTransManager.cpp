@@ -917,13 +917,13 @@ bool CWorldTransManager::WaitForModelsAndTextures() {
         } else {
           texture->LoadToMRAM();
         }
-      }
-      // Port: retail bounces model buffers through ARAM here to compact MRAM. On the host they are
-      // `rs_new uchar[]` blocks owned by CModel, and GetDataSize() (mDataLen) is an accounting size
-      // grown past the buffer (DolphinCModel.cpp), so the round trip over-reads the buffer and
-      // frees it with CMemory::Free, corrupting the game heap.
-#ifndef TARGET_PC
-      else if (it->GetType() == 'CMDL') {
+      } else if (it->GetType() == 'CMDL') {
+#ifdef TARGET_PC
+        // Port: retail bounces model buffers through ARAM here to compact MRAM. On the host they
+        // are `rs_new uchar[]` blocks owned by CModel, and GetDataSize() (mDataLen) is an
+        // accounting size grown past the buffer (DolphinCModel.cpp), so the round trip over-reads
+        // the buffer and frees it with CMemory::Free, corrupting the game heap.
+#else
         TToken< CModel > modelToken = gpSimplePool->GetObj(*it);
         CModel* model = *modelToken;
         if (pass == 0) {
@@ -938,8 +938,8 @@ bool CWorldTransManager::WaitForModelsAndTextures() {
           modelData.pop_front();
           model->RemapData(static_cast< uchar* >(data));
         }
-      }
 #endif
+      }
     }
   }
   CTexture::sCurrentFrameCount = 0;
