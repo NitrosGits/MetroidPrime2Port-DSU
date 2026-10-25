@@ -18,7 +18,9 @@ BURST = [('$this->mAlive', '1'), ('$this->mBurstTimer', '-1.0'), ('$this->mBurst
          ('$this->mAimAtTarget', '1')]
 LAI = '$fp3_obj($mgr, 4, %d, "CFlyingPirate")'
 ANIM = '$this->DoUserAnimEvent(*$mgr, *(CInt32POINode*)$rdx, %d, 0.016f)'
-NOTLOADED = [('CObjectReference::IsLoaded(', 0)]
+# TCachedToken::IsLoaded is `mItem != nullptr || mObjRef->mObject != nullptr` (both inline)
+TOK = '$this->mAltProjectileInfo1.mWeaponDescription'
+NOTLOADED = [('%s.mItem' % TOK, '0'), ('%s.mObjRef->mObject' % TOK, '0')]
 NOCREATE = [('CStateManager::CanCreateProjectile(', 0)]
 
 CALLS = [
@@ -26,7 +28,7 @@ CALLS = [
         ([('$this->mIsAttackingObject', '1'), ('$this->mAttackObjectId.value', '$fp3_uid($fp3_obj($mgr, -1, 0, "CFlyingPirate"))')], ANIM % 0),
         ([('$this->mIsAttackingObject', '0'), ('$this->mIsAquaPirate', '1')], ANIM % 0),
         ([('$this->mIsAttackingObject', '1'), ('$this->mIsAquaPirate', '1')], ANIM % 0),
-        ([], ANIM % 0, NOTLOADED),
+        (NOTLOADED, ANIM % 0),
         ([], ANIM % 0, NOCREATE),
         ([], ANIM % 19),
         ([], ANIM % 7),
