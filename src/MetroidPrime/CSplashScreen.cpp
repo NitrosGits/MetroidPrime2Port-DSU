@@ -168,6 +168,12 @@ CIOWin::EMessageReturn CSplashScreen::OnMessage(const CArchitectureMessage& mess
   }
   case kAM_UserInput: {
     if (!mTexturesLoaded) {
+#ifdef TARGET_PC
+      // Port: a tap while loading is dropped, not kept for the first prompt.
+      if (PortPointerMenu::Begin()) {
+        PortPointerMenu::TakeClick();
+      }
+#endif
       break;
     }
 #ifdef TARGET_PC
