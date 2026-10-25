@@ -48,8 +48,8 @@ static CColor skDamageFlashColor(0.5f, 0.f, 0.f, 1.f);
 // (0x3F000000 = 0.5f), 0x4F68 .rodata 0x10 (0.0f), 0x4F70 .rodata 0x0C (0x3F800000 = 1.0f), f3 = f2,
 // then __ct__6CColorFffff (DOL 0x803207FC) at 0x4F7C -> CColor(0.5f, 0.f, 0.f, 1.f), the host's
 // `skDamageFlashColor(0.5f, 0.f, 0.f, 1.f)` (same four values; host ctor call passes 0.5/0/0/1).
-// No other store, no branch; frame stmw r14 0x4E20 (0xC0, lmw 0x511C). `Attack` (0x2C6C) is still
-// without a `// @` marker yet; the other nine targets carry theirs.
+// No other store, no branch; frame stmw r14 0x4E20 (0xC0, lmw 0x511C). All ten targets carry their
+// `// @` markers.
 // @ fn_1_4E08
 static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Start", reinterpret_cast< CPatterned::StateMachine::StateFunc >(&CAIMannedTurret::Start)},
@@ -266,6 +266,12 @@ void CAIMannedTurret::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   UpdateRider(mgr, dt);
 }
 
+// Every arm ran or was forced (tools/cov amt3, 06_sand_alamofront, 2026-10-25): enter, telegraph
+// countdown and Fire, leash in/out of range, fire timer and angle < 5 ran natural. Limit's
+// |dot| > 1 arm (retail 0x2E90 fabs / 0x2E98 fcmpo vs 1.0) forced three times by amt3_force.py at
+// Attack+896, inside inlined CMath::Limit (xmm0 := copysign(1.0000001, dot), xmm1 := 1.0000001,
+// frame-owned, readback). Unrun arcs are landing pads only (callees don't throw).
+// @ fn_1_2C6C
 void CAIMannedTurret::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -412,6 +418,13 @@ void CAIMannedTurret::Render(const CStateManager& mgr) const {
   }
 }
 
+// Every arm ran or was forced (tools/cov amt3, 06_sand_alamofront, 2026-10-25). Forced three
+// times each by amt3_force.py (frame-owned writes, readback, restored at return): |dot| < 1e-4 at
+// both tests (xmm0/xmm1 := 0 at UpdateAim+353/+543), angle > limit on both sides (horizontal
+// limits := 0), the three elevation clamp extremes (mElevation := -1000/1000, 170 with
+// vertSpeed 1e6) and snap (rdx := 1 at entry). Snap is code-dead in retail: both callers pass
+// li r5,0 (Patrol 0x2C34, Attack 0x2EFC). Unrun arcs are landing pads only (callees don't throw).
+// @ fn_1_1F28
 void CAIMannedTurret::UpdateAim(CStateManager& mgr, float dt, bool snap) {
   if (CActor* turret = TCastToPtr< CActor >(mgr.ObjectById(mTurretId))) {
     const CVector2f turretForward2d = turret->GetTransform().GetForward().ToVec2f().AsNormalized();
@@ -599,6 +612,13 @@ CTransform4f CAIMannedTurret::GetMuzzleTransform(CStateManager& mgr) const {
   return xf;
 }
 
+// Every arm ran or was forced (tools/cov amt3, 06_sand_alamofront, 2026-10-25): the loaded
+// path with anim data ran natural (29 calls); not-loaded (retail 0xD38 cmplwi; host Fire+82 ZF) and
+// no-anim-data (retail 0xEC0 cmplwi; host Fire+480 ZF) forced twice each (amt3_force.py, frame-owned,
+// eflags readback, restored at return). The null-projectile arm (retail 0xE48 cmplwi r28) runs
+// only on allocation failure; the host's throwing new lets gcc fold it. Unrun arcs are landing
+// pads only (callees don't throw).
+// @ fn_1_CF0
 void CAIMannedTurret::Fire(CStateManager& mgr) {
   const CTransform4f xf = GetMuzzleTransform(mgr);
   if (mWeaponToken.IsLoaded()) {
