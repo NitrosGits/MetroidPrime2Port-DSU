@@ -32,7 +32,7 @@ offset	fn	size	class	name	slice	what	marker
 02148	fn_20_2148	158	B	CFishCloud::UpdatePartitionList	-	partly covered: out-of-partition index 766/768	no
 022A0	fn_20_22A0	C	H	rstl::vector<CFishCloud::CBoid*, rstl::rmemory_allocator>::clear	-	weak copy / template instance	no
 022AC	fn_20_22AC	40	B	CFishCloud::CreatePartitionList	fish1	upstream body (CFishCloud)	yes
-022EC	fn_20_22EC	7DC	B	CFishCloud::Touch	-	fish2 marked: all live arms (forced 698/702/705/706, natural rest); 740/750 throw edges dead	yes
+022EC	fn_20_22EC	7DC	B	CFishCloud::Touch	-	fish2 marked: all live arms (forced 698/702/705/706, natural rest); 740/750 CanBeNormalized false arms forced (fishcloud_touch_norm_force.py)	yes
 02AC8	fn_20_2AC8	3C	H	rstl::optional_object<CAABox>::~optional_object	-	weak copy / template instance	no
 02B04	fn_20_2B04	D4	B	CFishCloud::KillBoid	fish1	upstream body (CFishCloud)	yes
 02BD8	fn_20_2BD8	2EC	B	CFishCloud::Render	fish1	upstream body; forced arms (fishcloud_force.py)	yes
