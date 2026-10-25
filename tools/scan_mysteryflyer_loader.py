@@ -63,6 +63,21 @@ def walk(buf, out, depth=0):
             walk(payload, out, depth + 1)
 
 
+def conns(sec):
+    """{editor id: (type, [(state, msg, target)])} for one script layer (12-byte connections)."""
+    count = struct.unpack_from(">I", sec, 10)[0]
+    p = 14
+    out = {}
+    for _ in range(count):
+        t = sec[p:p + 4].decode("latin1")
+        (ln,) = struct.unpack_from(">H", sec, p + 4)
+        body = sec[p + 6:p + 6 + ln]
+        eid, nc = struct.unpack_from(">IH", body, 0)
+        out[eid] = (t, [struct.unpack_from(">3I", body, 6 + 12 * i) for i in range(nc)])
+        p += 6 + ln
+    return out
+
+
 def objects(sec):
     count = struct.unpack_from(">I", sec, 10)[0]
     p = 14
@@ -105,6 +120,14 @@ def main():
                 if not mysf:
                     continue
                 tmai = [(li, o[1]) for li, o in objs if o[0] == "TMAI"]
+                alls = {}
+                for sec in layers:
+                    alls.update(conns(sec))
+                for li, o in mysf:
+                    cs = alls[o[1]][1]
+                    kinds = sorted({(alls[tg][0] if tg in alls else "?") for _, _, tg in cs})
+                    toteam = [(hex(st), hex(m)) for st, m, tg in cs if tg in alls and alls[tg][0] == "TMAI"]
+                    print(f"   MYSF 0x{o[1]:08x} L{li} out-link target types={kinds} to-TMAI={toteam}")
                 arms["areas with TMAI"] += bool(tmai)
                 print(f"== {nm}/{iname} (mlvl {mid:08x}) tmai="
                       + (",".join(f"L{li}:0x{e:08x}" for li, e in tmai) or "none"))
