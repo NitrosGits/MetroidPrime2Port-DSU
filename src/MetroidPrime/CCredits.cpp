@@ -71,8 +71,16 @@ bool CMoviePlayer::DrawVideo() const {
   const int height = CGraphics::GetViewport().mHeight;
   const int movieWidth = GetWidth();
   const int movieHeight = GetHeight();
+#ifdef TARGET_PC
+  // Port (MP1 6b7384a85): fit the movie to the view with its shape kept (the disc's own at its
+  // pixel size as on the console, a mod's larger one scaled to fit) instead of cropping it.
+  int xMargin;
+  int yMargin;
+  PortGetMargins(width, height, xMargin, yMargin);
+#else
   const int xMargin = (movieWidth - width) / 2;
   const int yMargin = (movieHeight - height) / 2;
+#endif
   const_cast< CMoviePlayer* >(this)->DrawFrame(left - xMargin, left + width + xMargin,
                                                top - yMargin, top + height + yMargin);
   return true;
