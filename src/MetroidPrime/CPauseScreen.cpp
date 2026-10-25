@@ -904,7 +904,18 @@ void CPauseScreen::PortPointerInput(CFinalInput& input) {
     rstl::rc_ptr< CScanTreeCategory > category(node);
     const int childCount = category->GetChildCount();
     const int selected = category->GetSelectedChild();
-    const CScanTreeNode* hover = have && moved ? PortNodeAt(px, py) : nullptr;
+    // A left drag (one finger) spins the tree like the stick: the drag sets the spin rate, so a
+    // flick keeps turning and slows down as Update damps it; holding still stops it.
+    PortPointer::Recognizer& g = PortPointer::Gestures();
+    const bool dragging = g.Pressed() && (g.Buttons() & PortPointer::kButtonLeft) != 0;
+    PortPointerMenu::ViewMotion m;
+    const float dt = input.DeltaTime();
+    if (PortPointerMenu::TakeViewMotion(m) && (m.rotateX != 0.f || m.rotateY != 0.f) && dt > 0.f) {
+      mRotationVelocity = CVector2f(-0.4f * m.rotateX, -0.4f * m.rotateY) * (1.f / dt);
+    } else if (dragging) {
+      mRotationVelocity = CVector2f::Zero();
+    }
+    const CScanTreeNode* hover = have && moved && !dragging ? PortNodeAt(px, py) : nullptr;
     int hoverId = -1;
     for (int i = 0; hover != nullptr && i < childCount; ++i) {
       const int childId = category->GetChild(i);
