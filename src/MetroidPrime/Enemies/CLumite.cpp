@@ -1206,6 +1206,10 @@ CScriptSafeZone* CLumite::FindSafeZone(CStateManager& mgr, const CVector3f& posi
   return nullptr;
 }
 
+// @ fn_39_1EA0
+// Proof (lum4): all edges run (previous-hint-not-a-hint forced via lumite_lum2_lum4.gdb) except the
+// static CMaterialFilter guard's __cxa_guard_acquire==0 edge: host-only, single-threaded logic never races
+// the init; retail MWCC uses a plain init$ byte (lbz/extsb./bne 0x20BC-0x20C4, stb 0x210C), no acquire/abort.
 bool CLumite::ChooseHop(CStateManager& mgr) {
   if (mHop.mCandidates.empty()) {
     BuildHopCandidates(mgr);
@@ -1274,6 +1278,10 @@ bool CLumite::ChooseHop(CStateManager& mgr) {
   return mHop.mHopSelected || mHop.mHopFailed;
 }
 
+// @ fn_39_2244
+// Proof (lum4): all edges run (IsHurtful-true forced via lumite_lum2_lum4.gdb) except `!zone->GetActive()`:
+// dead, FindSafeZone (zone->GetActive() in its return condition) returns only active zones and nothing
+// runs between the call and this test.
 void CLumite::BuildHopCandidates(CStateManager& mgr) {
   if (mHop.mChosenHintId != kInvalidUniqueId) {
     if (CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(mHop.mChosenHintId))) {
@@ -1328,6 +1336,8 @@ void CLumite::BuildHopCandidates(CStateManager& mgr) {
 
 // Death
 
+// @ fn_39_12B4
+// Proof (lum4): ALL-ARMS, 23/23 lines 17/17 branches; IsDead-true via CBSDie, Deactivate default arm real.
 void CLumite::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
