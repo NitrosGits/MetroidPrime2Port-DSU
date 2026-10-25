@@ -66,3 +66,8 @@ void nod_partition_iterate_fst(const NodHandle* partition, NodFstCallback callba
     (void)callback;
     (void)user_data;
 }
+
+bool nod_partition_is_wii(const NodHandle* partition) {
+    (void)partition;
+    return false;
+}
