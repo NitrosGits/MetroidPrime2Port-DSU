@@ -198,3 +198,13 @@ auto_ptr offset bug in the fixture (no data), run 2 = CALLS only, run 3 = CALLS 
   ctor 59/66 (aqua 230, particle-gen chain 296/297); 5D4 13/16 (2052 dead, 2061 ternaries).
 - Open for a later slice (needs a water area run on `08_sand_casualpirates`, a forced `mAlive=0` Think, and
   an unloaded-token DoUserAnimEvent).
+
+## Coverage (fp4, 2026-10-25: 96D4 5D4 6040 15DC 2738 all marked)
+
+Frozen binary `/tmp/opencode/fp4-evidence/bin/metroid_prime2_port` sha256 7be93176...2666 (= `build-port-cov`);
+runs `/tmp/opencode/fp4-evidence/run{1-3,4-pre,5-8,12,15,16}`, failed launches run9-11/13-14 (tmpfs quota, logs only).
+Fixtures `tools/cov/specs/flyingpirate_fp4{,b,c,d,e}.py` (committed before each launch).
+- Think 126/126 lines, 112/112 edges; DoUserAnimEvent 23/23, 18/18 (merged, ALL-ARMS).
+- fp3's water scenarios wrote `mTransform.m23`; `GetTranslation()` reads `CActor::mPosition.mZ` (fp4d fixes it).
+- Burst arm 1975 needs `mBurstTimer` 5.0 and a calloc'd `SBurst` in `mBurstFire.mCurBursts`.
+- Remaining zero edges in every row are exception landing pads.

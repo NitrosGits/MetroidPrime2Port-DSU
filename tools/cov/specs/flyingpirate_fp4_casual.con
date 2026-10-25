@@ -1,0 +1,11 @@
+# fp4: Agon 08_sand_casualpirates layer 2 (the area with water): the four aerotroopers activated
+# beside the god-mode player, so Think runs in the water area with the forced scenarios of
+# flyingpirate_fp3.py (water arms: InFluidId naming the CScriptWater, trigger bounds above/below).
+@f300 layer 2
+@f560 god 1
+@f580 send u0545 Activate; send u053d Activate; send u0539 Activate; send u0537 Activate
+@f600 tp 355 -265 4
+@f610 face 0
+@f1000 shoot u0545
+@f1300 shoot u053d missile
+@f1500 obj u0545

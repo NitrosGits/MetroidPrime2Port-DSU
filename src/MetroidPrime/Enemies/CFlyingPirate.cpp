@@ -215,6 +215,22 @@ CFlyingPirate::CFlyingPirateData::CFlyingPirateData(
 , unknown_0x9ca8f357(unknown_0x9ca8f357)
 , unknown_0x7ac85cb6(unknown_0x7ac85cb6) {}
 
+// Port coverage (fp4): the ctor ran twice (both cliff FPRT, one frozen binary sha256 7be93176...,
+// /tmp/opencode/fp4-evidence/run1/gcov, source 6dcb7d5dd), every non-landing-pad edge taken
+// except seven, each dead by the disc:
+//  - `(mData.mType & 2) ? 4 : 3` (the aqua path-find type 4; gcov counts the one `testb $2; jne`
+//    arc on the three lines 230/231/232 of that statement): tools/scan_flyingpirate_props.py
+//    over the whole disc (20 paks, 12 MLVLs, 291 areas, every layer; the 291 MREA resources are
+//    exactly the MLVL areas, none unreadable) finds 18 FPRT, types 0 (10) and 1 (8) only; bit 1
+//    never set. `LoadFlyingPirate` is the only caller (ScriptLoader.cpp 'FPRT').
+//  - `mParticleGen1/2/3 != kInvalidAssetId` (three `cmp $-1; je`; the first two je and the third
+//    are gcov's three zero edges): all 18 placements carry landingCloudDirt/Dust/Snow =
+//    811e5be1/340608af/f4474106 (scan.txt "particle gens"), so the guard is always true and the
+//    empty-vector loop skip merges with the loop exit the cliff run takes.
+//  - the last zero edge, on the `{` line, is the stack-protector canary `jne __stack_chk_fail`
+//    (+1166, 0xdfab88 -> 0xdfabce): hardening of the host build, no source arm.
+// Every other zero edge is an exception landing pad (`throw`).
+// @ fn_22_96D4
 CFlyingPirate::CFlyingPirate(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                              const CTransform4f& xf, const CModelData& modelData,
                              const CActorParameters& actParms, const CPatternedInfo& pInfo,
@@ -1095,6 +1111,21 @@ bool CFlyingPirate::CoverCheck(CStateManager& mgr, const CTriggerData& data) con
   return false;
 }
 
+// Port coverage (fp4): merged frozen runs of one binary (sha256 7be93176..., source 6dcb7d5dd):
+// run1 = cliff fight + fp3 CoverFind scenarios (/tmp/opencode/fp4-evidence/run1/gcov), run2 =
+// flyingpirate_fp4.py (/tmp/opencode/fp4-evidence/run2/gcov, fixture sha256 in run2/fixture.sha256).
+// Every non-landing-pad edge is taken except one:
+//  - 1105 `cover = TCastToConstPtr< CScriptCoverPoint >(list[i])` null (a non-cover object in the
+//    AiWaypoint list): no shipped area has one, so run2 writes the pirate itself into the list's
+//    first slot for one call (restored at its return, 17 real covers still walk): edge taken once.
+//  - 1119 `TCastToPtr< CScriptCoverPoint >(mgr.ObjectById(closest->GetUniqueId()))` null: dead.
+//    `closest` was cast from list[i] a few statements earlier, ObjectById reads the same object
+//    through the kOL_All list (every cover point is added to all its lists with its one id, so
+//    that id finds it), nothing between the loop and the lookup deletes or adds an object
+//    (ReleaseCoverPoint only clears the old point's in-use id), so the lookup returns `closest`
+//    and the cast to its own type succeeds; the taken edge ran in run1 (#5) and run2 (#0).
+// Every other zero edge is an exception landing pad.
+// @ fn_22_6040
 bool CFlyingPirate::CoverFind(CStateManager& mgr, const CTriggerData& data) const {
   bool found = false;
   float closestMag = mData.mMaxCoverDistance * mData.mMaxCoverDistance;
@@ -1787,6 +1818,18 @@ bool CFlyingPirate::FireProjectile(CStateManager& mgr, float dt) {
   return result;
 }
 
+// Behaviour-checked fp4 (frozen binary sha256 7be93176...2666 = build-port-cov, evidence
+// /tmp/opencode/fp4-evidence/): DoUserAnimEvent 23/23 lines, 18/18 branches ALL-ARMS from merged
+// runs run1-3, run4-pre, run5-8, run12, run15, run16 (gcov_report --module FlyingPirate).
+//  - Natural runs (cliff, casual pirates) cover the attack events; force_ret fixtures
+//    flyingpirate_fp4c.py (run7, run16, committed before launch, copies + sha256 in each run dir)
+//    force the rest: IsLoaded false on mAltProjectileInfo1/2 (mItem/mObjRef->mObject zeroed),
+//    mItem-cached arm (left operand of `||` true, never cached at any natural call),
+//    mIsAttackingObject both ways, and CanCreateProjectile forced false (NOCREATE).
+//  - 1796 is the ternary at 1795 duplicated by the compiler into two copies of the
+//    IsLoaded() && CanCreateProjectile tail; each copy's four edges ran on its own copy.
+// Every other zero edge is an exception landing pad.
+// @ fn_22_2738
 void CFlyingPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                     EUserEventType type, float dt) {
   bool handled = false;
@@ -1872,6 +1915,18 @@ void CFlyingPirate::PreThink(float dt, CStateManager& mgr) {
   CPatterned::PreThink(dt, mgr);
 }
 
+// Behaviour-checked fp4 (frozen binary sha256 7be93176...2666 = build-port-cov, evidence
+// /tmp/opencode/fp4-evidence/): Think 126/126 lines, 112/112 branches ALL-ARMS from merged runs
+// run1-3, run4-pre, run5-8, run12, run15, run16.
+//  - flyingpirate_fp4b.py (23 scenarios on the cliff) forces mAlive/special state/timers etc.
+//  - 1922-1923 water arm: flyingpirate_fp4d.py on 08_sand_casualpirates (run12) writes
+//    mPosition.mZ +-1e6 and forces CActor::InFluidId to return the water uid, both ways ok. (fp3 wrote
+//    mTransform.m23, which GetTranslation() does not read; the member is CActor::mPosition.mZ.)
+//  - 1975 burst arm: flyingpirate_fp4e.py (run15): mBurstTimer 5.0 (-1 let Start() replace the
+//    forced table, run8), calloc'd SBurst in mCurBursts, mAngleIdx -1, mTimeToNextShot -1.0.
+// Failed launches (tmpfs quota, no hook set) kept as run9-11, run13-14 (logs only).
+// Every other zero edge is an exception landing pad.
+// @ fn_22_15DC
 void CFlyingPirate::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -2042,6 +2097,20 @@ void CFlyingPirate::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// Port coverage (fp4): ran twice (both cliff FPRT) on the frozen binary sha256 7be93176...,
+// /tmp/opencode/fp4-evidence/run1/gcov, source 6dcb7d5dd (line numbers below are that source's).
+// The function is 95/105 blocks; every non-landing-pad edge is taken except one:
+//  - `if (!modelData) return nullptr;` (line 2052, edge 1): LdrToModelData yields nothing only when
+//    the ANCS asset is invalid; all 18 FPRT placements on the disc (scan.txt, whole disc) carry
+//    ANCS 0x2ecb9fbf, which loads, so the arm is dead by data.
+//  - the `{count=0, 2 edges}` that gcov prints on line 2061 is not a ternary: gcno block 101
+//    (lines 2058/2059/2061, the LdrToDamageInfo temporaries) is entered only by the exception
+//    arcs of blocks 79-83 and 84-89 (flag 0, no fall/tree-normal predecessor), i.e. the cleanup
+//    landing pad; its two out-arcs (to 102 and 104) are the `if engaged` destroy of the
+//    optional_object. The normal path's own destroy (block 95, lines 2051/2075) ran twice.
+//    The 2061 expression itself (movss/mov spills, `call LdrToDamageInfo` at +1383) ran twice.
+// Every other zero edge is an exception landing pad (`throw`).
+// @ fn_22_5D4
 CEntity* LoadFlyingPirate(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrFlyingPirate sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrFlyingPirate.inc"
