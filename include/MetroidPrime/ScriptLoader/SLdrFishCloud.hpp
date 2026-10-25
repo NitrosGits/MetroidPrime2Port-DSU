@@ -49,6 +49,7 @@ struct SLdrFishCloud {
   bool isHighlightedInDarkVisor;         // 0xcd4c81a1
 };
 
+// @ fn_20_DFC
 inline SLdrFishCloud::SLdrFishCloud()
 : editorProperties()
 , fishModel(kInvalidAssetId)
@@ -96,6 +97,7 @@ inline SLdrFishCloud::SLdrFishCloud()
   isHighlightedInDarkVisor = true;
 }
 
+// @ fn_20_D98
 inline SLdrFishCloud::~SLdrFishCloud() {}
 
 #endif

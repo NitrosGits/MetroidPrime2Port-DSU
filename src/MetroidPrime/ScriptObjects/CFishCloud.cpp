@@ -82,6 +82,7 @@ void CFishCloudModifier::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& m
   }
 }
 
+// @ fn_20_68D4
 void CFishCloudModifier::AddSelf(CStateManager& mgr) {
   const rstl::vector< SConnection >& connections = GetConnectionList();
   for (rstl::vector< SConnection >::const_iterator it = connections.begin();
@@ -680,6 +681,7 @@ void CFishCloud::KillBoid(CBoid& boid) {
   CSfxManager::AddEmitter(parms, areaId, true, false);
 }
 
+// @ fn_20_22EC
 void CFishCloud::Touch(CActor& other, CStateManager& mgr) {
   CActor::Touch(other, mgr);
   if (CWeapon* weapon = TCastToPtr< CWeapon >(other)) {

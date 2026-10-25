@@ -87,7 +87,7 @@ x150 pre-render-clipped bit. retail_diff: only M_PIF and the same template calls
 ## Unmarked behaviour bodies (why)
 
 - Dead: FindFarthestPlane, OldBuildBoidNearList, GetListAt (no live callers; 0% covered).
-- Partly covered: Think (occluded area 451/452, missing modifier source 510/522), Touch (no touch bounds 669,
+- Partly covered (fish2 later marked Touch, AddSelf and the SLdr ctor/dtor rows, see below): Think (occluded area 451/452, missing modifier source 510/522), Touch (no touch bounds 669,
   non-player non-weapon 686, spawned morph 688, morph-ball arms 690/711/721), PlaceBoid and FindClosestPlane
   (re-place 347, NaN 292), BuildBoidNearList / UpdatePartitionList (partition edges), ApplyAttraction (963:
   the forced out-of-line copy never got the every-32nd-think hit), the CFishCloud ctor (particle 2-4, sfx),
@@ -117,3 +117,23 @@ so the gcov was written. Merged profile, unmarked bodies only:
 | 1C40 OldBuildBoidNearList, 2054 GetListAt, 46A0 FindFarthestPlane | 0 lines | no caller in retail (no `bl`), so they cannot run and stay unmarked |
 
 No source change in this pass and no marker: no unmarked body reached all its live arms.
+
+## Third pass (fish2, 2026-10-25, base 92bcb4775): Touch, AddSelf, SLdr ctor/dtor
+
+Evidence under /tmp/opencode/fish2 (gcov dirs `<run>/gcov`). Natural: c1-c5 (sacredpath/LandingSite/swamp), d1-d2
+(0k_temple_hall, `fishcloud_morph.con`). Forced: t1 (swamp `3dfd2249,01_swamp_entrance`, `fishcloud_touch_force.py` weapon case),
+t3 (hall `3bfa3eff,0k_temple_hall`, ball case), a2 (LandingSite, `fishcloud_addself_force.py`). All `caught/reach-stub: 0`, rc 0.
+
+| row | result | how |
+|---|---|---|
+| 22EC Touch | 74/74 lines, 77/81 branches, marked | natural: all but 698:1, 702:1, 705:1/3, 706; **forced (force.sh fishcloud_touch_force.py, t1)**: `CGameProjectile::mActive=0` (698:1), boid `mActive=0` (702:1), boids moved onto the toucher (705/706 KillBoid); 715/717/719 morph arms natural (d2) |
+| 68D4 AddSelf | 14/14, 17/17, marked | natural 13/14, 13/17 (every shipped FSHM has one MDFY/FOLW to a FISH); **forced (force.sh fishcloud_addself_force.py, a2)** by call: state!=Modify (89:1), msg!=Follow (89:2), unknown objId (93:0), non-cloud objId (96:3) |
+| D98 / DFC SLdrFishCloud dtor / ctor | marked | gcov of SLdrFishCloud.hpp: ctor and dtor lines all run (d2 x4, c1 x6, c3 x1), 0 unrun lines. Asm DFC: deathSound -1 (0xe48/0xe94, fish1's TARGET_PC fix), counts 0 at +0xa4/+0xac/+0xb4/+0xbc (0xf68..0xf74), bools 1 at +0xc4/+0xc5, 3 at +0x38 (0xea4). D98 is `~SLdrEditorProperties` + Free |
+| 2EC SLdrFishCloudModifier dtor | marked | gcov of SLdrFishCloudModifier.hpp: dtor ran (d2 x2, c1 x1); asm 0x2EC = `~SLdrEditorProperties` + Free |
+
+Dead arms (Touch): 740:2/6, 740:5/6, 750:2/6, 750:5/6 are the "(throw)" exception landing-pad edges of the out-of-line
+`CanBeNormalized` calls (CFishCloud.cpp:740, 750); not NaN arms (a NaN-velocity force did not move them). Precedent:
+AIMannedTurret.md:95, BacteriaSwarm.md:364.
+
+The earlier "no standalone body to mark" notes for the SLdr rows were wrong: the markers sit above the header-inline
+definitions (SLdrDarkCommando.hpp:14,43,71 precedent). The deathSound -1 default stays under TARGET_PC.
