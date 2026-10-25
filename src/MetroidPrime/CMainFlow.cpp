@@ -20,6 +20,7 @@
 #ifdef TARGET_PC
 #include "MetroidPrime/PortSkipFrontEnd.hpp"
 #include "port_discord.h"
+#include "port_savestate.h"
 #endif
 
 CMainFlow::CMainFlow() : CIOWin(rstl::string_l("MainFlow")), mGameState(kCFS_Unspecified) {}
@@ -143,6 +144,11 @@ void CMainFlow::SetGameState(EClientFlowStates state, CArchitectureQueue& queue)
     break;
   }
   case kCFS_Game: {
+#ifdef TARGET_PC
+    // A mods reload (port_savestate.h) has closed the old world; reopen the PAKs before the new
+    // one loads from them.
+    PortSaveState::ReloadModsNow();
+#endif
     gpGameState->GameOptions().EnsureOptions();
     CIOWin* const gameFlow = rs_new CMFGameLoader();
     gpMain->SetRestartMode(CMain::kRM_Default);

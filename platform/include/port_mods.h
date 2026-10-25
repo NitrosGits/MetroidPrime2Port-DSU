@@ -138,6 +138,8 @@ struct Status {
 // Scans the mods folder and registers the overlays. Call once, after the disc
 // is open and before the game starts.
 void Initialize(const std::string& userPath);
+// Initialize again with the same folder and the current settings; only with every PAK closed.
+void Reload();
 const Status& CurrentStatus();
 // The mods folder: MP2_MODS, else <user path>/mods. Empty if there is no user path.
 std::string Folder(const std::string& userPath);

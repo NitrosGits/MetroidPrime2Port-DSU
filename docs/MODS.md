@@ -19,7 +19,7 @@ after the disc mounts; `platform/port_mods_pak.cpp` is the unit-tested PAK table
 half (`tests/port_mods.cpp`, ctest `port_mods_tests`). PAK format is shared with Prime 1 (version
 0x00030005, 20-byte table entries), so the parser is unchanged. Log lines start with `mods:` on stderr.
 F1 > Game > Mods lists the mods with a switch each (`mods_disabled`) and the problems found; changes
-apply on restart. An absent or empty folder registers no overlay at all.
+apply on Reload mods or a restart. An absent or empty folder registers no overlay at all.
 
 ## Suit colours
 
@@ -35,3 +35,15 @@ was parsed for its material texture list, and the textures that carry the suit's
 white-blue colouring were kept (tables in `port_suit_colours_disc.cpp`). Limits: the Light Suit is
 mostly colourless, so only its accents change; the Samus body model in cutscenes and some pause
 screen meshes were not located, so they keep original colours; changes need a restart.
+
+## Reload, folder, texture pack (MP1 sync 21)
+
+F1 > Mods (the Game page's Mods section) has Reload mods, Open mods folder (desktop) and the texture pack
+(HD set name, replacement count, Reload texture pack; Android: Choose texture pack folder... copies
+the pick to `<user>/user_textures.new`, which `PortTextures` swaps in). Console: `reloadmods`.
+
+Reload is a savestate-style world restart: `PortSaveState::RequestModReload` writes the current state
+to the undo slot and loads it back; `CMainFlow` (`kCFS_Game`) calls `ReloadModsNow` after the old world
+is gone, which closes every PAK, runs `PortMods::Reload` (rescan, overlay rebuilt through
+`aurora_dvd_overlay_files`) and reopens them (`CResLoader::PortReopenPaks`). Needs a running game in a
+world; from the title screen restart instead. The built-in HD texture set can win over a replaced TXTR.

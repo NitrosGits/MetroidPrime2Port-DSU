@@ -51,6 +51,14 @@ void SelectNextSlot();
 void RequestSave(int slot);
 void RequestLoad(int slot);
 
+// Reload the mods folder and rebuild the room: the current state is written to the undo slot and
+// loaded back, and between the old world and the new one every PAK is closed and opened again over
+// the freshly read mods (CResLoader::PortReopenPaks). ReloadModsNow is CMainFlow's call before it
+// starts the game; true when it reloaded. ModReloadActive is true from the request until then.
+void RequestModReload();
+bool ModReloadActive();
+bool ReloadModsNow();
+
 // The outcome of the last request, for the overlay ("" before the first).
 std::string LastMessage();
 

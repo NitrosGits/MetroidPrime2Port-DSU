@@ -43,6 +43,9 @@ public:
   void AsyncIdle();
   bool IsARAMPak() const { return mAramFile; }
   bool IsWorldPak() const { return mWorldPak; }
+#ifdef TARGET_PC
+  bool PortBuildsDepList() const { return mBuildDepList; }
+#endif
   bool IsStashedInARAM() const { return mStashedInARAM; }
   bool IsCompletelyLoaded() const { return mAsyncLoadPhase == kAP_Loaded; }
   void EnsureWorldPakReady();

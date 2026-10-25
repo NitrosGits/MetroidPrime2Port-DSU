@@ -4194,6 +4194,12 @@ void CmdState(CStateManager&, const Args& args, std::string& out) {
          " requested (the log's [savestate] lines say how it went)\n";
 }
 
+// reloadmods: read the mods folder again and rebuild the room (the F1 Mods page's button).
+void CmdReloadMods(CStateManager&, const Args&, std::string& out) {
+  PortSaveState::RequestModReload();
+  out += "mods reload requested (the log's [savestate] and mods: lines say how it went)\n";
+}
+
 // resume [status|save|load|clear]: quick resume (savestates/resume.mp2ss), the same one the quit
 // path and the splash-screen prompt use.
 void CmdResume(CStateManager&, const Args& args, std::string& out) {
@@ -4321,6 +4327,8 @@ const CommandSpec kCommands[] = {
       "gpuselftest                 run the GPU self-test next frame; PASS/FAIL lines go to the log\n"},
     {"state", CmdState,
       "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"},
+    {"reloadmods", CmdReloadMods,
+      "reloadmods                  read the mods folder again and rebuild the room (F1 Mods)\n"},
     {"resume", CmdResume,
       "resume [status|save|load|clear] quick resume (savestates/resume.mp2ss): show, snapshot now, load, delete\n"},
     {"skipcine", CmdSkipCine,
