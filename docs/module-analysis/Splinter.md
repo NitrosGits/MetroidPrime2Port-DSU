@@ -164,7 +164,7 @@ Gotchas: a CALLS trigger that fires during area load hangs the run (the dark ala
 `(void*(*)(unsigned long))` cast and the convenience variable set before the first write. objdiff of the bodies: 88-99.6% (AttackPointIsLegal 88.5, ctor 88.3,
 DoUserAnimEvent 90.7, PathFind 91.4); the instruction multisets differ only by stack slots, fmadds / fadds+fmuls, rodata labels and REL-local inline names.
 Header rows marked at objdiff 100%: GetSearchPath 0, ~SLdrSplinter B84, SSpitData dtor B1E4 / operator= B7DC, DeliverCommand BF74 / C040 / C15C.
-Left unmarked: ~CSplinter ABA0 (99.8%), SSurfaceAlignment dtor AF50 (99.7%), SSpitData copy ctor B9DC (99.9%), `__sinit` C268 (CCA8: splin2 below).
+Left unmarked: `__sinit` C268. ~CSplinter ABA0 (99.8%), SSurfaceAlignment dtor AF50 (99.7%) and SSpitData copy ctor B9DC (99.9%) are marked by splin3, CCA8 by splin2 (below).
 
 ## splin2 (base 8125b144d, 2026-10-25)
 
@@ -177,9 +177,9 @@ The objdiff residuals are relocation names, plus AF50 `li r4,0` vs `-1` (the sam
 | fn | result | evidence / missing arm |
 |---|---|---|
 | ~CSplinterAcidSac CCA8 | marked | 4 owned D0 chains (ClearGraveyard), each mRelToken, mDamageVulnerability, CActor base, then delete(root) in order; the body has no branch |
-| SSpitData copy B9DC | unmarked | 30/30 fields source==copy (forced Mega load, readbacks restored); the engaged mVisorEffect arm (0xBA30/0xBA3C, CToken copy + Lock) never ran: visor_valid 0 in the shipped load, no dead-arm proof |
-| ~CSplinter ABA0 | unmarked | 5 D0 chains in order (forced chain 4: mSpit+mParticle; natural: mStateMachine2; mSac; CPatterned members; CAi; delete). Missing: the mAlignment cache vector arms 0xAC44-0xAC90 (mCache 0 in every chain), and the D2 path (flag <= 0, 0xACB0); the executed classifier rejected each chain |
-| SSurfaceAlignment dtor AF50 | unmarked | entered in every chain, but the `beq 0xAF6C` engaged arm (AFA4 + Free) never ran |
+| SSpitData copy B9DC | unmarked (splin3 marks it) | 30/30 fields source==copy (forced Mega load, readbacks restored); the engaged mVisorEffect arm (0xBA30/0xBA3C, CToken copy + Lock) never ran: visor_valid 0 in the shipped load, no dead-arm proof |
+| ~CSplinter ABA0 | unmarked (splin3 marks it) | 5 D0 chains in order (forced chain 4: mSpit+mParticle; natural: mStateMachine2; mSac; CPatterned members; CAi; delete). Missing at the time: 0xAC44-0xAC90, which is the mEvadeChecks element loop (not an mAlignment cache: splin3 corrected this label); the D2 path (flag <= 0, 0xACB0) is dead (splin3). The executed classifier rejected each chain |
+| SSurfaceAlignment dtor AF50 | unmarked (splin3 marks it) | entered in every chain; the `beq 0xAF6C` / `ble` arms are dead (splin3), AFA4 without Free is the only live path |
 
 Executed-classifier failure (each splinter chain, the summary says FAIL): one CToken dtor per chain with an offset outside
 the object (+0x1e80, +0x1ef0, -0x1c3e50, -0x1d1230). The evidence shows it belongs to the object: its inline chain is
@@ -196,3 +196,27 @@ other 60 have mega 0 and an invalid visor. Path: SLdrSplinter.inc case 0x496f191
 CSplinter.cpp:2690 (LoadSplinter passes megaSplinterSpitVisorEffect), then :304-305 (`mSpit = SSpitData(...)` copies into the
 disengaged optional, the copy that run 2 hit inline), then :217 (an id != invalid gives an engaged token). B9DC stays unmarked:
 to exercise the arm, load that room's layer 2 (the run 2 force kept visor invalid).
+
+## splin3 (review base 67f0657d9, 2026-10-25)
+
+gdb spec `tools/cov/specs/splinter_splin3.py` + `.con`: 07_temple_mothlordsanctuary, layer 2 activated with the Alpha
+Splinter (eid 0x080200ff, uid 0x04d8) and five normal splinters, Alert, then Sidestep/Taunt evasions, then Delete all six.
+Launches 2/2 on the same frozen binary, sha256 65ade037... (not a coverage build), kept in `/tmp/opencode/splin3-frozen/`.
+Run 1 (spec 8f47a1f4, `/tmp/opencode/splin3-run1`): everything passed except the visor Lock classifier. Run 2
+(spec 0abdcaac, con 9384deb4, commit 7b7614f1d, `/tmp/opencode/splin3-run2`, which holds a copy of the fixture with SHA256SUMS)
+reported status OK, failed 0, 6/6 chains OK, no pending owners and no open ctor. The final fixture is the one run 2 executed.
+
+| fn | result | evidence |
+|---|---|---|
+| SSpitData copy B9DC | marked | Alpha ctor: 33/33 fields source==copy==snapshot, no key diff. Two owned CToken copies (dst/src +0x10 weapon, +0x48 visor) with rsi==temp+offset. Visor (0xBA30/0xBA3C): dst valid, ref == src ref, dst held 1, src held 1 unchanged, CObjectReference ref/lock 2/2 -> 3/3. Lock hits [tail held_before 0, outer held_before 1] |
+| ~CSplinter ABA0 | marked | 6 owned D0 chains in order; Alpha chain: mSpit visor token, weapon token, mParticle, mStateMachine2, mSac, CPatterned members (mIngScanInfo pointee token, then delete of the same address), mDamageVulnerability, CAi, delete(root). mEvadeChecks count 4 in every chain (0xAC44-0xAC90 loop) |
+| SSurfaceAlignment dtor AF50 | marked | entered in all 6 chains (mark "enter SSurfaceAlignment dtor"); CSurfaceAlignmentHelper mCache is 0 in every chain |
+
+The host copy ctor tail-calls Lock: `CToken::CToken(const CToken&)`+0x20 is `jmp CToken::Lock` when the source holds the lock.
+That Lock reports the CSplinter ctor frame as its caller, at the visor copy's return address. The TLockedToken body's
+`mToken.Lock()` that follows is a no-op (held 1). Run 1 classified both hits as outer; run 2 classifies them by that return pc.
+
+Dead arms: in ABA0, the null-this branch (only the vtable references it, data.s:933), the D2 / flag <= 0 path
+(no subclass, no other construction) and the unrolled block for more than 8 evade checks (AddEvadeCheck caps at 4). In
+AF50, `beq 0xAF6C` and `ble` (the only caller is ABA0 0xAC9C, with this = r30+0x948 non-null and r4 = -1), and
+CSurfaceAlignmentHelper mCache, which only the filter ctor (CSurfaceAlignmentHelper.cpp:25) sets and which is always null here.

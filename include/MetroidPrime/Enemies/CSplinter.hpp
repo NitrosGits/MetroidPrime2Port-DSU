@@ -26,6 +26,7 @@ class CSplinterAcidSac;
 class CSplinter : public CPatterned {
 public:
   // Guessed name; aligns the splinter to the walls and ceilings it crawls over.
+  // @ fn_74_AF50 (implicit dtor, gdb splin3)
   struct SSurfaceAlignment : public CSurfaceAlignmentHelper {
     SSurfaceAlignment();
 
@@ -105,6 +106,7 @@ public:
   // Guessed names; the mega splinter's spit attack.
   // @ fn_74_B1E4 (implicit dtor, objdiff 100%)
   // @ fn_74_B7DC (implicit operator=, objdiff 100%)
+  // @ fn_74_B9DC (implicit copy ctor, gdb splin3)
   struct SSpitData {
     SSpitData(float f1, CAssetId projectile, float f2, const CDamageInfo& damage,
               CAssetId visorEffect);
@@ -132,6 +134,7 @@ public:
             CAssetId spitVisorEffect, const CActorParameters& actorParams);
 
   // CEntity
+  // @ fn_74_ABA0
   ~CSplinter() override {}
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
