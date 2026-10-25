@@ -1111,6 +1111,21 @@ bool CFlyingPirate::CoverCheck(CStateManager& mgr, const CTriggerData& data) con
   return false;
 }
 
+// Port coverage (fp4): merged frozen runs of one binary (sha256 7be93176..., source 6dcb7d5dd):
+// run1 = cliff fight + fp3 CoverFind scenarios (/tmp/opencode/fp4-evidence/run1/gcov), run2 =
+// flyingpirate_fp4.py (/tmp/opencode/fp4-evidence/run2/gcov, fixture sha256 in run2/fixture.sha256).
+// Every non-landing-pad edge is taken except one:
+//  - 1105 `cover = TCastToConstPtr< CScriptCoverPoint >(list[i])` null (a non-cover object in the
+//    AiWaypoint list): no shipped area has one, so run2 writes the pirate itself into the list's
+//    first slot for one call (restored at its return, 17 real covers still walk): edge taken once.
+//  - 1119 `TCastToPtr< CScriptCoverPoint >(mgr.ObjectById(closest->GetUniqueId()))` null: dead.
+//    `closest` was cast from list[i] a few statements earlier, ObjectById reads the same object
+//    through the kOL_All list (every cover point is added to all its lists with its one id, so
+//    that id finds it), nothing between the loop and the lookup deletes or adds an object
+//    (ReleaseCoverPoint only clears the old point's in-use id), so the lookup returns `closest`
+//    and the cast to its own type succeeds; the taken edge ran in run1 (#5) and run2 (#0).
+// Every other zero edge is an exception landing pad.
+// @ fn_22_6040
 bool CFlyingPirate::CoverFind(CStateManager& mgr, const CTriggerData& data) const {
   bool found = false;
   float closestMag = mData.mMaxCoverDistance * mData.mMaxCoverDistance;
