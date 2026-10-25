@@ -1163,6 +1163,18 @@ CRagDoll* CDarkTrooper::GetRagDoll() const {
   return nullptr;
 }
 
+// @ fn_12_12C
+// The only arm dtr11 left untaken is the null-model return (`!modelData` at 0x4FC-0x504: `lbz
+// r0,0x1C0(r1); cmplwi 0; bne 0x574` then `li r3,0` at 0x56C), and it is dead by the shipped data:
+// LdrToModelData (ScriptLoader.cpp:446-459) is given kInvalidAssetId as the model, so it returns an
+// empty optional only when the ancs id also resolves to no resource type. tools/
+// scan_darktrooper_loader.py walks every MLVL of every pak (all areas, all layers) and finds 35
+// DKTR placements, every one with an ANCS that exists in a pak with FourCC ANCS (0xA2CC5B52 in
+// Metroid1.pak for 33, 0x6735E3CA for the two federationsite L9 ones), so the CAnimRes path always
+// runs and the arm cannot be reached. The remaining retail branch, `__nw`'s null return
+// (0x590-0x594 `beq 0x6A8`), is the OOM path of throwing `new` (dc4's ABI limitation, not a
+// gameplay arm). Every other line ran in the dtr6/dtr11 loader runs: property switch, the model
+// copy/destroy guards at 0x4E4-0x518, ctor argument marshalling and the destructor tail.
 CEntity* LoadDarkTrooper(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrDarkTrooper sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrDarkTrooper.inc"
