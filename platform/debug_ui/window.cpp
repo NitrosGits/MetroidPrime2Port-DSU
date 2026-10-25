@@ -405,6 +405,7 @@ void DrawUI() {
   DrawMenuHintToast();
   DrawIgtTimer();
   DrawShaderCompilationToast();
+  DrawPhotoUI();
   if (!sVisible) {
     sTouchScroll = TouchScroll{};
     UpdateMenuSounds(false);

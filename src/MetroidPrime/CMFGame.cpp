@@ -7,6 +7,7 @@
 #include "port_freecam.h"
 #include "port_harness.h"
 #include "port_overlay.h"
+#include "port_photo.h"
 #include "port_pipeline_context.h"
 #endif
 
@@ -210,6 +211,16 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
     if (mFlowState == kFS_Zero) {
       SetFlowState(kFS_InGame);
     }
+#ifdef TARGET_PC
+    {
+      // Port: photo mode resolves its enter/exit requests once per update, and leaves when the
+      // game it was entered in goes away.
+      const CCinematicCamera* const photoCine = TCastToConstPtr< CCinematicCamera >(
+          *mStateManager->GetCameraManager(0)->GetCurrentCamera(*mStateManager, true));
+      PortPhoto::Tick(*mStateManager, mFlowState == kFS_InGame && !photoCine &&
+                                          mTransitionPhase == kTP_None);
+    }
+#endif
 #ifdef TARGET_PC
     // MP2_SKIP_INTRO: a cinematic before gameplay is skipped the way START skips it in kAM_UserInput
     // (MP2_SKIP_CINEMATICS still decides whether one the player has not seen may be skipped).
@@ -540,7 +551,12 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
       }
       const CCinematicCamera* const cineCam = TCastToConstPtr< CCinematicCamera >(
           *mStateManager->GetCameraManager(0)->GetCurrentCamera(*mStateManager, true));
+#ifdef TARGET_PC
+      // Port: Start leaves photo mode (PortPhoto::Input), it does not pause.
+      const bool start = input.PStart() && !PortPhoto::Active();
+#else
       const bool start = input.PStart();
+#endif
       if (start && !cineCam && gpGameState->GetGameMode().GetGameModeType() != 'FRND' &&
           gpGameState->GetGameMode().GetGameModeType() != 'SNGL') {
         for (int i = 0; i < mStateManager->GetNumPlayers(); ++i) {
@@ -570,7 +586,11 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         break;
       }
 #endif
-      if (static_cast< int >(input.ControllerNumber()) == 0 && input.PStart()) {
+      if (static_cast< int >(input.ControllerNumber()) == 0 && input.PStart()
+#ifdef TARGET_PC
+          && !PortPhoto::Active()
+#endif
+      ) {
         if (cineCam) {
           const bool canSkip = (cineCam->GetFlags() & 0x800) ||
                                ((cineCam->GetFlags() & 8) && cineCam->CanSkip(*mStateManager));
@@ -590,7 +610,7 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
       mStateManager->SetRandomAvailable(true);
 #ifdef TARGET_PC
       // Port: the free camera takes controller 0's input while it is on.
-      if (!(static_cast< int >(input.ControllerNumber()) == 0 && PortFreeCam::Input(input)))
+      if (!(static_cast< int >(input.ControllerNumber()) == 0 && PortPhoto::Input(input)))
 #endif
       mStateManager->ProcessInput(input);
       mStateManager->SetRandomAvailable(false);
@@ -600,6 +620,10 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
                mFlowState != kFS_State8) {
       stopRumble = true;
     }
+#ifdef TARGET_PC
+    // Port: photo mode keeps the pad away from the HUD and the menus.
+    if (!(static_cast< int >(input.ControllerNumber()) == 0 && PortPhoto::Active()))
+#endif
     mGuiManager->ProcessControllerInput(*mStateManager, input, queue);
     if (stopRumble) {
       gpController->SetMotorState(kIOP_Player1, kMS_Stop);

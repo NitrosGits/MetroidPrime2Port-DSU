@@ -11,6 +11,7 @@
 // game thread.
 
 #include "port_touch.h"
+#include "port_photo.h"
 
 #include "port_harness.h"
 #include "port_mouse.h"
@@ -684,7 +685,8 @@ void SetTurboFire(bool held) { sTurboHeld.store(held, std::memory_order_release)
 
 bool PauseScreenOpen() { return PortHarness::FlowState() == kPaused; }
 
-bool OverlayVisible() { return PortOverlay::Visible(); }
+// Photo mode hides the touch controls too (its own touch handling flies the camera).
+bool OverlayVisible() { return PortOverlay::Visible() || PortPhoto::Active(); }
 
 void NoteDevice(bool xboxLayout) {
   // The prompt icons follow the on-screen layout while touch is the active input.

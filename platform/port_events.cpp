@@ -10,6 +10,7 @@
 
 #include "input/port_input_devices.h"
 #include "port_input_remap_ui.h"
+#include "port_debug.h"
 #include "port_harness.h"
 #include "port_input.h"
 #include "port_mouse.h"
@@ -417,6 +418,9 @@ bool PortPumpEvents() {
     // Menu pointer gestures; ImGui keeps the events it wants itself.
     if (event->type == AURORA_SDL_EVENT && !PortOverlay::Visible()) {
       PortPointer::HandleEvent(event->sdl);
+    }
+    if (event->type == AURORA_SDL_EVENT) {
+      PortDebug::PhotoTouchEvent(event->sdl);
     }
     if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_MOUSE_MOTION) {
       // Relative motion only, which is what SDL reports while the port holds capture; the

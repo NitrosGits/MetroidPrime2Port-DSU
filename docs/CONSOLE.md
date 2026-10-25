@@ -104,8 +104,8 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `at <update> <command>` — run one command on that game update (`frame`), not on arrival, so runs at different speeds act on the same tick
 - `gallery [mask]` — the slideshow gallery unlock mask (0..63): print, or set via PercentScans/mode flags
 - `help` — this list
-- `freecam [0|1]` — free camera (photo mode); no argument toggles it
-- `photo [1|2|4]` — save a PNG from the free camera, supersampled by the factor
+- `freecam [0|1]` — the plain free camera (no photo panel, HUD stays); no argument toggles it
+- `photo [on|off|1|2|4]` — photo mode (F8, F1 > Game): the free camera with the game frozen, HUD/cannon/visor hidden and the Photo mode panel. `on`/`off` enter and leave (refused with a toast when Samus is dead, a cutscene plays or no game runs); a factor saves a PNG supersampled by it; no argument enters when off and captures when on
 - `livesplit [0|1|addr <host:port>|send <line>]` — the LiveSplit link (the F1 setting); no argument: status
 - `touchact <actor id> <other id>` — run an actor's touch handler for the other actor (coverage)
 - `trigcall <id> <trigger name> [arg]` — run one named trigger function of an actor once

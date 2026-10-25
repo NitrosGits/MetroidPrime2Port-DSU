@@ -467,7 +467,7 @@ if(AURORA_SDL3_TARGET)
         platform/debug_ui/card_data.cpp platform/debug_ui/cheats.cpp platform/debug_ui/controls.cpp platform/debug_ui/debug.cpp
         platform/debug_ui/game_sections.cpp platform/debug_ui/performance.cpp platform/debug_ui/randomizer.cpp
         platform/debug_ui/savestates.cpp platform/debug_ui/search.cpp platform/debug_ui/settings.cpp
-        platform/debug_ui/tabs.cpp platform/debug_ui/ui_common.cpp platform/debug_ui/video.cpp
+        platform/debug_ui/photo.cpp platform/debug_ui/tabs.cpp platform/debug_ui/ui_common.cpp platform/debug_ui/video.cpp
         platform/debug_ui/window.cpp
         platform/port_touch.cpp platform/port_touch_jni.cpp platform/touch_pad.cpp
         platform/input/port_input_remap_ui.cpp

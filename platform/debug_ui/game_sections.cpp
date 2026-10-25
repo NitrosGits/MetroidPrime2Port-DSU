@@ -8,6 +8,7 @@
 #include "port_disc_verify.h"
 #include "port_discord.h"
 #include "port_freecam.h"
+#include "port_photo.h"
 #include "port_input_remap_ui.h"
 #include "port_livesplit.h"
 #include "port_mods.h"
@@ -58,9 +59,8 @@ void DrawGameSection() {
   const std::string photoLabel =
       (photoKeys.empty() ? std::string("Photo mode") : "Photo mode (" + photoKeys + ")") + "###photomode";
   if (ImGui::Button(photoLabel.c_str())) {
-    // Photo mode here is the free camera (Debug > Camera has its rows); the overlay would cover
-    // the picture.
-    PortFreeCam::SetActive(true, nullptr);
+    // The overlay would cover the picture, so it closes; the game tick resolves the request.
+    PortPhoto::RequestEnter();
     sVisible = false;
   }
   ImGui::SameLine();
