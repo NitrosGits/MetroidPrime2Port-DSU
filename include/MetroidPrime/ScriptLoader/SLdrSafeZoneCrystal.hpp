@@ -44,6 +44,7 @@ struct SLdrSafeZoneCrystal {
   SLdrSpline unknown_0xbbbee60b;         // 0xbbbee60b
 };
 
+// @ fn_66_6478 (offline: every direct this-store compared by field name vs retail asm)
 inline SLdrSafeZoneCrystal::SLdrSafeZoneCrystal()
 : editorProperties()
 , actorParameters()
