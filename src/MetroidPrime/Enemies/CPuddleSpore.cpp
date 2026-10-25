@@ -56,7 +56,14 @@ CPuddleSpore::CPuddleSpore(TUniqueId uid, const rstl::string& name, EFlavorType 
 , mState(kPS_Closed)
 , mAnimPhase(0)
 , mShockWaveId(kInvalidUniqueId)
+#ifdef TARGET_PC
+// fn_51_37D4: retail stores the null handle word, 0x3904 `stw r8, 0x858(r31)` with r8 = 0 (0x388C
+// `li r8, 0`), and calls no CSfxHandle ctor; `mShockWaveSfx(0)` would run CSfxHandle(uint) and give
+// a non-zero ID (and bump mRefCount), so Think's 0x35D4 `lwz r0, 0x858` / 0x35D8 `cmplwi r0, 0x0` never saw 0.
+, mShockWaveSfx()
+#else
 , mShockWaveSfx(0)
+#endif
 , mStateTimerRunning(false)
 , mSecondaryTimerRunning(false)
 , mOpen(true) {
@@ -82,13 +89,13 @@ void CPuddleSpore::SetupStateMachine(CStateManager& mgr) {
 // fn_51_34E0
 void CPuddleSpore::Think(float dt, CStateManager& mgr) {
   mAimPosition = GetAimPosition(mgr, 0.f);
-  if (mSecondaryTimerRunning) {
+  if (mSecondaryTimerRunning) { // 0x354C lbz 0x85c / 0x3554 beq (bit 0x40)
     mSecondaryStateTimer += dt;
   }
-  if (mStateTimerRunning) {
+  if (mStateTimerRunning) { // 0x3564 lbz 0x85c / 0x356C beq (bit 0x80)
     mStateTimer += dt;
   }
-  if (!mCollisionActorManager.get()) {
+  if (!mCollisionActorManager.get()) { // 0x3580 cmplwi r3, 0 / 0x3584 bne
     SetupCollisionManager(mgr);
   } else {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
@@ -96,12 +103,14 @@ void CPuddleSpore::Think(float dt, CStateManager& mgr) {
   UpdateEffects(mgr);
   HealthInfo()->SetKnockbackResistance(1000000.f);
 
+  // 0x35D8 cmplwi r0, 0 (0x858) / 0x35DC beq; 0x35EC cmplw (0x854 vs kInvalidUniqueId) / 0x35F0 beq;
+  // 0x3600 bl IsPlaying / 0x3608 beq
   if (mShockWaveSfx && mShockWaveId != kInvalidUniqueId && CSfxManager::IsPlaying(mShockWaveSfx)) {
     if (const CShockWave* shockWave =
             static_cast< const CShockWave* >(mgr.GetObjectById(mShockWaveId))) {
       CVector3f direction = mgr.GetPlayer(0)->GetTranslation() - shockWave->GetTranslation();
       direction.SetZ(0.f);
-      if (direction.CanBeNormalized()) {
+      if (direction.CanBeNormalized()) { // 0x3670 bl CanBeNormalized / 0x3678 beq
         direction.Normalize();
         CSfxManager::UpdateEmitter(mShockWaveSfx,
                                    shockWave->GetTranslation() + direction * shockWave->GetRadius(),
@@ -297,17 +306,18 @@ void CPuddleSpore::KnockOffPlayers(float force, CStateManager& mgr) {
   }
 }
 
-// fn_51_23F0
+// @ fn_51_23F0
 void CPuddleSpore::UpdatePlayerContact(float dt, CStateManager& mgr) {
-  if (!mCollisionActorManager.get()) {
+  if (!mCollisionActorManager.get()) { // 0x2420 cmplwi r0, 0 (0x83c) / 0x2424 beq -> return
     return;
   }
 
   CAABox bounds = CAABox::MakeMaxInvertedBox();
   for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
-    if (i == 2) {
+    if (i == 2) { // 0x2464 cmplwi r27, 2 / 0x2468 beq
       continue;
     }
+    // 0x2494 cmplwi r3, 0 / 0x2498 beq (cast null)
     if (const CCollisionActor* actor = TCastToConstPtr< CCollisionActor >(mgr.GetObjectById(
             mCollisionActorManager->GetCollisionDescFromIndex(i).GetCollisionActorId()))) {
       const rstl::optional_object< CAABox > actorBounds = actor->GetTouchBounds();
@@ -321,7 +331,7 @@ void CPuddleSpore::UpdatePlayerContact(float dt, CStateManager& mgr) {
   for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
     CPlayer* player = mgr.GetPlayer(i);
     CAABox playerBounds(CVector3f::Zero(), CVector3f::Zero());
-    if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphed) {
+    if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphed) { // 0x25D4 cmpwi r0, 1 / 0x25D8 bne
       const float radius = player->GetMorphBall()->GetBallRadius();
       const CVector3f center = player->GetTranslation() + CVector3f(0.f, 0.f, radius);
       playerBounds = CAABox(center - CVector3f(radius, radius, radius),
@@ -331,10 +341,13 @@ void CPuddleSpore::UpdatePlayerContact(float dt, CStateManager& mgr) {
     }
 
     bool inBounds = false;
+    // 0x26C8 clrlwi. / 0x26CC beq (no overlap); 0x26D4 cmpwi r0, 2 (kPS_Platform) / 0x26D8 beq
     if (mTouchBounds.DoBoundsOverlap(playerBounds) && mState != kPS_Platform) {
       inBounds = true;
     }
     if (!inBounds) {
+      // 0x2710 cmplwi / 0x2714 beq (cast null); 0x2734 cmplwi / 0x273C beq (touch bounds absent);
+      // 0x2774 cmplwi / 0x2778 beq
       if (const CCollisionActor* actor = TCastToConstPtr< CCollisionActor >(mgr.GetObjectById(
               mCollisionActorManager->GetCollisionDescFromIndex(2).GetCollisionActorId()))) {
         const rstl::optional_object< CAABox > actorBounds = actor->GetTouchBounds();
@@ -343,18 +356,20 @@ void CPuddleSpore::UpdatePlayerContact(float dt, CStateManager& mgr) {
         }
       }
     }
-    if (!inBounds) {
+    if (!inBounds) { // 0x278C clrlwi. / 0x2790 beq -> next player
       continue;
     }
 
     const float push = (mState == kPS_Platform ? 0.001f : -0.0001f) +
                        (mTouchBounds.GetMaxPoint().GetZ() - playerBounds.GetMinPoint().GetZ());
+    // 0x27CC fcmpo / 0x27D0 ble (push > 0); 0x27D8 fcmpo / 0x27DC bge (max.z < player max.z)
     if (push > 0.f && mTouchBounds.GetMaxPoint().GetZ() < playerBounds.GetMaxPoint().GetZ()) {
+      // 0x27F0/0x27F4 and, 0x2804 beq: the 64-bit material mask & kMT_GroundCollider (0x25)
       const bool hasGroundCollider = player->GetMaterialList().HasMaterial(kMT_GroundCollider);
 #ifdef TARGET_PC
       // fn_51_23F0: only GroundCollider is conditional; kMT_Player goes unconditionally:
-      // 0x2810 beq .L_00002824 / 0x281C li r4,0x25 / 0x2820 bl RemoveMaterial;
-      // 0x282C li r4,0x20 / 0x2830 bl RemoveMaterial.
+      // 0x280C clrlwi. / 0x2810 beq / 0x2820 bl RemoveMaterial (0x25);
+      // 0x2830 bl RemoveMaterial (0x20), unconditional.
       if (hasGroundCollider) {
         player->RemoveMaterial(kMT_GroundCollider, mgr);
       }
@@ -367,7 +382,7 @@ void CPuddleSpore::UpdatePlayerContact(float dt, CStateManager& mgr) {
 #endif
       CPhysicsState state = player->GetPhysicsState();
       CVector3f direction = player->GetTranslation() - GetTranslation();
-      if (direction.CanBeNormalized()) {
+      if (direction.CanBeNormalized()) { // 0x2880 bl CanBeNormalized / 0x2888 beq
         direction.Normalize();
       } else {
         direction = CVector3f::Up();
@@ -377,8 +392,8 @@ void CPuddleSpore::UpdatePlayerContact(float dt, CStateManager& mgr) {
       state.SetTranslation(player->GetTranslation());
       player->SetPhysicsState(state);
 #ifdef TARGET_PC
-      // 0x2924 beq .L_00002938 / 0x2930 li r4,0x25 / 0x2934 bl AddMaterial;
-      // 0x2940 li r4,0x20 / 0x2944 bl AddMaterial.
+      // 0x2920 clrlwi. / 0x2924 beq / 0x2934 bl AddMaterial (0x25);
+      // 0x2944 bl AddMaterial (0x20), unconditional.
       if (hasGroundCollider) {
         player->AddMaterial(kMT_GroundCollider, mgr);
       }
@@ -391,6 +406,7 @@ void CPuddleSpore::UpdatePlayerContact(float dt, CStateManager& mgr) {
 #endif
     }
 
+    // 0x294C cmpwi r0, 2 / 0x2950 beq; 0x2960 fcmpo / 0x2964 cror eq, lt, eq / 0x2968 bne
     if (mState != kPS_Platform && mCurDamageRemTime <= 0.f) {
       mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), GetContactDamage(),
                       CMaterialFilter::GetPassEverything(), -player->GetVelocityWR());

@@ -85,8 +85,8 @@ Six dirs merge with
 | 2B98 KnockOffPlayers | 27/28 → dead | edge 289:1/2 dead: 0x2BF0 (`x838 >= player min.z`) implies min.z <= max.z, so 0x2C54 (`min.z - max.z >= 0.2f`) is never taken |
 | 19C4 SetupCollisionManager | 42/43 → dead | edge 475:3/4 (the TCastToPtr null at 0x1D24) dead: those ids are the manager's own, one `rs_new CCollisionActor` per joint in the call that fills them (CCollisionActorManager.cpp:121-196) |
 | 2DA4 WeaponHitsWeakSpot | 9/10 at pud1 | 248:3/4 open at pud1 (0x2DF8: WeaponHits false while open — a weapon mode the open vulnerability rejects; power, charge and missile all hit). **pud2 measured it** (see below); the geometric sides are the ones the pud2 runs miss |
-| 23F0 UpdatePlayerContact | 35/42 | 311:1/2, 338:1/2 (cast null, as 19C4), 341:1/2 (no touch bounds), 353/358/382 (hasGroundCollider false: the player always has kMT_GroundCollider here), 370:1/2 (zero-length push direction) |
-| 34E0 Think | 15/18 | 97:1/2 and 99:1/6 need mShockWaveSfx == 0, but `CSfxHandle(0)` makes mID `(++mRefCount << 14) | 0` (CSfxHandle.cpp:5), never 0; 104:1/2 needs the player exactly at the wave's x/y (0x3678 CanBeNormalized) |
+| 23F0 UpdatePlayerContact | 35/42 at pud1; **39/42 at pud3** (see pud3 section) | 311:1/2, 338:1/2 (cast null, as 19C4), 341:1/2 (no touch bounds), 353/358/382 (hasGroundCollider false: the player always has kMT_GroundCollider here), 370:1/2 (zero-length push direction) |
+| 34E0 Think | 15/18 at pud1; **16/18 at pud3** (see pud3 section) | 97:1/2 and 99:1/6 need mShockWaveSfx == 0, but `CSfxHandle(0)` makes mID `(++mRefCount << 14) | 0` (CSfxHandle.cpp:5), never 0; 104:1/2 needs the player exactly at the wave's x/y (0x3678 CanBeNormalized) |
 | 42C LoadPuddleSpore | 12/16 | 670:1/2 (modelData null: the shipped model always loads), 678/692 edges (temporaries' exception clean-up) |
 
 Fixes in this pass (TARGET_PC only):
@@ -187,3 +187,18 @@ evidence above comes from the earlier fixture version and is unchanged. The corr
 
 No frame-level identity substitution is used anywhere: the window is the caller frame's name plus the
 tracked `this`, exactly as in the boots.
+
+## pud3 (2026-10-25, base 96e000ab7): UpdatePlayerContact 23F0 marked, Think 34E0 left unmarked
+
+Fixture `tools/cov/specs/pud3_contact_think.py` (selftest 12 OK; con `pud3_puddlespore.con`), GPU run on 0d_swamp_hall_dark,
+guarded frame equality plus (inferior, thread) ownership, snapshot/arm/write/readback/restore, fails closed. Frozen evidence:
+`/tmp/opencode/pud3-frozen/` (executed binary sha256 07654cea..., gcno 750b00cc..., run5/ gcda, jsonl, fixture sha256 9cc088fe..).
+
+- 23F0: 58/58 lines, 39/42 arms. Both pushes (natural follows the entry GroundCollider bit), all hasGroundCollider arms and the
+  zero-length push (CanBeNormalized) were reached on real invocations. Callee fn_51_2A78 is a 0x6C-byte word-copy (a CTransform
+  copy), no logic. Dead arms: (1) cast null: the ids are the manager's own CCollisionActors, one per joint, created together
+  (CCollisionActorManager.cpp:121-196); (2) touch bounds absent (cpp:354): `CCollisionActor::GetTouchBounds` always assigns the optional;
+  (3) the same cast-null edge at the second TCastToPtr (index 2, cpp:351). Marked.
+- 34E0: 22/22 lines, 16/18 arms. 108:3/6 dead (id and sfx set together at cpp:195-196, id never reset). 110:1/2 (null shock wave
+  object while the sfx plays) is unproven (not forced, not proven dead), so Think stays unmarked.
+- Fix (TARGET_PC): ctor `mShockWaveSfx()` instead of `(0)`: CSfxHandle(0) gives a non-zero ID; retail stores the null word.
