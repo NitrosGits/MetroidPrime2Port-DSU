@@ -5,6 +5,7 @@
 #include "GuiSys/CGuiCamera.hpp"
 #include "GuiSys/CGuiFrame.hpp"
 #include "GuiSys/CGuiFrameLoader.hpp"
+#include "GuiSys/CGuiHeadWidget.hpp"
 #include "GuiSys/CGuiTextPane.hpp"
 #include "GuiSys/CGuiWidgetDrawParms.hpp"
 #include "Kyoto/Alloc/CMemory.hpp"
@@ -25,6 +26,10 @@
 #include "rstl/algorithm.hpp"
 #include "rstl/pair.hpp"
 #include "rstl/reserved_vector.hpp"
+
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
 
 // Structure-first scaffold; scan-display integration and widget behavior remain incomplete.
 
@@ -173,6 +178,18 @@ void CHudDecoInterfaceScan::InitializeFlatFrame(const CStateManager& mgr) {
   mHistoryLeft = mLoadedFlatFrame->FindWidget("basewidget_crazyleft");
   mHistoryRight = mLoadedFlatFrame->FindWidget("basewidget_crazyright");
   mHistoryRoot = mLoadedFlatFrame->FindWidget("basewidget_crazy");
+#ifdef TARGET_PC
+  // Setting scan_spread: how much of the widescreen spread the scan history panels get (a phone's
+  // touch controls cover the screen edges).
+  float (*const scanSpread)() = [] {
+    return static_cast< float >(PortOverlay::ScanSpread()) / 100.f;
+  };
+  // The flat frame spreads only its history panels; the text box, bar and messages stay 4:3.
+  mLoadedFlatFrame->GetFrameCamera()->SetSpreadable(true);
+  mLoadedFlatFrame->SetSpreadWeightTree(static_cast< const CGuiWidget* >(mLoadedFlatFrame->GetRootWidget()), [] { return 0.f; });
+  mLoadedFlatFrame->SetSpreadWeightTree(mHistoryLeft, scanSpread);
+  mLoadedFlatFrame->SetSpreadWeightTree(mHistoryRight, scanSpread);
+#endif
   if (mHistoryRoot != nullptr) {
     mHistoryRoot->SetVisibility(false, kTM_Children);
   }

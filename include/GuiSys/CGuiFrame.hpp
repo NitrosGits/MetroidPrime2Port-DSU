@@ -42,6 +42,9 @@ public:
   // Port: widgets that move as one unit under the widescreen spread share the anchor's position.
   void SetSpreadAnchor(const CGuiWidget* member, const CGuiWidget* anchor);
   void SetSpreadAnchorTree(const CGuiWidget* root);
+  // Port: move `root` and every widget under it by only `weight()` of the horizontal spread (0 keeps
+  // the 4:3 place, 1 is the full spread). Read at every draw, so it follows a setting live.
+  void SetSpreadWeightTree(const CGuiWidget* root, float (*weight)());
 #endif
 
 private:

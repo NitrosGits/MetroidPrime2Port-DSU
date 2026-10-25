@@ -161,6 +161,66 @@ void CGuiFrame::SetSpreadAnchorTree(const CGuiWidget* root) {
   }
 }
 
+// Widgets moved by only part of the horizontal spread (the scan visor's side panels). Kept beside
+// the anchors for the same reason; `weight` is read at every draw.
+struct SPortSpreadWeight {
+  const CGuiFrame* frame;
+  const CGuiWidget* member;
+  float (*weight)();
+};
+static SPortSpreadWeight sPortSpreadWeights[256];
+static int sPortSpreadWeightCount = 0;
+
+static float PortFindSpreadWeight(const CGuiFrame* frame, const CGuiWidget* widget) {
+  for (int i = 0; i < sPortSpreadWeightCount; ++i) {
+    if (sPortSpreadWeights[i].frame == frame && sPortSpreadWeights[i].member == widget) {
+      const float w = sPortSpreadWeights[i].weight();
+      return w < 0.f ? 0.f : (w > 1.f ? 1.f : w);
+    }
+  }
+  return 1.f;
+}
+
+void CGuiFrame::SetSpreadWeightTree(const CGuiWidget* root, float (*weight)()) {
+  if (root == nullptr || weight == nullptr) {
+    return;
+  }
+  for (rstl::vector< CGuiWidget* >::const_iterator it = mWidgets.begin(); it != mWidgets.end();
+       ++it) {
+    const CGuiObject* obj = *it;
+    for (; obj != nullptr && obj != root; obj = obj->GetParent()) {
+    }
+    if (obj == nullptr) {
+      continue;
+    }
+    int slot = -1;
+    for (int i = 0; i < sPortSpreadWeightCount; ++i) {
+      if (sPortSpreadWeights[i].frame == this && sPortSpreadWeights[i].member == *it) {
+        slot = i;
+      }
+    }
+    if (slot < 0 && sPortSpreadWeightCount < 256) {
+      slot = sPortSpreadWeightCount++;
+    }
+    if (slot >= 0) {
+      sPortSpreadWeights[slot].frame = this;
+      sPortSpreadWeights[slot].member = *it;
+      sPortSpreadWeights[slot].weight = weight;
+    }
+  }
+}
+
+
+static void PortDropSpreadWeights(const CGuiFrame* frame) {
+  int kept = 0;
+  for (int i = 0; i < sPortSpreadWeightCount; ++i) {
+    if (sPortSpreadWeights[i].frame != frame) {
+      sPortSpreadWeights[kept++] = sPortSpreadWeights[i];
+    }
+  }
+  sPortSpreadWeightCount = kept;
+}
+
 static void PortDropSpreadAnchors(const CGuiFrame* frame) {
   int kept = 0;
   for (int i = 0; i < sPortSpreadAnchorCount; ++i) {
@@ -191,9 +251,10 @@ static void PortDrawSpread(const CGuiFrame* frame, const CGuiCamera& camera,
   float eyeDepth = 0.f;
   CAABox bounds(CVector3f(0.f, 0.f, 0.f), CVector3f(0.f, 0.f, 0.f));
   const CGuiWidget* group = PortFindSpreadAnchor(frame, widget);
+  const float weight = sPortSpreadWeightCount > 0 ? PortFindSpreadWeight(frame, widget) : 1.f;
   if (group != nullptr) {
     anchor = group->GetWorldTransform().GetTranslation();
-  } else if (widget->GetWidgetTypeID() == 'MODL' &&
+  } else if (weight == 1.f && widget->GetWidgetTypeID() == 'MODL' &&
       static_cast< const CGuiModel* >(widget)->PortGetBounds(bounds)) {
     anchor = world * bounds.GetCenterPoint();
     const CAABox eyeBounds = bounds.GetTransformedAABox(invView * world);
@@ -236,7 +297,7 @@ static void PortDrawSpread(const CGuiFrame* frame, const CGuiCamera& camera,
             CTransform4f::Scale(spread, 1.f, 1.f) *
             CTransform4f::Translate(-camera.GetSpreadCenterX(), 0.f, 0.f) * invView * world;
   } else {
-    moved = camera.GetSpreadTransform(anchor) * world;
+    moved = camera.GetSpreadTransform(anchor, weight) * world;
   }
   if (widget->PortSetWorldTransform(moved, savedXf, savedValid)) {
     widget->Draw(parms);
@@ -291,6 +352,7 @@ CGuiFrame::CGuiFrame(CInputStream& in, CSimplePool* pool)
 CGuiFrame::~CGuiFrame() {
 #ifdef TARGET_PC
   PortDropSpreadAnchors(this);
+  PortDropSpreadWeights(this);
 #endif
   delete mRootWidget;
 }

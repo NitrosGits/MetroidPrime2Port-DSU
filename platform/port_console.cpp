@@ -1465,6 +1465,20 @@ void CmdMsaaAniso(CStateManager&, const Args& args, std::string& out) {
   out += line;
 }
 
+void CmdScanSpread(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() >= 2) {
+    const int value = ArgToInt(args[1], -1);
+    if (value < PortOverlay::kScanSpreadMin || value > PortOverlay::kScanSpreadMax) {
+      Fail("scan spread is 0..100 percent (100 = fully spread)");
+      return;
+    }
+    PortOverlay::SetScanSpread(value);
+  }
+  char line[64];
+  std::snprintf(line, sizeof(line), "scan spread %d%%\n", PortOverlay::ScanSpread());
+  out += line;
+}
+
 void CmdHudScale(CStateManager&, const Args& args, std::string& out) {
   if (args.size() < 2) {
     char line[64];
@@ -4214,6 +4228,8 @@ const CommandSpec kCommands[] = {
     {"msaa", CmdMsaaAniso,
       "msaa <1|4> | aniso <1..16>  anti-aliasing and anisotropic filtering (applied next frame)\n"},
     {"aniso", CmdMsaaAniso, ""},
+    {"scanspread", CmdScanSpread,
+      "scanspread [0..100]         how far the scan visor side panels spread (0 = 4:3 place)\n"},
     {"hudscale", CmdHudScale,
       "hudscale <50..100>          HUD scale in percent, as the F1 HUD row does\n"},
     {"crosshair", CmdCrosshair,

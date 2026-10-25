@@ -351,6 +351,8 @@ const SettingKey kSettingKeys[] = {
          sHudScale = parsed;
      },
      [](std::ostream& out) { out << sHudScale; }, false, "50", "100"},
+    IntKey< &sScanSpread, PortOverlay::kScanSpreadMin, PortOverlay::kScanSpreadMax >(
+        "scan_spread", "0", "100"),
     IntKey< &sUiScale, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax >("ui_scale", "50",
                                                                             "150"),
     BoolKey< &sVsync >("vsync"),

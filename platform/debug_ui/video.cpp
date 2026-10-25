@@ -119,6 +119,12 @@ void DrawVideoDisplay() {
   // (PortOverlay::HudScalingActive): the HUD's projection is scaled about the screen centre.
   Changed(ImGui::SliderInt("HUD scale", &sHudScale, PortOverlay::kHudScaleMin, PortOverlay::kHudScaleMax, "%d%%"));
   ImGui::SetItemTooltip("Shrinks the HUD toward the middle; the helmet and menus keep their size.");
+  ImGui::BeginDisabled(!hudWide);
+  Changed(ImGui::SliderInt("Scan panel spread", &sScanSpread, PortOverlay::kScanSpreadMin,
+                           PortOverlay::kScanSpreadMax, "%d%%"));
+  ImGui::EndDisabled();
+  ImGui::SetItemTooltip("How far the scan visor's side panels spread to the screen edges. 0 keeps\n"
+                        "them at their 4:3 place near the centre (default on a phone).");
   if (sAimCrosshair) {
     Changed(ImGui::SliderInt("Crosshair opacity", &sCrosshairOpacity, PortOverlay::kCrosshairOpacityMin,
                              PortOverlay::kCrosshairOpacityMax, "%d%%"));

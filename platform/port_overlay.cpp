@@ -148,6 +148,13 @@ bool sHudWide = true;
 // The widest screen the HUD spreads to (HudSpreadCap): 0 16:9, 1 21:9, 2 the whole screen. Past it the
 // HUD stays centred at that width.
 int sHudSpreadMax = 1;
+// Scan panel spread in percent (`MP2_SCAN_SPREAD`): the touch controls cover the screen edges on
+// Android, so a phone starts them at their 4:3 place.
+#if defined(__ANDROID__)
+int sScanSpread = PortOverlay::kScanSpreadMin;
+#else
+int sScanSpread = PortOverlay::kScanSpreadMax;
+#endif
 // MP1's static render scale (`MP2_RENDER_SCALE`): 0 draws the EFB at the window's own size (MP1's
 // "Auto"), 1-4 at that multiple of the render mode's 480-line base. MP2 drew at the window's size
 // before this setting, so that stays the default here (MP1's is 1).
@@ -1117,6 +1124,22 @@ void SetHudSpreadMax(int mode) {
   mode = std::clamp(mode, 0, 2);
   if (sHudSpreadMax != mode) {
     sHudSpreadMax = mode;
+    Persist();
+  }
+}
+
+int ScanSpread() {
+  ReadEnv();
+  const int env = port::EnvInt("MP2_SCAN_SPREAD", -1);
+  return std::clamp(env >= kScanSpreadMin && env <= kScanSpreadMax ? env : sScanSpread,
+                    kScanSpreadMin, kScanSpreadMax);
+}
+
+void SetScanSpread(int percent) {
+  ReadEnv();
+  percent = std::clamp(percent, kScanSpreadMin, kScanSpreadMax);
+  if (sScanSpread != percent) {
+    sScanSpread = percent;
     Persist();
   }
 }
