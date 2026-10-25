@@ -221,22 +221,36 @@ def put_back(gdb):
 
 def grapple_alias(gdb):
     # f7cddd: HasGrappleModelData() reads mGrappleModelData (rax). No run keeps a grapple model while
-    # the shadow exists, so alias the (static, anim-less) beam model for the register only; the
-    # RenderShadowBuffer count is lowered to 2 at f7cdff so models[2] (really null) is not used.
+    # the shadow exists, so alias the (static, anim-less) beam model for the register, and at f7cdff
+    # also store it in the on-stack models[2] (rsp+0x80, stored at f7cd80) so RenderShadowBuffer runs
+    # with count 3 and a valid CModelData* (no count rewrite).
     if tick('c30alias', 2) == 0:
         return
     this = _val('$rbx')
     beam = _val('*(long*)(%d+0x468)' % this) if this else None
     if beam and _val('$rax') == 0:
         reg(gdb, '$rax', str(beam))
-        cnt['c30alias_on'] = 1
+        cnt['c30alias_on'] = beam
 
 
 def alias_count(gdb):
-    if cnt.get('c30alias_on'):
+    beam = cnt.get('c30alias_on')
+    if beam:
         cnt['c30alias_on'] = 0
-        reg(gdb, '$edx', '2')
+        reg(gdb, '*(long*)($rsp+0x80)', str(beam))  # stack slot, dead after the call: no restore
+        cnt['c30models2'] = cnt.get('c30models2', 0) + 1
+        _log('C30 models[2]=beam %#x, edx=%d' % (beam, _val('$edx') or -1))
     restore(gdb)
+
+
+def rsb_entry(gdb):
+    n = _val('$edx')
+    m = _val('$rcx')
+    if m:
+        _log('RSB count %s models %s' % (n, [hex(_val('*(long*)(%d+%d)' % (m, 8 * i)) or 0) for i in range(3)]))
+    if n == 3:
+        cnt['rsb3'] = cnt.get('rsb3', 0) + 1
+        _log('RenderShadowBuffer entered with count 3 (hit %d)' % cnt['rsb3'])
 
 
 # --- PreRender (cov line numbers; see docs/module-analysis/ScriptPlayerActor.md section 8)
@@ -251,6 +265,7 @@ PRE = [
     ('C30 restore f7cd56', 'loc:*0xf7cd56', put_back),
     ('C30 restore f7cdff', 'loc:*0xf7cdff', alias_count),
     ('C30 restore f7ced9', 'loc:*0xf7ced9', put_back),
+    ('C30 RenderShadowBuffer count', 'loc:*0x128ce10', rsb_entry),
 ]
 
 # --- Think
@@ -402,7 +417,8 @@ def think_loading(gdb, st):
 
 
 # the binary is a PIE: `*0xADDR` would not relocate, `*symbol+off` does
-BASES = [(0xf7ccb0, '_ZN18CScriptPlayerActor9PreRenderER13CStateManager'),
+BASES = [(0x128ce10, '_ZN16CProjectedShadow18RenderShadowBufferER13CStateManageriPKPK10CModelDataPKPK12CTransform4fiRK9CVector3fff'),
+         (0xf7ccb0, '_ZN18CScriptPlayerActor9PreRenderER13CStateManager'),
          (0xf7c550, '_ZN18CScriptPlayerActor5ThinkEfR13CStateManager'),
          (0xf7b0f0, '_ZN18CScriptPlayerActor10SetupEnvFxER13CStateManagerb'),
          (0xf79fb0, '_ZN18CScriptPlayerActor21SetupOfflineModelDataEv')]

@@ -521,7 +521,7 @@ int CScriptPlayerActor::GetSuitCharIdx(const CStateManager& mgr,
   return charIdx;
 }
 
-// @ fn_61_C30 forced (tools/cov/specs/spa3_force.py: grapple alias + shadow/backup arms; beam model aliased as grapple model, count lowered)
+// @ fn_61_C30 forced (tools/cov/specs/spa3_force.py: grapple alias + shadow/backup arms; the beam model is both the HasGrappleModelData value and models[2], so RenderShadowBuffer runs with count 3, no count rewrite)
 void CScriptPlayerActor::PreRender(CStateManager& mgr) {
   if (mBackupModelData) {
     if (mDeallocateBackupCountdown == 0) {

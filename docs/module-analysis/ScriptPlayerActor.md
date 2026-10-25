@@ -106,8 +106,13 @@ Merged evidence: frozen cov binary sha256 `c40ad8cb…6fbaf`; gcda, logs and mer
 |---|---|---|
 | 970 SetIntoStateManager | 22/22, 18/18, marked | `sia_not_player`: clears `mIsPlayerActor` on another chain actor at the `actor->mIsPlayerActor` read (580:2) |
 | AB8 SetupEnvFx | 12/12, 17/17, marked | rain arm: producer forced; no-shadow via mFlags 0x20 |
-| C30 PreRender | 13/13, 21/21, marked | 535:3 `HasGrappleModelData() ? 3 : 2`: no run loads a grapple model (the ctor builds CStaticRes beam/grapple data), so `grapple_alias` at `f7cddd` makes the load return the beam pointer and `alias_count` sets the count register. A forced alias, not a natural state |
+| C30 PreRender | 13/13, 21/21, marked | 535:3 `HasGrappleModelData() ? 3 : 2`: no run loads a grapple model (the ctor builds CStaticRes beam/grapple data), so `grapple_alias` at `f7cddd` makes the load return the beam pointer and `alias_count` (f7cdff) also stores that valid `CModelData*` in the on-stack `models[2]` (`rsp+0x80`). The count stays 3 and `RenderShadowBuffer` really runs with it (spa3c run f13, `forced.log`: `RSB count 3 models [suit, beam, beam]`, 5 hits, game rc 0, caught/reach-stub 0). A forced alias, not a natural state |
 | 2630 Think | 45/45, 67/67, marked | per-call forcers at the model-loaded tests (219/224/225), cinematic camera, loading blocks |
 | 2E3C dtor | 100% blocks, marked | `mBackupModelData` live arm: `SPA3_ONLY=offl` forces `SetupOfflineModelData`'s IsMaxSpeed test (`*SetupOfflineModelData+0xbe`, `je f7a0b8`) false and holds the countdown (`movl $2,0x4c8` at f7a10e) ; `spa3_backup_delete.con` deletes the actor. `SPA3_MAXSPEED=1` run covers the skip arm |
 
 `single_ptr<CProjectedShadow>` (dtor 2E3C): retail asm (`ScriptPlayerActor/asm/.../CScriptPlayerActor.s:3414`) calls `__dt__16CProjectedShadowFv(*0x3f4, r4=1)` with no caller null check; host `~single_ptr(){delete mPtr;}` (`rstl/single_ptr.hpp:15`) is a null-safe deleting dtor. Equivalent. The optional at 0x3e4 guarded by byte 0x3f0 is `mBackupModelData`; tokens at 0x3e0/0x3dc/0x3d8 follow. No source change.
+
+### 8b. spa3c rework (2026-10-25)
+
+- C30: the first version rewrote the count to 2 (`alias_count`), so the count-3 call never ran. Now no count rewrite; models[2] is a valid pointer (the beam model). Evidence `/tmp/opencode/spa3-ev/c/f13` (run `42b935e4,03_sand_temple_dark`, `--fast --frames 2600`).
+- One cited merge for every marker, including 103C (needs run f2): set in `/tmp/opencode/spa3-ev/c/merge_set.txt` (f13, f12..f5, f3, f2, a..j), report `/tmp/opencode/spa3-ev/c/merged_report.txt`: Think, SetupEnvFx, SetIntoStateManager, PreRender, GetNextSuitCharIdx, GetSuitCharIdx, LoadPlayerActor, SetupOfflineModelData all ALL-ARMS. C0/FDC/103C/2E3C numbers in section 7 and 8 come from this merge.
