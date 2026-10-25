@@ -21,6 +21,9 @@ ANIM = '$this->DoUserAnimEvent(*$mgr, *(CInt32POINode*)$rdx, %d, 0.016f)'
 # TCachedToken::IsLoaded is `mItem != nullptr || mObjRef->mObject != nullptr` (both inline)
 TOK = '$this->mAltProjectileInfo1.mWeaponDescription'
 NOTLOADED = [('%s.mItem' % TOK, '0'), ('%s.mObjRef->mObject' % TOK, '0')]
+TOK2 = '$this->mAltProjectileInfo2.mWeaponDescription'
+NOTLOADED2 = [('%s.mItem' % TOK2, '0'), ('%s.mObjRef->mObject' % TOK2, '0')]
+ATK = [('$this->mIsAttackingObject', '1'), ('$this->mAttackObjectId.value', '$fp3_uid($fp3_obj($mgr, -1, 0, "CFlyingPirate"))')]
 NOCREATE = [('CStateManager::CanCreateProjectile(', 0)]
 
 CALLS = [
@@ -32,6 +35,11 @@ CALLS = [
         # cached item null, the object reference loaded: `||` takes its right operand true
         ([NOTLOADED[0]], ANIM % 0),
         ([], ANIM % 0, NOCREATE),
+        # the attack-object arm reads mAltProjectileInfo2: the same token / can-create arms on it
+        (ATK + NOTLOADED2, ANIM % 0),
+        (ATK + [NOTLOADED2[0]], ANIM % 0),
+        (ATK, ANIM % 0, NOCREATE),
+        (ATK + [NOTLOADED2[0]], ANIM % 0, NOCREATE),
         ([], ANIM % 19),
         ([], ANIM % 7),
     ], 'DoUserAnimEvent with the attack-object / aqua / token-not-loaded / cannot-create / ragdoll / default arms'),
