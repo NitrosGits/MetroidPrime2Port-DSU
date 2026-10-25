@@ -48,8 +48,8 @@ static CColor skDamageFlashColor(0.5f, 0.f, 0.f, 1.f);
 // (0x3F000000 = 0.5f), 0x4F68 .rodata 0x10 (0.0f), 0x4F70 .rodata 0x0C (0x3F800000 = 1.0f), f3 = f2,
 // then __ct__6CColorFffff (DOL 0x803207FC) at 0x4F7C -> CColor(0.5f, 0.f, 0.f, 1.f), the host's
 // `skDamageFlashColor(0.5f, 0.f, 0.f, 1.f)` (same four values; host ctor call passes 0.5/0/0/1).
-// No other store, no branch; frame stmw r14 0x4E20 (0xC0, lmw 0x511C). `Attack` (0x2C6C) is still
-// without a `// @` marker yet; the other nine targets carry theirs.
+// No other store, no branch; frame stmw r14 0x4E20 (0xC0, lmw 0x511C). All ten targets carry their
+// `// @` markers.
 // @ fn_1_4E08
 static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Start", reinterpret_cast< CPatterned::StateMachine::StateFunc >(&CAIMannedTurret::Start)},
@@ -266,6 +266,12 @@ void CAIMannedTurret::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   UpdateRider(mgr, dt);
 }
 
+// Every arm ran or was forced (tools/cov amt3, 06_sand_alamofront, 2026-10-25): enter, telegraph
+// countdown and Fire, leash in/out of range, fire timer and angle < 5 ran natural. Limit's
+// |dot| > 1 arm (retail 0x2E90 fabs / 0x2E98 fcmpo vs 1.0) forced three times by amt3_force.py at
+// Attack+896, inside inlined CMath::Limit (xmm0 := copysign(1.0000001, dot), xmm1 := 1.0000001,
+// frame-owned, readback). Unrun arcs are landing pads only (callees don't throw).
+// @ fn_1_2C6C
 void CAIMannedTurret::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
