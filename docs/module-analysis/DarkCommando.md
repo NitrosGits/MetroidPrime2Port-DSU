@@ -393,10 +393,30 @@ loader property tables establish), since none of the four structs declares a cop
 its own. There is therefore no arm to run and no new runtime evidence can add anything: the rows
 are complete once someone decides what a "marker" means for a body nobody wrote.
 
-**Open decision (for the orchestrator).** No `// @` marker can sit above these bodies: there is no
-source function to mark, and the marker convention is "one line above the body". Options:
-(a) leave the four rows unmarked and record in the TSV that they are compiler-generated copies of
-verified structs (the dc4 note's own proposal, and the same shape as the H rows);
-(b) authorize a small non-comment change — e.g. four `SLdrXData(const SLdrXData&) = default;`
-declarations — so a marker has something to sit above. That is a code change, so dct1 did not make
-it. dct1 verified the asm above and changed nothing in this module.
+**dct2: marked (decision taken).** The orchestrator chose to mark them, on the precedent of
+`include/MetroidPrime/Enemies/CShrieker.hpp:25` and
+`src/MetroidPrime/Enemies/PortCBoostBallGuardianBall.cpp:1106-1107` (`// @ fn_..` above the struct
+with a proof comment for the implicit copy). Each of the four now carries a marker plus a slot map
+immediately above its declaration in `include/MetroidPrime/ScriptLoader/SLdrDarkCommando.hpp`.
+Comment-only: no code change.
+
+Per-struct mapping check (retail copy body vs the declared member list, slot by slot; "w" = a 4-byte
+word copied with `stw`, "f" = a `stfs` float, "b" = a `stb` bool; a store's source and destination
+offsets are identical in all four bodies, so it is a straight same-offset memberwise copy):
+
+| fn_3_ | struct | slots | slot map |
+|---|---|---|---|
+| 7DDC | `SLdrDarkCommandoEMPData` | 18 | 3 floats, `grenadeDamage` (w + 3 f), 3 CAssetIds, 4 floats, w, f, 2 w = the 15 members; sizeof 0x48 both sides |
+| 7D40 | `SLdrDarkCommandoChargeBeamData` | 19 | 3 floats, `damage` (w+3f), 2 CAssetIds, `moldDamage` (w+3f), `sound_Mold` (f,f,w,w,w,b) = the 8 members; sizeof 0x4C |
+| 797C | `SLdrDarkCommandoShadowDashData` | 25 | 4 floats, `shadowDecoyFx`, 3 `SLdrAudioPlaybackParms` (6 slots each), then 2 nested `SLdrDamageVulnerability` copy calls = the 10 members; sizeof 0x314 |
+| 7880 | `SLdrDarkCommandoData` | 23 | 4 floats, `bladeDamage` (w+3f), 2 `SLdrAudioPlaybackParms`, then nested-child copies at +0x50/+0x98/+0xE4 = the 10 members; sizeof 0x3F8 |
+
+No retail slot is left without a declared member (no padding word or byte is copied) and no declared
+member is left uncopied; every nested copy call's type is the type of the member at that position.
+The host layout was checked, not assumed: a `-fsyntax-only` TU built with `build-port-link`'s own
+flags asserts `sizeof` 0x48/0x4C/0x314/0x3F8, `SLdrAudioPlaybackParms` 0x18,
+`SLdrDamageVulnerability` 0x15C (29 weapon entries) and the offsets used above
+(`eMPDuration` 0x3C, `sound_Mold` 0x34, `shadowDecoyFx` 0x10, `sound_Cloak` 0x2C,
+`shadowDecoyVulnerability` 0x5C, `shadowDashVulnerability` 0x1B8, `bladeDamage` 0x10,
+`sound_HurledDeath` 0x38, `eMPGrenadeAttackInfo` 0x50, `chargeBeamAttackInfo` 0x98,
+`shadowDashInfo` 0xE4).
