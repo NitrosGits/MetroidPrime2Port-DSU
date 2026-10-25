@@ -149,6 +149,12 @@ bool sFrameLimit = true;
 // MP1's smooth frames (`MP2_SMOOTH_FRAMES`, on by default): with the cap off, the camera is drawn
 // between the last two ticks (CCameraManager::SetPresentationInterpolation, src/MetroidPrime/main.cpp).
 bool sSmoothFrames = true;
+// Frame-blend tests (`MP2_PRESENT_T`, console `present`): the forced presentation factor, -1 = off.
+float sPresentOverride = -1.f;
+unsigned sPresentCycleFrame = 0;
+// The console's `hold`/`step`: while held the loop runs no ticks except the queued steps.
+bool sTickHold = false;
+unsigned sHeldTicks = 0;
 // MP1's pose interpolation (`MP2_POSE_INTERPOLATION`, off by default as there): with smooth frames
 // on, skinned poses are blended between the last two ticks (CAnimData::PortPresentedPose).
 bool sPoseInterpolation = false;
@@ -1184,6 +1190,74 @@ void SetSmoothFrames(bool enabled) {
     sSmoothFrames = enabled;
     Persist();
   }
+}
+
+// MP2_PRESENT_T is read on the first call, like ReadEnv reads the other overrides.
+void ReadPresentEnv() {
+  static const bool read = [] {
+    const char* present = port::EnvString("MP2_PRESENT_T");
+    if (present == nullptr || present[0] == '\0') {
+      return true;
+    }
+    if (std::strcmp(present, "cycle") == 0) {
+      sPresentOverride = kPresentCycle;
+    } else if (std::strcmp(present, "tick") == 0) {
+      sPresentOverride = kPresentTick;
+    } else {
+      const float t = static_cast< float >(std::atof(present));
+      sPresentOverride = t < 0.f ? 0.f : t > 1.f ? 1.f : t;
+    }
+    return true;
+  }();
+  (void)read;
+}
+
+bool PresentOverride(float& t) {
+  ReadPresentEnv();
+  if (sPresentOverride < 0.f) {
+    return false;
+  }
+  if (sPresentOverride == kPresentTick) {
+    t = -1.f;
+  } else if (sPresentOverride > 1.f) {
+    t = 0.25f * static_cast< float >(sPresentCycleFrame++ & 3);
+  } else {
+    t = sPresentOverride;
+  }
+  return true;
+}
+
+void SetPresentOverride(float value) {
+  sPresentOverride = value < 0.f             ? -1.f
+                     : value == kPresentTick ? kPresentTick
+                     : value > 1.f           ? kPresentCycle
+                                             : value;
+  sPresentCycleFrame = 0;
+}
+
+float PresentOverrideValue() {
+  ReadPresentEnv();
+  return sPresentOverride;
+}
+
+bool TickHold() { return sTickHold; }
+
+void SetTickHold(bool held) {
+  sTickHold = held;
+  sHeldTicks = 0;
+}
+
+void StepTicks(unsigned count) { sHeldTicks += count; }
+
+unsigned PendingHeldTicks() { return sHeldTicks; }
+
+unsigned TakeHeldTicks() {
+  // One tick per loop, as MP1 does, so each step is one drawn frame.
+  if (sHeldTicks == 0) {
+    return 0;
+  }
+  --sHeldTicks;
+  return 1;
 }
 
 bool PoseInterpolation() {

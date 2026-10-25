@@ -152,6 +152,11 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
   switch (message.GetType()) {
   case kAM_FrameBegin:
     mStateManager->FrameBegin(MakeMsg::GetParmFrameBegin(message).GetInt32());
+#ifdef TARGET_PC
+    // The console's `hold` runs a frame with no ticks at all, so the timer tick below never comes;
+    // serving the queue here keeps the console answering while the simulation is stopped.
+    PortConsole::IdleTick(*mStateManager);
+#endif
     break;
   case kAM_TimerTick: {
     const bool wasInitialized = mInitialized;
