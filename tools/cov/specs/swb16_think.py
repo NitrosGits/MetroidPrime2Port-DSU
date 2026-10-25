@@ -52,7 +52,7 @@ SITES = {
     'S15': ('T', 0x43e, 'je', 0x467, 0x440, 'rbp', True),   # e3767e 858 !mActive (e376a7 test)
     'S16': ('T', 0x455, 'ja', 0x46b, 0x457, 'rbp', False),  # e37695 858 mFreezeTimer >= 0.1 (e37697 lock add)
     'S17': ('T', 0x469, 'je', 0x3f8, 0x46b, 'rbp', True),   # e376a9 859 !mLaunched -> skip (e37638 lock add)
-    'S18': ('T', 0x29b, 'jle', 0xa9b, 0x2a1, 'rbp', False),  # e374db 818 --x52c_ > 0: keep creating (e374e1 lock add)
+    'S18': ('T', 0x29b, 'jle', 0xa9b, 0x2a1, 'rbp', True),  # e374db 818 x52c_ still > 0 -> break (e37cdb lock add)
     'U1': ('U', 0x14, 'je', 0xc0, 0x1a, 'rdi', True),       # e31424 883 !mAnimated -> ret (e314d0 ret)
     'U2': ('U', 0x3b, 'je', 0xa7, 0x3d, 'rdi', True),       # e3144b 885 count == 0 -> epilogue (e314b7 lock add)
 }
@@ -251,8 +251,9 @@ def _on_site(name):
             _force(name, act)
         return
     if name == 'S18':
-        if _st['budget']['S18'] > 0 and act['x52c'] is None and _taken('jle', _reg('eflags')):
-            # 818 just stored the decremented x52c_ (0x7f8) and counted the boid (mCreatedBoids 0x7a4)
+        if _st['budget']['S18'] > 0 and act['x52c'] is None and not _taken('jle', _reg('eflags')):
+            # 818 just stored the decremented x52c_ (0x7f8, still > 0): the forced break leaves it for the next
+            # frame's 813 loop, so the members are only logged and checked unchanged at T+0x2bf (no write)
             act['x52c'] = (_mem(act['this'] + 0x7f8, 4), _mem(act['this'] + 0x7a4, 4))
             _force(name, act)
             _st['budget']['S18'] -= 1
@@ -312,11 +313,11 @@ def _on_s18done():
     if act is None or act['x52c'] is None:
         return
     cur = (_mem(act['this'] + 0x7f8, 4), _mem(act['this'] + 0x7a4, 4))
-    ok = _put(act['this'] + 0x7f8, act['x52c'][0], 'x52c_')
-    ok &= _put(act['this'] + 0x7a4, act['x52c'][1], 'mCreatedBoids')
-    if ok:
-        _log('seq %d x52c_/mCreatedBoids %s/%s -> %s/%s at T+%#x' % (
-            act['seq'], cur[0].hex(), cur[1].hex(), act['x52c'][0].hex(), act['x52c'][1].hex(), S18DONE))
+    if cur != act['x52c']:
+        _fail('seq %d x52c_/mCreatedBoids changed after the forced break' % act['seq'])
+    _log('seq %d x52c_=%d mCreatedBoids=%d left for the next frame at T+%#x' % (
+        act['seq'], int.from_bytes(cur[0], 'little', signed=True), int.from_bytes(cur[1], 'little', signed=True),
+        S18DONE))
     act['x52c'] = None
 
 
