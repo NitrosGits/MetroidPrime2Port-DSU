@@ -25,6 +25,11 @@ struct SLdrWispTentacle {
   SLdrActorParameters actorInformation;  // 0x7e397fed
 };
 
+// @ fn_86_C1C
+// Defaults checked against the asm: +0x3C 30.0 (0xC68 rodata 0xC), +0x40 20.0 (0xC80 rodata 0x10),
+// +0x44 10.0 (0xC90 rodata 0x14), +0x48 0.0 (0xC9C rodata 0x18), +0x4C weapon 9 (0xCAC), +0x50 5.0
+// (0xCBC rodata 0x1C), +0x5C false (0xCCC), +0x60 2.0 (0xCDC rodata 0x20), +0x64 0.2 (0xCE0 rodata
+// 0x24); the PC block below is the +0xB4/+0x2C0/+0x310 stores. Member ctors run in declaration order.
 inline SLdrWispTentacle::SLdrWispTentacle()
 : editorProperties(), attackDamage(), patterned(), actorInformation() {
   wakeUpDistance = 30.0f;
@@ -46,6 +51,9 @@ inline SLdrWispTentacle::SLdrWispTentacle()
 #endif
 }
 
+// @ fn_86_BA0
+// Member dtors in reverse order: actorInformation +0x2AC (0xBC0), patterned +0x68 (0xBCC), attackDamage
+// +0x4C (0xBD8), editorProperties +0x0 (0xBE4); nothing else.
 inline SLdrWispTentacle::~SLdrWispTentacle() {}
 
 #endif

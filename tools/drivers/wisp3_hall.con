@@ -1,0 +1,111 @@
+# WispTentacle (REL 86), wisp3: wisp2_hall.con plus a spawned waypoint, pirate and connected tentacle at the end
+# (APRC connections to the pirate, the waypoint and a third object), driving Alert -> Grab -> Pull so the
+# pirate is captured and UpdateGrabbedPirate runs, and Sleep/Spawn so SnapWaypointToFloor runs.
+@f120 god 1; give morphBallBombs 2; give powerBomb 2
+@f130 tp 8.4 -80 -33
+@f200 objs Wisp
+@f220 obj e00240036
+@f400 tp 8.4 -62 -33
+@f800 tp 8.4 -55 -33
+@f1100 tp 8.4 -47 -33
+@f1500 shoot e00240036
+@f2000 send e00240036 AIUpdateDisabled
+@f2100 send e00240036 Activate
+@f2400 send e00240036 HitObject
+@f3000 press x 20; press a 4
+@f3010 place e00240036 8.4 -39.3 -33.4
+@f3040 place e00240036 8.4 -39.3 -33.4
+@f3070 place e00240036 8.4 -39.3 -33.4
+@f3300 obj e00240036
+@f3500 damage e00240036 1
+@f4000 send e00240036 Alert
+@f4200 statecall e00240036 Grab 0; statecall e00240036 Grab 1; statecall e00240036 Grab 2
+@f4400 statecall e00240036 Pull 0; statecall e00240036 Pull 1
+@f4600 send e00240036 Decrement
+@f4800 statecall e00240036 Flinch 0; statecall e00240036 Flinch 1; send e00240036 Decrement
+@f5000 statecall e00240036 Withdraw 0; statecall e00240036 Withdraw 1
+@f5200 statecall e00240036 Spawn 0; statecall e00240036 Spawn 1
+@f5400 statecall e00240036 Attack 0; statecall e00240036 Attack 1
+@f5600 statecall e00240036 Search 0; statecall e00240036 Search 1
+@f5800 statecall e00240036 Patrol 0; statecall e00240036 Patrol 1
+@f6000 fsm e00240036 Sleep
+@f6100 damage e00240036 0
+@f6200 obj e00240036
+@f6300 tp 8.4 -55 -33
+@f6320 spawn WAYP d 3
+@f6340 spawn PIRT ancs 8169653a 1 3 fsm 5652a12f d 4 prop 0xef485db9 0x681f3907
+@f6400 spawn WISP ancs 41e770c2 0 9 fsm 6c7e429e d 6 conn APRC Activate 24ff00 conn APRC Activate 24ff01 conn APRC Activate 240036 conn Active Activate 24ff00
+@f6500 obj e0024ff02
+@f6520 statecall e0024ff02 Sleep 0; statecall e0024ff02 Spawn 0
+@f6540 send e0024ff02 Alert
+@f6600 obj e0024ff02
+@f6700 obj e0024ff02
+@f6800 obj e0024ff01
+@f7000 obj e0024ff02
+@f7100 send e0024ff02 Create
+@f7150 objs CollisionActor
+@f7200 tp 3.8 -39.4 -33.4
+@f7220 fsm e00240036 Flinch
+@f7221 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7223 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7236 fsm e00240036 Withdraw
+@f7237 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7239 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7252 fsm e00240036 Flinch
+@f7253 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7255 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7268 fsm e00240036 Withdraw
+@f7269 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7271 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7284 fsm e00240036 Flinch
+@f7285 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7287 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7300 fsm e00240036 Withdraw
+@f7301 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7303 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7316 fsm e00240036 Flinch
+@f7317 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7319 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7332 fsm e00240036 Withdraw
+@f7333 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7335 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7348 fsm e00240036 Flinch
+@f7349 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7351 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7364 fsm e00240036 Withdraw
+@f7365 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7367 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7380 fsm e00240036 Flinch
+@f7381 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7383 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7396 fsm e00240036 Withdraw
+@f7397 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7399 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7412 fsm e00240036 Flinch
+@f7413 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7415 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7428 fsm e00240036 Withdraw
+@f7429 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7431 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7444 fsm e00240036 Flinch
+@f7445 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7447 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7460 fsm e00240036 Withdraw
+@f7461 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7463 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7476 fsm e00240036 Flinch
+@f7477 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7479 send e00240036 HitObject from u044e ; send e00240036 Decrement ; send e00240036 Damage from u044d
+@f7500 fsm e00240036 Search
+@f7600 send e00240036 Decrement
+@f7700 send e00240036 Damage
+@f7800 tp 3.8 -39.4 -33.4
+@f7820 give morphBallBombs 2; give powerBomb 2
+@f7840 press x 20
+@f7900 press a 0
+@f7930 fsm e00240036 Search
+@f7940 objs CBomb
+@f7945 send e00240036 Damage from u044e
+@f7950 send e00240036 Damage from u044d
+@f8000 press a 0
+@f8100 objs CBomb

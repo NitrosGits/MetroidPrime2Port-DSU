@@ -62,6 +62,7 @@ static const char* const skArmEndLocator = "M_arm_end";
 static const char* const skLockOnLocator = "lockon_target_LCTR";
 static const char* const skClawAttachLocator = "claw_attach_LCTR";
 
+// @ fn_86_3628
 CWispTentacle::CWispTentacle(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                              const CTransform4f& xf, const CModelData& modelData,
                              const CPatternedInfo& patternedInfo, const CDamageInfo& attackDamage,
@@ -474,6 +475,7 @@ void CWispTentacle::Flinch(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_86_1B54
 void CWispTentacle::UpdateGrabbedPirate(float dt, CStateManager& mgr) {
   CSpacePirate* pirate = TCastToPtr< CSpacePirate >(mgr.ObjectById(mPirateId));
   if (!pirate) {
@@ -554,6 +556,7 @@ void CWispTentacle::Render(const CStateManager& mgr) const {
   CPatterned::Render(mgr);
 }
 
+// @ fn_86_13D4
 void CWispTentacle::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
