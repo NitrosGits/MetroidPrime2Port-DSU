@@ -290,7 +290,10 @@ public:
   rstl::string IGetInternalAreaName() const override;
 #ifdef TARGET_PC
   const rstl::string& PortGetMlvlAreaName() const override { return mPortMlvlAreaName; }
-  int PortLayerCount() const { return mLayerPhases.size(); }
+  // Layers with a script size (mLayerPhases has one entry more); 0 until the area's data is in.
+  int PortLayerCount() const {
+    return mPhase > kP_WaitForData && mPostConst.get() != nullptr ? mPostConst->mLayerScriptSizes.size() : 0;
+  }
 #endif
 
   int GetPhase() const { return mPhase; }
