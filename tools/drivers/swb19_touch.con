@@ -1,0 +1,94 @@
+# Agon Wastes 01_sand_entrance layers 0/2: CFlyerSwarms u041d, u04ff, u05c4, u05c6.
+# For tools/cov/specs/swarmbasics_swb19.py (swb19): Touch's three paths and the ctor fixture.
+# Phase A (no cannonBall): every beam, its charge shot and the charge combos (sunburst, darkburst,
+# sonic boom) so a real CLightComboProjectile and real CEnergyProjectiles hit the swarm; standing
+# in the swarm for the plain player touch; morph + boost for kBS_Boost (ballDamage false,
+# boosting true). Phase B (cannonBall given): morph ball rolling through the boids so ballDamage
+# and cannonBall are both true. Phase C: cannonBall taken away again, standing touches.
+@f210 layer 2
+@f300 god 1; give morphBall 1; give boostBall 1; give spiderBall 1; give screwAttack 1; give spaceJumpBoots 1; fastmorph 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give powerBeam 1; give chargeCombo 1; give sunburst 1; give darkburst 1; give sonicBoom 1; give superMissile 1
+@f380 send u041d Activate; send u04ff Activate; send u05c4 Activate; send u05c6 Activate
+@f420 tp -338.4 -87.7 -6.7
+@f700 obj u041d
+@f720 lockon 1
+# ---- held charge with the light beam + sunburst owned: releasing a FULLY charged light shot is the
+#      only way the gun builds a real CLightComboProjectile (`shoot ... charged` spawns a plain
+#      charged beam: run 1 logged no comboed weapon mode at all).
+@f740 beam light
+@f760 press a 0
+@f960 stick 0 0
+@f1000 press a 0
+@f1200 stick 0 0
+@f1100 tp -338.4 -87.7 -6.7
+@f1220 press a 0
+@f1420 stick 0 0
+# ---- power beam: plain, charged, missile
+@f740 shoot u041d
+@f760 shoot u041d
+@f780 shoot u041d charged
+@f800 shoot u041d missile
+@f820 shoot u041d missile
+# ---- dark beam + darkburst
+@f840 beam dark
+@f860 shoot u041d; shoot u04ff
+@f880 shoot u041d charged
+@f920 shoot u041d charged
+# ---- light beam + sunburst (the CLightComboProjectile arm)
+@f960 beam light
+@f980 shoot u041d
+@f1000 shoot u041d charged
+@f1060 tp -338.4 -87.7 -6.7
+@f1080 shoot u041d charged
+@f1140 shoot u04ff charged
+@f1200 shoot u041d charged
+# ---- annihilator + sonic boom
+@f1260 beam annihilator
+@f1280 shoot u041d
+@f1300 shoot u041d charged
+@f1360 shoot u04ff charged
+# ---- standing in the swarm: plain player touch (ballDamage false, boosting false)
+@f1420 beam power
+@f1440 tp -338.4 -87.7 -6.7
+@f1460 noise 6
+@f1500 tp -338.4 -87.7 -6.7
+# ---- morph + boost, no cannonBall: ballDamage false, boosting true
+@f1560 press x 30
+@f1600 boost
+@f1660 boost
+@f1720 tp -338.4 -87.7 -6.7
+@f1760 boost
+@f1820 press x 30
+@f1860 tp -338.4 -87.7 -6.7
+# ---- Phase B: cannon ball (ballDamage and cannonBall both true)
+@f1900 give cannonBall 1
+@f1940 press x 30
+@f2000 boost
+@f2060 boost
+@f2120 tp -338.4 -87.7 -6.7
+@f2160 boost
+@f2220 tp -338.4 -87.7 -6.7
+@f2260 boost
+# ---- one more held-charge sunburst from inside the swarm
+@f2290 tp -338.4 -87.7 -6.7
+@f2295 press a 0
+@f2400 stick 0 0
+# ---- more light charged shots with the cannon ball still owned
+@f2300 press x 30
+@f2340 beam light
+@f2380 shoot u041d charged
+@f2440 shoot u041d charged
+@f2500 shoot u04ff charged
+# ---- Phase C: cannonBall taken away, standing touches and a boost
+@f2560 take cannonBall 1
+@f2600 beam power
+@f2620 press x 30
+@f2640 tp -338.4 -87.7 -6.7
+@f2700 boost
+@f2760 tp -338.4 -87.7 -6.7
+@f2820 press x 30
+@f2860 tp -338.4 -87.7 -6.7
+@f2900 shoot u041d
+@f2960 shoot u041d charged
+@f3020 noise 6
+@f3060 tp -338.4 -87.7 -6.7
+@f3120 obj u041d

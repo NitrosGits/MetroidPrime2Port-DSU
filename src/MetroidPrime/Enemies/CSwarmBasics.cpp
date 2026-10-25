@@ -184,6 +184,7 @@ CSwarmBasics::CBoid::CBoid(const CTransform4f& xf, uint index)
 , mAttacking(false)
 , mHasLoopedSound(false) {}
 
+// @ fn_80_A1BC
 static CModelData GetModelDataForAnimRes(const CAnimRes& animRes) {
   return animRes.GetId() != kInvalidAssetId ? CModelData(animRes) : CModelData::CModelDataNull();
 }
