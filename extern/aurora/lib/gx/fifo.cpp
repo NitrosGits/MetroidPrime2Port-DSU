@@ -5,8 +5,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
-#include <condition_variable>
 #include <cstring>
 #include <limits>
 #include <mutex>
@@ -131,11 +129,6 @@ std::atomic<uint64_t> sProcessed{0};
 uint64_t sStreamBase = 0;
 std::mutex sBufferMutex;
 std::atomic<uint32_t> sWorkerWake{0};
-// MP2 port: untimed atomic::wait lost wakes (sz2d: worker slept on a stale event while GXReadDrawSync spun).
-// Waits are now timed condition_variable waits that re-check their predicate; notifiers take the mutex.
-std::mutex sWakeMutex;
-std::condition_variable sWakeCv;
-constexpr auto kWakePoll = std::chrono::milliseconds(1);
 thread::Thread sWorkerThread;
 std::atomic<DrawDoneCallback> sDrawDoneCallback{nullptr};
 
@@ -147,8 +140,7 @@ void dispatch_draw_done() noexcept {
 
 void wake_worker() noexcept {
   sWorkerWake.fetch_add(1, std::memory_order_release);
-  { std::lock_guard lock{sWakeMutex}; }
-  sWakeCv.notify_all();
+  sWorkerWake.notify_all();
 }
 
 void process_to(uint64_t target, std::memory_order order) noexcept {
@@ -175,8 +167,7 @@ void process_to(uint64_t target, std::memory_order order) noexcept {
     }
     processed += result.bytesProcessed;
     sProcessed.store(processed, order);
-    { std::lock_guard lock{sWakeMutex}; }
-    sWakeCv.notify_all();
+    sProcessed.notify_all();
   }
 }
 
@@ -194,11 +185,7 @@ void worker_main(std::stop_token token) noexcept {
     if (token.stop_requested()) {
       break;
     }
-    std::unique_lock lock{sWakeMutex};
-    sWakeCv.wait_for(lock, kWakePoll, [&] {
-      return sWorkerWake.load(std::memory_order_acquire) != event || token.stop_requested() ||
-             sPublished.load(std::memory_order_acquire) != sProcessed.load(std::memory_order_acquire);
-    });
+    sWorkerWake.wait(event, std::memory_order_acquire);
   }
 }
 
@@ -425,9 +412,8 @@ void drain() {
 
     uint64_t processed = sProcessed.load(std::memory_order_acquire);
     if (processed < target) {
-      std::unique_lock lock{sWakeMutex};
       do {
-        sWakeCv.wait_for(lock, kWakePoll, [&] { return sProcessed.load(std::memory_order_acquire) != processed; });
+        sProcessed.wait(processed, std::memory_order_acquire);
         processed = sProcessed.load(std::memory_order_acquire);
       } while (processed < target);
     }
