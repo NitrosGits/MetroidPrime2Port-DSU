@@ -6,10 +6,15 @@
 
 #if defined(__ANDROID__)
 
+#include "input/port_input_devices.h"
+#include "port_input_bindings.h"
 #include "port_overlay.h"
 #include "port_touch.h"
 
 #include <jni.h>
+
+#include <string>
+#include <vector>
 
 extern "C" {
 
@@ -241,16 +246,60 @@ JNIEXPORT jboolean JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeT
   return JNI_FALSE;
 }
 
-JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeTouchControl(JNIEnv*,
-                                                                                        jclass,
-                                                                                        jint,
-                                                                                        jboolean) {
-  // no touch: control bindings
+// Every overlay control's press and release, for touch: bindings in controls.toml
+// and the Morph Ball page's and added buttons' own actions.
+JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeTouchControl(
+    JNIEnv*, jclass, jint control, jboolean down) {
+  PortInputDevices::SetTouchControl(static_cast<int>(control), down == JNI_TRUE);
 }
 
-JNIEXPORT jboolean JNICALL
-Java_org_metroidprime2_port_TouchControlsView_nativeTouchControlBound(JNIEnv*, jclass, jint) {
-  return JNI_FALSE;
+// Whether a binding takes over the control, so the overlay skips its own button.
+JNIEXPORT jboolean JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeTouchControlBound(
+    JNIEnv*, jclass, jint control) {
+  return PortInputDevices::TouchControlBound(static_cast<int>(control)) ? JNI_TRUE : JNI_FALSE;
+}
+
+// What a ball control does in the ball, for its label: its Morph Ball row's name,
+// "" for a ball button left without one, null for any other control.
+JNIEXPORT jstring JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeTouchBallLabel(
+    JNIEnv* env, jclass, jint control) {
+  if (const PortInput::BallRow* row =
+          PortInput::FindBallRow(PortInputDevices::TouchBallRow(static_cast<int>(control)))) {
+    return env->NewStringUTF(row->touch);
+  }
+  for (const PortInput::TouchBallControl& c : PortInput::kTouchBallControls) {
+    if (c.control == control) {
+      return env->NewStringUTF("");
+    }
+  }
+  return nullptr;
+}
+
+// The actions a layout editor button can take, as key, label, key, label...
+JNIEXPORT jobjectArray JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeTouchButtonActions(
+    JNIEnv* env, jclass) {
+  std::vector<std::string> items;
+  for (int i = 0; i < PortInput::kActionCount; ++i) {
+    const auto a = static_cast<PortInput::Action>(i);
+    if (!PortInput::TouchButtonAction(a)) {
+      continue;
+    }
+    const PortInput::ActionInfo& info = PortInput::Info(a);
+    items.emplace_back(info.key);
+    items.emplace_back(info.label);
+  }
+  jclass stringClass = env->FindClass("java/lang/String");
+  if (stringClass == nullptr) {
+    return nullptr;
+  }
+  jobjectArray out = env->NewObjectArray(static_cast<jsize>(items.size()), stringClass, nullptr);
+  for (size_t i = 0; out != nullptr && i < items.size(); ++i) {
+    jstring s = env->NewStringUTF(items[i].c_str());
+    env->SetObjectArrayElement(out, static_cast<jsize>(i), s);
+    env->DeleteLocalRef(s);
+  }
+  env->DeleteLocalRef(stringClass);
+  return out;
 }
 
 JNIEXPORT jstring JNICALL

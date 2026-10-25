@@ -97,6 +97,11 @@ constexpr STouchInfo kTouchControls[] = {
     {"tturbo", "Twin stick: Turbo (not in this port yet)"},
     {"beam_shift", "Twin stick: Beam (held, not in this port yet)"},
     {"map_tap", "Minimap tap"},
+    {"bbomb", "Morph Ball: Bomb"},
+    {"bboost", "Morph Ball: Boost"},
+    {"bpbomb", "Morph Ball: Power Bomb"},
+    {"bspider", "Morph Ball: Spider"},
+    {"bunmorph", "Morph Ball: Unmorph"},
 };
 
 UserBindings sWork;     // what the page edits; written through on every change
@@ -1310,6 +1315,21 @@ void DrawReset(const SViews& views) {
   ImGui::EndPopup();
 }
 
+// A preset's Morph Ball rows, after ClearOwn unbinds them all (so each does its
+// game button). The dual-stick layouts move R to the right stick click, so Spider
+// Ball goes on lock-on instead, as in Remastered (LT, or Q on the keyboard).
+void ApplyBallPreset(PortInput::Family family, std::string_view id) {
+  const char* spider = nullptr;
+  if (family == PortInput::Family::Pad && (id == "remastered" || id == "modern")) spider = "axis:lefttrigger+";
+  if (family == PortInput::Family::Keyboard && id == "mouse") spider = "key:20"; // SDL_SCANCODE_Q
+  Binding b;
+  if (spider == nullptr || !PortInput::InputFromText(spider, b.inputs[0])) return;
+  b.action = PortInput::Action::BallSpider;
+  b.count = 1;
+  PortInput::AddUserBinding(Ensure("", "Default"), b);
+  Commit();
+}
+
 // One row of preset buttons. A click replaces the family's own Default-profile
 // bindings with the preset; a kind or model's own bindings stay on top.
 void PresetRow(const SView& v, const SPreset* presets, int count) {
@@ -1334,6 +1354,7 @@ void PresetRow(const SView& v, const SPreset* presets, int count) {
       } else {
         PortControls::ApplyKeyPresetNamed(id);
       }
+      ApplyBallPreset(v.family, id);
       ImGui::CloseCurrentPopup();
     }
     ImGui::EndDisabled();
