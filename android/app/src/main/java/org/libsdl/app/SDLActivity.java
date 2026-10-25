@@ -228,7 +228,7 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
     protected static boolean mSDLMainFinished = false;
     // Set when the system destroys the activity without finishing it (low
     // memory, "Don't keep activities"), as behind the file picker. The record
-    // must then survive: finishing it drops the picker's result (#203).
+    // must then survive: finishing it drops the picker's result (MP1 #203).
     protected static volatile boolean mDestroyedBySystem = false;
     protected static boolean mActivityCreated = false;
     private static SDLFileDialogState mFileDialogState = null;
