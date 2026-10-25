@@ -6,7 +6,8 @@
 #     --con tools/cov/specs/flyingpirate_fp3_cliff.con --fast --frames 4200
 #   (the same spec with flyingpirate_fp3_casual.con on 08_sand_casualpirates, which has the water)
 # $fp3_obj(mgr, list, n, 'Type') is the n-th object of that list whose dynamic type is Type (0 when
-# none); $fp3_uid(obj) its unique id. Both walk CStateManager::mObjectLists (16 bytes per auto_ptr).
+# none); $fp3_uid(obj) its unique id. Both walk CStateManager::mObjectLists (16 bytes per auto_ptr,
+# mItem at +8).
 import os
 import gdb
 
@@ -25,20 +26,26 @@ class Obj(gdb.Function):
         super().__init__('fp3_obj')
 
     def invoke(self, mgr, lid, n, ty):
-        lid, n, ty = int(lid), int(n), ty.string()
+        try:
+            return self.find(mgr, int(lid), int(n), ty if isinstance(ty, str) else ty.string())
+        except Exception as exc:  # a failed walk is "none", never an aborted scenario batch
+            flog('fp3_obj failed: %s' % exc)
+            return gdb.Value(0).cast(gdb.lookup_type('unsigned long'))
+
+    def find(self, mgr, lid, n, ty):
         if lid < 0:  # any list
             for k in range(8):
-                r = self.invoke(mgr, k, n, ty)
+                r = self.find(mgr, k, n, ty)
                 if int(r):
                     return r
             return gdb.Value(0).cast(gdb.lookup_type('unsigned long'))
         base = int(mgr) + int(gdb.parse_and_eval('(long)&((CStateManager*)0)->mObjectLists.mData'))
-        lst = int(gdb.parse_and_eval('*(unsigned long*)%d' % (base + 16 * lid)))
+        lst = int(gdb.parse_and_eval('*(unsigned long*)%d' % (base + 16 * lid + 8)))
         if not lst:
             return gdb.Value(0).cast(gdb.lookup_type('unsigned long'))
         first = int(gdb.parse_and_eval('((CObjectList*)%d)->mFirstId' % lst))
         i, seen = first, 0
-        while i != -1 and i < 1024:
+        while 0 <= i < 1024:
             ent = gdb.parse_and_eval('((CObjectList*)%d)->mObjects[%d].mEntity' % (lst, i))
             if int(ent) and str(ent.dynamic_type).replace(' ', '').rstrip('*') == ty:
                 if seen == n:

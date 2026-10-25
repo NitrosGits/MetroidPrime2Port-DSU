@@ -1,7 +1,7 @@
-# fp3 run 1: 01_cliff_entrance (world 1baa96c2), layers 3 and 4 hold the aerotroopers and the cover
-# points; the pirates are listed so the next driver can address them by uid.
+# fp3: 01_cliff_entrance (world 1baa96c2), layers 3 and 4 hold the aerotroopers and the cover
+# points; the pirates and cover points are listed so a later driver can address them by uid.
 @f30 layer 3
 @f60 layer 4
-@f150 objs FlyingPirate
-@f200 objs CoverPoint
-@f1200 objs FlyingPirate
+@f400 objs flyingpirate
+@f420 objs coverpoint
+@f900 objs flyingpirate
