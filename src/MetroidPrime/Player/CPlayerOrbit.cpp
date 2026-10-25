@@ -1920,7 +1920,13 @@ void CPlayer::UpdateGrappleArmTransform(const CVector3f& offset, CStateManager& 
     return;
   }
   CTransform4f armXf = GetTransform();
+#ifdef TARGET_PC
+  // Port (MP1 af5e42ade): the grapple arm follows the arm cannon down below 4:3.
+  const CVector3f armPosition =
+      PortAnchorGunDown(GetTransform().Rotate(offset) + GetTranslation());
+#else
   const CVector3f armPosition = GetTransform().Rotate(offset) + GetTranslation();
+#endif
   armXf.SetTranslation(armPosition);
   if (mMorphBallState != kMS_Unmorphed) {
     mGun->GrappleArm()->SetTransform(armXf);

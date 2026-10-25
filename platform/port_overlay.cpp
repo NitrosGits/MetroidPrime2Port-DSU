@@ -1514,6 +1514,18 @@ float UnwidenFov(float fovDegrees, float aspect) {
   return 2.f * atanf(halfTan) * 180.f / 3.14159265f;
 }
 
+float VertPlusGunDrop(float fovDegrees, float aspect) {
+  const int efbHeight = CGraphics::GetRenderMode().efbHeight;
+  if (sBaseFbWidth <= 0 || efbHeight <= 0 || aspect <= 0.f) {
+    return 0.f;
+  }
+  const float authored = static_cast< float >(sBaseFbWidth) / static_cast< float >(efbHeight);
+  if (aspect >= authored) {
+    return 0.f;
+  }
+  return tanf(0.5f * fovDegrees * 3.14159265f / 180.f) * (authored / aspect - 1.f);
+}
+
 void Draw() {
   TickFps();
   if (const int milli = sPendingWheelMilli.exchange(0, std::memory_order_relaxed); milli != 0) {

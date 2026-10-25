@@ -956,6 +956,36 @@ void CPlayer::UpdateAssistedAiming(const CTransform4f& transform, CStateManager&
   mGun->SetAssistAimTransform(assistTransform);
 }
 
+#ifdef TARGET_PC
+// Port (MP1 af5e42ade): below 4:3 the first-person view gets extra height (Vert+) on both sides
+// of its centre, which would lift the arm cannon off the bottom edge and show the forearm. Move it
+// down in the world instead, so it keeps its 4:3 place against the bottom edge while it still
+// points at the crosshair and its shots still leave from its muzzle.
+CVector3f CPlayer::PortAnchorGunDown(const CVector3f& pos) const {
+  if (mCameraManager == nullptr || !mCameraManager->IsInFPCamera()) {
+    return pos;
+  }
+  const CViewport& gunViewport = CGraphics::GetViewport();
+  if (gunViewport.mHeight <= 0) {
+    return pos;
+  }
+  const float drop = PortOverlay::VertPlusGunDrop(
+      CCameraManager::sFirstPersonFOV, static_cast< float >(gunViewport.mWidth) /
+                                           static_cast< float >(gunViewport.mHeight));
+  if (drop <= 0.f) {
+    return pos;
+  }
+  const CTransform4f camXf = mCameraManager->GetFirstPersonCamera()->GetTransform();
+  const CVector3f forward = camXf.GetColumn(kDY);
+  const float depth = CVector3f::Dot(pos - camXf.GetTranslation(), forward);
+  // A translation moves near points further on screen than far ones. Fit it at about the barrel's
+  // depth (3x the gun origin's), so the barrel lands near its 4:3 place; the gun body and the
+  // grapple arm go further below the edge.
+  const float kBarrelDepth = 3.f;
+  return depth > 0.f ? pos - camXf.GetColumn(kDZ) * (drop * depth * kBarrelDepth) : pos;
+}
+#endif
+
 void CPlayer::UpdateGunTransform(const CVector3f& position, CStateManager& mgr) {
   CTransform4f transform = GetTransform();
   const float eyeHeight = GetEyeHeight();
@@ -968,6 +998,10 @@ void CPlayer::UpdateGunTransform(const CVector3f& position, CStateManager& mgr) 
     gunPosition =
         GetEyePosition() + cameraTransform.Rotate(position - CVector3f(0.f, 0.f, eyeHeight));
   }
+#ifdef TARGET_PC
+  // Port (MP1 af5e42ade): below 4:3, keep the arm cannon on the screen's 4:3 bottom edge.
+  gunPosition = PortAnchorGunDown(gunPosition);
+#endif
 #ifdef TARGET_PC
   // Retail sets the gun position on the result copy; with the camera's translation left in it,
   // a drawn gun (UpdateTransform keeps the result) sat at the eye.

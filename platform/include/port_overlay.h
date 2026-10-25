@@ -473,6 +473,11 @@ float VertPlusFov(float fovDegrees, float aspect);
 // (MP1 227c7fdaa's GetUnwidenedFov). A camera blended into one that gets Vert+ widened starts from
 // this, so the blend does not widen twice below 4:3. Identity otherwise.
 float UnwidenFov(float fovDegrees, float aspect);
+// How far, per unit of view depth, the first-person arm cannon moves down so it stays on the
+// screen's bottom edge as at 4:3 when the view is Vert+ widened (MP1 1a83a296d/af5e42ade's
+// CGameCamera::VertPlusGunDrop): tan(fov/2) * (authored/aspect - 1), 0 at and above the authored
+// aspect. `fovDegrees` is the fov the gun is drawn at (retail's).
+float VertPlusGunDrop(float fovDegrees, float aspect);
 // The framebuffer width that is shown at the game's 4:3 for the given height (MP1's
 // PortDebug::FourThreeWidth): the width itself in 4:3 mode, where 640x448 is displayed at 4:3,
 // else height * 4 / 3, since the widened framebuffers have square pixels. Fits 4:3 art into a

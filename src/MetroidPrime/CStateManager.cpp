@@ -1395,8 +1395,27 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
     CScopedProfiler gunProfile(rstl::string_l("*PlayerGun"), true);
 #ifdef TARGET_PC
     CPortPipelineContextScope globalPipelines(AURORA_PIPELINE_CONTEXT_GLOBAL);
+    // Port (MP1 5fb236a91): the arm cannon is drawn at retail's FOV whatever the FOV setting, like
+    // a view-model FOV in other shooters; otherwise a wide view shrinks it and pushes it into the
+    // corner. Morph ball and scripted cameras keep their own FOVs.
+    const CGameCamera& gunCam = *mCameraManager->GetCurrentCamera(*this, true);
+    const bool gunFov = mCameraManager->IsInFPCamera() &&
+                        gunCam.GetFov() != CCameraManager::sFirstPersonFOV;
+    const CGraphics::CProjectionState gunProj = CGraphics::GetProjectionState();
+    if (gunFov) {
+      const CViewport& gunViewport = CGraphics::GetViewport();
+      gpRender->SetPerspective(CCameraManager::sFirstPersonFOV,
+                               static_cast< float >(gunViewport.mWidth),
+                               static_cast< float >(gunViewport.mHeight),
+                               gunCam.GetNearClipDistance(), gunCam.GetFarClipDistance());
+    }
 #endif
     player->RenderGun(*this, mCameraManager->GetGlobalCameraTranslation(*this, true));
+#ifdef TARGET_PC
+    if (gunFov) {
+      CGraphics::SetProjectionState(gunProj);
+    }
+#endif
   }
   RenderActorQueue(mStateManagerContainer->mRenderLastUnderGun,
                    rstl::string_l("*RenderLastUnderGun"));
