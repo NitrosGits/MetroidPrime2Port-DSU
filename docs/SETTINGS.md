@@ -59,6 +59,7 @@ Game page:
 - `mods`, `mods_disabled`: Mods > Load mods and one checkbox per mod folder (`mods_disabled` holds
   the turned-off folder names, `/`-separated); take effect on restart. Folder: `<user>/mods`, or
   `MP2_MODS`. See docs/MODS.md.
+- `suit_colour_varia`, `suit_colour_dark`, `suit_colour_light`: Video > Display > Suit colours (suit, colour per slot, Random). Each is one hex colour per slot (`FF4000,-`, `-` keeps that slot's original); empty is the original. The recoloured textures are built from the disc at startup, so a change applies on restart. Details: `docs/MODS.md` "Suit colours".
 - `game_options`: the game's own Options menu (volumes, sound mode, brightness...), stored as a
   hex blob so they survive without a memory card; not an overlay row.
 

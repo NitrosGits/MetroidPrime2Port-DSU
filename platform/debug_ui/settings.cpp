@@ -12,6 +12,7 @@
 #include "port_overlay.h"
 #include "port_photo.h"
 #include "port_settings.h"
+#include "port_suit_colours.h"
 #include "port_video.h"
 
 #include "Kyoto/Streams/CBitStreamReader.hpp"
@@ -113,6 +114,17 @@ struct SettingKey {
 };
 
 void WriteBool(std::ostream& out, bool value) { out << (value ? 1 : 0); }
+
+// suit_colour_<suit>: PortSuitColours::PicksKey, a slot each ("FFD000,-").
+template < int Suit >
+void ReadSuitColours(const std::string& value) {
+  PortSuitColours::SetPicksKey(Suit, value);
+}
+
+template < int Suit >
+void WriteSuitColours(std::ostream& out) {
+  out << PortSuitColours::PicksKey(Suit);
+}
 
 // A key that is one bool: read with ParseBool, written as 1 or 0, sampled with both.
 template < bool* Flag >
@@ -390,6 +402,10 @@ const SettingKey kSettingKeys[] = {
      [](std::ostream& out) { WriteBool(out, PortMods::Enabled()); }, false, "1", "0"},
     {"mods_disabled", [](const std::string& value) { PortMods::SetDisabled(value); },
      [](std::ostream& out) { out << PortMods::Disabled(); }, true, "a/b", "c"},
+    // Suit colours (port_suit_colours.h): read at startup only.
+    {"suit_colour_varia", &ReadSuitColours< 0 >, &WriteSuitColours< 0 >, true, "FF4000,-", "-,2050FF"},
+    {"suit_colour_dark", &ReadSuitColours< 1 >, &WriteSuitColours< 1 >, true, "FF4000", "2050FF"},
+    {"suit_colour_light", &ReadSuitColours< 2 >, &WriteSuitColours< 2 >, true, "FF4000", "2050FF"},
     {"photo_supersample", [](const std::string& value) {
        int parsed = 0;
        if (ParseInt(value, parsed)) {
