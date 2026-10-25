@@ -46,6 +46,32 @@ void GrantItem(CPlayerState& ps, CPlayerState::EItemType type, int capacity, int
   CScriptConditionalRelay::PortNoteInventoryCheat();
 }
 
+// A slider takes the value under the finger the moment it is pressed, before
+// UpdateTouchScroll can tell a scroll from a drag, so scrolling the page past
+// these sliders filled Samus's ammo and tanks. The value is held back until
+// release and dropped when the drag became a scroll.
+bool CheatSlider(const char* label, int& value, int max) {
+  static ImGuiID sEditing = 0;
+  static int sPending = 0;
+  const ImGuiID id = ImGui::GetID(label);
+  int shown = sEditing == id ? sPending : value;
+  ImGui::SliderInt(label, &shown, 0, max);
+  if (ImGui::IsItemActive()) {
+    sEditing = id;
+    sPending = shown;
+    return false;
+  }
+  if (sEditing != id) {
+    return false;
+  }
+  sEditing = 0;
+  if (TouchScrolling() || sPending == value) {
+    return false;
+  }
+  value = sPending;
+  return true;
+}
+
 struct SItemCheck {
   const char* name;
   CPlayerState::EItemType type;
@@ -165,10 +191,11 @@ void DrawCheatsTab() {
     int amount = std::min(ps->GetItemAmount(type, false), max);
     // A fixed width, so the label sits next to its slider instead of at the page's right edge.
     ImGui::SetNextItemWidth(220.f);
-    if (ImGui::SliderInt(label, &amount, 0, max)) {
-      // The capacity stays at its maximum, as with the game's own expansions, and only the
-      // amount moves: a slide down must take ammo away even though the capacity has room.
-      GrantItem(*ps, type, max, amount);
+    if (CheatSlider(label, amount, max)) {
+      // The capacity only rises as far as the amount needs (the HUD draws capacity, so the
+      // maximum would show a full expansion whatever the value), and the amount is set
+      // outright: a slide down must take ammo away even though the capacity has room.
+      GrantItem(*ps, type, std::max(amount, ps->GetItemCapacity(type)), amount);
     }
   };
   counter("Missiles", CPlayerState::kIT_Missile);
@@ -180,8 +207,8 @@ void DrawCheatsTab() {
     const int max = CPlayerState::GetPowerUpMaxValue(CPlayerState::kIT_EnergyTanks);
     int tanks = std::min(ps->GetItemAmount(CPlayerState::kIT_EnergyTanks, false), max);
     ImGui::SetNextItemWidth(220.f);
-    if (ImGui::SliderInt("Energy Tanks", &tanks, 0, max)) {
-      GrantItem(*ps, CPlayerState::kIT_EnergyTanks, max, tanks);
+    if (CheatSlider("Energy Tanks", tanks, max)) {
+      GrantItem(*ps, CPlayerState::kIT_EnergyTanks, tanks, tanks); // tanks have no ammo: count is capacity
       health->SetHP(ps->CalculateHealth());
     }
   }

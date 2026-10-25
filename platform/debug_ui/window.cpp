@@ -288,6 +288,8 @@ bool DrawDesktopWindow() {
 
 } // namespace
 
+bool TouchScrolling() { return sTouchScroll.dragging; }
+
 std::string HotkeyHint() {
   std::string hint;
   const std::string menu = PortInputRemap::BindingsText(PortInput::Action::PortMenu, " / ");

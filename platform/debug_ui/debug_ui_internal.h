@@ -132,6 +132,7 @@ void SameLineAfterHelp();
 void UpdateMenuSounds(bool visible);
 
 // window.cpp
+bool TouchScrolling(); // a finger drag is scrolling a page, taken from the widget it began on
 void DrawUI();
 // The port's own hotkeys, named by what is bound.
 std::string HotkeyHint();
