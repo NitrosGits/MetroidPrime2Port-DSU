@@ -243,9 +243,10 @@ void CGrappleArm::RenderGrappleBeam(const CStateManager& mgr, const CVector3f& p
         const bool airValid = mPortBeamAirEnd.Note(mPortBeamAirPos, gen);
         const float t = CCameraManager::GetPresentationInterpolation();
         if (t >= 0.f && t <= 1.f && PortOverlay::ParticleInterpolation()) {
-          // Where the gun-space point lands under the world view.
+          // The world point that, under the world view, lands where the gun end lands under the
+          // gun view (view matrices are camera to world).
           const CVector3f gunShift =
-              worldView.GetInverse() * (gunView * mPortBeamGunPos) - mPortBeamGunPos;
+              worldView * (gunView.GetQuickInverse() * mPortBeamGunPos) - mPortBeamGunPos;
           CVector3f airShift = CVector3f::Zero();
           if (airValid && t < 1.f) {
             airShift = (mPortBeamAirEnd.prev - mPortBeamAirEnd.cur) * (1.f - t);
