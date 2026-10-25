@@ -86,8 +86,8 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
     map gestures (drag, pinch, tap), quit screen.
 15. **game1 Game rows**: scan speed, elevator ride skip/speed, on-screen IGT, language, restart to
     menu, Original experience toggle.
-16. **vid1 HUD/scan**: cutscene black bars, sharp scan window, scan image spread, HUD opacity,
-    custom crosshair colour, secondary crosshairs.
+16. **vid1 HUD/scan**: cutscene black bars, sharp scan window, HUD opacity, custom crosshair colour,
+    secondary crosshairs (scan image spread moved to 23).
 17. **vid2 rendering/system video**: sun and projected shadows, HD font, shader-compilation toast and
     F1-hint switches, GPU self-test / renderer / driver pickers (guarded to their platforms).
 18. **sys1 System**: Discord presence, disc image check, menu sounds, memory-card import/export,
@@ -100,6 +100,14 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
 22. **spr1 Spring Ball** (user 2026-10-25): MP1's Spring Ball option (jump in Morph Ball; Echoes has
     none natively), its binding, gyro flick and Android swipe-up triggers (`8773bfd0b`, `c35a19db4`
     area; find the rest by `git log -i --grep=spring` in MP1).
+23. **hud1 widescreen HUD, all of it** (user 2026-10-25, next free slot): every HUD state spreads
+    correctly at 16:9 and 21:9 (and Vert+ below 4:3): combat, scan, dark, echo visor frames, morph
+    ball HUD and its viewport reduction, helmet, boss energy, threat/missile clusters, radar,
+    minimap, scan text box/bar kept 4:3, scan image spread, message boxes and save prompt keeping
+    proportions, front end pillarboxed, HUD lag and HUD scale <100% composing with the spread.
+    MP1: `0f1d9b7f3 f359df2d8 c29d9dcc8 284ca7e18 7a7aadd8c fc5bf0b70 ba2db2200 c70260b06 e64c9e4d3
+    f420a5862 8ae7c9b44 45ea32a48 cbf3bc8f7 eb6c6a61f 6fa512c72 11bf57639 a653c4390`. MP2 base:
+    `6ae31083e`, `9acd7f669` (gaps in docs/STATUS.md 2026-10-19).
 
 Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
 fixes (wait for package 8), decomp matches.
@@ -134,3 +142,4 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 - 2026-10-25: Running: spr1 pkg 22 Spring Ball (Sonnet, ../wt-mp2-spr1, ses_e8d47e64affeYa2mt6T0WLrYX1), ptr2. Queued: game1, vid1, vid2, ctl1, misc1, mod2.
 - 2026-10-25 spr1 merged (pkg 22): Spring Ball action bound to shift chords in ball context, routed to the shared request; gyro flick (spring_ball_flick, spring_ball_flick_rate); request cleared when it springs. Gates green (ctest 34/45 as expected, settings 187/100, upstream OK, boot reached gameplay). Live: spring raises z -48.33→-44.95, off has no effect. Unrun: binding/chords, flick (no gyro), F1 rows.
 - 2026-10-25: Running: game1 pkg 15 (Sonnet, ../wt-mp2-game1, ses_e8d3b53c1ffeHKlAoUNpd2iHHq), ptr2 rework. Queued: vid1, vid2, ctl1, misc1, mod2.
+- 2026-10-25: Added pkg 23 hud1 (widescreen HUD, all states incl. morph ball; user). Launches at the next free Sonnet slot, before vid1.
