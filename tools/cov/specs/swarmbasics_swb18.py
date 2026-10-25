@@ -121,25 +121,15 @@ def symbol(prefix):
     check(len(matches) == 1, 'one native symbol: ' + prefix)
     return matches[0]
 
-def find_anim(mgr):
-    table = ev('((rstl::auto_ptr<CObjectList>*)((CStateManager*)%d)->mObjectLists.mData)'
-               '[0].mItem' % mgr).dereference()['mObjects']
-    for index in range(1024):
-        entity = table[index]['mEntity']
-        if not int(entity):
-            continue
-        try:
-            obj = entity.cast(entity.dynamic_type).dereference()
-            model = obj['mModelData']['mPtr']
-            if int(model):
-                anim = model.dereference()['mAnimData']['mItem']
-                if int(anim):
-                    log('REAL_ANIM', actor=int(entity), dynamic_type=str(entity.dynamic_type),
-                        anim=int(anim), char_index=int(anim.dereference()['mCharIdx']))
-                    return int(anim)
-        except (gdb.error, KeyError, RuntimeError):
-            continue
-    raise gdb.GdbError('no live animated actor; do not fabricate one')
+def swarm_anim(this):
+    """The swarm's own CAnimData - the exact object the natural caller
+    (UpdateSwarmAnimations: UpdateEffects(mgr, *mModelDatas[i].AnimationData(), ...)) passes."""
+    S = '((CSwarmBasics*)%d)->' % this
+    check(iv(S + 'mModelDatas.mCount') >= 1, 'swarm has a model data entry')
+    anim = iv(S + 'mModelDatas.mItems[0].mAnimData.mItem')
+    check(anim != 0, 'swarm model data owns a real CAnimData')
+    log('REAL_ANIM', swarm=this, anim=anim)
+    return anim
 
 def cells(bounds_min, bounds_max, margin):
     """BoxForPosition's cell centres from the box GetBoundingBox reports, computed here (not by
@@ -226,6 +216,10 @@ class Trigger(gdb.Breakpoint):
             return False
         if iv(S + 'mBoids.mCount') < 2 or iv(S + 'mActiveBoidIndices.mCount') < 1:
             return False
+        if iv(S + 'mModelDatas.mCount') < 1:
+            return False
+        if iv(S + 'mModelDatas.mItems[0].mAnimData.mItem') == 0:
+            return False
         state['pending'] = (this, mgr)
         state['trigger'] = dict(thread=gdb.selected_thread().global_num,
                                 pc=gdb.newest_frame().pc(), level=gdb.newest_frame().level())
@@ -249,6 +243,9 @@ class Run(gdb.Command):
         state['busy'] = True
         try:
             self.fixture(this, mgr)
+        except gdb.error as error:
+            state['err'] = str(error)[:200]
+            log('FAIL', label='fixture error: ' + state['err'])
         finally:
             state['busy'] = False
             state['scenario'] = None
@@ -256,7 +253,7 @@ class Run(gdb.Command):
     def fixture(self, this, mgr):
         S = '((CSwarmBasics*)%d)->' % this
         M = '((CStateManager*)%d)->' % mgr
-        anim = find_anim(mgr)
+        anim = swarm_anim(this)
         A = '((CAnimData*)%d)->' % anim
         check(iv('CAnimData::mSoundPOINodes.mCount') == 48, '48 constructed real POI slots')
         char_index = iv(A + 'mCharIdx')
