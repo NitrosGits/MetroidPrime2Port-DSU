@@ -16,6 +16,7 @@
 # no copy was taken then): this spec 6ea20c1a...cecde2d2, spp_m06.con 919c7728...271cb, spp_force_I.con (not executed) 0099eda7...cfcd.
 # Slice ppx3, launch 1: run M (spp_m06_M.con) = run L plus the Think coin/wrap/visor arms, follower on/off, inactive proxy;
 # it crashed at Think call 100 (entry order, see the M block). Launch 2 runs M with its entries before the COIN entry.
+# Launch 3: run N (same con) = M plus OnGameEvent's coin/relay arms launch 2 missed (the N block).
 # Launch 4 (ppx2, run L): restore through the address, COIN forced only while the entry installed a force (launch 3 = run K crashed: IDLE turned true mid-call).
 # Launch 3 (slice ppx2) runs J again with the fake vtable word fixed to `**(long**)GM` (launch 2 crashed at pc 0 writing GM there).
 # Launch 2 runs J (spp_m06_J.con, tools/cov/force_ret_spp.py): M06 with the Think forces restricted by ONLY to the CoinCollector
@@ -141,7 +142,7 @@ elif RUN == 'H':
         ('2644 counter', OG, GIA, 2, {0: [('$rax', '500')], 1: [('$rax', '0')]},
          'item amounts 500 / 0 on alternate calls'),
     ]
-elif RUN in ('J', 'M'):
+elif RUN in ('J', 'M', 'N'):
     # M06_ShootingGallery natural PLCTs. Think's COIN arm on the natural CoinCollector e080000a8 (the only object the
     # ONLY filter lets the Think entries touch: idle, mCoinsToDrop 0): even calls mask 0 (invalid first player),
     # odd calls a fake CGMCoin (built in the proxy's spare bytes at +0x230, vtable of the real mode, restored at the
@@ -178,7 +179,7 @@ elif RUN in ('J', 'M'):
          # true mid-call (the drop branch empties mCoinsToDrop) and run K crashed on the real mode taken for a CGMCoin
          {0: [('$rax', '(%s == 0 || %s == (long)%s) ? 0x434f494e : $rax' % (MASK, GM, FAKE))]}, "'COIN' while the entry forced the mask or the fake mode"),
     ]
-    if RUN == 'M':
+    if RUN in ('M', 'N'):
         # slice ppx3 (spp_m06_M.con): run L plus Think's other live arms on e080000a8, call numbers counted over its own
         # Thinks: the 900 wrap (50), pending coins with HP 0 (100, 101; paid at 102), coins to drop 1500 (clamp, chunks
         # 100/50/10, 150), 75 (400) and 7 (amount < chunk, 550), the visor-watcher case as type 8 with mask 0 (701, 703:
@@ -202,6 +203,24 @@ elif RUN in ('J', 'M'):
             ('1C44 amplifier', THINK, GIA, 1,
              {0: [('$rax', '$this->mCoinsToDrop < 700 && $this->mCoinsToDrop > 300 && $rax == 0 ? 1 : $rax')]},
              'amplifier (and counter) 1 while 300 < coins to drop < 700'),
+        ]
+    if RUN == 'N':
+        # launch 3: run M plus OnGameEvent's arms run M2 missed, on e080000a8 only. Each gameevent line of spp_m06_M.con is
+        # one call on it (37 in run M2), so call 5 = kill f560, 6 = damage f575, 11 = kill as 0 f650, 23 = kill f830, 24 =
+        # damage f845. These come after '2644 overkill|all' and '2644 coin params', which save and restore the same
+        # lvalues, so these writes are not restored on their own ('!').
+        FORCE_RET += [
+            ('2644 thresholds', OG, 1000000,
+             [(5, [('!$this->mFloatParameter2', '0.0')]),
+              (11, [('!$this->mFloatParameter2', '10.0'), ('!' + MH, '99.0')]),
+              (23, [('!$this->mFloatParameter2', '10.0'), ('!' + MH, '99.0')]),
+              (24, [('!$this->mFloatParameter1', '1000.0')])],
+             'no overkill threshold (5); threshold 10, HP 99 (11 as relay, 23); damage per coin 1000 (24)'),
+        ]
+        FORCE_INNER += [
+            ('2644 limit 100', OG, 'CGMCoin::GetCoinLimit(', 1000000, {1: [('$rax', '100')], 2: [('$rax', '100')]},
+             'coin limit 100 on its first call (kill f560)'),
+            ('2644 owned 5000', OG, GIA, 1000000, {1: [('$rax', '5000')]}, '5000 coins owned on its first call (kill f560)'),
         ]
 elif RUN == 'I':
     # Agon 05_portalpuzzle EchoVisorWatcher as CoinCollector (as D), COIN mode with a valid first player on
@@ -278,7 +297,7 @@ SPEC = [
     ('OnGameEvent', 'CScriptPlayerProxy::OnGameEvent(', [], 'max=400'),
     ('2F10 ~CListener', 'CScriptPlayerProxy::CListener::~CListener(', [], 'max=400'),
 ]
-if RUN == 'M':
+if RUN in ('M', 'N'):
     SPEC += [
         ('188 LoadPlayerController', 'LoadPlayerController(', [], 'max=400'),
         ('0 ~CScriptPlayerProxy (2F10 inline)', 'CScriptPlayerProxy::~CScriptPlayerProxy(', [], 'max=400'),
