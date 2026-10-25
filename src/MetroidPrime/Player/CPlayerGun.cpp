@@ -277,9 +277,6 @@ void CPlayerGun::UpdateNormalShotCycle(float dt, CStateManager& mgr) {
   }
 }
 #ifdef TARGET_PC
-// Pointer aim (MP1's mPortPointerAimPoint in CPlayerGun::PortShotFromDrawnMuzzle): the assist
-// transform is aimed from the gun's origin, and the muzzle sits off it, so a shot along it would
-// pass beside the pointed point by that offset. Aim it from its own start instead.
 bool CPlayerGun::PortShotOffLock(CStateManager& mgr) const {
   return mPortPointerAimValid && GetPlayer(mgr)->GetOrbitTargetId() != kInvalidUniqueId;
 }
@@ -288,6 +285,9 @@ TUniqueId CPlayerGun::PortHomingTargetId(CStateManager& mgr) {
   return PortShotOffLock(mgr) ? kInvalidUniqueId : GetTargetId(mgr);
 }
 
+// Pointer aim (MP1's mPortPointerAimPoint in CPlayerGun::PortShotFromDrawnMuzzle): the assist
+// transform is aimed from the gun's origin, and the muzzle sits off it, so a shot along it would
+// pass beside the pointed point by that offset. Aim it from its own start instead.
 void CPlayerGun::PortAimShotAtPointer(CTransform4f& xf) const {
   if (!mPortPointerAimValid) {
     return;
