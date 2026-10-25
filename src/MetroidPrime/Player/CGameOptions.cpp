@@ -10,7 +10,6 @@
 #include "rstl/algorithm.hpp"
 
 #include "dolphin/os.h"
-
 #ifdef TARGET_PC
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
@@ -330,8 +329,8 @@ float CGameOptions::GetVisorHudAlpha(int playerIndex) const {
   const int percent = PortOverlay::HudOpacity(part);
   return percent == PortOverlay::kHudOpacityVisor ? GetHudAlpha() : percent * 0.01f;
 }
-#endif
 
+#endif
 void CGameOptions::SetHelmetAlpha(int alpha) { helmetAlpha = alpha; }
 
 int CGameOptions::GetHelmetAlphaRaw() const { return helmetAlpha; }
