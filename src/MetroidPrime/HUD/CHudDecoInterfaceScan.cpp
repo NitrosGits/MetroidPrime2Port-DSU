@@ -5,7 +5,6 @@
 #include "GuiSys/CGuiCamera.hpp"
 #include "GuiSys/CGuiFrame.hpp"
 #include "GuiSys/CGuiFrameLoader.hpp"
-#include "GuiSys/CGuiHeadWidget.hpp"
 #include "GuiSys/CGuiTextPane.hpp"
 #include "GuiSys/CGuiWidgetDrawParms.hpp"
 #include "Kyoto/Alloc/CMemory.hpp"
@@ -26,8 +25,8 @@
 #include "rstl/algorithm.hpp"
 #include "rstl/pair.hpp"
 #include "rstl/reserved_vector.hpp"
-
 #ifdef TARGET_PC
+#include "GuiSys/CGuiHeadWidget.hpp"
 #include "port_overlay.h"
 #endif
 

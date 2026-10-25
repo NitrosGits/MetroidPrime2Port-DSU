@@ -238,8 +238,8 @@ float CGameCamera::GetRenderFov() const {
   return PortOverlay::VertPlusFov(fov, static_cast< float >(viewport.mWidth) /
                                            static_cast< float >(viewport.mHeight));
 }
-#endif
 
+#endif
 void CGameCamera::SetFovAndTarget(float fov) {
   mFovInterpolation.mCurrent = fov;
   mFovInterpolation.mTarget = fov;

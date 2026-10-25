@@ -349,13 +349,15 @@ CGuiFrame::CGuiFrame(CInputStream& in, CSimplePool* pool)
   LoadWidgetsInGame(in, pool, mVersion);
 }
 
-CGuiFrame::~CGuiFrame() {
 #ifdef TARGET_PC
+CGuiFrame::~CGuiFrame() {
   PortDropSpreadAnchors(this);
   PortDropSpreadWeights(this);
-#endif
   delete mRootWidget;
 }
+#else
+CGuiFrame::~CGuiFrame() { delete mRootWidget; }
+#endif
 
 void CGuiFrame::LoadWidgetsInGame(CInputStream& in, CSimplePool* pool, uint version) {
   const int count = in.Get< int >();

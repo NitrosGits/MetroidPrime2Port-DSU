@@ -181,8 +181,8 @@ void CHudVisorBeamMenu::PortGroupSpread() {
   mFrame.SetSpreadAnchorTree(mMenuRoot);
   mFrame.SetSpreadAnchorTree(mTitleRoot);
 }
-#endif
 
+#endif
 void CHudVisorBeamMenu::Update(float dt, const bool init) {
   const CColor itemColors[2][4] = {
       {gpTweakGuiColors->GetVisorMenuIconColor0(), gpTweakGuiColors->GetVisorMenuIconColor1(),
