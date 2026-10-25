@@ -243,7 +243,8 @@ static void PortDropSpreadWeights(const CGuiFrame* frame) {
 }
 
 // Models cut rigidly instead of stretched (the visor frame's glass): `cut` is the fraction of the
-// authored half-width kept in the middle.
+// authored half-width kept in the middle. A null member stands for every model of the frame that
+// spans the view, so models meeting the glass (the helmet's plate) keep meeting it.
 struct SPortSpreadSplit {
   const CGuiFrame* frame;
   const CGuiWidget* member;
@@ -252,9 +253,11 @@ struct SPortSpreadSplit {
 static SPortSpreadSplit sPortSpreadSplits[16];
 static int sPortSpreadSplitCount = 0;
 
-static float PortFindSpreadSplit(const CGuiFrame* frame, const CGuiWidget* widget) {
+static float PortFindSpreadSplit(const CGuiFrame* frame, const CGuiWidget* widget, bool spanning) {
   for (int i = 0; i < sPortSpreadSplitCount; ++i) {
-    if (sPortSpreadSplits[i].frame == frame && sPortSpreadSplits[i].member == widget) {
+    if (sPortSpreadSplits[i].frame == frame &&
+        (sPortSpreadSplits[i].member == widget ||
+         (spanning && sPortSpreadSplits[i].member == nullptr))) {
       return sPortSpreadSplits[i].cut;
     }
   }
@@ -351,7 +354,7 @@ static void PortDrawSpread(const CGuiFrame* frame, const CGuiCamera& camera,
   // A model registered for a rigid split is cut even when it doesn't reach the outer quarters.
   const float split = sPortSpreadSplitCount > 0 && spread != 1.f && bounds.GetMaxPoint().GetX() !=
                                                                          bounds.GetMinPoint().GetX()
-                          ? PortFindSpreadSplit(frame, widget)
+                          ? PortFindSpreadSplit(frame, widget, stretch)
                           : 0.f;
   if ((stretch || split > 0.f) && (!camera.IsPerspective() || eyeMinDepth > 0.f) &&
       camera.GetSpreadScreenHalfWidth() > 0.f) {

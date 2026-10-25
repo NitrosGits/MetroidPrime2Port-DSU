@@ -46,7 +46,8 @@ public:
   // the 4:3 place, 1 is the full spread). Read at every draw, so it follows a setting live.
   void SetSpreadWeightTree(const CGuiWidget* root, float (*weight)());
   // Port: draw `member` (a model spanning the view) cut at `cut` of the authored half-width: the
-  // middle stays, everything outside slides whole with the screen edge, nothing stretches.
+  // middle stays, everything outside slides whole with the screen edge, nothing stretches. A null
+  // `member` splits every model of the frame that spans the view.
   void SetSpreadSplit(const CGuiWidget* member, float cut);
 #endif
 

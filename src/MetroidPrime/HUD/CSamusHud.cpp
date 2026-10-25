@@ -420,10 +420,9 @@ void CSamusHud::InitializeFrameGlueMutable(const CStateManager& mgr) {
     camera->SetParms(hudCamera->GetParms());
 #ifdef TARGET_PC
     camera->SetSpreadable(true);
-    // The helmet's copy of the glass brackets goes with the HUD frame's (above).
-    if (CGuiWidget* glass = mLoadedHelmetFrame->FindWidget("model_glass")) {
-      mLoadedHelmetFrame->SetSpreadSplit(glass, 0.285f);
-    }
+    // The helmet's glass brackets go with the HUD frame's (above), and the rest of the helmet is cut
+    // the same way so the glass's gradient still meets the plate above it.
+    mLoadedHelmetFrame->SetSpreadSplit(nullptr, 0.285f);
 #endif
     camera->SetO2WTransform(CTransform4f::Translate(hudCamera->GetLocalPosition()));
   }
