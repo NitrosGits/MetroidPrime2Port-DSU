@@ -147,6 +147,10 @@ bool GyroCursorCamera();
 // `MP2_GYRO_SENSITIVITY_Y` (same range); under pointer aim it scales the pointer's vertical travel.
 bool GyroSplit();
 float GyroSensitivityY();
+// Lock-on free aim (Remastered): under a combat lock the mouse, twin stick, gyro or a touch drag
+// moves a crosshair over the view and shots follow it, with or without pointer aim
+// (`MP2_LOCK_ON_FREE_AIM`). CPlayer::PortLockFreeAim reads it.
+bool LockOnFreeAim();
 // The Reset aim binding recentres the pointer under pointer aim, else levels the camera;
 // `MP2_RESET_AIM_BOTH` makes it do both either way.
 bool ResetAimBoth();
@@ -318,9 +322,10 @@ void Draw();
 // platform/port_video.cpp (include/port_video.h); each `MP2_<KEY>` overrides the file for a run.
 namespace PortOverlay {
 
-// Dynamic resolution (`MP2_DYNAMIC_RES`, F1 > Video > Quality, only with a fixed EFB scale): draws
-// the EFB between DynamicResMin (`MP2_DYNAMIC_RES_MIN`: 0.5, 0.75, 1) and RenderScale to hold
-// DynamicResTarget fps (`MP2_DYNAMIC_RES_TARGET`; 0 = the display's rate, 60 under the cap).
+// Dynamic resolution (`MP2_DYNAMIC_RES`, F1 > Video > Quality): draws the EFB between DynamicResMin
+// (`MP2_DYNAMIC_RES_MIN`, kDynamicResMinLowest..4) and RenderScale (auto: the window's own scale) to
+// hold DynamicResTarget fps (`MP2_DYNAMIC_RES_TARGET`; 0 = the display's rate, 60 under the cap).
+const float kDynamicResMinLowest = 0.25f;
 bool DynamicRes();
 int DynamicResTarget();
 float DynamicResMin();

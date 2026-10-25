@@ -49,6 +49,15 @@ Controls > Options:
 - `auto_aim`: Aiming > Auto-aim.
 - `pointer_aim`, `pointer_aim_box`, `pointer_aim_turn`: Aiming > Pointer aim (Trilogy style),
   Dead box, Edge turn speed.
+- `lock_on_free_aim`: Aiming > Lock-on free aim (default off; needs Mouse aim, Twin stick or
+  Touch aim), as in Remastered; env `MP2_LOCK_ON_FREE_AIM`. Under a combat lock the mouse, the
+  right stick, gyro aim or a touch aim drag moves a crosshair over the view and shots leave along
+  the ray through it, as with pointer aim, while the lock steers the view (no edge turn). Without
+  pointer aim the crosshair is there only during the lock. It starts and ends each lock at the
+  centre, where shots and homing go for the locked target as before; off the centre beams and
+  missiles head for the crosshair and do not home. Under pointer aim with gyro aim the right stick
+  moves the crosshair too while locked. Scan locks and grapples still aim through the centre. A
+  touch source re-centres it while no finger is down.
 - `reset_aim_both`: Aiming > Reset aim resets pointer and camera (the Reset aim binding, unbound
   by default, recentres the pointer under pointer aim, else levels the view); env
   `MP2_RESET_AIM_BOTH`.
@@ -74,6 +83,25 @@ Controls > Controller settings:
 
 Controls > Remap:
 
+- Presets... (beside Reset...): one click applies Classic or Mouse & keyboard to the keyboard, or
+  GameCube, Remastered, Modern or Southpaw to all controllers, replacing your own bindings
+  there; a selected kind or model keeps its own on top. Reset... removes a device's own
+  bindings (after a confirmation), bringing back the Classic and GameCube layouts.
+- Morph Ball rows (issue #167: Bomb, Power Bomb, Boost Ball, Spider Ball, Unmorph;
+  `ball_bomb`, `ball_power_bomb`, `ball_boost`, `ball_spider`, `ball_unmorph` in
+  controls.toml) press A, Y, B, R and X only in Morph Ball, so the ball's controls are
+  separate from gameplay's; the stick, Start, Z (map) and the C-stick are shared. On
+  keyboard & mouse and controller they start unbound, and an unbound row follows gameplay:
+  the game button's inputs do it in the ball. Once a row is set in one of those kinds, it
+  replaces that button in the ball for that kind only (setting Bomb on the controller stops
+  the pad's A bombing; the keyboard's A key still does). An input bound to a row does only
+  that in the ball, held layers included (the same mouse button under any of its codes, an
+  axis at any threshold); outside the ball its other bindings work as before, and the
+  prompts in the ball follow it. A combo on a row replaces the same combo; its buttons alone
+  keep what they do. A row given layers in controls.toml works in the ball while one is held
+  and adds to the game button; without the layer its input does what it did. Touch can't
+  take them (the overlay keeps its own morph ball buttons). A touch: binding on a control
+  counts as taking it over only where it applies.
 - `menu_standard_buttons`: Separate menu buttons (menus and the map read the "Menus and map"
   rows; ignored while the touch controls are on); env `MP2_MENU_STANDARD_BUTTONS`.
 
@@ -110,7 +138,7 @@ Video > Display:
 Video > Quality and Frame rate:
 
 - `msaa`, `aniso`, `render_scale`: Quality > Anti-aliasing (1 or 4), Anisotropic filtering (env
-  `MP2_ANISO`), EFB scale (0 = Auto render scale).
+  `MP2_ANISO`), Resolution scale (0 = Auto render scale).
 - `frame_limit`: Frame rate > 60 FPS cap (target).
 - `smooth_frames`, `pose_interpolation`, `particle_interpolation`, `look_interpolation`: Frame
   rate > Smooth uncapped frames, Smooth animation, Smooth effects, Smooth look.
@@ -119,10 +147,14 @@ Video > Quality and Frame rate:
   `MP2_SHOW_MENU_HINT`.
 - `per_pixel_lighting`: Quality > Per-pixel lighting (Aurora lights per pixel); env
   `MP2_PER_PIXEL_LIGHTING`.
-- `dynamic_res`, `dynamic_res_target`, `dynamic_res_min`: Quality > Dynamic resolution, Target
-  (0 = display rate, else 30..240 fps), Lowest scale (0.5..1); env `MP2_DYNAMIC_RES`,
-  `MP2_DYNAMIC_RES_TARGET`, `MP2_DYNAMIC_RES_MIN`. `MP2_DYNRES_GPU_TIMES=0` steers on the frame
-  rate alone, without GPU timestamps.
+- `dynamic_res`, `dynamic_res_target`, `dynamic_res_min`: Quality > Dynamic resolution (Off, Auto,
+  User; the mode is `dynamic_res` with `render_scale`: Auto goes up to the window's own scale
+  (`render_scale` 0), User up to the "Maximum resolution scale" set), Frame rate target (0 =
+  Display, the display's rate, else 30..500 fps; never above the frame rate cap), Minimum
+  resolution scale (0.25..the top, 4 at most; the sliders show the lines drawn, 1x being 480p);
+  env `MP2_DYNAMIC_RES`, `MP2_DYNAMIC_RES_TARGET`, `MP2_DYNAMIC_RES_MIN`. Auto starts over when the
+  window is resized and does nothing while its top is not above the minimum (F1 says so).
+  `MP2_DYNRES_GPU_TIMES=0` steers on the frame rate alone, without GPU timestamps.
 - `upscale_sharpen` (`off`, `dynamic`, `always`), `upscale_sharpen_amount` (0..100): Quality >
   Sharpen when upscaled, Sharpening; env `MP2_UPSCALE_SHARPEN`, `MP2_UPSCALE_SHARPEN_AMOUNT`.
 - `fps_cap`: Frame rate > FPS cap with the 60 FPS cap off (0 = Unlimited, else 30..500); env

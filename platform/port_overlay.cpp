@@ -78,6 +78,7 @@ bool sGyroCursorCamera = false;
 bool sGyroSplit = false;
 float sGyroSensitivityY = PortOverlay::kGyroSensitivityDefault;
 bool sResetAimBoth = false;
+bool sLockOnFreeAim = false;
 bool sMenuStandardButtons = false;
 bool sRapidCharge = false;
 bool sMouseButtons = true;
@@ -848,6 +849,11 @@ float GyroSensitivityY() {
   return EnvFloatIn("MP2_GYRO_SENSITIVITY_Y", sGyroSensitivityY, kGyroSensitivityMin, kGyroSensitivityMax);
 }
 
+bool LockOnFreeAim() {
+  ReadEnv();
+  return EnvBool("MP2_LOCK_ON_FREE_AIM", sLockOnFreeAim);
+}
+
 bool ResetAimBoth() {
   ReadEnv();
   return EnvBool("MP2_RESET_AIM_BOTH", sResetAimBoth);
@@ -1172,12 +1178,12 @@ bool DynamicRes() {
 
 int DynamicResTarget() {
   ReadEnv();
-  return EnvIntIn("MP2_DYNAMIC_RES_TARGET", sDynamicResTarget, 0, 240);
+  return EnvIntIn("MP2_DYNAMIC_RES_TARGET", sDynamicResTarget, 0, kFpsCapMax);
 }
 
 float DynamicResMin() {
   ReadEnv();
-  return EnvFloatIn("MP2_DYNAMIC_RES_MIN", sDynamicResMin, 0.5f, 1.f);
+  return EnvFloatIn("MP2_DYNAMIC_RES_MIN", sDynamicResMin, kDynamicResMinLowest, 4.f);
 }
 
 int UpscaleSharpen() {

@@ -130,6 +130,9 @@ public:
     mPortPointerAimPoint = point;
   }
   void PortAimShotAtPointer(CTransform4f& xf) const;
+  // Lock-on free aim: a shot aimed off the combat lock's centre does not home on the lock.
+  bool PortShotOffLock(CStateManager& mgr) const;
+  TUniqueId PortHomingTargetId(CStateManager& mgr);
 #endif
   int GetBombsAvailable(CStateManager& mgr) const;
   TUniqueId DropPowerBomb(CStateManager& mgr) const;

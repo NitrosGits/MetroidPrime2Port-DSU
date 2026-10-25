@@ -480,6 +480,8 @@ public:
   // Direct aim, locked onto an empty orbit point (MP1 #169): the camera keeps its pitch and the
   // point sits on the flat forward at eye height instead of levelling the view.
   bool PortEmptyLockKeepsPitch() const;
+  // Lock-on free aim: a combat lock a pointer moves under (MP1's PortLockFreeAim).
+  bool PortLockFreeAim(const CStateManager& mgr) const;
   bool PortDirectAimControls() const;
   void UpdateMouseAim(CStateManager& mgr, float dt);
   // The right stick, cached from ProcessInput for UpdateMouseAim (twin-stick aim).

@@ -71,6 +71,12 @@ double DynamicResTargetFps();
 double DynamicResGpuMs();
 bool DynamicResGpuTimesDropped();
 const char* DynamicResReason();
+// The scale RenderScale() draws at, auto included (the window's own, as a multiple of what 1x
+// draws); the most dynamic resolution draws at (the same); and the lines of the frame buffer drawn
+// at `scale` (0 = auto) in the current window.
+float BaseRenderScale();
+float DynamicResTop();
+int DrawnLines(float scale);
 // Back to the top scale with nothing learnt (a setting changed).
 void ResetDynamicRes();
 void ApplyPresentSharpness();

@@ -980,13 +980,14 @@ void CPlayer::UpdateGunTransform(const CVector3f& position, CStateManager& mgr) 
   // pointer is on. Shots (mAssistAimXf, which CPlayerGun fires along) and the gun model aim from
   // the gun at the point the ray hits instead, or a far point when it hits nothing; the model
   // turns only so far, so it stays in view. No assist bends the shot off the pointer (a lock
-  // re-centres the pointer and aims as usual).
+  // re-centres the pointer and aims as usual; under lock-on free aim, with or without pointer
+  // aim, a centred pointer still does).
   float pointerX = 0.f;
   float pointerY = 0.f;
   mGun->PortSetPointerAimPoint(false, CVector3f::Zero());
   if (mGun->GetGunHolsterState() == CPlayerGunBase::kGHS_Drawn &&
       PortMouse::PointerAimPosition(pointerX, pointerY) && (pointerX != 0.f || pointerY != 0.f) &&
-      MouseAimAllowed(mgr)) {
+      (MouseAimAllowed(mgr) || PortLockFreeAim(mgr))) {
     const CFirstPersonCamera* cam = mCameraManager->GetFirstPersonCamera();
     // The view's own transform: the crosshair is drawn from it.
     const CTransform4f& viewXf = cam->GetTransform();
@@ -2886,6 +2887,14 @@ bool CPlayer::PortEmptyLockKeepsPitch() const {
   return PortDirectAimControls() && mOrbitState == kOS_OrbitPoint;
 }
 
+bool CPlayer::PortLockFreeAim(const CStateManager& mgr) const {
+  // Scan locks and grapples still aim through the centre.
+  return PortOverlay::LockOnFreeAim() && PortDirectAimControls() &&
+         (mOrbitState == kOS_OrbitObject || mOrbitState == kOS_OrbitPoint ||
+          mOrbitState == kOS_OrbitCarcass || mOrbitState == kOS_ForcedOrbitObject) &&
+         mgr.GetPlayerState()->GetCurrentVisor() != CPlayerState::kPV_Scan;
+}
+
 bool CPlayer::PortDirectAimControls() const {
   if (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled()) {
     return false;
@@ -2918,7 +2927,8 @@ void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
   const CVector3f forward = fpCamera != nullptr && mCameraManager->IsInFPCamera()
                                 ? fpCamera->GetTransform().GetForward()
                                 : GetTransform().GetForward();
-  if (!PortMouse::UpdateAim(true, !allowed, forward.GetX(), forward.GetY(), forward.GetZ(), dt)) {
+  if (!PortMouse::UpdateAim(true, !allowed, forward.GetX(), forward.GetY(), forward.GetZ(), dt,
+                            PortLockFreeAim(mgr))) {
     return;
   }
 

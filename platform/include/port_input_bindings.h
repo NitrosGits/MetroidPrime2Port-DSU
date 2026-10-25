@@ -152,4 +152,40 @@ void Revert(UserProfile& user, Action action, Family family);
 // Every override and unbind in one family (a reset to the built-in controls).
 void ClearFamily(UserProfile& user, Family family);
 
+// The same physical input: mouse buttons match across their code runs (aim, key
+// slot, menu, held), and the press threshold is ignored.
+bool SamePhysicalInput(const Input& a, const Input& b);
+// Makes the inputs of the `isRow` bindings do only those in `ctx`: every other
+// binding on the same physical inputs (the same chord, for a chord) gets `ctx`
+// blocked, which keeps its rank and what it does elsewhere. everywhereOnly: only
+// bindings for every context are blocked, so ones scoped under Advanced still apply.
+void BlockRowInputs(Profile& profile, bool (*isRow)(const Binding&), uint16_t ctx, bool everywhereOnly);
+
+// The Morph Ball rows (issue #167): each presses a GameCube button, only in Morph
+// Ball. Bound in a family, a row replaces that button in the ball for the family;
+// unbound, the button's own inputs do it. Touch can't take them (the overlay keeps
+// its own morph ball buttons).
+struct BallRow {
+  Action row;
+  Action game;
+  const char* hint; // the Remap page's note beside the row
+};
+inline constexpr BallRow kBallRows[] = {
+    {Action::BallBomb, Action::PadA, "A when unset"},
+    {Action::BallPowerBomb, Action::PadY, "Y when unset"},
+    {Action::BallBoost, Action::PadB, "B when unset"},
+    {Action::BallSpider, Action::PadR, "R when unset"},
+    {Action::BallUnmorph, Action::PadX, "X when unset"},
+};
+// The row of `a`, or nullptr; the row that presses `game`, or nullptr.
+const BallRow* FindBallRow(Action a);
+const BallRow* BallRowForGame(Action game);
+// Before a poll: scopes the Morph Ball rows to Morph Ball (a row with layers to
+// Morph Ball while one is held) and blocks Morph Ball for the other bindings on
+// their keyboard, mouse and controller inputs (a row with layers blocks nothing: it
+// outranks them while one is held), and blocks Morph Ball for its game button's
+// bindings in each keyboard or controller family that binds the row (not with
+// layers). A row that isn't bound changes nothing.
+void ApplyBallButtons(Profile& profile);
+
 } // namespace PortInput

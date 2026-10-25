@@ -210,6 +210,7 @@ const SettingKey kSettingKeys[] = {
      false,
      "2",
      "1"},
+    BoolKey< &sLockOnFreeAim >("lock_on_free_aim"),
     BoolKey< &sResetAimBoth >("reset_aim_both"),
     BoolKey< &sMenuStandardButtons >("menu_standard_buttons"),
     BoolKey< &sMouseButtons >("mouse_buttons"),
@@ -397,13 +398,13 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sPerPixelLighting >("per_pixel_lighting"),
     BoolKey< &sDynamicRes >("dynamic_res"),
     {"dynamic_res_target",
-     [](const std::string& value) { sDynamicResTarget = std::clamp(std::atoi(value.c_str()), 0, 240); },
+     [](const std::string& value) { sDynamicResTarget = std::clamp(std::atoi(value.c_str()), 0, PortOverlay::kFpsCapMax); },
      [](std::ostream& out) { out << sDynamicResTarget; }, false, "0", "60"},
     {"dynamic_res_min",
      [](const std::string& value) {
        const float f = static_cast< float >(std::atof(value.c_str()));
        if (std::isfinite(f)) {
-         sDynamicResMin = std::clamp(f, 0.5f, 1.f);
+         sDynamicResMin = std::clamp(f, PortOverlay::kDynamicResMinLowest, 4.f);
        }
      },
      [](std::ostream& out) { out << sDynamicResMin; }, false, "0.5", "0.75"},

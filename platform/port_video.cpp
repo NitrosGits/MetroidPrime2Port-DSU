@@ -21,12 +21,17 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 
 using namespace PortOverlayState;
+
+namespace aurora {
+bool frame_buffer_size_for_scale(float scale, uint32_t* width, uint32_t* height) noexcept;
+} // namespace aurora
 
 namespace PortVideo {
 
@@ -73,9 +78,13 @@ void UpdateDynamicRes(double fps, unsigned frames) {
   if (PortPhoto::Capturing()) {
     return;
   }
-  const float top = EffectiveRenderScale();
+  const float top = DynamicResTop();
   const float bottom = std::min(PortOverlay::DynamicResMin(), top);
   const bool active = PortOverlay::DynamicRes() && top > bottom;
+  // Auto's top moves with the window: start over from the new one.
+  static float sDynTop = 0.f;
+  const bool topMoved = sDynTop != top;
+  sDynTop = top;
   // MP2_DYNRES_GPU_TIMES=0 steers on the frame rate alone, as on a GPU without timestamps.
   static const bool gpuTimesAllowed = port::EnvFlag("MP2_DYNRES_GPU_TIMES", true);
   const bool gpuTimes = gpuTimesAllowed && GXPortGpuTimesSupported() == GX_TRUE;
@@ -87,7 +96,7 @@ void UpdateDynamicRes(double fps, unsigned frames) {
     }
     return;
   }
-  if (!sDynActive) {
+  if (!sDynActive || topMoved) {
     sDynActive = true;
     ResetDynamicRes();
   }
@@ -107,7 +116,8 @@ void UpdateDynamicRes(double fps, unsigned frames) {
   sDynGpuMs = sample.gpuMs;
   const PortDynamicRes::Decision decision = sDynController.Update(sample);
   if (decision.changed) {
-    sDynScale = decision.scale;
+    // Back at the top draws as the setting does (auto: the window's exact size).
+    sDynScale = decision.scale < top ? decision.scale : 0.f;
     ApplyPresentSharpness();
     std::fprintf(stderr, "[video] dynamic resolution %.2fx (%.0f fps, target %.0f, GPU %.1f ms): %s\n",
                  static_cast< double >(decision.scale), fps, sample.targetFps, sample.gpuMs,
@@ -284,6 +294,32 @@ void Frame() {
   }
 }
 
+// What 1x draws and what auto draws, as the frame buffer's height: auto is the window's pixel
+// size fitted to the game's aspect, so its scale is the ratio of the two.
+float BaseRenderScale() {
+  const float scale = PortOverlay::RenderScale();
+  if (scale > 0.f) {
+    return scale;
+  }
+  uint32_t width = 0, native = 0, base = 0;
+  if (aurora::frame_buffer_size_for_scale(0.f, &width, &native) &&
+      aurora::frame_buffer_size_for_scale(1.f, &width, &base) && native > 0 && base > 0) {
+    return static_cast< float >(native) / static_cast< float >(base);
+  }
+  return 1.f;
+}
+
+// The most dynamic resolution draws at: the scale set, or with auto render scale the window's own.
+float DynamicResTop() { return BaseRenderScale(); }
+
+int DrawnLines(float scale) {
+  uint32_t width = 0, height = 0;
+  if (aurora::frame_buffer_size_for_scale(scale, &width, &height)) {
+    return static_cast< int >(height);
+  }
+  return static_cast< int >(std::lround(scale * 480.f));
+}
+
 float DrawScale() { return sDynScale > 0.f ? sDynScale : PortOverlay::RenderScale(); }
 
 float DynamicScale() { return sDynScale; }
@@ -305,7 +341,7 @@ bool DynamicResGpuTimesDropped() { return sDynController.GpuTimesDropped(); }
 const char* DynamicResReason() { return PortDynamicRes::ReasonText(sDynController.LastReason()); }
 
 void ResetDynamicRes() {
-  sDynController.Reset(EffectiveRenderScale());
+  sDynController.Reset(DynamicResTop());
   sDynGpuMs = -1.0;
   sDynScale = 0.f;
   ApplyPresentSharpness();
@@ -318,7 +354,7 @@ void ApplyPresentSharpness() {
   const int mode = PortOverlay::UpscaleSharpen();
   const int strength = PortOverlay::UpscaleSharpenAmount();
   if (strength > 0) {
-    const bool lowered = sDynScale > 0.f && sDynScale < EffectiveRenderScale();
+    const bool lowered = sDynScale > 0.f;
     if (mode == 2 || (mode == 1 && lowered)) {
       amount = static_cast< float >(strength) / 100.f;
     }

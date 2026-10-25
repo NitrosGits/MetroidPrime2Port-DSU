@@ -231,13 +231,21 @@ void CPlayerGun::UpdateNormalShotCycle(float dt, CStateManager& mgr) {
     if (mAbsorbedPhazonShots == gpTweakPlayerGun->GetMaxAbsorbedPhazonShots()) {
       TCachedToken< CWeaponDescription > phazonBallToken(gpSimplePool->GetObj("PhazonBall"), true);
 
+#ifdef TARGET_PC
+      TUniqueId homingTarget = targetHoming ? PortHomingTargetId(mgr) : kInvalidUniqueId;
+#else
       TUniqueId homingTarget = targetHoming ? GetTargetId(mgr) : kInvalidUniqueId;
+#endif
       mCurrentBeam->CGunWeapon::Fire(phazonBallToken, mUnderwater, dt, chargeState, xf, mgr,
                                      homingTarget, attributes, 0x1c4, nullptr, nullptr,
                                      chargeFactor1, chargeFactor1);
 
     } else {
+#ifdef TARGET_PC
+      const TUniqueId homingTarget = targetHoming ? PortHomingTargetId(mgr) : kInvalidUniqueId;
+#else
       const TUniqueId homingTarget = targetHoming ? GetTargetId(mgr) : kInvalidUniqueId;
+#endif
       mCurrentBeam->Fire(mCurrentBeam->GetProjectileToken(chargeState), mUnderwater, dt,
                          chargeState, xf, mgr, homingTarget, attributes,
                          CSfxManager::kInternalInvalidSfxId, nullptr, nullptr, chargeFactor1,
@@ -269,6 +277,14 @@ void CPlayerGun::UpdateNormalShotCycle(float dt, CStateManager& mgr) {
   }
 }
 #ifdef TARGET_PC
+bool CPlayerGun::PortShotOffLock(CStateManager& mgr) const {
+  return mPortPointerAimValid && GetPlayer(mgr)->GetOrbitTargetId() != kInvalidUniqueId;
+}
+
+TUniqueId CPlayerGun::PortHomingTargetId(CStateManager& mgr) {
+  return PortShotOffLock(mgr) ? kInvalidUniqueId : GetTargetId(mgr);
+}
+
 // Pointer aim (MP1's mPortPointerAimPoint in CPlayerGun::PortShotFromDrawnMuzzle): the assist
 // transform is aimed from the gun's origin, and the muzzle sits off it, so a shot along it would
 // pass beside the pointed point by that offset. Aim it from its own start instead.
@@ -2336,7 +2352,11 @@ void CPlayerGun::FireSecondary(float dt, CStateManager& mgr, TUniqueId target, u
     }
   }
 
+#ifdef TARGET_PC
+  const TUniqueId targetId = target == kInvalidUniqueId ? PortHomingTargetId(mgr) : target;
+#else
   const TUniqueId targetId = target == kInvalidUniqueId ? GetTargetId(mgr) : target;
+#endif
   CTransform4f xf(mPointBlankWorldSurface ? mElbowWorldXf : mGunWorldXf * mBeamLocalXf);
   if (!mPointBlankWorldSurface && mGunStrikeCooldownTimer <= 0.f) {
     const CVector3f position = xf.GetTranslation();
