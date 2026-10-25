@@ -789,8 +789,30 @@ void CStateManager::Touch() {
   EndPlayerRender();
 }
 
+#ifdef TARGET_PC
+namespace {
+float sPortWorldTimeDt = 0.f;
+uint sPortWorldTimeGeneration = 0;
+
+// Port: material UV animations and world shaders read the world clock (1 - t) of a tick behind
+// the last tick between ticks (smooth frames), like the fluid and GUI clocks.
+float PortPresentedWorldTime(float time) {
+  const float t = CCameraManager::GetPresentationInterpolation();
+  if (t < 0.f || t >= 1.f || sPortWorldTimeGeneration != CActor::PortTickGeneration() ||
+      !PortOverlay::ParticleInterpolation())
+    return time;
+  time -= (1.f - t) * sPortWorldTimeDt;
+  return time < 0.f ? time + 900.f : time;
+}
+} // namespace
+#endif
+
 void CStateManager::PreRender(uint playerIndex) {
+  #ifdef TARGET_PC
+  CTimeProvider timeProvider(PortPresentedWorldTime(mCurTimeMod900));
+#else
   CTimeProvider timeProvider(mCurTimeMod900);
+#endif
   SetupPlayerViewport(playerIndex);
   if (!mReadyToRender) {
     return;
@@ -1273,7 +1295,11 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
   SetRendererWorkspace(alloca(GetRendererWorkspaceSize()));
 
   const CPlayerState::EPlayerVisor visor = mPlayerState->GetActiveVisor(*this);
+  #ifdef TARGET_PC
+  CTimeProvider timeProvider(PortPresentedWorldTime(mCurTimeMod900));
+#else
   CTimeProvider timeProvider(mCurTimeMod900);
+#endif
   CViewport viewport = CGraphics::GetViewport();
   viewport.mTop = CGraphics::GetViewportTop(viewport.mTop);
   SetupViewForDraw(viewport);
@@ -4224,6 +4250,10 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
         mPlayers[i]->GetPlayerGun()->PortSnapshotPresentedPose(*this);
     }
   }
+#endif
+#ifdef TARGET_PC
+  sPortWorldTimeDt = dt;
+  sPortWorldTimeGeneration = CActor::PortTickGeneration();
 #endif
   mCurTimeMod900 += dt;
   if (mCurTimeMod900 > 900.f) {
