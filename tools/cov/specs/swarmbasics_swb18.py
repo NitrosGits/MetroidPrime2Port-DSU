@@ -146,13 +146,14 @@ def swarm_anim(this):
     log('REAL_ANIM', swarm=this, anim=anim)
     return anim
 
-def cells(bounds_min, bounds_max, margin):
+def cells(bounds_min, bounds_max):
     """BoxForPosition's cell centres from the box GetBoundingBox reports, computed here (not by
-    calling BoxForPosition or FindClosestCell): size = extent/5, centre = min - margin +
-    (idx + .5) * size.  The margin shifts min and max alike, so it moves the centre by -margin."""
+    calling BoxForPosition or FindClosestCell): size = extent/5 and the centre is
+    min + (idx + .5) * size.  The 0.1 margin (retail `lbl_80_rodata_4`, passed at 0x1150) moves
+    the box's min corner down and its max corner up by the same amount, so it cancels out of the
+    centre; run 5 confirmed that on the inferior (a centre of 20.0, not 19.9)."""
     size = [(hi - lo) / 5. for lo, hi in zip(bounds_min, bounds_max)]
-    return {idx: tuple(bounds_min[axis] - margin + (idx[axis] + .5) * size[axis]
-                       for axis in range(3))
+    return {idx: tuple(bounds_min[axis] + (idx[axis] + .5) * size[axis] for axis in range(3))
             for idx in ((x, y, z) for x in range(5) for y in range(5) for z in range(5))}
 
 def slot(idx):
@@ -300,10 +301,10 @@ class Run(gdb.Command):
                 write(S + 'mBoundingBoxExtent.m' + 'XYZ'[row], '50.f')
             extent_x = float(ev(S + 'mBoundingBoxExtent.mX'))
             check(extent_x == 50., 'forced box extent')
-            centres = cells((-25., -25., -25.), (25., 25., 25.), 0.1)
+            centres = cells((-25., -25., -25.), (25., 25., 25.))
             inf.write_memory(int(ev(data).address), bytes(125 * boid_size))
             write(list_lv + '.mCount', '125')
-            heads = {'first': (0, 0, 0), 'second': (4, 0, 0)}
+            heads = {'first': (0, 0, 0), 'second': (4, 0, 0), 'near': (1, 0, 0)}
 
             def set_heads(names):
                 inf.write_memory(int(ev(data).address), bytes(125 * boid_size))
@@ -324,6 +325,8 @@ class Run(gdb.Command):
                 ('empty', [], centres[(2, 2, 2)]),
                 ('second wins', ['first', 'second'], centres[heads['second']]),
                 ('first stays', ['first', 'second'], centres[heads['first']]),
+                ('tie keeps first', ['first', 'near'],
+                 tuple((a + b) * .5 for a, b in zip(centres[heads['first']], centres[heads['near']]))),
                 ('far query', ['first', 'second'], (1.e6, 1.e6, 1.e6)),
                 ('unordered query', ['first', 'second'], (float('nan'), 0., 0.)),
             )
