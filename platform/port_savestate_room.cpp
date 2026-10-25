@@ -22,8 +22,10 @@
 #include "MetroidPrime/Cameras/CCinematicCamera.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCamera.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptActorRotate.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCounter.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptStreamedMusic.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTimer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -44,6 +46,50 @@ struct PortRoomState {
     t.mIsTiming = timing;
   }
   static void SetCounter(CScriptCounter& c, int current) { c.mCurrent = current; }
+
+  // Platform: the spline clock and the motion machine's flags (bit 0 active, 1 forward, 2 previous
+  // forward, 3 passed end, 4 passed start).
+  static float PlatMotionTime(const CScriptPlatform& p) { return p.mMotionTime; }
+  static float PlatMoveDelay(const CScriptPlatform& p) { return p.mMoveDelay; }
+  static uint32_t PlatFlags(const CScriptPlatform& p) {
+    return (p.mMotionActive ? 1u : 0u) | (p.mMotionForward ? 2u : 0u) |
+           (p.mPreviousMotionForward ? 4u : 0u) | (p.mPassedMotionEnd ? 8u : 0u) |
+           (p.mPassedMotionStart ? 16u : 0u);
+  }
+  // The clock first (it stops the platform, moves it along its spline and drags its slaves), then
+  // the saved pose and flags over that.
+  static void SetPlatform(CScriptPlatform& p, CStateManager& mgr, float time, float moveDelay,
+                          uint32_t flags, const CTransform4f& xf) {
+    p.SetMotionTime(time, mgr);
+    p.CActor::SetTransform(xf);
+    CTransform4f rot = xf.GetRotation();
+    rot.Orthonormalize();
+    p.mPreviousRotation = rot;
+    p.mCurrentRotation = rot;
+    p.mMoveDelay = moveDelay;
+    p.mMotionActive = (flags & 1) != 0;
+    p.mMotionForward = (flags & 2) != 0;
+    p.mPreviousMotionForward = (flags & 4) != 0;
+    p.mPassedMotionEnd = (flags & 8) != 0;
+    p.mPassedMotionStart = (flags & 16) != 0;
+  }
+
+  // Actor rotate: the clock, the play flag and the rotated actors with the pose each started from.
+  static float RotTime(const CScriptActorRotate& r) { return r.mCurrentTime; }
+  static bool RotPlaying(const CScriptActorRotate& r) { return r.mPlaying; }
+  static const rstl::vector< rstl::pair< TUniqueId, CTransform4f > >& RotActors(
+      const CScriptActorRotate& r) {
+    return r.mActors;
+  }
+  static void SetRotate(CScriptActorRotate& r, float time, bool playing,
+                        const std::vector< std::pair< TUniqueId, CTransform4f > >& actors) {
+    r.mCurrentTime = time;
+    r.mPlaying = playing;
+    r.mActors.clear();
+    for (const auto& a : actors) {
+      r.mActors.push_back(rstl::pair< TUniqueId, CTransform4f >(a.first, a.second));
+    }
+  }
 };
 
 namespace PortSaveState {
@@ -58,6 +104,8 @@ enum : uint32_t {
   kTagDoor = 7,
   kTagMusic = 8,     // u32 playing: a CScriptStreamedMusic
   kTagCinematic = 9, // f32 seconds into the shot: the CScriptCamera driving the cinematic camera
+  kTagPlatform = 10, // f32 time, f32 move delay, u32 flags, 12 f32 pose: a CScriptPlatform
+  kTagRotate = 11,   // f32 time, u32 playing, u32 n, n x (u32 editor id, 12 f32 base, 12 f32 now)
 };
 
 // Per-object lines a restore logs, at most; the summary line always follows.
@@ -224,6 +272,36 @@ void CaptureObject(CStateManager& mgr, CEntity& ent, RoomObject& obj) {
       obj.blocks.push_back({kTagMotion, motion.bytes});
     }
   }
+  if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(&ent)) {
+    BlockWriter w;
+    w.F32(PortRoomState::PlatMotionTime(*plat));
+    w.F32(PortRoomState::PlatMoveDelay(*plat));
+    w.U32(PortRoomState::PlatFlags(*plat));
+    PutTransform(w, plat->GetTransform());
+    obj.blocks.push_back({kTagPlatform, w.bytes});
+  }
+  if (CScriptActorRotate* rot = TCastToPtr< CScriptActorRotate >(&ent)) {
+    BlockWriter w;
+    w.F32(PortRoomState::RotTime(*rot));
+    w.U32(PortRoomState::RotPlaying(*rot) ? 1 : 0);
+    const auto& actors = PortRoomState::RotActors(*rot);
+    BlockWriter list;
+    uint32_t n = 0;
+    for (int i = 0; i < static_cast< int >(actors.size()); ++i) {
+      const CEntity* target = mgr.GetObjectById(actors[i].first);
+      if (target == nullptr || !IsScripted(*target)) {
+        continue;
+      }
+      list.U32(target->GetEditorId().value);
+      PutTransform(list, actors[i].second);
+      const CActor* actor = TCastToConstPtr< CActor >(target);
+      PutTransform(list, actor != nullptr ? actor->GetTransform() : actors[i].second);
+      ++n;
+    }
+    w.U32(n);
+    w.bytes.append(list.bytes);
+    obj.blocks.push_back({kTagRotate, w.bytes});
+  }
   if (CScriptTimer* timer = TCastToPtr< CScriptTimer >(&ent)) {
     BlockWriter w;
     w.F32(PortRoomState::TimerTime(*timer));
@@ -314,6 +392,55 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
       if (r.Vec(velocity) && r.Vec(momentum)) {
         physics->SetVelocityWR(velocity);
         physics->SetMomentumWR(momentum);
+      }
+    }
+  }
+  if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(&ent)) {
+    if (const RoomBlock* b = FindBlock(obj, kTagPlatform)) {
+      BlockReader r(b->data);
+      const float time = r.F32();
+      const float delay = r.F32();
+      const uint32_t flags = r.U32();
+      CTransform4f xf = CTransform4f::Identity();
+      if (GetTransform(r, xf) && time == time && delay == delay && time > -1e5f && time < 1e5f) {
+        PortRoomState::SetPlatform(*plat, mgr, time, delay, flags, xf);
+        log.Note(obj.editorId, "platform restored");
+        changed = true;
+      }
+    }
+  }
+  if (CScriptActorRotate* rot = TCastToPtr< CScriptActorRotate >(&ent)) {
+    if (const RoomBlock* b = FindBlock(obj, kTagRotate)) {
+      BlockReader r(b->data);
+      const float time = r.F32();
+      const bool playing = r.U32() != 0;
+      const uint32_t n = r.U32();
+      std::vector< std::pair< TUniqueId, CTransform4f > > actors;
+      std::vector< std::pair< CActor*, CTransform4f > > poses;
+      for (uint32_t i = 0; r.ok && i < n && i < kMaxCount; ++i) {
+        const uint32_t editorId = r.U32();
+        CTransform4f base = CTransform4f::Identity();
+        CTransform4f now = CTransform4f::Identity();
+        if (!GetTransform(r, base) || !GetTransform(r, now)) {
+          break;
+        }
+        const TUniqueId uid = mgr.GetIdForScript(TEditorId(editorId));
+        CActor* actor = uid != kInvalidUniqueId ? TCastToPtr< CActor >(mgr.ObjectById(uid)) : nullptr;
+        if (actor != nullptr) {
+          actors.push_back({uid, base});
+          poses.push_back({actor, now});
+          if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(actor)) {
+            plat->SetActorRotateId(rot->GetUniqueId());
+          }
+        }
+      }
+      if (r.ok && time == time && time >= 0.f && time < 1e5f) {
+        PortRoomState::SetRotate(*rot, time, playing, actors);
+        for (auto& p : poses) {
+          p.first->SetTransform(p.second);
+        }
+        log.Note(obj.editorId, "rotation restored");
+        changed = true;
       }
     }
   }
