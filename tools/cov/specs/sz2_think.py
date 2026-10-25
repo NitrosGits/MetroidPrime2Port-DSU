@@ -15,10 +15,16 @@ port source.  Echo emitter and game light are scratch memory (one mmap'd page), 
 Line counters on Think's source lines count natural and forced hits separately.
 """
 import gdb
+import faulthandler
 import hashlib
 import json
 import os
 import struct
+import threading
+import time
+
+if os.environ.get('SZ2_DEBUG_INFRUN'):
+    gdb.execute('set debug infrun 1')  # diagnosis only: gdb's own resume/stop decisions go to its log
 from fractions import Fraction
 
 CLASS = 'CScriptSafeZone'
@@ -71,9 +77,38 @@ state = dict(index=0, active={}, failed=0, infra=0, restores=0, ignored=0, eligi
 lines = dict(natural={}, forced={})
 
 
+# A stall diagnosis aid: every stop() after window TRACE_FROM writes one line (kind, thread, rsp, pc) to
+# sz2.trace, and faulthandler dumps all Python threads to faulthandler.log every 45 s (it runs on its own
+# C thread, so it answers while gdb is stuck in a callback).
+TRACE_FROM = int(os.environ.get('SZ2_TRACE_FROM', '14'))
+trace = dict(file=None, lines=0)
+stall = dict(last=time.monotonic(), pid=0, want=False, fired=False, this=None, restore=None)
+STALL_IDLE = float(os.environ.get('SZ2_STALL_IDLE', '40'))  # seconds without any breakpoint activity
+
+
+def traced(kind):
+    def wrap(fn):
+        def inner(self):
+            stall['last'] = time.monotonic()
+            stall['pid'] = gdb.selected_inferior().pid
+            try:
+                if state['index'] >= TRACE_FROM and trace['lines'] < 40000:
+                    if trace['file'] is None:
+                        trace['file'] = open(os.path.join(os.environ['COV_OUT'], 'sz2.trace'), 'a', buffering=1)
+                    trace['lines'] += 1
+                    trace['file'].write('%.3f %s %s idx=%d active=%d rsp=%#x\n' % (
+                        time.monotonic(), kind, getattr(self, 'kind', ''), state['index'], len(state['active']),
+                        int(gdb.parse_and_eval('$rsp'))))
+            except Exception:
+                pass
+            return fn(self)
+        return inner
+    return wrap
+
+
 def log(event, **values):
     with open(os.path.join(os.environ['COV_OUT'], 'sz2.jsonl'), 'a') as f:
-        f.write(json.dumps(dict(event=event, **values), sort_keys=True) + '\n')
+        f.write(json.dumps(dict(event=event, t=round(time.monotonic(), 3), **values), sort_keys=True) + '\n')
 
 
 def ev(expression):
@@ -288,9 +323,18 @@ def write_bit(mem, base, typ, owner_expr, name, value):
     check(iv(owner_expr + name) == (1 if value else 0), 'forced readback ' + name)
 
 
+def write_dt(value):
+    """Think's dt arrives in xmm0 (SysV, float): write the case dt at the entry, read it back."""
+    before = float(ev('$xmm0.v4_float[0]'))
+    gdb.execute('set var $xmm0.v4_float[0] = %r' % f32(value))
+    after = float(ev('$xmm0.v4_float[0]'))
+    check(after == f32(value), 'forced readback dt %r != %r' % (after, f32(value)))
+    return before, after
+
+
 def read_bit(base, typ, name):
     byte, bit, size = bit_field(typ, name)
-    return (int(gdb.selected_inferior().read_memory(base + byte, 1)[0]) >> bit) & 1
+    return (bytes(gdb.selected_inferior().read_memory(base + byte, 1))[0] >> bit) & 1
 
 
 class Window(gdb.FinishBreakpoint):
@@ -303,6 +347,7 @@ class Window(gdb.FinishBreakpoint):
         super().__init__(frame, internal=True)  # MUST succeed before any mutation
         check(ctx not in state['active'], 'nested owned Think')
         state['active'][ctx] = self
+        self.dt_before = self.dt_written = None
         log('ARM', case=case[0], context=ctx, this=this, originals=snapshot.originals())
 
     def restore(self):
@@ -310,6 +355,7 @@ class Window(gdb.FinishBreakpoint):
         check(not self.closed and state['active'].get(self.ctx) is self, 'restore ownership mismatch')
         rows, errors = self.snapshot.restore()
         log('RESTORE', case=self.case[0], fields=rows, errors=errors)
+        stall['this'], stall['restore'] = self.this, (self.case[0], rows, errors)
         state['restores'] += 1
         check(not errors, 'restore failed ' + str(errors))
 
@@ -346,6 +392,7 @@ class Window(gdb.FinishBreakpoint):
                 ptr = int(ev('&' + zone_expr(T, 'mEchoEmitter.mPtr')))
                 mem.write_memory(ptr, bytes(8))  # natural zones all own an emitter: hide it for this window
                 check(iv(zone_expr(T, 'mEchoEmitter.mPtr')) == 0, 'forced readback no emitter')
+            self.dt_before, self.dt_written = write_dt(c['dt'])
         except Exception:
             self.restore()
             raise
@@ -368,11 +415,14 @@ class Window(gdb.FinishBreakpoint):
             want = 0 if any(x[0] == 'emitter_off' for x in calls) else 1
             if bit != want:
                 problems.append('emitter bit %d expected %d' % (bit, want))
-        if self.calls != calls:
+        # emitter_off is the inline SetActive(false) write, not a call the mocks can see: the bit above judges it
+        visible = [x for x in calls if x[0] != 'emitter_off']
+        if self.calls != visible:
             # the matrix floats and the dt/act values compare exactly; show both sequences
-            problems.append('calls got %r expected %r' % (self.calls, calls))
+            problems.append('calls got %r expected %r' % (self.calls, visible))
         return got, calls, problems
 
+    @traced('finish')
     def stop(self):
         if self.closed:
             failure('duplicate finish; no stale writes', True)
@@ -382,7 +432,7 @@ class Window(gdb.FinishBreakpoint):
             check(state['active'].get(self.ctx) is self, 'finish window ownership')
             got, expected, problems = self.judge()
             log('RESULT', case=self.case[0], fields=got, calls=self.calls, expected=expected,
-                problems=problems)
+                problems=problems, dt_natural=self.dt_before, dt_written=self.dt_written)
             state['results'].append((self.case[0], not problems))
             if problems:
                 failure('%s: %s' % (self.case[0], '; '.join(problems)))
@@ -396,11 +446,20 @@ class Window(gdb.FinishBreakpoint):
                 failure(error, True)
                 good = False
             self.closed = True
+            self.retire()
             if state['active'].get(self.ctx) is self:
                 state['active'].pop(self.ctx)
         if good:
             state['index'] += 1
         return not good
+
+    def retire(self):
+        """a finish breakpoint whose stop() returned False stays armed at the caller's return address:
+        disable it so the next Think returns do not re-enter it"""
+        try:
+            self.enabled = False
+        except Exception as error:
+            log('RETIRE_FAIL', case=self.case[0], error=str(error))
 
     def out_of_scope(self):
         if self.closed:
@@ -439,16 +498,43 @@ def abort(error):
 
 
 def make_scratch():
-    """one anonymous page for the fake echo emitter (offset 0) and the fake light (offset 1024)"""
+    """one page for the fake echo emitter (offset 0) and the fake light (offset 1024): the unused low end
+    of another thread's mapped stack, zero-filled and far below its stack pointer.  Not an inferior call:
+    one made inside a breakpoint's stop() leaves every other thread stopped (the Aurora FIFO worker
+    starves, sz2e)."""
     if state['scratch']:
         return
-    page = int(ev('(unsigned long)((void*(*)(void*,unsigned long,int,int,int,long))mmap)(0,4096,3,0x22,-1,0)'))
-    check(page not in (0, 0xFFFFFFFFFFFFFFFF), 'mmap scratch page')
+    inferior = gdb.selected_inferior()
+    maps = []
+    with open('/proc/%d/maps' % inferior.pid) as f:
+        for line in f:
+            fields = line.split()
+            lo, hi = (int(x, 16) for x in fields[0].split('-'))
+            if fields[1].startswith('rw') and len(fields) < 6:
+                maps.append((lo, hi))
+    page = 0
+    # other threads are still running inside stop(): gdb cannot read their registers, but a thread
+    # sleeping in a syscall has its stack pointer in /proc/<pid>/task/<tid>/syscall ("nr args... sp pc")
+    for thread in inferior.threads():
+        if not (thread.name or '').startswith(('MusyX', 'SDLAudio')):
+            continue
+        try:
+            with open('/proc/%d/task/%d/syscall' % (inferior.pid, thread.ptid[1])) as f:
+                fields = f.read().split()
+            sp = int(fields[-2], 16)
+        except (OSError, ValueError, IndexError):
+            continue
+        cand = (sp - 4 * 1024 * 1024) & ~4095  # default 8 MiB thread stack, sp near its top
+        if any(lo <= cand and cand + 4096 <= hi for lo, hi in maps):
+            page = cand
+            break
+    check(page != 0, 'scratch page (idle thread stack)')
     state['scratch'] = page
     log('SCRATCH', page=page)
 
 
 class Entry(gdb.Breakpoint):
+    @traced('entry')
     def stop(self):
         if state['infra']:
             return True
@@ -471,6 +557,8 @@ class Entry(gdb.Breakpoint):
                 state['skipped_emitter'] += 1  # counted only: the natural emitter is never written, the
                 # pointer is replaced (fake page or null) for the window and restored from the snapshot
             state['eligible'] += 1
+            if state['eligible'] <= 400:
+                log('ELIGIBLE', n=state['eligible'], this=this, ctx=ctx, index=state['index'])
             if state['eligible'] % SPACING != 1:
                 return False
             make_scratch()
@@ -527,6 +615,7 @@ class Mock(gdb.Breakpoint):
         super().__init__('*' + symbol, internal=True)
         self.kind = kind
 
+    @traced('mock')
     def stop(self):
         try:
             w = owned()
@@ -648,6 +737,7 @@ class LineCount(gdb.Breakpoint):
         super().__init__(spec, internal=True)
         self.line = line
 
+    @traced('line')
     def stop(self):
         try:
             w = state['active'].get(context())
@@ -660,6 +750,7 @@ class LineCount(gdb.Breakpoint):
 
 
 def summary(event):
+    faulthandler.cancel_dump_traceback_later()
     ok = state['index'] == len(CASES) and not state['active'] and not state['failed']
     log('EXIT', ok=ok, completed=state['index'], pending=len(state['active']), failed=state['failed'],
         restores=state['restores'], ignored_nested=state['ignored'], eligible=state['eligible'],
@@ -669,11 +760,109 @@ def summary(event):
         failure('incomplete sz2 run')
 
 
+# the Aurora FIFO and draw-sync state a render-side spin (GPUMemory::EnsureAllocation) waits on
+FIFO_STATE = ['aurora::gx::fifo::detail::sInDisplayList',
+              'aurora::gx::fifo::detail::sBufferSize',
+              'aurora::gx::fifo::(anonymous namespace)::sFrameActive',
+              'aurora::gx::fifo::(anonymous namespace)::sPublished',
+              'aurora::gx::fifo::(anonymous namespace)::sProcessed',
+              'aurora::gx::fifo::(anonymous namespace)::sStreamBase',
+              'aurora::gx::(anonymous namespace)::sDrawSyncToken',
+              'aurora::gx::fifo::(anonymous namespace)::sWorkerWake']
+
+
+def stall_dump(event):
+    """gdb-side stall report: runs in the stop handler after the watchdog's `interrupt`"""
+    if not stall['want']:
+        return
+    stall['want'] = False
+    out = []
+    def run(cmd, limit=60000):
+        try:
+            out.append('### ' + cmd + '\n' + gdb.execute(cmd, to_string=True)[:limit])
+        except Exception as error:
+            out.append('### %s FAILED %s' % (cmd, error))
+    run('thread apply all bt 30')
+    run('info registers rip rsp')
+    run('x/6i $pc')
+    for thread in gdb.selected_inferior().threads():  # the FIFO worker's loop locals (event, processed, published)
+        if (thread.name or '').startswith('Aurora FIFO'):
+            thread.switch()
+            run('frame function aurora::gx::fifo::(anonymous namespace)::worker_main')
+            run('info locals')
+    pid = gdb.selected_inferior().pid  # per-task scheduler view: is the worker runnable, did it get CPU
+    for task in sorted(os.listdir('/proc/%d/task' % pid)):
+        try:
+            base = '/proc/%d/task/%s/' % (pid, task)
+            out.append('### task %s %s | wchan %s | schedstat %s' % (task, open(base + 'stat').read().split(')')[1].split()[0],
+                       open(base + 'wchan').read(), open(base + 'schedstat').read().strip()))
+        except Exception as error:
+            out.append('### task %s FAILED %s' % (task, error))
+    for name in FIFO_STATE:
+        run("print '%s'" % name)
+    this = stall['this']
+    out.append('### last restore ' + json.dumps(stall['restore'], default=str))
+    out.append('### state index=%d eligible=%d restores=%d active=%d' % (
+        state['index'], state['eligible'], state['restores'], len(state['active'])))
+    if this:
+        run('print *(CScriptSafeZone*)%d' % this, 20000)
+        run('print ((CScriptSafeZone*)%d)->mProjectiles' % this)
+        run('print ((CScriptSafeZone*)%d)->mImpactGens' % this)
+    with open(os.path.join(os.environ['COV_OUT'], 'stall.txt'), 'w') as f:
+        f.write('\n'.join(out))
+    log('STALL', index=state['index'], eligible=state['eligible'], file='stall.txt')
+    gdb.execute('kill')
+
+
+def stall_interrupt():
+    if not stall['fired']:
+        stall['fired'] = True
+        stall['want'] = True
+        gdb.execute('interrupt')
+
+
+def task_states(pid):
+    """one line per task: tid, state letter (t = stopped by the debugger), wchan, schedstat (ns run, ns wait, slices)"""
+    lines = []
+    for task in sorted(os.listdir('/proc/%d/task' % pid)):
+        try:
+            base = '/proc/%d/task/%s/' % (pid, task)
+            lines.append('%s %s %s %s' % (task, open(base + 'stat').read().split(')')[1].split()[0],
+                                          open(base + 'wchan').read(), open(base + 'schedstat').read().strip()))
+        except OSError as error:
+            lines.append('%s FAILED %s' % (task, error))
+    return lines
+
+
+def stall_sample(pid):
+    """before the interrupt (so the debugger has not stopped anything yet): two samples of every task, 1 s apart"""
+    with open(os.path.join(os.environ['COV_OUT'], 'stall_pre.txt'), 'w') as f:
+        for n in range(2):
+            f.write('### sample %d t=%.3f\n' % (n, time.monotonic()) + '\n'.join(task_states(pid)) + '\n')
+            f.flush()
+            time.sleep(1)
+
+
+def stall_watch():
+    while True:
+        time.sleep(2)
+        if stall['fired']:
+            return
+        if state['eligible'] and time.monotonic() - stall['last'] > STALL_IDLE:
+            try:
+                stall_sample(stall['pid'])
+            except Exception as error:
+                log('STALL_SAMPLE_FAILED', error=str(error))
+            gdb.post_event(stall_interrupt)
+            return
+
+
 def install():
     binary = gdb.current_progspace().filename
     with open(binary, 'rb') as f:
         digest = hashlib.file_digest(f, 'sha256').hexdigest()
     log('BINARY', path=binary, sha256=digest)
+    faulthandler.dump_traceback_later(45, repeat=True, file=open(os.path.join(os.environ['COV_OUT'], 'faulthandler.log'), 'w'))
     think = symbol('CScriptSafeZone::Think(')
     Entry('*' + think, internal=True)
     for prefix, kind in (
@@ -700,6 +889,8 @@ def install():
         Mock(symbol(prefix), kind)
     count_lines(think)
     gdb.events.exited.connect(summary)
+    gdb.events.stop.connect(stall_dump)
+    threading.Thread(target=stall_watch, daemon=True).start()
 
 
 if os.environ.get('SZ2_SELFTEST') != '1':

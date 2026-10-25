@@ -58,7 +58,7 @@ class Tests(unittest.TestCase):
                     raise RuntimeError('cannot arm return')
         self.gdb = types.SimpleNamespace(
             Breakpoint=object, FinishBreakpoint=Finish,
-            selected_inferior=lambda: types.SimpleNamespace(num=self.ctx[0]),
+            selected_inferior=lambda: types.SimpleNamespace(num=self.ctx[0], pid=4242),
             selected_thread=lambda: types.SimpleNamespace(global_num=self.ctx[1]),
             newest_frame=lambda: Frame(self.stack, self.stack[0]))
         sys.modules['gdb'] = self.gdb
@@ -255,7 +255,8 @@ class Tests(unittest.TestCase):
         mem.raw[40:48] = (0x7777).to_bytes(8, 'little')
         m = self.m
         m.state['scratch'] = 64
-        m.ev = lambda e: 40 if e.startswith('&') else 0
+        reg = self.fake_xmm()
+        m.ev = lambda e: reg['v'] if e == '$xmm0.v4_float[0]' else (40 if e.startswith('&') else 0)
         m.iv = lambda e: int.from_bytes(mem.raw[40:48], 'little')
         m.zone_expr = lambda this, member: member
         m.write_float = m.write_int = m.write_bit = lambda *a, **k: None
@@ -284,8 +285,125 @@ class Tests(unittest.TestCase):
         self.assertEqual(int.from_bytes(self.mem.raw[40:48], 'little'), 0x7777)
 
     def test_every_case_has_no_emitter_guard(self):
-        src = open(Path(__file__).with_name('sz2_think.py')).read()
-        self.assertNotIn("state['skipped_emitter'] += 1\n                return False", src)
+        with open(Path(__file__).with_name('sz2_think.py')) as f:
+            self.assertNotIn("state['skipped_emitter'] += 1\n                return False", f.read())
+
+    def fake_xmm(self):
+        """a fake $xmm0 float lane: gdb.execute('set var $xmm0.v4_float[0] = x') and ev('$xmm0...')"""
+        import struct
+        reg = {'v': 0.0166666675}
+        def execute(cmd):
+            assert cmd.startswith('set var $xmm0.v4_float[0] = ')
+            reg['v'] = struct.unpack('<f', struct.pack('<f', float(cmd.split('= ')[1])))[0]
+        self.gdb.execute = execute
+        self.m.ev = lambda e: reg['v'] if e == '$xmm0.v4_float[0]' else 0
+        return reg
+
+    def test_dt_written_to_xmm0_with_readback(self):
+        reg = self.fake_xmm()
+        before, after = self.m.write_dt(0.25)
+        self.assertEqual((before, after, reg['v']), (0.0166666675, 0.25, 0.25))
+        self.m.write_dt(0.1)                       # not representable: the readback is the float32
+        self.assertEqual(reg['v'], self.m.f32(0.1))
+
+    def test_dt_readback_mismatch_raises(self):
+        reg = self.fake_xmm()
+        self.gdb.execute = lambda cmd: None        # the write does not land
+        with self.assertRaises(RuntimeError):
+            self.m.write_dt(0.25)
+
+    def test_apply_writes_case_dt_and_judges_against_it(self):
+        w = self.apply_window('inactive-fade')
+        w.apply()
+        reg = {'v': w.dt_written}
+        self.assertEqual((reg['v'], w.dt_written), (0.25, 0.25))
+        self.assertEqual(self.run_model('inactive-fade')[1][0], ('base_think', reg['v']))
+
+    def test_every_case_dt_is_written_not_natural(self):
+        for name, _ in self.m.CASES:
+            self.assertNotEqual(self.case(name)['dt'], 0.0166666675)
+
+    def test_decay_cases_cross_zero_at_case_dt(self):
+        for name in ('inactive-fade-end', 'inactive-fade-end-echo', 'emitter-inactive-fade'):
+            final, calls, _ = self.run_model(name)
+            self.assertEqual(final['act'], 0.0, name)
+            self.assertIn(('lowpass', 0), calls, name)
+
+    def test_finished_window_is_retired(self):
+        w = self.window()
+        w.enabled = True
+        w.judge = lambda: ({}, [], [])
+        w.stop()
+        self.assertFalse(w.enabled)
+        self.assertTrue(w.closed)
+
+    def test_stall_dump_is_gdb_side_and_kills(self):
+        import tempfile
+        cmds = []
+        self.gdb.execute = lambda c, to_string=False: cmds.append(c) or ('out of ' + c if to_string else None)
+        switched = []
+        fifo = types.SimpleNamespace(name='Aurora FIFO pro', switch=lambda: switched.append(1))
+        other = types.SimpleNamespace(name='Main thread', switch=lambda: switched.append(2))
+        self.gdb.selected_inferior = lambda: types.SimpleNamespace(threads=lambda: [other, fifo], pid=os.getpid())
+        self.m.iv = lambda e: 0
+        self.m.stall.update(want=True, this=0x40, restore=('c', [{'label': 'mActivation'}], []))
+        with tempfile.TemporaryDirectory() as d:
+            os.environ['COV_OUT'] = d
+            self.m.stall_dump(None)
+            with open(os.path.join(d, 'stall.txt')) as f:
+                text = f.read()
+        self.assertIn('thread apply all bt 30', cmds)
+        self.assertEqual(cmds[-1], 'kill')
+        self.assertIn('mActivation', text)
+        self.assertIn('print *(CScriptSafeZone*)64', cmds)
+        self.assertEqual(switched, [1])  # only the FIFO worker is inspected
+        self.assertIn('info locals', cmds)
+        self.assertIn('frame function aurora::gx::fifo::(anonymous namespace)::worker_main', cmds)
+        for name in self.m.FIFO_STATE:  # the render-side state is dumped too
+            self.assertIn("print '%s'" % name, cmds)
+        self.assertFalse(self.m.stall['want'])
+        cmds.clear()
+        self.m.stall_dump(None)  # not requested: a normal stop is left alone
+        self.assertEqual(cmds, [])
+
+    def test_stall_interrupt_once(self):
+        cmds = []
+        self.gdb.execute = lambda c, to_string=False: cmds.append(c)
+        self.m.stall.update(fired=False, want=False)
+        self.m.stall_interrupt()
+        self.m.stall_interrupt()
+        self.assertEqual(cmds, ['interrupt'])
+        self.assertTrue(self.m.stall['want'])
+
+    def test_stall_watch_posts_only_when_idle(self):
+        posted = []
+        self.gdb.post_event = posted.append
+        self.m.time.sleep = lambda s: None
+        self.m.state['eligible'] = 5
+        self.m.stall.update(fired=False, last=self.m.time.monotonic())
+        ticks = iter([0, 0, 1])
+
+        def sleep(s):
+            if next(ticks) == 1:
+                self.m.stall['last'] -= 1000
+        self.m.time.sleep = sleep
+        self.m.stall_watch()
+        self.assertEqual(posted, [self.m.stall_interrupt])
+
+    def test_stall_sample_reads_proc_tasks(self):
+        import tempfile
+        self.m.time.sleep = lambda s: None
+        lines = self.m.task_states(os.getpid())
+        self.assertTrue(lines and lines[0].split()[1] in 'RSDTtZ')
+        with tempfile.TemporaryDirectory() as d:
+            os.environ['COV_OUT'] = d
+            self.m.stall_sample(os.getpid())
+            text = open(os.path.join(d, 'stall_pre.txt')).read()
+        self.assertEqual(text.count('### sample'), 2)
+
+    def test_log_has_a_monotonic_time(self):
+        with open(Path(__file__).with_name('sz2_think.py')) as f:
+            self.assertIn("t=round(time.monotonic(), 3)", f.read())
 
 
 if __name__ == '__main__':
