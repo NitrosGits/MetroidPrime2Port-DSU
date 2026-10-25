@@ -239,6 +239,21 @@ float CGameCamera::GetRenderFov() const {
                                            static_cast< float >(viewport.mHeight));
 }
 
+float CGameCamera::GetUnwidenedFov() const {
+  const float fov = GetFov();
+  // Only a fitted camera's FOV is derived from the live aspect (a cinematic's is); an ordinary
+  // camera's is the authored one already.
+  if (!mFovFitted) {
+    return fov;
+  }
+  const CViewport& viewport = CGraphics::GetViewport();
+  if (viewport.mHeight <= 0) {
+    return fov;
+  }
+  return PortOverlay::UnwidenFov(fov, static_cast< float >(viewport.mWidth) /
+                                          static_cast< float >(viewport.mHeight));
+}
+
 #endif
 void CGameCamera::SetFovAndTarget(float fov) {
   mFovInterpolation.mCurrent = fov;
