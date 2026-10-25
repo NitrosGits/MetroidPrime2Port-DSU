@@ -51,6 +51,7 @@
 #include <float.h>
 
 #ifdef TARGET_PC
+#include "port_overlay.h"
 #include "port_pointer.h"
 #include "port_pointer_menu.h"
 
@@ -2462,8 +2463,25 @@ rstl::pair< int, int > CAutoMapper::FindClosestVisibleWorld(const CVector3f& poi
   return rstl::pair< int, int >(closestWorld, closestArea);
 }
 
+#ifdef TARGET_PC
+// Port: these sizes only feed the map plane's aspect (see Draw). The map is drawn through the GUI
+// projection, which CGuiCamera widens by PortOverlay::AspectWiden() on a wider framebuffer (and
+// narrows on a taller one), so the real viewport width squeezed the map horizontally. Use the
+// authored width (the viewport's divided by that factor, as the Prime 1 port keeps 640x448); an
+// unwidened framebuffer is unchanged.
+static int MapReferenceWidth() {
+  const int width = CGraphics::GetViewport().mWidth;
+  const float widen = PortOverlay::AspectWiden();
+  return widen > 0.f ? static_cast< int >(static_cast< float >(width) / widen + 0.5f) : width;
+}
+#endif
+
 CVector2i CAutoMapper::GetMiniMapViewportSize() {
+#ifdef TARGET_PC
+  const float scaleX = static_cast< float >(MapReferenceWidth()) / 640.f;
+#else
   const float scaleX = static_cast< float >(CGraphics::GetViewport().mWidth) / 640.f;
+#endif
   const float scaleY = static_cast< float >(CGraphics::GetViewport().mHeight) / 480.f;
   const CVector2f size = gpTweakAutoMapper->GetMiniMapViewportSize();
   return CVector2i(static_cast< int >(scaleX * size.GetX()),
@@ -2471,7 +2489,11 @@ CVector2i CAutoMapper::GetMiniMapViewportSize() {
 }
 
 CVector2i CAutoMapper::GetMapScreenViewportSize() {
+#ifdef TARGET_PC
+  return CVector2i(MapReferenceWidth(), CGraphics::GetViewport().mHeight);
+#else
   return CVector2i(CGraphics::GetViewport().mWidth, CGraphics::GetViewport().mHeight);
+#endif
 }
 
 float CAutoMapper::GetMapAreaMiniMapDrawDepth() { return 2.f; }
