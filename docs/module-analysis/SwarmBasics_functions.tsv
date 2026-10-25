@@ -19,7 +19,7 @@ offset	fn	size	class	name	slice	what	marker
 0078C	fn_80_78C	4	B	CSwarmBasics::BoidCollidedCallback	-	upstream body (CSwarmBasics)	no
 00790	fn_80_790	8	B	CSwarmBasics::ShouldBuildAreaCollisionCacheForPartition	swarm1	upstream body (CSwarmBasics)	yes
 00798	fn_80_798	4C	B	CSwarmBasics::GetAreaCollisionCacheForPartition	swarm1	upstream body (CSwarmBasics)	yes
-007E4	fn_80_7E4	1E8	B	CSwarmBasics::UpdateEffects	-	upstream body (CSwarmBasics)	no
+007E4	fn_80_7E4	1E8	B	CSwarmBasics::UpdateEffects	-	upstream body (CSwarmBasics)	yes
 009CC	fn_80_9CC	D0	B	CSwarmBasics::AddLoopedEmitter	swarm1	upstream body (CSwarmBasics)	yes
 00A9C	fn_80_A9C	70	B	CSwarmBasics::CanStartLoopedSound	-	upstream body (CSwarmBasics)	no
 00B0C	fn_80_B0C	A4	B	CSwarmBasics::UpdateLoopedSoundPositions	-	upstream body (CSwarmBasics)	no
@@ -28,7 +28,7 @@ offset	fn	size	class	name	slice	what	marker
 00CB0	fn_80_CB0	198	B	CSwarmBasics::UpdateClosestPartitionLoopedSounds	swarm1	upstream body (CSwarmBasics)	yes
 00E48	fn_80_E48	124	B	CSwarmBasics::UpdateLoopedSounds	swarm1	upstream body (CSwarmBasics)	yes
 00F6C	fn_80_F6C	154	B	CSwarmBasics::GetClosestPartitionList	swarm1	upstream body (CSwarmBasics)	yes
-010C0	fn_80_10C0	1C0	B	CSwarmBasics::FindClosestCell	-	upstream body (CSwarmBasics)	no
+010C0	fn_80_10C0	1C0	B	CSwarmBasics::FindClosestCell	-	upstream body (CSwarmBasics)	yes
 01280	fn_80_1280	40	B	CSwarmBasics::EvaluateActiveBoidCount	-	upstream body (CSwarmBasics)	no
 012C0	fn_80_12C0	164	B	CSwarmBasics::FreezeCollision	-	upstream body (CSwarmBasics)	no
 01424	fn_80_1424	44	B	CSwarmBasics::RenderParticles	-	upstream body (CSwarmBasics)	no

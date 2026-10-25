@@ -788,3 +788,59 @@ Evidence frozen before the marker went in, and untouched by this correction:
 `/tmp/opencode/reports/swb15-evidence/` (gcno, gcda, raw gcov JSON, the module's asm, binary/source
 hashes, the raw fixture log, the run log, mock tests); the mechanical reconciliation and the hardened
 fixture's mock suite are in `/tmp/opencode/swb15-reconcile/`.
+
+## swb18: FindClosestCell 12/12 15/15 (ALL-ARMS) and UpdateEffects 26/26 32/34 - both marked
+
+Base `0d8d3aa9f` (298119d8b + a `port` merge), branch `decomp/swb18`. Source change: two `// @`
+marker lines only. Six launches, four of them lost to fixture bugs (recorded, not hidden): run 1
+died in an object-list walk (`gdb.MemoryError`, nothing logged), run 2 passed a `CTransform4f` to
+the CVector3f helper (`no member mX`), run 3 raised `NameError: lo` in the cell-centre helper, run
+4/5 turned on an oracle error of mine (below) and run 5 was the `SWB18_SOFT=1` diagnostic - there
+every arm ran and the whole fixture completed, so it is the run that named the bug. Run 6 is the
+accepted one: `game rc=0`, `caught/reach-stub: 0`, normal inferior exit, `closest=6 effects=8
+sound_calls=3 applies=3 restores=3 restore_fail=0 release_fail=0 soft_fail=0 done=True`
+(`/var/tmp/swb18/run6`, copy in `/tmp/opencode/reports/swb18-evidence/`).
+
+`tools/cov/specs/swarmbasics_swb18.py` (force.py, not force_ret.py) is a **forced native call**
+fixture, the approach swb4/bsw4 used for bodies no run reaches: a one-shot breakpoint at
+`CSwarmBasics::UpdatePartition` (base-class, so every derived swarm reaches it) waits for
+`mUpdateFrameIdx >= 500`, >= 2 boids, a non-empty `mActiveBoidIndices` and a live
+`mModelDatas[0].mAnimData.mItem`; the work then runs in one batch command outside `stop()`
+(`hook-backtrace` -> `swb18-run`) with frame ownership (same thread, same pc, same level), and
+every write sits inside a `Transaction` that snapshots the original bytes **before** the first
+write and restores them reversed with a byte readback.
+
+| body | result | how |
+|---|---|---|
+| **fn_80_10C0 FindClosestCell - marked** | **12/12 lines, 15/15 branches, ALL-ARMS** | six native calls: empty list (result stays zero), a later cell closer (update), the first cell already closest (strict `<` keeps it), an exact midpoint tie (first wins), a query 1e6 away, and an unordered (NaN) query (no update, zero returned). The partition list and the box geometry are forced (`mTransform` identity, `mBoundingBoxExtent` 50, two heads at slots 0 and 4) and the expected centres are recomputed here, never by calling `BoxForPosition`/`FindClosestCell` |
+| **fn_80_7E4 UpdateEffects - marked** | **26/26 lines, 32/34 branches** | eight native calls on the **swarm's own** CAnimData (`mModelDatas[0]` - the object the natural caller passes): zero count, wrong node type, `roll > weight`, character mismatch, the `0x80000000` sound-id bit, character -1, character == the anim's own index, and two nodes. Every emitted emitter is read at `CSfxManager::AddEmitter` and released through the native `RemoveEmitter` |
+
+The two untaken edges are **GCC host-only static-guard contention**, not retail arms: they are
+`branch 4 taken 0` on lines 2012/2013 (`static float maxDistance = node.GetMaxDistance();`,
+`static float falloff = node.GetFallOff();`), i.e. the acquire-returns-0 side of
+`__cxa_guard_acquire` (blocks 11 -> end and 15 -> end; `call 2 returned 2`, `branch 3 taken 2`,
+`branch 4 taken 0`). Retail has only the guard byte load/test/store and both of its sides ran -
+init 2 / skip 56 at `0x8E0 bne .L_000008F8` with `0x8E4 stfs lbl_80_bss_0` + `0x8F4 stb 1` and the
+same at `0x908 bne .L_00000920` with `0x90C stfs lbl_80_bss_8` + `0x91C stb 1`; there is no
+lock/acquire-return branch. This is the same proof bsw4 recorded for `fn_6_1448`, and the payload
+oracles show the statics hold: the first emitting call takes `maxDistance 17 / falloff 0.25` from
+the node and the two later ones emit 17/0.25 again although their node says 31/0.75 and 45/0.5.
+
+**Verified layout facts (host, from the build's DWARF, not retail offsets):** `mBoids` 0x1d8,
+`mPartitionedBoidLists` 0x240 with `mData` at +8 (so `reserved_vector::operator[]` is
+`mData + idx*8`), `sizeof(CBoid)` 192, `CBoid`: mTransform 0, mVelocity 0x30, mNext 0x58, mActive
+0xba; `CAnimData::mPassedSoundCount` 0x418, `mCharIdx` 0x404, `CSoundPOINode`: mType 0x10,
+mWeight 0x24, mCharIdx 0x28, mSfxId 0x30, mFalloff 0x34, mMaxDist 0x38 (retail 0xc/0x20/0x24/0x2c/
+0x30/0x34: same order, +4); swarm `mMaxVolume` 0x7f1, `mMinVolume` 0x7f0 (retail 0x525/0x524,
+same order). **`BoxForPosition`'s 0.1 margin cancels out of a cell's centre** (retail `0x1150 lfs
+f1, lbl_80_rodata_4` is the margin): the box is `min - margin` .. `max + margin`, so the centre is
+`min + (idx + .5) * size` - run 5 measured (20.0,-20.0,-20.0) where an uncancelled margin predicts
+19.9. `tools/cov/specs/swarmbasics_swb18_selftest.py` (committed) covers that arithmetic, the
+strict-`<` first-wins rule, the NaN query and the `x + 5y + 25z` slot order without gdb or a game.
+
+Still open in this slice, with what is measured and what each needs:
+
+| fn | state | blocker |
+|---|---|---|
+| 220C Touch | 48/72 lines, 49/93 branches, unmarked | 93 branch rows over three independent paths: the `CLightComboProjectile` arm (`CanCreateRay`, `CreateRay`, the `xa8_`/`xaa_` pair) needs a real Sunburst projectile in the air; the `CEnergyProjectile` arm needs a charge/beam projectile hit plus its explode-reflect `kWCR_EnemyNormal` branch; the player path needs the cannon-ball (`kIT_CannonBall`) and screw-attack states and the `mDamageCooldownTimer` arm. A forced-call fixture is not enough here: it has to drive real projectiles through the real collision callbacks, so this body needs its own slice (a Sunburst/seeker driver plus a `Touch` spec), not a row in this one |
+| A1BC GetModelDataForAnimRes | inlined into the ctor (objdiff None, no gcov entry), unmarked | the body is `animRes.GetId() != kInvalidAssetId ? CModelData(animRes) : CModelDataNull()`, and a `static` free function inlined into its only caller cannot be called natively. The invalid-id arm needs a **constructor call with an invalid asset id** - i.e. a real actor whose SLdr resolves no model - which no shipped swarm provides, and the ctor's own marker (fn_80_8FE0) does not distinguish the two sides. Needs either a `-fno-inline`-style build of just this unit with a documented reason, or a fixture that calls the ctor with a fabricated `CAnimRes` (a real caller-visible path, so it needs a decision by the orchestrator, not this lane) |

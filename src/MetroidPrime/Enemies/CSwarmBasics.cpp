@@ -1828,6 +1828,7 @@ int CSwarmBasics::EvaluateActiveBoidCount() const {
   return count;
 }
 
+// @ fn_80_10C0
 CVector3f CSwarmBasics::FindClosestCell(const CVector3f& pos) const {
   float minDistance = FLT_MAX;
   CVector3f result = CVector3f::Zero();
@@ -1991,6 +1992,7 @@ CSfxHandle CSwarmBasics::AddLoopedEmitter(const CVector3f& pos, ushort sfx) {
   return CSfxManager::AddEmitter(parms, GetCurrentAreaId().Value(), true, true);
 }
 
+// @ fn_80_7E4
 void CSwarmBasics::UpdateEffects(CStateManager& mgr, CAnimData& animData, int volume) {
   int count;
   const CSoundPOINode* nodes = animData.GetSoundPOIList(count);
