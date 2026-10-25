@@ -223,6 +223,20 @@ def main():
     scenario('both paths', 'status=OK' in l and 'attempted=1' in l and 'restored=1' in l
              and 'accepted=2' in l and g.mem[MODE] == ORIG, l)
 
+    # 1a the 'above' side writes centre.z + 1e6 and still restores
+    os.environ['PUD5_SIDE'] = 'above'
+    out = tmp / 'above'
+    g = FakeGdb(str(binary), read_fail_after_write=())
+    ns = load(g, str(out))
+    call(g, ret=1)
+    call(g, ret=0)
+    ns['summarize']()
+    del os.environ['PUD5_SIDE']
+    l = line(out)
+    above = struct.unpack('<I', struct.pack('<f', 0.5 * (MIN_Z + MAX_Z) + 1.0e6))[0]
+    scenario('above side', 'status=OK' in l and 'restored=1' in l and g.mem[MODE] == ORIG
+             and ('-> 0x%x' % above) in diag(out), l)
+
     # 1b the forced value is the float32 of centre.z - 1e6 and the caller's z is untouched afterwards
     out = tmp / 'value'
     g = FakeGdb(str(binary), read_fail_after_write=())

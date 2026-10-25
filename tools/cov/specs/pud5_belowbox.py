@@ -24,6 +24,9 @@
 # failure.  The edge evidence itself comes from the gcda: 250:1/2 and 251:1/4 may only be taken by
 # the forced call (the unedited sine/geometry never reaches them in 36 natural calls).
 #
+# PUD5_SIDE=above (env) puts the hit point 1e6 ABOVE the centre instead: dot ~= +up.z >= sine, the
+# retail 0x2E78/0x2E7C `bge` -> true arm (260:3/4).  Default is below.
+#
 #   BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/specs/pud5_belowbox.py \
 #     tools/cov/force.sh tools/cov/specs/pud5_belowbox.py /tmp/opencode/pud5_r1 \
 #     3dfd2249,cbc72d79 --con tools/cov/specs/pud2_puddlespore.con --fast --frames 2150
@@ -40,6 +43,8 @@ FUNC = '_ZNK12CPuddleSpore18WeaponHitsWeakSpotERK9CVector3fRK11CWeaponMode'
 ALLOWED_CALLERS = ('CPuddleSpore::Touch', 'CPuddleSpore::GetCollisionResponseType')
 KPS_OPEN = 1
 BELOW_DISTANCE = 1.0e6   # hit point this far under the touch-box centre (metres)
+SIDE = os.environ.get('PUD5_SIDE', 'below')   # 'below' (dot <= -sine) or 'above' (dot >= sine, retail 0x2E78 bge)
+SIGN = 1.0 if SIDE == 'above' else -1.0
 UP_Z_MIN = 0.9           # the spore must be upright for the arithmetic below
 state = {'installed': 0, 'binary': 'unchecked', 'calls': [], 'current': None, 'forced_id': None,
          'tracked_this': None, 'refused': [], 'problems': []}
@@ -203,7 +208,7 @@ class EntryBp(gdb.Breakpoint):
             log('call %d: natural - preconditions not met (up.z=%.4f sine=%.4f), no write'
                 % (call['id'], up_z, sine))
             return
-        new_word = f32_bits(centre_z - BELOW_DISTANCE)
+        new_word = f32_bits(centre_z + SIGN * BELOW_DISTANCE)
         original = rd32(pos + 8)
         if original is None:
             problem('call %d: position.z word at 0x%x unreadable, nothing written'
@@ -235,9 +240,9 @@ class EntryBp(gdb.Breakpoint):
                    'restored the original' if rollback_ok else 'FAILED'))
             return
         call['write_confirmed'] = True
-        log('call %d: FORCED position.z word %s -> %s (centre.z %.4f - %.0f; up.z=%.4f sine=%.4f) via '
+        log('call %d: FORCED position.z word %s -> %s (centre.z %.4f %+.0f; up.z=%.4f sine=%.4f) via '
             'caller %s state=%s; snapshot kept for the return'
-            % (call['id'], fmt(original), fmt(new_word), centre_z, BELOW_DISTANCE, up_z, sine, caller,
+            % (call['id'], fmt(original), fmt(new_word), centre_z, SIGN * BELOW_DISTANCE, up_z, sine, caller,
                fmt(mstate)))
 
     @staticmethod
