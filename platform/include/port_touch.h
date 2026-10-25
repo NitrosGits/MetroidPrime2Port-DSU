@@ -57,8 +57,14 @@ void SetAxis(int axis, float value);
 void AddAim(float dxDp, float dyDp);
 void SetAimDown(bool down);
 void SpringSwipe();
-// A swipe up asked for a Spring Ball in the last 120 ms (read by CMorphBall).
+// A swipe up, the Spring Ball binding or a gyro flick asked for a Spring Ball in the last 120 ms
+// (200 ms for a flick, so one just before landing counts); read by CMorphBall.
 bool SpringBallRequested();
+// MP1's PortDebug::RequestSpringBall: asks for one. CMorphBall springs on the request only on the
+// ground in the ball with Spring Ball on, so elsewhere it expires. The clear is the one spring
+// per request.
+void RequestSpringBall(float seconds = 0.12f);
+void ClearSpringBallRequest();
 
 // Drag on the free screen to aim (MP1's `touch_aim`, on by default; `MP2_TOUCH_AIM`).
 bool AimEnabled();

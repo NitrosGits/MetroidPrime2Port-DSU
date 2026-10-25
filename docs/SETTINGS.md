@@ -85,7 +85,7 @@ Controls > Options:
 - `pointer_menus`, `map_swap_fingers`: Options > Menus > Point and click menus (mouse and touch in
   the pause screens and the map; default on; env `MP2_POINTER_MENUS`), Swap map finger gestures
   (touch: one finger pans the map, two rotate; env `MP2_MAP_SWAP_FINGERS`).
-- `fast_morph`, `spring_ball`: Morph ball > Fast Morph, Spring Ball (C-stick up).
+- `fast_morph`, `spring_ball`: Morph ball > Fast Morph, Spring Ball (C-stick up, the Spring Ball binding on the Remap page, touch swipe up, or a gyro flick).
 
 Controls > Mouse settings:
 
@@ -140,6 +140,7 @@ Controls > Touch & gyro (Gyro aim):
   pointer aim it scales the pointer's vertical travel); env `MP2_GYRO_SPLIT`,
   `MP2_GYRO_SENSITIVITY_Y`.
 - `gyro_smoothing`, `gyro_tightening`: Smoothing, Tightening.
+- `spring_ball_flick`, `spring_ball_flick_rate`: Spring Ball on flick (an upward pitch past the rate springs the ball, re-armed below half; works with Gyro aim off; default off; env `MP2_SPRING_BALL_FLICK`) and Flick strength (2..20 rad/s, default 6; env `MP2_SPRING_BALL_FLICK_RATE`).
 
 Gyro aim needs mouse aim, twin stick or the touch controls' aim; without pointer aim it turns the
 camera at Sensitivity. Touch aim's Separate vertical speed and Vertical touch aim speed are

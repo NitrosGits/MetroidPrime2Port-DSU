@@ -113,6 +113,15 @@ bool QuickResume();
 void SetQuickResume(bool enabled);
 bool SpringBall();
 void SetSpringBall(bool enabled);
+// Spring Ball on a gyro flick (`MP2_SPRING_BALL_FLICK`, MP1's `spring_ball_flick`): the pad or phone
+// tilted up faster than the rate (`MP2_SPRING_BALL_FLICK_RATE`, rad/s) springs, like Trilogy's
+// nunchuk flick. Works with gyro aim off (PortInputDevices::PollGyro); still needs Spring Ball.
+const float kSpringFlickRateMin = 2.f;
+const float kSpringFlickRateMax = 20.f;
+const float kSpringFlickRateDefault = 6.f;
+bool SpringBallFlick();
+void SetSpringBallFlick(bool enabled);
+float SpringBallFlickRate();
 // Toggle Lock-On (`MP2_LOCK_ON_TOGGLE=1`): an L press that locks on latches L until the next press,
 // and a lock that ends (target killed, out of range) lets go by itself. Sticky Charge
 // (`MP2_STICKY_CHARGE=1`): letting go of an A hold of kStickyChargeAfter or more keeps the beam

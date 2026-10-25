@@ -188,6 +188,18 @@ const SettingKey kSettingKeys[] = {
     IntKey< &sHintDelay, PortOverlay::kHintDelayMin, PortOverlay::kHintDelayMax >("hint_delay", "0",
                                                                                   "30"),
     BoolKey< &sSpringBall >("spring_ball"),
+    BoolKey< &sSpringFlick >("spring_ball_flick"),
+    {"spring_ball_flick_rate",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= PortOverlay::kSpringFlickRateMin &&
+           parsed <= PortOverlay::kSpringFlickRateMax)
+         sSpringFlickRate = parsed;
+     },
+     [](std::ostream& out) { out << sSpringFlickRate; },
+     false,
+     "2",
+     "20"},
     BoolKey< &sQuickResume >("quick_resume"),
     BoolKey< &sLockOnToggle >("lockon_toggle"),
     BoolKey< &sStickyCharge >("sticky_charge"),

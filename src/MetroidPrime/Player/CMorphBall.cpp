@@ -3794,6 +3794,7 @@ void CMorphBall::ComputeBallMovement(const CFinalInput& input, CStateManager& mg
                                     mPlayer.GetVelocityWR().GetZ()));
     mPlayer.SetMoveState(NPlayer::kMS_FallingMorphed, mgr);
     sSpringBallCooldown = kSpringBallCooldown;
+    PortTouch::ClearSpringBallRequest();
   }
 #endif
   switch (mBallState) {

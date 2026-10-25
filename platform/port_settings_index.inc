@@ -74,6 +74,8 @@
 {"Controls", "Touch & gyro", "Touch controls", "Button inset", "edge margin phone"},
 {"Controls", "Touch & gyro", "Gyro aim", "Mode", "gyro motion tilt aim hold toggle"},
 {"Controls", "Touch & gyro", "Gyro aim", "Source", "gyro controller phone sensor"},
+{"Controls", "Touch & gyro", "Gyro aim", "Spring Ball on flick", "gyro morph ball bomb jump flick"},
+{"Controls", "Touch & gyro", "Gyro aim", "Flick strength", "gyro morph ball spring flick rate"},
 {"Controls", "Touch & gyro", "Gyro aim", "Pointer speed", "gyro cursor angle"},
 {"Controls", "Touch & gyro", "Gyro aim", "Gyro also turns the camera", "gyro camera look"},
 {"Controls", "Touch & gyro", "Gyro aim", "Sensitivity", "gyro speed"},

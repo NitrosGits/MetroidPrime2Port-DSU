@@ -558,10 +558,16 @@ constexpr uint64_t kSpringRequestNs = 120'000'000;
 void SpringSwipe() {
   if (!SpringSwipeEnabled()) return;
   PortMouse::SpringSwipe();
-  sSpringRequestUntilNs.store(SDL_GetTicksNS() + kSpringRequestNs);
+  RequestSpringBall(kSpringRequestNs * 1e-9f);
 }
 
 bool SpringBallRequested() { return SDL_GetTicksNS() < sSpringRequestUntilNs.load(); }
+
+void RequestSpringBall(float seconds) {
+  sSpringRequestUntilNs.store(SDL_GetTicksNS() + uint64_t(seconds * 1e9f));
+}
+
+void ClearSpringBallRequest() { sSpringRequestUntilNs.store(0); }
 
 bool AimEnabled() { return Read(&Settings::aim); }
 

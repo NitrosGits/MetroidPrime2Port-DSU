@@ -21,6 +21,8 @@ extern bool sMapSwapFingers;
 extern int sWalkSpeed;
 extern int sHintDelay;
 extern bool sSpringBall;
+extern bool sSpringFlick;
+extern float sSpringFlickRate;
 extern bool sQuickResume;
 extern bool sLockOnToggle;
 extern bool sStickyCharge;
