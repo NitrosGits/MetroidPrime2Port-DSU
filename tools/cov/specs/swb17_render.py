@@ -492,10 +492,10 @@ def prb_body(g):
     st = _st
     st['prb'] += 1
     n = st['prb'] % PRB_PERIOD
-    # 'empty' fires on every PRB_PERIOD//2-th call whose boid has mIndex > 31 (checked below)
+    # 'empty' fires on every PRB_PERIOD//2-th call (forces mCount=0 and mIndex=40, restored at return)
     if n == PRB_OFFSET:
         mode = 'freeze'
-    elif n % (PRB_PERIOD // 2) == 0 or st.get('prbEmptyNext'):
+    elif n % (PRB_PERIOD // 2) == 0:
         mode = 'empty'
     else:
         return
@@ -510,22 +510,24 @@ def prb_body(g):
             expr = e_u32(boid + FREEZE_OFF)
             value = FROZEN
         else:
-            # an empty model list makes idx = mIndex; only a boid with mIndex > 31 takes the host
-            # guard's false side (no model state is read, bit = 0), so refuse any other boid
-            if _i(g, e_boid(boid, 'mIndex')) <= 31:
-                st['prbEmptyNext'] = True  # retry on the next call until a boid with mIndex > 31 shows
-                return
-            st['prbEmptyNext'] = False
+            # an empty model list makes idx = mIndex & -1; only mIndex > 31 takes the host guard's
+            # false side. No shipped swarm reaches it (scan_swarm_anims.py), so force both
+            # fields (each restored with readback) and let the PPC-slw semantics decide the bit.
             expr = e_this(this, 'mModelDatas.mCount')
             value = 0
+            extra_expr, extra_val = e_boid(boid, 'mIndex'), 40
+            extra_orig = _i(g, extra_expr)
         orig = _i(g, expr)
     except Exception as error:
         st['err'] += 1
         _fail('prb-entry-unreadable')
         _log('PRB-ENTRY-FAILED %s' % error)
         return
+    snap = [(expr, orig)]
+    if mode == 'empty':
+        snap.append((extra_expr, extra_orig))
     w = dict(kind='prb', tag='swb17-p%d-%s' % (st['prb'], mode), frame=frame, context=context,
-             gotCache=0, closed=False, snap=[(expr, orig)], dirty=False, mask=mask, mask0=mask0)
+             gotCache=0, closed=False, snap=snap, dirty=False, mask=mask, mask0=mask0)
     try:
         w['finish'] = _Finish(frame, w)
     except Exception as error:
@@ -540,6 +542,10 @@ def prb_body(g):
         g.execute('set var %s = %d' % (expr, value))
         if _i(g, expr) != value:
             raise RuntimeError('forced readback mismatch')
+        if mode == 'empty':
+            g.execute('set var %s = %d' % (extra_expr, extra_val))
+            if _i(g, extra_expr) != extra_val:
+                raise RuntimeError('forced readback mismatch (mIndex)')
     except Exception as error:
         st['err'] += 1
         _fail('write-failed:' + w['tag'])
