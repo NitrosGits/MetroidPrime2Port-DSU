@@ -169,6 +169,8 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sFastMorph >("fast_morph"),
     IntKey< &sWalkSpeed, PortOverlay::kWalkSpeedMin, PortOverlay::kWalkSpeedMax >("walk_speed", "50",
                                                                                   "200"),
+    IntKey< &sHintDelay, PortOverlay::kHintDelayMin, PortOverlay::kHintDelayMax >("hint_delay", "0",
+                                                                                  "30"),
     BoolKey< &sSpringBall >("spring_ball"),
     BoolKey< &sLockOnToggle >("lockon_toggle"),
     BoolKey< &sStickyCharge >("sticky_charge"),

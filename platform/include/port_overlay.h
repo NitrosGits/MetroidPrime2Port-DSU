@@ -89,6 +89,15 @@ const int kWalkSpeedMax = 200;
 const int kWalkSpeedDefault = 100;
 int WalkSpeed();
 void SetWalkSpeed(int percent);
+// Hint delay in minutes (`MP2_HINT_DELAY`, 0 = the game's own timing): HintDelaySeconds() caps the
+// wait before a hint first shows (CHintOptions::Update), 0 when off. RequestShowHint() (F1 button,
+// `hintshow`) asks the next CHintOptions::Update to show the hint the game would show next;
+// ConsumeShowHintRequest() takes the request.
+const int kHintDelayMin = 0;
+const int kHintDelayMax = 30;
+float HintDelaySeconds();
+void RequestShowHint();
+bool ConsumeShowHintRequest();
 // Spring Ball (`MP2_SPRING_BALL=1`): C-stick up on the ground in Morph Ball is a bomb jump from the
 // ball's own position, as Trilogy's nunchuk flick is, so the ball can leave the ground without a
 // bomb to spend (needs Morph Ball Bombs; CMorphBall::ComputeBallMovement).

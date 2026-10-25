@@ -14,6 +14,10 @@
 
 #include <float.h>
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
+
 const float CGameHintInfo::skHintTextTime = 3.f;
 
 uint CHintOptions::GetBitCount(uint value) {
@@ -95,6 +99,34 @@ void CHintOptions::InitializeMemoryState() {
 }
 
 void CHintOptions::Update(float dt, CStateManager& mgr) {
+#ifdef TARGET_PC
+  // Port: "Show current hint" (F1, `hintshow`): re-show the displaying hint, else bring the soonest
+  // waiting one due now.
+  if (PortOverlay::ConsumeShowHintRequest()) {
+    int showIdx = -1;
+    for (int i = 0; i < mHintStates.size(); ++i) {
+      if (mHintStates[i].mState == kHS_Displaying) {
+        showIdx = i;
+        break;
+      }
+    }
+    if (showIdx != -1) {
+      mHintStates[showIdx].mDismissalTimer = 0.f;
+      mHintStates[showIdx].mTime = gpMemoryCard->GetHints()[showIdx].GetTextTime();
+    } else {
+      for (int i = 0; i < mHintStates.size(); ++i) {
+        if (mHintStates[i].mState == kHS_Waiting &&
+            (showIdx == -1 || mHintStates[i].mTime < mHintStates[showIdx].mTime)) {
+          showIdx = i;
+        }
+      }
+      if (showIdx != -1) {
+        mHintStates[showIdx].mTime = 0.f;
+      }
+    }
+  }
+  const float hintDelay = PortOverlay::HintDelaySeconds(); // Port: Hint delay setting
+#endif
   mNextHintIdx = -1;
   for (int i = 0; i < mHintStates.size(); ++i) {
     SHintState& state = mHintStates[i];
@@ -104,6 +136,11 @@ void CHintOptions::Update(float dt, CStateManager& mgr) {
     case kHS_Delayed:
       break;
     case kHS_Waiting:
+#ifdef TARGET_PC
+      if (hintDelay > 0.f && state.mTime > hintDelay) {
+        state.mTime = hintDelay;
+      }
+#endif
       state.mTime -= dt;
       if (mInRezbitState || mScanDisplayActive) {
         state.mTime = rstl::max_val(FLT_EPSILON, state.mTime);

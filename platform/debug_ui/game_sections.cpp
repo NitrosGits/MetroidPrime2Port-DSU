@@ -101,6 +101,24 @@ void DrawCutscenesSection() {
   }
   ItemHelp("How fast Samus moves on foot, walking, strafing and circle-strafing, in percent of "
            "the original speed. Jumps, dashes, turning and the Morph Ball are unchanged.");
+  int hintDelay = sHintDelay;
+  if (ImGui::SliderInt("Hint delay", &hintDelay, PortOverlay::kHintDelayMin,
+                       PortOverlay::kHintDelayMax, hintDelay == 0 ? "Game default" : "%d min",
+                       ImGuiSliderFlags_AlwaysClamp)) {
+    sHintDelay = hintDelay;
+    Changed(true);
+  }
+  ItemHelp("The longest a hint waits before it first shows. Game default keeps the game's own "
+           "timing; a shorter wait also applies to hints already waiting in your save. Needs the "
+           "in-game hint system on.");
+  ImGui::BeginDisabled(gpGameState == nullptr ||
+                       !gpGameState->GameOptions().GetIsHintSystemEnabled());
+  if (ImGui::Button("Show current hint")) {
+    PortOverlay::RequestShowHint();
+  }
+  ImGui::EndDisabled();
+  ItemHelp("Shows the hint the game would show next, now: the one on screen again, or the one "
+           "due soonest. Needs the in-game hint system on.");
 }
 
 // The game's own volumes, the same as the pause menu's two sliders.

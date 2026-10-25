@@ -1000,6 +1000,12 @@ void CmdFastMorph(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "fast morph on\n" : "fast morph off\n";
 }
 
+// hintshow: the F1 "Show current hint" button (hint_delay's companion); the next hint update acts.
+void CmdHintShow(CStateManager&, const Args&, std::string& out) {
+  PortOverlay::RequestShowHint();
+  out += "hint requested\n";
+}
+
 // walkspeed [50..200]: on-foot movement speed in percent (walk_speed); no argument prints it.
 void CmdWalkSpeed(CStateManager&, const Args& args, std::string& out) {
   if (args.size() > 1) {
@@ -4120,6 +4126,8 @@ const CommandSpec kCommands[] = {
       "                            damage stop spawn; value: float for damage, state for generic)\n"},
     {"fastmorph", CmdFastMorph,
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"},
+    {"hintshow", CmdHintShow,
+      "hintshow                    show the hint the game would show next (F1 Show current hint)\n"},
     {"walkspeed", CmdWalkSpeed,
       "walkspeed [50..200]         on-foot movement speed in percent (walk_speed); no argument prints it\n"},
     {"springball", CmdSpringBall,

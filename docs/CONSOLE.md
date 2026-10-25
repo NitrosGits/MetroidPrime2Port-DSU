@@ -38,6 +38,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `gameevent <ev> [src] [tgt] [value] [as <proxyType>]` — deliver a game event to every CScriptPlayerProxy listener (ev: score kill generic scan damage stop spawn; value: float for damage, state for generic)
 - `fastmorph <0|1>` — fast morph: the morph transition takes 0.2 s, not a second
 - `walkspeed [50..200]` — walk speed in percent (shows the value with no argument); `walk_speed` in SETTINGS.md
+- `hintshow` — show the hint the game would show next (F1 > Game > Show current hint)
 - `springball <0|1>` — spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)
 - `lockon <0|1>` — toggle lock-on: an L press latches until the next press
 - `sticky <0|1>` — sticky charge: a long A hold keeps charging after the release

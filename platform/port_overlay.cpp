@@ -59,6 +59,7 @@ bool sLogFile = true;
 // `MP2_STICKY_CHARGE`), saved in settings.cfg.
 bool sFastMorph = false;
 int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
+int sHintDelay = 0;
 bool sSpringBall = false;
 bool sLockOnToggle = false;
 bool sStickyCharge = false;
@@ -722,6 +723,24 @@ void SetFastMorph(bool enabled) {
 int WalkSpeed() {
   ReadEnv();
   return EnvIntIn("MP2_WALK_SPEED", sWalkSpeed, kWalkSpeedMin, kWalkSpeedMax);
+}
+
+float HintDelaySeconds() {
+  ReadEnv();
+  return static_cast< float >(EnvIntIn("MP2_HINT_DELAY", sHintDelay, kHintDelayMin, kHintDelayMax)) *
+         60.f;
+}
+
+static bool sShowHintRequested = false;
+
+void RequestShowHint() {
+  sShowHintRequested = true;
+}
+
+bool ConsumeShowHintRequest() {
+  const bool requested = sShowHintRequested;
+  sShowHintRequested = false;
+  return requested;
 }
 
 void SetWalkSpeed(int percent) {
