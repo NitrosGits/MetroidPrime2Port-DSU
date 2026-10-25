@@ -356,12 +356,26 @@ void DrawControlsTouchGyro() {
            "while the Gyro aim button is held. Hold to pause: always, except while it is held (to "
            "recentre). Toggle: press to start and stop. The button is right stick click or left Ctrl "
            "(Remap page). Needs mouse aim, twin stick or the touch controls' aim.");
-  ImGui::BeginDisabled(!sGyroAim);
+  Changed(ImGui::Checkbox("Spring Ball on flick", &sSpringFlick));
+  ItemHelp("A quick upward flick of the pad or phone makes a Spring Ball jump in Morph Ball (needs "
+           "Spring Ball on, under Morph ball). Works with Gyro aim off.");
+  ImGui::BeginDisabled(!sSpringFlick);
+  if (ImGui::SliderFloat("Flick strength", &sSpringFlickRate, PortOverlay::kSpringFlickRateMin,
+                         PortOverlay::kSpringFlickRateMax, "%.1f rad/s")) {
+    sSpringFlickRate =
+        std::clamp(sSpringFlickRate, PortOverlay::kSpringFlickRateMin, PortOverlay::kSpringFlickRateMax);
+    Changed(true);
+  }
+  ItemHelp("How fast the flick must be. Lower triggers more easily.");
+  ImGui::EndDisabled();
+  ImGui::BeginDisabled(!sGyroAim && !sSpringFlick);
   const char* gyroSources[] = {"Auto", "Controller", "Phone"};
   if (ImGui::Combo("Source", &sGyroSource, gyroSources, 3)) {
     Changed(true);
   }
   ImGui::Text("Gyro: %s", PortInputDevices::GyroStatus());
+  ImGui::EndDisabled();
+  ImGui::BeginDisabled(!sGyroAim);
   // With pointer aim the gyro moves the pointer at its own speed; the camera sensitivity then only
   // matters if the gyro also turns the camera.
   const bool gyroPointer = sPointerAim;

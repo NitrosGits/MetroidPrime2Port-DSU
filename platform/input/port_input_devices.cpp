@@ -328,8 +328,8 @@ bool PadButtonBoundBesidesL(s32 native) {
 // of its own family: the keyboard's shift with the keyboard's D-pad keys, the pad's shift with the
 // pad's D-pad. MP1's shifts come from settings (key slots, mouse shift action, pad shift) that MP2
 // does not have, so only its twin-stick shifts exist: Left Shift unless a key takes it, and LB.
-// The overlay's own Beam button works inside PortTouch. MP1 also makes the shifts spring the ball
-// in morph ball; MP2's RouteDirectActions has no spring request (MP2_SPRING_BALL is CMorphBall's).
+// The overlay's own Beam button works inside PortTouch. As in MP1 the shifts also spring the ball
+// in morph ball (the Spring Ball action, RouteDirectActions -> PortTouch::RequestSpringBall).
 void BindBeamChords(Profile& p) {
   if (!PortTouch::TwinStick()) return;
   std::vector<Input> keyShifts;
@@ -368,6 +368,8 @@ void BindBeamChords(Profile& p) {
       }
     }
   }
+  for (const Input& shift : keyShifts) BindIn(p, Action::SpringBall, shift, PortInput::kCtxMorphBall);
+  for (const Input& shift : padShifts) BindIn(p, Action::SpringBall, shift, PortInput::kCtxMorphBall);
 }
 
 // MP1's turbo (A on one poll and off the next from the turbo key and pad slots) hangs off settings
@@ -660,8 +662,7 @@ void RouteDirectActions(const PortInput::Output& out) {
   PushCyclePick(true, beamDir != 0 ? CycleTarget(true, beamDir) : -1);
   const int visorDir = out.Pressed(Action::VisorNext) ? 1 : out.Pressed(Action::VisorPrev) ? -1 : 0;
   PushCyclePick(false, visorDir != 0 ? CycleTarget(false, visorDir) : -1);
-  // MP1's SpringBall action requests a spring ball here; MP2 has no request for one
-  // (MP2_SPRING_BALL is CMorphBall's own).
+  if (out.Pressed(Action::SpringBall)) PortTouch::RequestSpringBall();
 }
 
 // The port's own actions: polled every frame by PollPortActions, not with the game
@@ -1509,13 +1510,17 @@ void PollGyro() {
   // MP1's PollGyro: the gyro feeds the aim the mouse, twin stick and touch drag use, so it needs
   // one of them on. With pointer aim it moves the pointer (and, with "Gyro also turns the
   // camera", the view); without, it turns the view. Off, the sensors are never touched.
-  if (!PortOverlay::GyroAim()) {
+  // The Spring Ball flick reads the same rates, so it keeps them alive with gyro aim off.
+  const bool aim = PortOverlay::GyroAim();
+  const bool flick = PortOverlay::SpringBallFlick();
+  static bool sFlickArmed = true;
+  if (!aim && !flick) {
     sGyroStatus = "off";
     sGyroCalibrating = false;
     sLastNs = 0;
     return;
   }
-  if (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled()) {
+  if (aim && !PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled() && !flick) {
     sGyroStatus = "needs mouse aim, twin stick or touch controls";
     sGyroCalibrating = false;
     sLastNs = 0;
@@ -1535,6 +1540,25 @@ void PollGyro() {
   if (sGyroMotion.ManualCalibrating()) {
     // The pad is meant to lie still: nothing it reads now aims.
     sGyroStatus = "calibrating, keep the pad still";
+    return;
+  }
+  if (flick) {
+    // MP1: a quick upward pitch (past the rate) springs once, re-armed when it settles under half.
+    const float rate = PortOverlay::SpringBallFlickRate();
+    if (sFlickArmed && pitch > rate) {
+      sFlickArmed = false;
+      PortTouch::RequestSpringBall(0.2f);
+    } else if (!sFlickArmed && pitch < rate * 0.5f) {
+      sFlickArmed = true;
+    }
+  }
+  if (!aim ||
+      (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled())) {
+    if (!aim) {
+      sGyroStatus = "flick only";
+    } else {
+      sGyroStatus = "needs mouse aim, twin stick or touch controls";
+    }
     return;
   }
   PortMouse::SetGyroDrivesAim(true);

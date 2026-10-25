@@ -63,6 +63,8 @@ bool sMapSwapFingers = false;
 int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
 int sHintDelay = 0;
 bool sSpringBall = false;
+bool sSpringFlick = false;
+float sSpringFlickRate = PortOverlay::kSpringFlickRateDefault;
 bool sQuickResume = true;
 bool sLockOnToggle = false;
 bool sStickyCharge = false;
@@ -800,6 +802,23 @@ void SetSpringBall(bool enabled) {
   ReadEnv();
   sSpringBall = enabled;
   Persist();
+}
+
+bool SpringBallFlick() {
+  ReadEnv();
+  return EnvBool("MP2_SPRING_BALL_FLICK", sSpringFlick);
+}
+
+void SetSpringBallFlick(bool enabled) {
+  ReadEnv();
+  sSpringFlick = enabled;
+  Persist();
+}
+
+float SpringBallFlickRate() {
+  ReadEnv();
+  return EnvFloatIn("MP2_SPRING_BALL_FLICK_RATE", sSpringFlickRate, kSpringFlickRateMin,
+                    kSpringFlickRateMax);
 }
 
 bool LockOnToggle() {
