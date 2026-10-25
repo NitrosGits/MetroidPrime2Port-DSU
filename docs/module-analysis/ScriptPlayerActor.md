@@ -78,7 +78,22 @@ Every write is one call, restored at the next entry.
 | SetIntoStateManager 970 | 16/18 | 0x573's `!set && previous` (the two-actor chain in spa2_templedark.con) | 580:1/4 and 580:2/4: `actor`/`actor->mIsPlayerActor` are in registers at 0x580, so `loc:` writes of them (and of `id.value`) do not reach the test |
 | GetSuitCharIdx FDC | 3/4 | mCharacterCount 0 (both count arms) | 514:1/2 (the inner count arm): needs renderSuit(suit) >= mCharacterCount with suit < mCharacterCount; `$rdx` writes at entry did not produce it |
 | GetNextSuitCharIdx 103C | 4/6 | - | 489:0/2 and 495:1/2: mFlags/mSuit writes at entry do not change the branch (the two suit assignments compile to one select; the branch gcov reports on that line is not the one the C++ reads) |
-| dtor 2E3C | - | - | inline in the header (no standalone body to mark) |
+| dtor 2E3C | - | - | inline in the header; see section 7 |
 
 No retail divergence and no source change in this pass: the bodies still match the asm as the survey
 records.
+
+## 7. spa3 (2026-10-25): forced arms, `tools/cov/specs/spa3_force.py` + `tools/drivers/spa3_templedark.con`
+
+Per-call cycling forcers (this/mgr captured at entry; no register restore). Runs: f2 (`42b935e4,03_sand_temple_dark`, `--fast --frames 2200`), f3 (`SPA3_ACS=1`, unknown-ACS), plus natural a..j.
+
+| fn | result | note |
+|---|---|---|
+| C0 LoadPlayerActor | ALL-ARMS, marked | unknown-ACS arm forced (`SPA3_ACS=1`, ancs=0xffffffff at loc:599) |
+| FDC GetSuitCharIdx | ALL-ARMS, marked | (suit,count) pairs; inner arm needs `give gravityBoost` (Dark renders 5, `CPlayerState.cpp:597`) |
+| 103C GetNextSuitCharIdx | ALL-ARMS, marked | all (mFlags&2, mSuit) pairs; spa2 missed it with call-number one-shots |
+| 970 SetIntoStateManager | 17/18, unmarked | 580:2 (chain actor that is not a player actor) not reached |
+| AB8 SetupEnvFx | 15/17, unmarked | 549:4/5 (rain with no model data) not reached |
+| C30 PreRender | 18/21, unmarked | 530:4/9, 535:3 not reached; `loc:530` writes land after the test (crash at 535 with a null shadow) |
+| 2630 Think | 63/67, unmarked | 200:3, 221:8/10, 227:4 not reached |
+| 2E3C dtor | 29 deletes, unmarked | all but the `mBackupModelData` live arm ran; that arm needs a delete within 2 PreRenders of `SetupOfflineModelData` (`.cpp:369`, countdown at 522-526); 368:1 is itself untaken |
