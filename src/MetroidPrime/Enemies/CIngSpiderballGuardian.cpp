@@ -547,7 +547,7 @@ void CIngSpiderballGuardian::MoveAlongWaypoints(CStateManager& mgr, float dt) {
   SetTransform(CTransform4f::LookAt(newPosition, newPosition + direction, newUp));
 }
 
-// fn_35_1878
+// @ fn_35_1878
 void CIngSpiderballGuardian::ApplyProximityDamage(CStateManager& mgr) {
   if (mEffectsActive && mProximityDamageEnabled && mCurDamageRemTime <= 0.f) {
     CPlayer* player = mgr.GetPlayer(0);
