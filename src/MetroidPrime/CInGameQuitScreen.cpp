@@ -19,6 +19,11 @@
 #include "MetroidPrime/ScriptObjects/CScriptStreamedMusic.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
+#ifdef TARGET_PC
+#include "port_pointer.h"
+#include "port_pointer_menu.h"
+#endif
+
 static const char* const skFrameNames[] = {"FRME_MultiplayerPause4", "FRME_MultiplayerPause2",
                                            "FRME_MultiplayerPause4"};
 
@@ -35,7 +40,13 @@ CInGameQuitScreen::CInGameQuitScreen(int viewportLayout)
   CSfxManager::SetChannel(CSfxManager::kSC_PauseScreen);
 }
 
+#ifdef TARGET_PC
+void CInGameQuitScreen::ProcessUserInput(const CFinalInput& frameInput) {
+  CFinalInput portInput = frameInput;
+  const CFinalInput& input = portInput;
+#else
 void CInGameQuitScreen::ProcessUserInput(const CFinalInput& input) {
+#endif
   if (!mQuitConfirmation.null()) {
     mQuitConfirmation->ProcessUserInput(input);
     return;
@@ -45,6 +56,26 @@ void CInGameQuitScreen::ProcessUserInput(const CFinalInput& input) {
   }
 
   mReadyFrame->ProcessUserInput(input);
+#ifdef TARGET_PC
+  if (PortPointerMenu::Begin()) {
+    const PortPointerMenu::Action act = PortPointerMenu::Table(mChoiceTable, false);
+    if (act == PortPointerMenu::Action::Advance) {
+      PortPointerMenu::PressA(portInput);
+    } else if (PortPointerMenu::TakeBack()) {
+      PortPointerMenu::PressB(portInput);
+    } else {
+      for (int i = 0; i < mChoices.size(); ++i) {
+        if (PortPointerMenu::TakeClickOn(mChoices[i].mLeftArrow)) {
+          mChoiceTable->SetUserSelection(i);
+          ChangeChoice(-1);
+        } else if (PortPointerMenu::TakeClickOn(mChoices[i].mRightArrow)) {
+          mChoiceTable->SetUserSelection(i);
+          ChangeChoice(1);
+        }
+      }
+    }
+  }
+#endif
   if (input.PA() || input.PStart()) {
     if (mChoices[0].mSelection == 1 && mChoiceTable->GetUserSelection() == 0) {
       mQuitConfirmation = rs_new CQuitGameScreen(kQT_QuitMultiplayer, mViewportLayout);

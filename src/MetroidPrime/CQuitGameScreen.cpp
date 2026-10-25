@@ -11,6 +11,11 @@
 #include "MetroidPrime/Cameras/CCameraFilterPass.hpp"
 #include "MetroidPrime/SFX/UIMemory.h"
 
+#ifdef TARGET_PC
+#include "port_pointer.h"
+#include "port_pointer_menu.h"
+#endif
+
 static const char* const skTitleNames[] = {"QuitGame", "Continue", "QuitMPConfirmation"};
 
 static const char* const skFrameNames[] = {"FRME_QuitScreen1", "FRME_QuitScreen2",
@@ -32,6 +37,17 @@ CQuitGameScreen::~CQuitGameScreen() {}
 
 void CQuitGameScreen::ProcessUserInput(const CFinalInput& input) {
   if (mLoadedFrame != nullptr) {
+#ifdef TARGET_PC
+    // Pointer: hover selects, a click confirms (DoAdvance), a right click backs out.
+    if (PortPointerMenu::Begin() && mAction == kQA_None) {
+      PortPointerMenu::Table(mChoiceTable);
+      if (mType != kQT_ContinueFromLastSave && PortPointerMenu::TakeBack()) {
+        mAction = kQA_No;
+        CSfxManager::SfxStart(SFXui_x_invback_00_oneshot, 127, 63, CSfxManager::kAllAreas, false,
+                              false, CSfxManager::kMedPriority);
+      }
+    }
+#endif
     mLoadedFrame->ProcessUserInput(input);
     if (input.PB() && mType != kQT_ContinueFromLastSave) {
       mAction = kQA_No;
