@@ -1,11 +1,17 @@
 package org.metroidprime2.port;
 
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.DocumentsContract;
+import android.provider.MediaStore;
 import android.util.Log;
 
 import dev.encounter.aurora.AuroraSurface;
@@ -14,9 +20,11 @@ import org.libsdl.app.SDLActivity;
 import org.libsdl.app.SDLSurface;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -244,4 +252,69 @@ public final class MetroidPrime2Activity extends SDLActivity {
         }
         file.delete();
     }
+
+    // Called from photo mode (port_photo.cpp), on the SDL thread, once a photo is
+    // written: moves it into the shared Pictures/Metroid Prime 2 folder, where the
+    // gallery sees it. Returns where it went, or null (the file is then kept).
+    // (MP1 MetroidPrimeActivity.exportPhoto.)
+    public String exportPhoto(String path) {
+        File source = new File(path);
+        String folder = Environment.DIRECTORY_PICTURES + "/Metroid Prime 2";
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ContentResolver resolver = getContentResolver();
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Images.Media.DISPLAY_NAME, source.getName());
+                values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+                values.put(MediaStore.Images.Media.RELATIVE_PATH, folder);
+                values.put(MediaStore.Images.Media.IS_PENDING, 1);
+                Uri uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                if (uri == null) {
+                    return null;
+                }
+                try (InputStream input = new FileInputStream(source);
+                     OutputStream output = resolver.openOutputStream(uri)) {
+                    if (output == null) {
+                        throw new IOException("No stream for " + uri);
+                    }
+                    copyStream(input, output);
+                } catch (IOException e) {
+                    resolver.delete(uri, null, null);
+                    throw e;
+                }
+                values.clear();
+                values.put(MediaStore.Images.Media.IS_PENDING, 0);
+                resolver.update(uri, values, null, null);
+            } else {
+                // Android 9 has no MediaStore folders: a plain file (WRITE_EXTERNAL_STORAGE,
+                // maxSdkVersion 28), then a scan for the gallery.
+                File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+                                    "Metroid Prime 2");
+                if (!dir.isDirectory() && !dir.mkdirs()) {
+                    throw new IOException("Failed to create " + dir);
+                }
+                File destination = new File(dir, source.getName());
+                try (InputStream input = new FileInputStream(source);
+                     OutputStream output = new FileOutputStream(destination)) {
+                    copyStream(input, output);
+                }
+                MediaScannerConnection.scanFile(this, new String[]{destination.getPath()},
+                                                new String[]{"image/png"}, null);
+            }
+        } catch (IOException | RuntimeException e) {
+            Log.w(TAG, "Could not move " + source + " to " + folder, e);
+            return null;
+        }
+        source.delete();
+        return folder + "/" + source.getName();
+    }
+
+    private static void copyStream(InputStream input, OutputStream output) throws IOException {
+        byte[] buffer = new byte[64 * 1024];
+        int count;
+        while ((count = input.read(buffer)) != -1) {
+            output.write(buffer, 0, count);
+        }
+    }
+
 }

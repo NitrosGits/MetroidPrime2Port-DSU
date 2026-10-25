@@ -10,6 +10,9 @@
     <!-- The debug console (MP2_CONSOLE) listens on 127.0.0.1: without INTERNET, socket() fails
          with EPERM on Android. It is a loopback socket only; nothing here talks to the network. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Photo mode's export to Pictures/Metroid Prime 2 on Android 9 (MediaStore needs none on 10+). -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
     <application
         android:allowBackup="false"
         android:appCategory="game"
