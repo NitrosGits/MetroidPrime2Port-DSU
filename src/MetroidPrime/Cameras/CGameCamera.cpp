@@ -13,6 +13,9 @@
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CUnitVector3f.hpp"
 #include "Kyoto/Math/CloseEnough.hpp"
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
 
 CGameCamera::SFovInterpolation::SFovInterpolation(float delay, float remaining, float duration,
                                                   float current, float target, TUniqueId cameraId)
@@ -221,6 +224,21 @@ void CGameCamera::SetFov(float fov) {
 }
 
 float CGameCamera::GetFov() const { return mFovInterpolation.mCurrent; }
+
+#ifdef TARGET_PC
+float CGameCamera::GetRenderFov() const {
+  const float fov = GetFov();
+  if (mFovFitted) {
+    return fov;
+  }
+  const CViewport& viewport = CGraphics::GetViewport();
+  if (viewport.mHeight <= 0) {
+    return fov;
+  }
+  return PortOverlay::VertPlusFov(fov, static_cast< float >(viewport.mWidth) /
+                                           static_cast< float >(viewport.mHeight));
+}
+#endif
 
 void CGameCamera::SetFovAndTarget(float fov) {
   mFovInterpolation.mCurrent = fov;

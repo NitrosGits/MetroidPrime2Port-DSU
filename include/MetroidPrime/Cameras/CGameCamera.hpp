@@ -44,6 +44,12 @@ public:
   CCameraManager& CameraManager(CStateManager& mgr) const;
   const CCameraManager& GetCameraManager(const CStateManager& mgr) const;
   float GetFov() const;
+#ifdef TARGET_PC
+  // Port: the vertical field of view to render with. Below 4:3 the world gains height instead of
+  // losing width (PortOverlay::VertPlusFov); fitted cameras (cinematics) keep their authored fov.
+  float GetRenderFov() const;
+  void SetFovFitted(bool fitted) { mFovFitted = fitted; }
+#endif
   void SetFov(float fov);
   float GetTargetFov() const;
   void SetTargetFov(float fov);
@@ -90,6 +96,9 @@ private:
   int mControllerIdx;
   SFovInterpolation mFovInterpolation;
   mutable bool mPerspDirty : 1;
+#ifdef TARGET_PC
+  bool mFovFitted = false;
+#endif
 };
 CHECK_SIZEOF(CGameCamera, 0x200)
 

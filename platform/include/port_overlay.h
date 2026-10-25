@@ -349,6 +349,10 @@ void ApplyAspect();
 // The render mode's width over the game's own (1 at 4:3): CGuiCamera::Draw widens its projection by
 // it, so the GUI keeps its proportions on a wide framebuffer.
 float AspectWiden();
+// Below the game's 4:3 the world view keeps its width and gains height (Vert+, as the Prime 1 port
+// does): the vertical field of view in degrees that shows the authored horizontal extent on a
+// framebuffer `aspect` wide. Wider than the authored aspect, or non-positive input, returns fov.
+float VertPlusFov(float fovDegrees, float aspect);
 bool Visible();
 // Builds the window. Call once per presented frame, inside the open Aurora frame.
 void Draw();

@@ -1222,6 +1222,19 @@ float AspectWiden() {
   return static_cast< float >(fbWidth) / static_cast< float >(sBaseFbWidth);
 }
 
+float VertPlusFov(float fovDegrees, float aspect) {
+  const int efbHeight = CGraphics::GetRenderMode().efbHeight;
+  if (sBaseFbWidth <= 0 || efbHeight <= 0 || aspect <= 0.f) {
+    return fovDegrees;
+  }
+  const float authored = static_cast< float >(sBaseFbWidth) / static_cast< float >(efbHeight);
+  if (aspect >= authored) {
+    return fovDegrees;
+  }
+  const float halfTan = tanf(0.5f * fovDegrees * 3.14159265f / 180.f) * authored / aspect;
+  return 2.f * atanf(halfTan) * 180.f / 3.14159265f;
+}
+
 void Draw() {
   TickFps();
   if (const int milli = sPendingWheelMilli.exchange(0, std::memory_order_relaxed); milli != 0) {

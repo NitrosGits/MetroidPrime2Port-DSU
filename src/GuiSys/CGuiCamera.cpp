@@ -87,8 +87,15 @@ void CGuiCamera::Draw(const CGuiWidgetDrawParms& parms) const {
       const float halfTan = tanf(0.5f * fov * 3.14159265f / 180.f) * portHudInvScale;
       fov = 2.f * atanf(halfTan) * 180.f / 3.14159265f;
     }
-    CGraphics::SetPerspective(fov, mCameraParms.mPerspective.mAspect * portWiden,
-                              mCameraParms.mPerspective.mNear, mCameraParms.mPerspective.mFar);
+    float aspect = mCameraParms.mPerspective.mAspect * portWiden;
+    if (portWiden < 1.f) {
+      // Below the authored aspect the GUI fits the width and gains height rather than losing its
+      // sides (the Prime 1 port's fit-width cameras): same horizontal extent, taller view.
+      const float halfTan = tanf(0.5f * fov * 3.14159265f / 180.f) / portWiden;
+      fov = 2.f * atanf(halfTan) * 180.f / 3.14159265f;
+    }
+    CGraphics::SetPerspective(fov, aspect, mCameraParms.mPerspective.mNear,
+                              mCameraParms.mPerspective.mFar);
 #else
     CGraphics::SetPerspective(mCameraParms.mPerspective.mFov, mCameraParms.mPerspective.mAspect,
                               mCameraParms.mPerspective.mNear, mCameraParms.mPerspective.mFar);
@@ -102,10 +109,13 @@ void CGuiCamera::Draw(const CGuiWidgetDrawParms& parms) const {
       const float bottom = mCameraParms.mOrthographic.mBottom;
       const float midX = 0.5f * (left + right);
       const float midY = 0.5f * (top + bottom);
-      const float scaleX = portHudInvScale * portWiden;
+      // Below the authored aspect: fit the width, extend the height (see the perspective branch).
+      const float fitWidth = portWiden < 1.f ? 1.f : portWiden;
+      const float fitHeight = portWiden < 1.f ? 1.f / portWiden : 1.f;
+      const float scaleX = portHudInvScale * fitWidth;
+      const float scaleY = portHudInvScale * fitHeight;
       CGraphics::SetOrtho(midX + (left - midX) * scaleX, midX + (right - midX) * scaleX,
-                          midY + (top - midY) * portHudInvScale,
-                          midY + (bottom - midY) * portHudInvScale,
+                          midY + (top - midY) * scaleY, midY + (bottom - midY) * scaleY,
                           mCameraParms.mOrthographic.mNear, mCameraParms.mOrthographic.mFar);
     } else {
       CGraphics::SetOrtho(mCameraParms.mOrthographic.mLeft, mCameraParms.mOrthographic.mRight,
@@ -125,7 +135,7 @@ void CGuiCamera::Draw(const CGuiWidgetDrawParms& parms) const {
   // Port: the projection above is widened by portWiden; the widgets of a spreadable camera (the
   // in-game HUD) then move out by the same factor so they reach the wide view's edges, each keeping
   // its shape and anchoring (CGuiFrame::Draw). 1 = no spread.
-  mSpread = mSpreadable && PortOverlay::HudWide() ? portWiden : 1.f;
+  mSpread = mSpreadable && PortOverlay::HudWide() && portWiden > 1.f ? portWiden : 1.f;
   mSpreadView = CTransform4f::Translate(parms.GetCameraOffset()) * GetWorldTransform();
   if (mProjection == kProjection_Perspective) {
     mSpreadCenterX = 0.f;
@@ -136,7 +146,7 @@ void CGuiCamera::Draw(const CGuiWidgetDrawParms& parms) const {
     mSpreadHalfWidth =
         0.5f * (mCameraParms.mOrthographic.mRight - mCameraParms.mOrthographic.mLeft);
   }
-  mSpreadScreenHalfWidth = mSpreadHalfWidth * portWiden * portHudInvScale;
+  mSpreadScreenHalfWidth = mSpreadHalfWidth * (portWiden > 1.f ? portWiden : 1.f) * portHudInvScale;
 #endif
   CGuiWidget::Draw(parms);
 }
