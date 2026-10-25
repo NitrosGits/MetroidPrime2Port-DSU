@@ -21,6 +21,15 @@ typedef CPatterned::StateMachine::TriggerFunc TriggerFunc;
 typedef CPatterned::StateMachine::StateFunc StateFunc;
 typedef CPatterned::StateMachine::CodeFunc CodeFunc;
 
+// Retail `__sinit_CBabyMetroid_cpp` (0xA44C-0xA980) writes exactly these three tables and nothing
+// else: `lis` 0xA460/0xA65C/0xA924 take .data 0x614 (21 triggers), 0x7F4 (12 states), 0x8D8
+// (3 code funcs); 108 word copies (`stw` 0xA508-0xA970 = 36 entries x 3) put each entry's member
+// pointer at +4/+8/+0xC. Three entries are virtual mfps {vtoff, fn 0} that resolve through
+// `__vt__12CBabyMetroid` (.data 0x914); the rest are direct {adjust 0, vtoff -1, fn}. Names .rodata
+// and targets .text as listed below - same names, order and targets as the host arrays (host mfps
+// resolve to the same bodies), except that 23 of the 36 target bodies have no `// @ fn_40_*` marker
+// yet. No call, no branch; the only other store is stmw r14 0xA450 (frame 0xA0, lmw 0xA974).
+// @ fn_40_A44C
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"StateOver", static_cast< TriggerFunc >(&CMetroid::StateOver)},
     {"AttackOver", static_cast< TriggerFunc >(&CMetroid::AttackOver)},
