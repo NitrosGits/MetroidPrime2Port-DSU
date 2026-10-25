@@ -10,7 +10,7 @@
 // metal textures are never touched. Which TXTR ids belong to which suit, and how
 // they were found, is in port_suit_colours_disc.cpp.
 //
-// Each suit has one or two colour slots: the hue clusters of its textures,
+// Each suit has one to three colour slots: the hue clusters of its textures,
 // measured offline (the medians in port_suit_colours.cpp). A texel is coloured
 // when it is saturated and not dark, belongs to the slot whose hue is nearest
 // (cleaned by a majority filter and by whole islands between dark seams), and
@@ -18,9 +18,15 @@
 // median, saturation and value scaled by picked / median. The suits are warm:
 // they never touch hues 70-205.
 //
+// The Light Suit's silver and white body has no hue to cluster, so its second
+// slot ("main", Suit::bodySlot) works on value instead: the low-saturation,
+// not-dark texels of its body textures take the picked hue and saturation and
+// keep their shading. Its first slot stays the gold trim, so a saved
+// "FFD000" still means the accent.
+//
 // PortMods serves the textures under every mod, from a cache in the user folder
 // (generated/suit-colours/<suit>/). The mods load at startup, so changing a
-// colour takes a restart.
+// colour takes a restart, or the Apply now button's mod reload.
 
 #include "port_mods.h"
 
@@ -42,7 +48,7 @@ struct Image {
 };
 
 // Bump when the output changes: the cache is remade when its stamp differs.
-inline constexpr int kVersion = 1;
+inline constexpr int kVersion = 4;
 
 // CPlayerState::EPlayerSuit order.
 inline constexpr int kSuitCount = 3;
@@ -65,6 +71,7 @@ struct Suit {
   std::array<const char*, kMaxSlots> slotNames;
   bool warm;      // never touch hues 70-205
   bool glowOnly;  // only bright, saturated texels count as coloured (unused by Echoes' suits)
+  int bodySlot;   // the slot that tints the low-saturation body (not a hue cluster), or -1
 };
 const Suit& SuitInfo(int suit);
 
@@ -100,8 +107,9 @@ void SetServed(const std::array<std::string, kSuitCount>& served);
 bool Pending(bool wanted);
 
 // Recolours a decoded texture of `suit` towards `picks`. Returns how many
-// texels changed.
-size_t Recolour(Image& image, int suit, const Picks& picks);
+// texels changed. `body`: the texture is one of the suit's body textures, where
+// the body slot (if it has one) applies; the rest keep their silver and grey.
+size_t Recolour(Image& image, int suit, const Picks& picks, bool body = true);
 
 // CMPR TXTRs (GX format 10): decode the first level to RGBA, or encode an image
 // (with a box-filtered mip chain down to 8x8 or the original's count) as a TXTR.

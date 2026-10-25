@@ -35,6 +35,9 @@ class CTurretHud;        // Guessed name
 // Guessed name: the Prime manager's gameplay responsibilities are per-player in Echoes.
 class CInGameGuiManager {
 public:
+#ifdef TARGET_PC
+  void PortReloadPauseModels();
+#endif
   CInGameGuiManager(const CStateManager& mgr, CGuiFrameLoader& hud, CGuiFrameLoader& memo,
                     CGuiFrameLoader* helmet, CGuiFrameLoader* darkMask, int playerIndex);
   ~CInGameGuiManager();

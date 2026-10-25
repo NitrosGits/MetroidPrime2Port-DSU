@@ -89,6 +89,57 @@ void TestRecolour() {
   }
 }
 
+// The Light Suit: an old single-slot value still means the accent, and the main
+// slot tints the silver body only (shading kept), not dark metal, gold trim or
+// a texture that is not a body texture.
+void TestLightBody() {
+  PSC::SetPicksKey(kLight, "00FF0C");
+  CHECK(PSC::Colour(kLight, 0) == std::optional<uint32_t>(0x00FF0C));
+  CHECK(!PSC::Colour(kLight, 1));
+  PSC::SetPicksKey(kLight, "-,2050FF");
+  CHECK(!PSC::Colour(kLight, 0));
+  CHECK(PSC::Colour(kLight, 1) == std::optional<uint32_t>(0x2050FF));
+  CHECK_EQ(PSC::PicksKey(kLight), std::string("-,2050FF"));
+  PSC::SetPicksKey(kLight, "");
+
+  Image image;
+  image.width = image.height = 64;
+  image.rgba.resize(64 * 64 * 4);
+  for (int y = 0; y < 64; ++y) {
+    for (int x = 0; x < 64; ++x) {
+      uint8_t* t = At(image, x, y);
+      if (x < 16) {
+        Rgb(40, 0.04, 0.1 + 0.9 * y / 63.0, t);  // silver ramp, dark to white
+      } else if (x < 32) {
+        Rgb(0, 0.0, 0.15, t);  // dark metal
+      } else {
+        Rgb(41, 0.42, 0.3, t);  // gold trim
+      }
+    }
+  }
+  const Image original = image;
+  PSC::Picks picks{};
+  picks[1] = 0x2050FF;
+  Image untouched = image;
+  CHECK_EQ(PSC::Recolour(untouched, kLight, picks, false), size_t(0));  // not a body texture
+  CHECK(untouched.rgba == original.rgba);
+  CHECK(PSC::Recolour(image, kLight, picks) > 400);
+  // A bright texel is blue and keeps its value; the darkest metal and the trim stay.
+  CHECK_MSG(std::fabs(Hue(At(image, 8, 60)) - 225.0) < 6.0, "body hue " + std::to_string(Hue(At(image, 8, 60))));
+  CHECK(std::abs(int(At(image, 8, 60)[0]) + int(At(image, 8, 60)[1]) + int(At(image, 8, 60)[2]) -
+                 int(At(image, 8, 40)[0]) - int(At(image, 8, 40)[1]) - int(At(image, 8, 40)[2])) > 0);
+  for (const auto& [x, y] : {std::pair{20, 30}, {40, 30}, {8, 0}}) {
+    CHECK(std::equal(At(image, x, y), At(image, x, y) + 4, &original.rgba[(size_t(y) * 64 + x) * 4]));
+  }
+  // The accent slot alone leaves the body.
+  Image accent = original;
+  picks = {};
+  picks[0] = 0x00C0FF;
+  PSC::Recolour(accent, kLight, picks);
+  CHECK(std::equal(At(accent, 8, 60), At(accent, 8, 60) + 4, &original.rgba[(size_t(60) * 64 + 8) * 4]));
+  CHECK_MSG(std::fabs(Hue(At(accent, 40, 30)) - 195.0) < 6.0, "accent hue");
+}
+
 // A CMPR TXTR survives decode, encode and decode again to within the format's
 // error, and a recolour keeps the size.
 void TestCmpr() {
@@ -162,6 +213,7 @@ void TestPicks() {
 
 int main() {
   TestRecolour();
+  TestLightBody();
   TestCmpr();
     TestPicks();
   if (port_test::Failures() == 0) {

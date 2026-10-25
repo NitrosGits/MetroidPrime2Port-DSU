@@ -23,7 +23,7 @@ apply on Reload mods or a restart. An absent or empty folder registers no overla
 
 ## Suit colours
 
-Video > Display > Suit colours recolours Samus's Varia (2 slots), Dark (1) and Light (1) suit
+Video > Display > Suit colours recolours Samus's Varia (2 slots), Dark (1) and Light (2: Accent = gold trim, Main = silver/white body) suit
 textures from the disc (`platform/port_suit_colours*.cpp`; the HSV remap is Metroid Prime's, the
 texture ids are Echoes' own). They are generated at startup in `PortMods::Initialize` as loose
 `.TXTR` resources, so they replace the texture in every PAK that holds it and a mod's own texture
@@ -32,9 +32,16 @@ Cache: `<user>/generated/suit-colours/<suit>/` (stamp covers picks and PAK offse
 
 How the ids were found: each suit's CMDL (arm cannon, morph ball, beam/visor pieces, suit models)
 was parsed for its material texture list, and the textures that carry the suit's orange, copper or
-white-blue colouring were kept (tables in `port_suit_colours_disc.cpp`). Limits: the Light Suit is
-mostly colourless, so only its accents change; the Samus body model in cutscenes and some pause
-screen meshes were not located, so they keep original colours; changes need a restart.
+white-blue colouring were kept (tables in `port_suit_colours_disc.cpp`). The Light Suit's Main slot is
+not a hue cluster: low-saturation, not-dark texels of its four body textures take the pick's hue and
+saturation and keep their value (glow, lens, trim and dark-metal texels stay; Dark and Varia are
+coloured enough that they need no main slot). A saved `suit_colour_light=RRGGBB` is the accent;
+`-,RRGGBB` is main only. Limits: the Samus body model in cutscenes and some pause screen meshes
+were not located, so they keep original colours; the first-person arm cannon is not the suit and
+stays as is. The pause menu's Inventory Varia Suit model (LogBook.pak sheets) is recoloured too.
+Changes show after a restart or the Apply now button (`reloadmods`), also with the pause menu
+open: `CMFGame` services the reload while paused and `CPauseScreen::PortReloadScanModels` reloads
+the open Inventory model (the room follows when unpaused).
 
 ## Reload, folder, texture pack (MP1 sync 21)
 

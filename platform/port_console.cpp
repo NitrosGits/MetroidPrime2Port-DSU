@@ -1498,7 +1498,9 @@ void CmdSettings(CStateManager&, const Args& args, std::string& out) {
   PortOverlaySettings::MarkDirty();
   PortOverlaySettings::SaveSettings();
   const auto values = PortOverlaySettings::SettingsValues(PortOverlaySettings::SettingsText());
-  out += std::string(args[1]) + "=" + values.at(std::string(args[1])) + "\n";
+  // A key at its default writes nothing (suit colours all "-"): no entry, not an error.
+  const auto value = values.find(std::string(args[1]));
+  out += std::string(args[1]) + "=" + (value != values.end() ? value->second : std::string("(default)")) + "\n";
 }
 
 void CmdGunOffset(CStateManager&, const Args& args, std::string& out) {

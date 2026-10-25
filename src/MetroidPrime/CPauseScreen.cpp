@@ -1085,6 +1085,31 @@ void CPauseScreen::LoadScan(int nodeId) {
   }
 }
 
+#ifdef TARGET_PC
+void CPauseScreen::PortReloadScanModels() {
+  const int selected = mScanTree.GetSelectedNode();
+  if (selected == -1 || mQuitScreen.get() != nullptr) {
+    return;
+  }
+  const rstl::rc_ptr< CScanTreeNode > node = mScanTree.GetNode(selected);
+  if (node->GetNodeType() != CScanTreeNode::kNT_Scan && node->GetNodeType() != CScanTreeNode::kNT_Inventory) {
+    return;
+  }
+  const CVector3f pan = mModelPan;
+  // As the page's own teardown does: RestoreTextures drops the texture tokens it keeps, and
+  // reassigning (clear() leaves the elements and the textures they keep alive) frees the rest.
+  RestoreTextures();
+  mModels = rstl::reserved_vector< rstl::auto_ptr< CModelData >, 11 >();
+  mModelTokens = rstl::reserved_vector< rstl::optional_object< CToken >, 11 >();
+  mDependencies = rstl::vector< CToken >();
+  mModelsReady = false;
+  mScanInfo = rstl::auto_ptr< TCachedToken< CScannableObjectInfo > >(nullptr);
+  mScanStrings = rstl::auto_ptr< TCachedToken< CStringTable > >(nullptr);
+  LoadScan(selected);
+  mModelPan = pan;
+}
+#endif
+
 void CPauseScreen::SelectNode(int nodeId) {
   if (nodeId != -1) {
     bool select = true;

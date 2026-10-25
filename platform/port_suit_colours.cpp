@@ -18,15 +18,17 @@ namespace {
 // morph ball textures (hue clusters by circular k-means over the texels that
 // pass the coloured test below; docs/MODS.md "Suit colours"). Dark Samus's copper
 // armour and red glow share a hue, so they are one slot (the glow follows the
-// pick, brighter); the Light Suit is silver and white with gold trim, so its one
-// slot is the trim.
+// pick, brighter); the Light Suit is silver and white with gold trim: slot 0 is
+// the trim (a hue cluster), slot 1 the body, whose median is that of the texels
+// with saturation < 0.12 and value > 0.45 in its body textures (the colour the
+// picker starts from; it is not matched by hue).
 const Suit kSuits[kSuitCount] = {
     {"varia", "Varia Suit", 2, {{{38.9, 0.821, 0.902}, {5.0, 0.935, 0.675}, {}}},
-     {"primary", "secondary", nullptr}, {"Primary", "Secondary", nullptr}, true, false},
+     {"primary", "secondary", nullptr}, {"Primary", "Secondary", nullptr}, true, false, -1},
     {"dark", "Dark Suit", 1, {{{14.5, 0.510, 0.392}, {}, {}}},
-     {"primary", nullptr, nullptr}, {"Armour", nullptr, nullptr}, true, false},
-    {"light", "Light Suit", 1, {{{41.1, 0.415, 0.290}, {}, {}}},
-     {"accent", nullptr, nullptr}, {"Accent", nullptr, nullptr}, true, false},
+     {"primary", nullptr, nullptr}, {"Armour", nullptr, nullptr}, true, false, -1},
+    {"light", "Light Suit", 2, {{{41.1, 0.415, 0.290}, {40.0, 0.040, 0.750}, {}}},
+     {"accent", "main", nullptr}, {"Accent", "Main", nullptr}, true, false, 1},
 };
 
 // Tuned by eye on contact sheets of every suit.
@@ -38,6 +40,10 @@ constexpr int kIslandMin = 40;         // smaller islands take their majority wh
 constexpr double kIslandHue = 60.0;    // but only texels this near that slot's hue
 constexpr double kSeamValue = 0.18;    // darker texels part islands
 constexpr double kScaleMax = 4.0;      // saturation and value scale at most this much
+// The body slot: texels this unsaturated and not this dark are body.
+constexpr double kBodySatFull = 0.10, kBodySatZero = 0.22;
+constexpr double kBodyDarkZero = 0.30, kBodyDarkFull = 0.55;
+constexpr double kBodyShine = 0.35;  // a pure-white highlight keeps this share of its white
 
 std::mutex sMutex;
 std::array<Picks, kSuitCount> sPicks{};
@@ -47,6 +53,9 @@ double Smooth(double x, double a, double b) {
   const double t = std::clamp((x - a) / (b - a), 0.0, 1.0);
   return t * t * (3.0 - 2.0 * t);
 }
+
+// Slots that cluster by hue (all but the body slot, which is always last).
+int HueSlots(const Suit& info) { return info.slots - (info.bodySlot >= 0 ? 1 : 0); }
 
 double HueDistance(double a, double b) {
   const double d = std::fmod(std::fabs(a - b), 360.0);
@@ -136,7 +145,7 @@ struct Analysis {
 
 Analysis Analyse(const Image& image, int suit) {
   const Suit& info = kSuits[suit];
-  const int n = info.slots;
+  const int n = HueSlots(info);
   Analysis a;
   a.width = image.width;
   a.height = image.height;
@@ -295,7 +304,8 @@ void Randomise(int suit, uint32_t seed) {
   // The golden angle apart, jittered, so the slots never share a hue.
   for (int slot = 0; slot < kSuits[suit].slots; ++slot) {
     const double h = start + slot * 137.5 + (unit(random) - 0.5) * 30.0;
-    const double s = 0.55 + 0.45 * unit(random);
+    const bool body = slot == kSuits[suit].bodySlot;
+    const double s = body ? 0.25 + 0.4 * unit(random) : 0.55 + 0.45 * unit(random);
     const double v = 0.6 + 0.4 * unit(random);
     double rgb[3];
     FromHsv(h, s, v, rgb);
@@ -380,14 +390,14 @@ bool Pending(bool wanted) {
   return false;
 }
 
-size_t Recolour(Image& image, int suit, const Picks& picks) {
+size_t Recolour(Image& image, int suit, const Picks& picks, bool body) {
   if (suit < 0 || suit >= kSuitCount || image.width <= 0 || image.height <= 0 ||
       image.rgba.size() != size_t(image.width) * size_t(image.height) * 4) {
     return 0;
   }
   const Suit& info = kSuits[suit];
   const Analysis a = Analyse(image, suit);
-  const int n = info.slots;
+  const int n = HueSlots(info);
   const size_t count = a.hsv.size();
 
   // Each slot's share of a texel: the 3x3 mix of slots round it, so a border
@@ -408,7 +418,7 @@ size_t Recolour(Image& image, int suit, const Picks& picks) {
 
   std::array<Hsv, kMaxSlots> targets{};
   bool anyPick = false;
-  for (int j = 0; j < n; ++j) {
+  for (int j = 0; j < info.slots; ++j) {
     if (picks[j]) {
       const uint32_t c = *picks[j];
       targets[j] = ToHsv(((c >> 16) & 255) / 255.0, ((c >> 8) & 255) / 255.0, (c & 255) / 255.0);
@@ -426,10 +436,16 @@ size_t Recolour(Image& image, int suit, const Picks& picks) {
     if (info.warm) {
       gate *= 1.0 - Smooth(t.h, 70.0, 75.0) * (1.0 - Smooth(t.h, 200.0, 205.0));
     }
-    if (gate <= 0.0) {
+    uint8_t* texel = &image.rgba[i * 4];
+    // The body slot: unsaturated, not-dark texels outside the hue slots' gate.
+    double bodyWeight = 0.0;
+    if (body && info.bodySlot >= 0 && picks[info.bodySlot] && texel[3] > 127) {
+      bodyWeight = (1.0 - gate) * (1.0 - Smooth(t.s, kBodySatFull, kBodySatZero)) *
+                   Smooth(t.v, kBodyDarkZero, kBodyDarkFull);
+    }
+    if (gate <= 0.0 && bodyWeight <= 0.0) {
       continue;
     }
-    uint8_t* texel = &image.rgba[i * 4];
     const double original[3] = {double(texel[0]), double(texel[1]), double(texel[2])};
     // A soft-edge texel outside every slot moves with its nearest slot.
     std::array<double, kMaxSlots> weight{};
@@ -456,7 +472,7 @@ size_t Recolour(Image& image, int suit, const Picks& picks) {
       }
     }
     double out[3] = {0.0, 0.0, 0.0};
-    for (int j = 0; j < n; ++j) {
+    for (int j = 0; j < n && gate > 0.0; ++j) {
       if (weight[j] <= 0.0) {
         continue;
       }
@@ -473,9 +489,21 @@ size_t Recolour(Image& image, int suit, const Picks& picks) {
         out[c] += weight[j] * rgb[c];
       }
     }
+    // The body keeps the texel's value (its shading) and takes the pick's hue
+    // and saturation; the pick's value scales it, so a dark pick darkens the
+    // body and the median's own value leaves it alone.
+    double tint[3] = {original[0], original[1], original[2]};
+    if (bodyWeight > 0.0) {
+      const Hsv& m = info.medians[info.bodySlot];
+      const Hsv& to = targets[info.bodySlot];
+      const double s = to.s * (1.0 - kBodyShine * Smooth(t.v, 0.85, 1.0));
+      const double v = std::min(1.0, t.v * (0.3 + 0.7 * to.v) / (0.3 + 0.7 * m.v));
+      FromHsv(to.h, s, v, tint);
+    }
     bool differs = false;
     for (int c = 0; c < 3; ++c) {
-      const double mixed = gate * out[c] + (1.0 - gate) * original[c];
+      double mixed = gate * out[c] + (1.0 - gate) * original[c];
+      mixed = bodyWeight * tint[c] + (1.0 - bodyWeight) * mixed;
       const uint8_t byte = uint8_t(std::clamp(std::floor(mixed + 0.5), 0.0, 255.0));
       differs |= byte != texel[c];
       texel[c] = byte;

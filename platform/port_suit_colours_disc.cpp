@@ -9,6 +9,7 @@
 //    suits draw their left arms from LeftArm_Dark_CMDL 078B71CB and
 //    LeftArm_Light_CMDL BACC46C8 (CGrappleArm.cpp kSuitModels). The morph balls
 //    are SamusBallCMDL F57D2B74 and the Dark/Light ball models and transitions.
+//    The pause menu's Inventory Varia Suit model (LogBook.pak) has its own sheets.
 //  - A CMDL lists its textures in its first material set: after the 12-byte
 //    header and the 24-byte bounds come the section and material counts, the
 //    section sizes padded to 32 bytes, then a u32 count and that many TXTR ids.
@@ -58,7 +59,12 @@ constexpr int kVaria = 0, kDark = 1, kLight = 2;
 std::vector<uint32_t> Sources(int suit) {
   switch (suit) {
   case kVaria:
-    return {0x4CC24B16, 0x65E6F516, 0x86F76718, 0xCEA098FE, 0x2777D332, 0xEB669581, 0x9D214FBC};
+    return {0x4CC24B16, 0x65E6F516, 0x86F76718, 0xCEA098FE, 0x2777D332, 0xEB669581, 0x9D214FBC,
+            // The pause menu's Inventory/Armor Varia Suit model (LogBook.pak, its SCAN's
+            // dependency list): the armour sheets E8AF7174 and FFD9D212 and the green
+            // visor/plate textures 788432da and C2DE6C2A. Its grey metal, face and
+            // gradient textures stay.
+            0xE8AF7174, 0xFFD9D212, 0x788432DA, 0xC2DE6C2A};
   case kDark:
     return {0x80A7CF0D, 0xB34CE6A0, 0xD31B3FB2, 0x33CE9EE5, 0x52E13615, 0x9255BD83, 0xD0041B18, 0x719F387E,
             0x59C822A0, 0x8CF8043C, 0xF85301C6, 0x07E032B3, 0x7F5781D8, 0xDD1473FC, 0x091ACC33, 0xFF45E6C4};
@@ -67,6 +73,18 @@ std::vector<uint32_t> Sources(int suit) {
             0x95E79836};
   default: return {};
   }
+}
+
+// Whether the suit's body slot applies to this texture. The Light Suit's body
+// is silver and white, and its other textures (glow blob 0662A1C7, ring 087D0789,
+// lights 95E79836, trim C6A37961, the small white C9B164A1) are glows, lenses and
+// trim whose neutral texels must stay: only the four with the armour plates and
+// arm are body. The other suits have no body slot.
+bool BodyTexture(int suit, uint32_t id) {
+  if (suit != kLight) {
+    return true;
+  }
+  return id == 0x091A32D6 || id == 0x0C32C6DA || id == 0x8A598DD2 || id == 0xA240A5D3;
 }
 
 // Every resource of the base disc's PAKs, read on demand.
@@ -276,7 +294,7 @@ std::vector<PortMods::LooseResource> Collect(
                    FileName(id).c_str());
       continue;
     }
-    const size_t changed = Recolour(image, suit, picks);
+    const size_t changed = Recolour(image, suit, picks, BodyTexture(suit, id));
     std::fprintf(stderr, "suit colours: %s: %s: %zu of %d texels recoloured\n", info.name, FileName(id).c_str(),
                  changed, image.width * image.height);
     if (changed == 0) {

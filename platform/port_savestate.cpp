@@ -105,6 +105,7 @@ std::atomic< int > sLoadRequest{-1};
 // ReloadModsNow once the old world is gone, before the new one starts loading.
 std::atomic< bool > sModReloadRequest{false};
 std::atomic< bool > sModReloadPending{false};
+std::atomic< bool > sModReloadWorldStale{false}; // reloaded while paused: the room still has old textures
 std::atomic< int > sSelected{1};
 std::mutex sMessageMutex;
 std::string sMessage;
@@ -1188,7 +1189,9 @@ void Forget(const CStateManager* mgr) {
 }
 
 void RequestModReload() { sModReloadRequest.store(true); }
-bool ModReloadActive() { return sModReloadRequest.load() || sModReloadPending.load(); }
+bool ModReloadActive() {
+  return sModReloadRequest.load() || sModReloadPending.load() || sModReloadWorldStale.load();
+}
 
 bool ReloadModsNow() {
   if (!sModReloadPending.exchange(false)) {
@@ -1201,8 +1204,25 @@ bool ReloadModsNow() {
   return true;
 }
 
+bool ServicePausedModReload() {
+  if (!sModReloadRequest.load() || gpResourceFactory == nullptr) {
+    return false;
+  }
+  if (gpResourceFactory->PortHasPendingLoads() || !gpResourceFactory->GetResLoader().AreAllPaksLoaded()) {
+    return false; // a load in flight would lose its PAK; try again next frame
+  }
+  sModReloadRequest.store(false);
+  gpResourceFactory->GetResLoader().PortReopenPaks(&PortMods::Reload);
+  SetMessage("mods reloaded (" + std::to_string(PortMods::CurrentStatus().overlays) + " disc file(s)), the room follows when unpaused");
+  sModReloadWorldStale.store(true);
+  return true;
+}
+
 void Tick(CStateManager& mgr) {
   sLiveMgr = &mgr;
+  if (sModReloadWorldStale.exchange(false)) {
+    sModReloadRequest.store(true);
+  }
   TestHook();
   ResumeCheck(mgr);
   if (sPlace.active) {
