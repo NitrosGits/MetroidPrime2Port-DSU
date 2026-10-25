@@ -8,7 +8,8 @@
 #     --con tools/cov/specs/spp_force_A.con --fast --frames 2000
 # A PlayerFollower (3), B ArchenemyMarker (2), C EventRelay (0) plus out-of-range types,
 # D CoinCollector (1), E DamageOverTime (10), F PersistentCounterReset (4), G the native echo
-# watcher with the visor-mask, team-bit and other-visor arms.
+# watcher with the visor-mask, team-bit and other-visor arms. Slice ppx1: H = M06_ShootingGallery natural PLCTs
+# + `gameevent` (spp_m06.con), I = D with a fake CGMCoin for Think's SetCanRespawn arm (spp_force_I.con).
 import os
 
 CLASS = 'CScriptPlayerProxy'
@@ -110,6 +111,62 @@ elif RUN == 'D':
          {0: [('$rax', '%s && $this->mCoinsToDrop < 700 && $this->mCoinsToDrop > 300 && $rax == 0 ? 1 : $rax' % ME)]},
          'amplifier (and counter) 1 while 300 < coins to drop < 700'),
     ]
+elif RUN == 'H':
+    # M06_ShootingGallery layers 0/2/3 (natural PLCTs: CoinCollector, PlayerFollower with model, relays, DOT);
+    # `gameevent` drives OnGameEvent on them. The coin arm reads CGMCoin::GetCoinLimit/IsNearTimeLimit through a
+    # CGMSinglePlayer (harmless reads); both answers and the overkill test are forced per call.
+    OG = 'CScriptPlayerProxy::OnGameEvent('
+    FORCE_RET = [
+        ('2644 overkill', OG, 2,
+         [(0, [('!' + HP, '-50.0'), ('$this->mFloatParameter2', '10.0')]),
+          (1, [('!' + HP, '99.0'), ('$this->mFloatParameter2', '0.0')])],
+         'HP -50 and overkill threshold 10 on odd calls; HP 99 and threshold 0 on even calls'),
+        ('1C44 hp back', THINK, 1, [(0, [('!' + HP, '%s < 0.0 ? 99.0 : %s' % (HP, HP))])], 'HP back to 99'),
+    ]
+    FORCE_INNER = [
+        ('2644 coin limit', OG, 'CGMCoin::GetCoinLimit(', 1,
+         {0: [('$rax', '$this->mCoinsToDrop % 2 == 0 ? 0 : 100')]}, 'limit 0 when mCoinsToDrop even, else 100'),
+        ('2644 near time limit', OG, 'CGMCoin::IsNearTimeLimit(', 2, {0: [('$rax', '1')], 1: [('$rax', '0')]},
+         'near the time limit on alternate calls'),
+        ('2644 counter', OG, GIA, 2, {0: [('$rax', '500')], 1: [('$rax', '0')]},
+         'item amounts 500 / 0 on alternate calls'),
+    ]
+elif RUN == 'I':
+    # Agon 05_portalpuzzle EchoVisorWatcher as CoinCollector (as D), COIN mode with a valid first player on
+    # idle Thinks: a fake CGMCoin (vtable of the real mode, mPlayers.mItems at +0x68 -> scratch) sits in the
+    # proxy's own spare bytes at +0x230 for that one Think call (restored at the return), so SetCanRespawn's
+    # inline write lands on scratch. The invalid-first-player arm runs on the alternate idle Thinks.
+    IDLE = '(%s && $this->mCoinsToDrop == 0 && $this->mPendingCoins == 0 && $this->mProxyType == 1)' % ME
+    FAKE = '((char*)$this + 0x230)'
+    GM = '*(long*)((char*)gpGameState + 0x260)'
+    FORCE_RET = [
+        retype(AREALOADED, 1), visor_as(1),
+        ('1C44 coins', ACCEPT, 1,
+         [(0, [('!$this->mCoinsToDrop',
+                '%s && %s == %s ? 1500 : (%s && %s == %s ? 7 : $this->mCoinsToDrop)'
+                % (ME, MSG, AREALOADED, ME, MSG, RESET)),
+               ('!$this->mPendingCoins', '%s && %s == %s ? 5 : $this->mPendingCoins' % (ME, MSG, AREALOADED))])],
+         'coins to drop 1500 at AreaLoaded, 7 at Reset; 5 pending'),
+        ('1C44 dead player', THINK, 1,
+         [(0, [('!' + HP, '%s && $this->mTime < 0.2 ? 0.0 : (%s && %s == 0.0 ? 99.0 : %s)' % (ME, ME, HP, HP))])],
+         'HP 0 for the first Thinks (pending coins wait), then 99'),
+        ('1C44 COIN arm', THINK, 2,
+         [(0, [(MASK, '%s ? 0 : %s' % (IDLE, MASK))]),
+          (1, [('*(long*)%s' % FAKE, '%s ? %s : *(long*)%s' % (IDLE, GM, FAKE)),
+               ('*(long*)(%s + 0x68)' % FAKE, '%s ? (long)(%s + 0x10) : *(long*)(%s + 0x68)' % (IDLE, FAKE, FAKE)),
+               ('*(char*)(%s + 0x10)' % FAKE, '*(char*)(%s + 0x10)' % FAKE),
+               (GM, '%s ? (long)%s : %s' % (IDLE, FAKE, GM))])],
+         'idle: mask 0 (even calls) | fake COIN mode with a valid first player (odd calls)'),
+    ]
+    FORCE_INNER = [
+        ('1C44 COIN mode', THINK, 'CGMSinglePlayer::GetGameModeType(', 1,
+         {0: [('$rax', '%s ? 0x434f494e : $rax' % IDLE)]}, "'COIN' while idle"),
+        ('190C coins held', 'CScriptPlayerProxy::DropCoins(', GIA, 3, {1: [('$rax', '500')], 2: [('$rax', '500')]},
+         'coin counter 500 on two of three drops'),
+        ('1C44 amplifier', THINK, GIA, 1,
+         {0: [('$rax', '%s && $this->mCoinsToDrop < 700 && $this->mCoinsToDrop > 300 && $rax == 0 ? 1 : $rax' % ME)]},
+         'amplifier (and counter) 1 while 300 < coins to drop < 700'),
+    ]
 elif RUN == 'E':
     FORCE_RET = [
         retype(AREALOADED, 10), visor_as(6),
@@ -146,4 +203,6 @@ elif RUN == 'G':
 SPEC = [
     ('Think', THINK, [], 'max=400'),
     ('AcceptScriptMsg', ACCEPT, [MSG], 'max=400'),
+    ('OnGameEvent', 'CScriptPlayerProxy::OnGameEvent(', [], 'max=400'),
+    ('2F10 ~CListener', 'CScriptPlayerProxy::CListener::~CListener(', [], 'max=400'),
 ]
