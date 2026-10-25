@@ -532,7 +532,7 @@ def id_sites():
     name = ID_SITES['call'][0]
     IdArm(texts['play'][0][1:], id_offset)
     IdCall(texts['call'][0], internal=True)
-    IdAfter('%s+%d' % (symbol(name), ID_SITES['call'][1] + after), internal=True)
+    IdAfter('*%s+%d' % (symbol(name), ID_SITES['call'][1] + after), internal=True)
     log('ID_OFFSET', offset=id_offset)
 
 
