@@ -45,11 +45,6 @@ void GPUMemory::SetBuffer(void* buffer, uint size) {
 void* GPUMemory::EnsureAllocation(int size) {
   if (!sInitialized) {
     GXSetDrawSync(0xffff);
-#ifdef TARGET_PC
-    // Aurora applies the token on its FIFO worker thread; a bare spin on GXReadDrawSync hung here
-    // (sz2d: published bytes unprocessed, worker asleep), GXDrawDone re-wakes the worker and waits.
-    GXDrawDone();
-#endif
     while (GXReadDrawSync() != 0xffff) {
     }
     sCurrentToken = 1;
