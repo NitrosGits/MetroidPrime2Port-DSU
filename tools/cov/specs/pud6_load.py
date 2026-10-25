@@ -18,7 +18,7 @@
 # expected disassembly at install time; a mismatch installs nothing (fail closed).  A FinishBreakpoint
 # armed at the entry restores the word again at the return (idempotent safety net).  The summary fails
 # closed on: no forced load, unrestored obligation, unreturned load, wrong return, unreadable valid flag,
-# no natural load, install failure.  Edge evidence itself comes from the gcda.
+# install failure.  The driver's area makes a single load, so no natural load is required.  Edge evidence itself comes from the gcda.
 #
 #   PUD6_ARM=null BUILD=$PWD/build-port-cov COV_GDB_SCRIPT=tools/cov/specs/pud6_load.py \
 #     tools/cov/force.sh tools/cov/specs/pud6_load.py /tmp/opencode/pud6_r1 3dfd2249,cbc72d79 \
@@ -257,9 +257,12 @@ def summarize():
         elif ARM == 'flag' and r['returned'] and not r['ret']:
             problems.append('load %d: flag-flipped load returned %s, wanted an entity'
                             % (r['id'], fmt(r['ret'])))
+    # The driver's area makes ONE load, so a natural entity is informational only; survival of the game
+    # is judged from the run itself (exit code, frame count, no signal), not from this fixture.
     natural = [r for r in loads if not r['attempted'] and r['returned'] and r['ret']]
-    if not natural:
-        problems.append('no natural load returned an entity (the game must survive the arm)')
+    unread = [r['id'] for r in loads if not r['attempted'] and r['returned'] and r['ret'] is None]
+    if unread:
+        problems.append('natural load(s) with an unreadable return: %s' % unread)
     status = 'OK' if not problems else 'FAIL'
     line = ('status=%s arm=%s binary=%s installed=%d loads=%d forced=%d restored=%d returns=%s '
             'natural_entities=%d reason=%s\n'

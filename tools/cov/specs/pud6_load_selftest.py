@@ -295,13 +295,13 @@ def main():
     ns['summarize']()
     scenario('unreadable rax', 'status=FAIL' in line(out) and 'unreadable' in line(out), line(out))
 
-    # no natural entity
+    # a single forced load (the driver's area makes only one): OK
     out = tmp / 'nonatural'
     g = FakeGdb(str(binary))
     ns = load(g, str(out), 'null')
     run_load(g, 0)
     ns['summarize']()
-    scenario('no natural', 'status=FAIL' in line(out) and 'no natural load' in line(out), line(out))
+    scenario('single load ok', 'status=OK' in line(out) and 'natural_entities=0' in line(out), line(out))
 
     # install failures: breakpoint, bad insn, bad arm
     out = tmp / 'noinstall'
