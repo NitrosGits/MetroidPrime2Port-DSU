@@ -18,10 +18,10 @@ class CStateManager;
 // Room state (phase 2, MP1's "room state" section): the live script objects of the areas loaded
 // at save time - which of them still exist (collected pickups and killed enemies stay gone),
 // whether each is active, enemy health and pose, timers, counters, and whether doors stand open
-// and are locked.
-// Once Samus is back it is applied to each saved area as that area finishes loading. Platforms
-// are not carried (MP2's waypoint tracker is not ported yet): they come back as a card load
-// leaves them.
+// and are locked, platform and rotator poses, door docks, script-spawned copies (generated
+// debris, pickups, enemies are made again from their template) and the scripted messages an
+// enemy was sent.
+// Once Samus is back it is applied to each saved area as that area finishes loading.
 //
 // Files: `<user>/savestates/slotN.mp2ss`. Slot 0 is the undo slot, written before every load.
 namespace PortSaveState {
@@ -149,6 +149,14 @@ struct RoomApplyProgress {
   std::vector< uint32_t > held; // running timers restored stopped, started with the last area
   RoomApplyStats stats;
 };
+
+// Game hooks, game thread only; ids are raw TUniqueId values. NoteGenerated marks an object a
+// CScriptGenerator or CScriptPickupGenerator copied from a template (it shares the template's
+// editor id); NoteScriptMsg sees each message a script connection delivers (scripted enemies
+// keep the commands that woke them); NoteRemoved drops what was noted for a removed object.
+void NoteGenerated(CStateManager& mgr, uint16_t uid);
+void NoteRemoved(CStateManager& mgr, uint16_t uid);
+void NoteScriptMsg(CStateManager& mgr, uint16_t dest, uint16_t sender, uint32_t msg);
 
 void CaptureRoomState(CStateManager& mgr, RoomState& out);
 // Applies the saved areas that are ready now and not yet done; returns how many saved areas are

@@ -17,6 +17,7 @@
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/CPhysicsActor.hpp"
+#include "MetroidPrime/CScriptObjectLoaderHelper.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Cameras/CCinematicCamera.hpp"
@@ -24,8 +25,10 @@
 #include "MetroidPrime/ScriptObjects/CScriptCamera.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptActorRotate.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCounter.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptDebris.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDock.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptPickup.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptStreamedMusic.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTimer.hpp"
@@ -108,6 +111,8 @@ enum : uint32_t {
   kTagPlatform = 10, // f32 time, f32 move delay, u32 flags, 12 f32 pose: a CScriptPlatform
   kTagRotate = 11,   // f32 time, u32 playing, u32 n, n x (u32 editor id, 12 f32 base, 12 f32 now)
   kTagDock = 12,     // u8 reference count, u8 refs, refs x u8 load-other: a CScriptDock's Dock
+  kTagGenerated = 13, // empty: a script generator's copy of a template, made again on load
+  kTagMessages = 14,  // u8 n, n x (u32 message, u32 sender editor id): what woke a scripted enemy
 };
 
 // Per-object lines a restore logs, at most; the summary line always follows.
@@ -249,6 +254,74 @@ uint32_t LayerKey(uint32_t editorId) {
   return (TEditorId(editorId).AreaNum() << 8) | (editorId >> 26);
 }
 
+// What the CStateManager and generator hooks noted per object (raw TUniqueId value), tagged
+// with the manager it belongs to so a world being torn down never touches the next one's.
+constexpr uint32_t kNoSender = 0xFFFFFFFFu;
+constexpr size_t kMaxScriptMsgs = 32; // the first ones: what woke the enemy comes first
+struct ScriptMsgEntry {
+  uint32_t msg = 0;
+  uint32_t sender = kNoSender; // the sender's editor id, or none
+};
+struct Noted {
+  const CStateManager* mgr = nullptr;
+  bool generated = false;
+  std::vector< ScriptMsgEntry > msgs;
+};
+std::map< uint16_t, Noted > sNoted;
+
+const Noted* FindNoted(const CStateManager& mgr, TUniqueId uid) {
+  const auto it = sNoted.find(uid.value);
+  return it != sNoted.end() && it->second.mgr == &mgr ? &it->second : nullptr;
+}
+
+Noted& NoteFor(const CStateManager& mgr, TUniqueId uid) {
+  Noted& n = sNoted[uid.value];
+  if (n.mgr != &mgr) {
+    n = Noted();
+    n.mgr = &mgr;
+  }
+  return n;
+}
+
+// The commands worth replaying. Activate/Deactivate/ToggleActive are the saved active flag;
+// Arrived and Next are waypoint traffic; the rest are engine notifications.
+bool JournalsScriptMsg(uint32_t msg) {
+  switch (msg) {
+  case kSM_Action:
+  case kSM_Start:
+  case kSM_Stop:
+  case kSM_Play:
+  case kSM_Alert:
+  case kSM_SetToZero:
+  case kSM_SetToMax:
+  case kSM_Reset:
+  case kSM_ResetAndStart:
+  case kSM_StopAndReset:
+  case kSM_Follow:
+  case kSM_Open:
+  case kSM_Close:
+  case kSM_Increment:
+  case kSM_Decrement:
+    return true;
+  default:
+    return false;
+  }
+}
+
+// A script generator's copy carries its template's editor id. Enemy copies, pickups and debris
+// are saved as copies; others (sound, maze walls) are left to their generators.
+bool IsGeneratedCopy(const CStateManager& mgr, const CEntity& ent) {
+  const Noted* n = FindNoted(mgr, ent.GetUniqueId());
+  return n != nullptr && n->generated;
+}
+
+bool SavesCopy(CEntity& ent) {
+  return TCastToPtr< CPatterned >(&ent) != nullptr || TCastToPtr< CScriptPickup >(&ent) != nullptr ||
+         TCastToPtr< CScriptDebris >(&ent) != nullptr;
+}
+
+TUniqueId RawId(uint16_t value) { return TUniqueId(value); }
+
 bool IsScripted(const CEntity& ent) { return ent.GetEditorId().value != kInvalidEditorId.value; }
 
 // A dead enemy is gone for the room even while its corpse still runs.
@@ -311,6 +384,18 @@ void CaptureObject(CStateManager& mgr, CEntity& ent, RoomObject& obj) {
     w.U32(n);
     w.bytes.append(list.bytes);
     obj.blocks.push_back({kTagRotate, w.bytes});
+  }
+  if (const Noted* n = FindNoted(mgr, ent.GetUniqueId())) {
+    if (!n->msgs.empty() && TCastToPtr< CPatterned >(&ent) != nullptr) {
+      BlockWriter w;
+      const size_t count = std::min(n->msgs.size(), kMaxScriptMsgs);
+      w.U8(static_cast< uint8_t >(count));
+      for (size_t i = 0; i < count; ++i) {
+        w.U32(n->msgs[i].msg);
+        w.U32(n->msgs[i].sender);
+      }
+      obj.blocks.push_back({kTagMessages, w.bytes});
+    }
   }
   if (CScriptTimer* timer = TCastToPtr< CScriptTimer >(&ent)) {
     BlockWriter w;
@@ -382,6 +467,38 @@ struct ChangeLog {
 // `holdTimers`: a running timer is restored stopped and listed in `held` (RoomApplyProgress), to be
 // started once the last saved area has loaded - a timer firing early would message objects of an
 // area that is not there yet.
+// Sends an enemy the script messages it had been sent before the save, in order (what woke a
+// boss), and keeps them for the next save. Senders are the objects of the rebuilt room with the
+// saved editor ids; the messages carry no connection, so they are not noted again.
+int ReplayScriptMsgs(CStateManager& mgr, CEntity& ent, const RoomObject& obj) {
+  const RoomBlock* b = FindBlock(obj, kTagMessages);
+  if (b == nullptr || TCastToPtr< CPatterned >(&ent) == nullptr) {
+    return 0;
+  }
+  BlockReader r(b->data);
+  const uint32_t count = r.U8();
+  std::vector< ScriptMsgEntry > journal;
+  for (uint32_t i = 0; i < count && r.ok && i < kMaxScriptMsgs; ++i) {
+    ScriptMsgEntry e;
+    e.msg = r.U32();
+    e.sender = r.U32();
+    if (!r.ok || !JournalsScriptMsg(e.msg)) {
+      return 0;
+    }
+    journal.push_back(e);
+  }
+  const TUniqueId uid = ent.GetUniqueId();
+  int replayed = 0;
+  for (const ScriptMsgEntry& e : journal) {
+    const TUniqueId sender =
+        e.sender == kNoSender ? kInvalidUniqueId : mgr.GetIdForScript(TEditorId(e.sender));
+    mgr.SendScriptMsg(&ent, sender, static_cast< EScriptObjectMessage >(e.msg));
+    ++replayed;
+  }
+  NoteFor(mgr, uid).msgs = journal;
+  return replayed;
+}
+
 bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, ChangeLog& log,
                  bool holdTimers, std::vector< uint32_t >& held) {
   bool changed = false;
@@ -391,6 +508,11 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
     // left it thinking without that.
     mgr.SendScriptMsg(&ent, kInvalidUniqueId, obj.active ? kSM_Activate : kSM_Deactivate);
     log.Note(obj.editorId, obj.active ? "activated" : "deactivated");
+    changed = true;
+  }
+  if (const int replayed = ReplayScriptMsgs(mgr, ent, obj)) {
+    log.Note(obj.editorId, "script messages replayed");
+    (void)replayed;
     changed = true;
   }
   if (CActor* actor = TCastToPtr< CActor >(&ent)) {
@@ -618,12 +740,23 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out) {
     if (!IsScripted(ent) || areas.count(ent.GetEditorId().AreaNum()) == 0 || IsGone(ent)) {
       return;
     }
+    const bool generated = IsGeneratedCopy(mgr, ent);
+    if (generated && !SavesCopy(ent)) {
+      return;
+    }
     RoomObject obj;
     CaptureObject(mgr, ent, obj);
+    if (generated) {
+      obj.blocks.push_back({kTagGenerated, std::string()});
+    }
     out.objects.push_back(std::move(obj));
   });
-  std::fprintf(stderr, "[savestate] room: captured %zu objects in %zu areas\n", out.objects.size(),
-               out.areas.size());
+  size_t copies = 0;
+  for (const RoomObject& obj : out.objects) {
+    copies += FindBlock(obj, kTagGenerated) != nullptr ? 1 : 0;
+  }
+  std::fprintf(stderr, "[savestate] room: captured %zu objects (%zu generated copies) in %zu areas\n",
+               out.objects.size(), copies, out.areas.size());
 }
 
 // The running timers ApplyObject restored stopped, started once the last saved area is in.
@@ -687,6 +820,9 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
   std::set< uint32_t > present;
   std::set< uint32_t > savedLayers;
   for (const RoomObject& obj : room.objects) {
+    if (FindBlock(obj, kTagGenerated) != nullptr) {
+      continue; // a copy's id is its template's, which the rebuilt room does not have
+    }
     present.insert(TEditorId(obj.editorId).Value());
     savedLayers.insert(LayerKey(obj.editorId));
   }
@@ -704,6 +840,10 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
       ++otherLayers[LayerKey(ent.GetEditorId().value)];
       return;
     }
+    // A generator's copy made since the load stays unless the state has it as a copy too.
+    if (IsGeneratedCopy(mgr, ent) && !SavesCopy(ent)) {
+      return;
+    }
     if (present.count(ent.GetEditorId().Value()) == 0 || IsGone(ent)) {
       doomed.push_back({ent.GetUniqueId(), ent.GetEditorId().value});
     }
@@ -713,8 +853,13 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
     mgr.DeleteObjectRequest(d.first);
     ++stats.removed;
   }
+  std::vector< const RoomObject* > copies;
   for (const RoomObject& obj : room.objects) {
     if (now.count(TEditorId(obj.editorId).AreaNum()) == 0) {
+      continue;
+    }
+    if (FindBlock(obj, kTagGenerated) != nullptr) {
+      copies.push_back(&obj);
       continue;
     }
     CEntity* ent = mgr.ObjectById(mgr.GetIdForScript(TEditorId(obj.editorId)));
@@ -727,6 +872,28 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
       ++stats.changed;
     }
     ++stats.applied;
+  }
+  // The enemies, pickups and debris a script generator made: the rebuilt room has only their
+  // templates in the generated-object buffer, so each is made again the way the generator does
+  // and given the copy's saved state (ApplyObject sends the Activate the generator sent).
+  int generatedCopies = 0;
+  for (const RoomObject* obj : copies) {
+    const CScriptObjectLoaderHelper::SGeneratedObject made =
+        mgr.ScriptObjectLoaderHelper().GenerateScriptObject(TEditorId(obj->editorId), mgr);
+    CEntity* ent = made.mUniqueId != kInvalidUniqueId ? mgr.ObjectById(made.mUniqueId) : nullptr;
+    if (ent == nullptr) {
+      ++stats.unmatched;
+      continue;
+    }
+    NoteFor(mgr, made.mUniqueId).generated = true;
+    if (ApplyObject(mgr, *ent, *obj, log, waiting > 0, progress.held)) {
+      ++stats.changed;
+    }
+    ++stats.applied;
+    ++generatedCopies;
+  }
+  if (generatedCopies != 0) {
+    std::fprintf(stderr, "[savestate] room: %d generated copies made again\n", generatedCopies);
   }
   if (log.lines > kMaxChangeLines) {
     std::fprintf(stderr, "[savestate] room: ... %d more object lines\n",
@@ -751,6 +918,39 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
     StartHeldTimers(mgr, progress);
   }
   return waiting;
+}
+
+void NoteGenerated(CStateManager& mgr, uint16_t uid) { NoteFor(mgr, RawId(uid)).generated = true; }
+
+void NoteRemoved(CStateManager& mgr, uint16_t uid) {
+  const auto it = sNoted.find(uid);
+  if (it != sNoted.end() && it->second.mgr == &mgr) {
+    sNoted.erase(it);
+  }
+}
+
+void NoteScriptMsg(CStateManager& mgr, uint16_t dest, uint16_t sender, uint32_t msg) {
+  if (!JournalsScriptMsg(msg)) {
+    return;
+  }
+  CEntity* ent = mgr.ObjectById(RawId(dest));
+  if (ent == nullptr || TCastToPtr< CPatterned >(ent) == nullptr || !IsScripted(*ent)) {
+    return;
+  }
+  ScriptMsgEntry e;
+  e.msg = msg;
+  const TUniqueId from = RawId(sender);
+  if (from != kInvalidUniqueId && mgr.ObjectById(from) != nullptr) {
+    const TEditorId eid = mgr.GetEditorIdForUniqueId(from);
+    if (eid != kInvalidEditorId) {
+      e.sender = eid.value;
+    }
+  }
+  std::vector< ScriptMsgEntry >& journal = NoteFor(mgr, ent->GetUniqueId()).msgs;
+  if (journal.size() < kMaxScriptMsgs &&
+      (journal.empty() || journal.back().msg != e.msg || journal.back().sender != e.sender)) {
+    journal.push_back(e);
+  }
 }
 
 } // namespace PortSaveState

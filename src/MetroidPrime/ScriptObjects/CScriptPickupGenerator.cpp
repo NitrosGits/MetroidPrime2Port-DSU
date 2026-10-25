@@ -11,6 +11,9 @@
 #include "MetroidPrime/ScriptObjects/CScriptDebris.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPickup.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#ifdef TARGET_PC
+#include "port_savestate.h"
+#endif
 
 CPickupGeneratorRuleEvaluator::CPickupGeneratorRuleEvaluator(CAssetId rules)
 : CRuleSetEvaluator(rules)
@@ -342,6 +345,9 @@ void CScriptPickupGenerator::SpawnPickup(CStateManager& mgr, TEditorId templateI
   if (generated.mUniqueId == kInvalidUniqueId) {
     return;
   }
+#ifdef TARGET_PC
+  PortSaveState::NoteGenerated(mgr, generated.mUniqueId.value);
+#endif
 
   CEntity* entity = generated.mEntity;
   CActor* actor = TCastToPtr< CActor >(entity);

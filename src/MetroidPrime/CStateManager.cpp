@@ -2911,6 +2911,9 @@ void CStateManager::RemoveObject(TUniqueId id) {
     mFilteredObjectLists[i]->RemoveObject(id);
   }
   mAllocatedObjectIndices[id.Value()] = false;
+#ifdef TARGET_PC
+  PortSaveState::NoteRemoved(*this, id.value);
+#endif
 }
 
 void CStateManager::SendDamageScriptMsgs(CActor& damagee, TUniqueId source,
@@ -3644,6 +3647,12 @@ void CStateManager::DispatchScriptMessages() {
     if (ent) {
       const bool wasActive = ent->GetActive();
       ent->AcceptScriptMsg(*this, msg);
+#ifdef TARGET_PC
+      if (msg.GetState() != kSS_InvalidState) {
+        PortSaveState::NoteScriptMsg(*this, ent->GetUniqueId().value, msg.GetSenderId().value,
+                                     static_cast< uint32_t >(msg.GetMessage()));
+      }
+#endif
       if (wasActive != ent->GetActive()) {
         if (CActor* actor = TCastToPtr< CActor >(ent)) {
           UpdateActorInSortedLists(actor);
