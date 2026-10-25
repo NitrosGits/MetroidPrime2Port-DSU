@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import struct
+import threading
 import time
 from fractions import Fraction
 
@@ -78,11 +79,14 @@ lines = dict(natural={}, forced={})
 # C thread, so it answers while gdb is stuck in a callback).
 TRACE_FROM = int(os.environ.get('SZ2_TRACE_FROM', '14'))
 trace = dict(file=None, lines=0)
+stall = dict(last=time.monotonic(), want=False, fired=False, this=None, restore=None)
+STALL_IDLE = float(os.environ.get('SZ2_STALL_IDLE', '40'))  # seconds without any breakpoint activity
 
 
 def traced(kind):
     def wrap(fn):
         def inner(self):
+            stall['last'] = time.monotonic()
             try:
                 if state['index'] >= TRACE_FROM and trace['lines'] < 40000:
                     if trace['file'] is None:
@@ -347,6 +351,7 @@ class Window(gdb.FinishBreakpoint):
         check(not self.closed and state['active'].get(self.ctx) is self, 'restore ownership mismatch')
         rows, errors = self.snapshot.restore()
         log('RESTORE', case=self.case[0], fields=rows, errors=errors)
+        stall['this'], stall['restore'] = self.this, (self.case[0], rows, errors)
         state['restores'] += 1
         check(not errors, 'restore failed ' + str(errors))
 
@@ -723,6 +728,51 @@ def summary(event):
         failure('incomplete sz2 run')
 
 
+def stall_dump(event):
+    """gdb-side stall report: runs in the stop handler after the watchdog's `interrupt`"""
+    if not stall['want']:
+        return
+    stall['want'] = False
+    out = []
+    def run(cmd, limit=60000):
+        try:
+            out.append('### ' + cmd + '\n' + gdb.execute(cmd, to_string=True)[:limit])
+        except Exception as error:
+            out.append('### %s FAILED %s' % (cmd, error))
+    run('thread apply all bt 30')
+    run('info registers rip rsp')
+    run('x/6i $pc')
+    this = stall['this']
+    out.append('### last restore ' + json.dumps(stall['restore'], default=str))
+    out.append('### state index=%d eligible=%d restores=%d active=%d' % (
+        state['index'], state['eligible'], state['restores'], len(state['active'])))
+    if this:
+        run('print *(CScriptSafeZone*)%d' % this, 20000)
+        run('print ((CScriptSafeZone*)%d)->mProjectiles' % this)
+        run('print ((CScriptSafeZone*)%d)->mImpactGens' % this)
+    with open(os.path.join(os.environ['COV_OUT'], 'stall.txt'), 'w') as f:
+        f.write('\n'.join(out))
+    log('STALL', index=state['index'], eligible=state['eligible'], file='stall.txt')
+    gdb.execute('kill')
+
+
+def stall_interrupt():
+    if not stall['fired']:
+        stall['fired'] = True
+        stall['want'] = True
+        gdb.execute('interrupt')
+
+
+def stall_watch():
+    while True:
+        time.sleep(2)
+        if stall['fired']:
+            return
+        if state['eligible'] and time.monotonic() - stall['last'] > STALL_IDLE:
+            gdb.post_event(stall_interrupt)
+            return
+
+
 def install():
     binary = gdb.current_progspace().filename
     with open(binary, 'rb') as f:
@@ -755,6 +805,8 @@ def install():
         Mock(symbol(prefix), kind)
     count_lines(think)
     gdb.events.exited.connect(summary)
+    gdb.events.stop.connect(stall_dump)
+    threading.Thread(target=stall_watch, daemon=True).start()
 
 
 if os.environ.get('SZ2_SELFTEST') != '1':

@@ -337,6 +337,50 @@ class Tests(unittest.TestCase):
         self.assertFalse(w.enabled)
         self.assertTrue(w.closed)
 
+    def test_stall_dump_is_gdb_side_and_kills(self):
+        import tempfile
+        cmds = []
+        self.gdb.execute = lambda c, to_string=False: cmds.append(c) or ('out of ' + c if to_string else None)
+        self.m.iv = lambda e: 0
+        self.m.stall.update(want=True, this=0x40, restore=('c', [{'label': 'mActivation'}], []))
+        with tempfile.TemporaryDirectory() as d:
+            os.environ['COV_OUT'] = d
+            self.m.stall_dump(None)
+            with open(os.path.join(d, 'stall.txt')) as f:
+                text = f.read()
+        self.assertIn('thread apply all bt 30', cmds)
+        self.assertEqual(cmds[-1], 'kill')
+        self.assertIn('mActivation', text)
+        self.assertIn('print *(CScriptSafeZone*)64', cmds)
+        self.assertFalse(self.m.stall['want'])
+        cmds.clear()
+        self.m.stall_dump(None)  # not requested: a normal stop is left alone
+        self.assertEqual(cmds, [])
+
+    def test_stall_interrupt_once(self):
+        cmds = []
+        self.gdb.execute = lambda c, to_string=False: cmds.append(c)
+        self.m.stall.update(fired=False, want=False)
+        self.m.stall_interrupt()
+        self.m.stall_interrupt()
+        self.assertEqual(cmds, ['interrupt'])
+        self.assertTrue(self.m.stall['want'])
+
+    def test_stall_watch_posts_only_when_idle(self):
+        posted = []
+        self.gdb.post_event = posted.append
+        self.m.time.sleep = lambda s: None
+        self.m.state['eligible'] = 5
+        self.m.stall.update(fired=False, last=self.m.time.monotonic())
+        ticks = iter([0, 0, 1])
+
+        def sleep(s):
+            if next(ticks) == 1:
+                self.m.stall['last'] -= 1000
+        self.m.time.sleep = sleep
+        self.m.stall_watch()
+        self.assertEqual(posted, [self.m.stall_interrupt])
+
     def test_log_has_a_monotonic_time(self):
         with open(Path(__file__).with_name('sz2_think.py')) as f:
             self.assertIn("t=round(time.monotonic(), 3)", f.read())
