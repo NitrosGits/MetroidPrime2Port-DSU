@@ -450,6 +450,12 @@ bool CMysteryFlyer::LineOfSight(CStateManager& mgr, const CTriggerData& data) co
 }
 
 // fn_45_C10
+// @ fn_45_C10
+// Proof (mfly4, binary e7c9ce37a0af, runs mfly4_n1+f1+f2, gcov 7/7 lines, 6/6 arms): no shipped MYSF links
+// to a TMAI (tools/scan_mysteryflyer_loader.py), so GetAssociatedTeamId's result is forced at its return by
+// tools/cov/specs/mfly4_forced.py (original ax=0xffff recorded, readback): the real TMAI uid (JoinTeam on
+// the real team), an existing non-team uid and a uid no object has (TCastToPtr null); a later Hover Activate
+// JoinTeam on the same wasp takes the id-already-set arm naturally. Retail 0xC10..0xCBC.
 void CMysteryFlyer::JoinTeam(CStateManager& mgr) {
 #ifdef TARGET_PC
   // Retail 0xC10: `lhz 0x920; cmplw kInvalidUniqueId; bne -> end` (0xC40), so an id that is already
