@@ -169,3 +169,13 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   the read-back buffers *after* releasing `g_mutex`: freeing one with a map pending runs its
   callback at once, which takes the same lock and deadlocks the exit (`932feb7c4`). Keep both on a
   re-vendor. Its depth words come back byte-swapped (big-endian in memory), like the GX Z16 copy.
+
+## Exit 13 and the log copier
+
+`PortLogFile` forks a copier (comm `mp2-log-copier`) that tees the game's stdout/stderr to the
+terminal and `<user>/metroid_prime2_port.log`. The game's main thread renames itself "Main thread",
+so name-based `pkill`/`pgrep metroid_prime2_port` used to hit only copiers, on every run on the
+machine; the game then died of SIGPIPE on its next print, silently. uutils `timeout` reports a
+signal death as the bare number (13 SIGPIPE, 11 SEGV, 6 ABRT), GNU's as 128+N. Since 62aa05378 the
+game ignores SIGPIPE, the copier ignores SIGTERM/SIGHUP, and Aurora logs through a stdio callback
+(`platform/main.cpp`): its default `fmt::println` throws on EPIPE inside a noexcept function.
