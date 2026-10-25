@@ -32,6 +32,10 @@ CALLS = [
         ([('$this->mIsAttackingObject', '0'), ('$this->mIsAquaPirate', '1')], ANIM % 0),
         ([('$this->mIsAttackingObject', '1'), ('$this->mIsAquaPirate', '1')], ANIM % 0),
         (NOTLOADED, ANIM % 0),
+        # cached item set (no shipped fight ever caches the token: mItem is 0 at every natural call):
+        # the left operand of `||` true, on mAltProjectileInfo1 and mAltProjectileInfo2
+        ([('%s.mItem' % TOK, '(CWeaponDescription*)%s.mObjRef->mObject' % TOK)], ANIM % 0),
+        (ATK + [('%s.mItem' % TOK2, '(CWeaponDescription*)%s.mObjRef->mObject' % TOK2)], ANIM % 0),
         # cached item null, the object reference loaded: `||` takes its right operand true
         ([NOTLOADED[0]], ANIM % 0),
         ([], ANIM % 0, NOCREATE),
