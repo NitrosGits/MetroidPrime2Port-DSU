@@ -58,17 +58,17 @@ void DrawFreeCam() {
 
   ImGui::SeparatorText("Photo");
   // 0 keeps the game's own FOV (55 in first person); the slider shows that until it is moved.
-  const bool gameFov = PortPhoto::Fov() <= 0.f;
-  float fov = gameFov ? 55.f : PortPhoto::Fov();
+  const bool gameFov = PortFreeCam::FovOverride() <= 0.f;
+  float fov = gameFov ? 55.f : PortFreeCam::FovOverride();
   if (ImGui::SliderFloat("Field of view##photo", &fov, 30.f, 100.f, gameFov ? "game (%.0f)" : "%.0f deg")) {
-    PortPhoto::SetFov(fov);
+    PortFreeCam::SetFovOverride(fov);
   }
   ImGui::SetItemTooltip("The free camera's vertical field of view; untouched, it keeps the game's own.");
   // The slider stops at 30, so the game's own FOV needs its own button once the slider is moved.
   if (!gameFov) {
     ImGui::SameLine();
     if (ImGui::SmallButton("Game FOV")) {
-      PortPhoto::SetFov(0.f);
+      PortFreeCam::SetFovOverride(0.f);
     }
   }
   float roll = PortPhoto::Roll();

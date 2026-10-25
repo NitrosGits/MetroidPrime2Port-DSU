@@ -68,7 +68,7 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
    carries per-release `SAVW`/area data); **slot-level copy/erase** would have to reproduce the front
    end's option shuffling; raw-image cards are **import only**, and MP1's Dolphin/Trilogy folder
    discovery has no MP2 counterpart.
-6. **Photo mode / free camera**: done (`platform/port_photo.cpp`, `platform/port_freecam.cpp`).
+6. **Photo mode / free camera**: done (`platform/port_photo.cpp`, `platform/debug_ui/photo.cpp`, `platform/port_freecam.cpp`). Photo mode is a mode over the free camera, as MP1's: sim frozen, HUD/cannon/helmet/visor effects hidden, ImGui panel (FOV, roll, show Samus, speed, size, Capture, Hide, Exit; a compact bar when hidden), toasts, Android touch (left half moves, right half looks; untested off-device). Pad: A capture, B/Start exit, Y panel, X+d-pad zoom, d-pad roll. Keys: F8 (rebindable), H panel, P/click capture, Esc exit, wheel FOV, right mouse looks. Not ported: the pause-menu entry (no clean hook in `CPauseScreen`), Android's export to the gallery. The `freecam` console command stays the plain camera.
 7. **Map and tracker** (MP1's `port_map_marks.cpp`, `port_tracker.cpp`): reveal the map, item and scan
    tracking. MP2's map is a different format (`CMapWorld`/`CMapArea`), so this is a rewrite.
 8. **Remastered assets** (MP1's `port_remastered_*`): import models/effects from a Metroid Prime

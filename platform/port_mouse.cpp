@@ -397,6 +397,34 @@ void AddMotion(float dx, float dy) {
   sPendingY += dy;
 }
 
+// Photo mode (PortPhoto): relative capture for the free camera's mouse look. Only a capture this
+// asked for is released, so it never fights the aim's own.
+void SetPhotoCapture(bool want) {
+  static bool sHeld = false;
+  if (want) {
+    sHeld = true;
+    SetCapture(true);
+  } else if (sHeld) {
+    sHeld = false;
+    SetCapture(false);
+  }
+}
+
+bool TakePhotoLook(float& yawDegrees, float& pitchDegrees) {
+  ReadEnv();
+  std::lock_guard< std::mutex > lock(sPendingMutex);
+  const float dx = sFrameX;
+  const float dy = sFrameY;
+  sFrameX = sFrameY = 0.f;
+  if (dx == 0.f && dy == 0.f) {
+    return false;
+  }
+  constexpr float kDegrees = 57.29578f;
+  yawDegrees = -dx * sSensitivity * kDegrees * (sInvertX ? -1.f : 1.f);
+  pitchDegrees = -dy * sSensitivity * kDegrees * (sInvertY ? -1.f : 1.f);
+  return true;
+}
+
 void AddGyroPointer(float yaw, float pitch, float dt, float sweep, float scaleY) {
   if (!std::isfinite(yaw) || !std::isfinite(pitch) || !(dt > 0.f) || !(sweep > 0.f) || !std::isfinite(scaleY)) {
     return;

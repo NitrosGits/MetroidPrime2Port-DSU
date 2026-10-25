@@ -973,22 +973,43 @@ void CmdFreeCam(CStateManager& mgr, const Args& args, std::string& out) {
   out += enabled ? "free camera on\n" : "free camera off\n";
 }
 
-// `photo [1|2|4]`: saves a PNG of the free camera's picture, supersampled by the factor (default
-// the supersample setting). The shot is taken a few frames later; its result is logged as `[photo] ...`.
-void CmdPhoto(CStateManager&, const Args& args, std::string& out) {
-  if (args.size() >= 2 && args[1] != "1" && args[1] != "2" && args[1] != "4") {
-    out += "usage: photo [1|2|4]\n";
+// `photo [on|off|1|2|4]`: photo mode (the free camera with the HUD hidden and the game frozen, the
+// F8 binding). `on`/`off` enter and leave; a factor saves a PNG supersampled by it (the setting
+// when none); no argument enters when off and captures when on. The shot is taken a few frames
+// later; its result is logged as `[photo] ...`.
+void CmdPhoto(CStateManager& mgr, const Args& args, std::string& out) {
+  const std::string arg = args.size() < 2 ? std::string() : std::string(args[1]);
+  if (!arg.empty() && arg != "on" && arg != "off" && arg != "1" && arg != "2" && arg != "4") {
+    out += "usage: photo [on|off|1|2|4]\n";
+    return;
+  }
+  if (arg == "off") {
+    PortPhoto::Exit();
+    out += "photo mode off\n";
+    return;
+  }
+  if (!PortPhoto::Active()) {
+    std::string why;
+    if (!PortPhoto::Enter(mgr, why)) {
+      out += "photo mode refused: " + why + "\n";
+    } else {
+      out += "photo mode on\n";
+    }
+    if (arg.empty() || arg == "on") {
+      return;
+    }
+    if (!PortPhoto::Active()) {
+      return;
+    }
+  } else if (arg == "on") {
+    out += "photo mode already on\n";
     return;
   }
   if (PortPhoto::Capturing()) {
     out += "a capture is already running\n";
     return;
   }
-  if (!PortPhoto::Active()) {
-    out += "photo needs the free camera: freecam 1\n";
-    return;
-  }
-  const int factor = args.size() < 2 ? 0 : ArgToInt(args[1], 1);
+  const int factor = (arg.empty() || arg == "on") ? 0 : ArgToInt(arg, 1);
   PortPhoto::RequestCapture(factor);
   const PortPhoto::CaptureResult last = PortPhoto::LastCapture();
   out += "capture requested (";
@@ -4503,7 +4524,7 @@ const CommandSpec kCommands[] = {
     {"freecam", CmdFreeCam,
       "freecam [0|1]              free camera (photo mode); no argument toggles it\n"},
     {"photo", CmdPhoto,
-      "photo [1|2|4]              save a PNG from the free camera, supersampled by the factor\n"},
+      "photo [on|off|1|2|4]       photo mode (F8): on/off; a factor saves a PNG, supersampled by it\n"},
     {"livesplit", CmdLiveSplit,
       "livesplit [0|1|addr <host:port>|send <line>]  the LiveSplit link (the F1 setting); no argument: status\n"},
     {"touchact", CmdTouchAct,

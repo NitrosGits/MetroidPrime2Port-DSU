@@ -1,15 +1,29 @@
-// Photo mode capture (console `photo`); see port_photo.h.
+// Photo mode (F8, F1 > Game, console `photo`); see port_photo.h.
 #include "port_photo.h"
 
 #include "port_freecam.h"
+#include "port_mouse.h"
 #include "port_overlay.h"
+#include "Kyoto/Input/CFinalInput.hpp"
+#include "MetroidPrime/CCameraManager.hpp"
+#include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/Cameras/CCinematicCamera.hpp"
+#include "MetroidPrime/Cameras/CGameCamera.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 #include <dolphin/gx/GXAurora.h>
 #include <dolphin/vi.h>
+#include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_timer.h>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#if defined(__ANDROID__)
+#include <SDL3/SDL_system.h>
+#endif
 
 namespace aurora {
 void request_screenshot_png(const char* path) noexcept;
@@ -21,28 +35,77 @@ uint32_t max_texture_dimension() noexcept;
 namespace PortPhoto {
 namespace {
 
+constexpr float kRollRate = 60.f;  // degrees per second on the d-pad
+constexpr float kFovRate = 40.f;   // degrees per second with X held
+constexpr float kFovMin = 20.f;
+constexpr float kFovMax = 120.f;
 constexpr uint64_t kMaxCapturePixels = 48'000'000;  // a 7680x4320 frame is 33 M
-constexpr uint64_t kMaxCaptureSamples = 96'000'000; // pixels x MSAA samples
-constexpr int kSettleFrames = 8; // frames for the EFB to resize and draw at the new size
-constexpr int kHideFrames = 2;   // frames before the shot
+constexpr uint64_t kMaxCaptureSamples = 96'000'000; // pixels x MSAA samples; 5124x2880 at 4x is 59 M
+constexpr int kSettleFrames = 8;        // frames for the EFB to resize and draw at the new size
+constexpr int kHideFrames = 2;          // frames with the panel and toasts gone before the shot
 constexpr double kSaveTimeoutSeconds = 20.0;
+constexpr double kPendingTimeoutSeconds = 0.4;
 
 enum class Phase { Idle, Hiding, Settling, Saving };
 
+bool sActive = false;
+bool sPanelShown = true;
+bool sPanelFocus = false;
+bool sRequestEnter = false;
+bool sRequestExit = false;
+double sRequestAt = 0.0;
 int sSupersample = 1;
+float sSpeed = 10.f;
+const void* sWorld = nullptr;
+std::string sMessage;
+
+// What the free camera was doing when photo mode took it over.
+struct Prior {
+  bool active = false;
+  bool frozen = false;
+  bool showPlayer = true;
+  float speed = 10.f;
+  float fov = 0.f;
+  PortFreeCam::Pose pose{};
+};
+Prior sPrior;
+
 Phase sPhase = Phase::Idle;
 int sPhaseFrames = 0;
 double sPhaseAt = 0.0;
 int sCaptureFactor = 1;
 CaptureResult sLast;
 
-double Now() {
-  using namespace std::chrono;
-  return duration<double>(steady_clock::now().time_since_epoch()).count();
-}
+double Now() { return static_cast<double>(SDL_GetTicks()) * 0.001; }
 
 void Say(const std::string& text) {
+  sMessage = text;
   std::fprintf(stderr, "[photo] %s\n", text.c_str());
+}
+
+bool CanEnter(CStateManager& mgr, std::string& why) {
+  const CPlayer* player = mgr.GetPlayer(0);
+  const CWorld* world = mgr.GetWorld();
+  if (player == nullptr || world == nullptr) {
+    why = "no game running";
+    return false;
+  }
+  if (player->IsPlayerDeadEnough(mgr) || player->GetDeathTime() > 0.f) {
+    why = "Samus is dead";
+    return false;
+  }
+  const CGameCamera* camera = mgr.GetCameraManager(0)->GetCurrentCamera(mgr, true);
+  if (camera == nullptr || TCastToConstPtr< CCinematicCamera >(*camera)) {
+    why = "a cutscene is playing";
+    return false;
+  }
+  if (mgr.GetWantsToEnterPauseScreen() || mgr.GetWantsToEnterMapScreen() ||
+      mgr.GetWantsToEnterLogBookScreen() || mgr.GetWantsToEnterSaveGameScreen() ||
+      mgr.GetWantsToEnterMessageScreen()) {
+    why = "the game is changing screens";
+    return false;
+  }
+  return true;
 }
 
 // The render scale setting (0 = the window's own size), which the capture puts back when it is done.
@@ -59,9 +122,11 @@ float NativeEquivalentScale(uint32_t w1, uint32_t h1) {
 }
 
 // The smallest render scale whose frame buffer is at least `factor` x the current one in both
-// directions. Exactly N x is out of reach (the buffer is rounded to whole pixels and fitted to the
-// render mode's aspect), so step finely up from the nominal. Returns 0 when it can't be had.
+// directions. Exactly N x is out of reach: the buffer is the scaled window height with the width
+// rounded from the aspect, then fitted to the render mode's 854:480, so each rounding lands on
+// whole pixels (1280x719 at 1x, 5124x2880 at 4x). Returns 0 when it can't be had.
 float ScaleForFactor(int factor, float base, uint32_t w1, uint32_t h1, uint32_t maxDim) {
+  // Scales a few frame-buffer pixels apart give the same size, so step finely from the nominal.
   const float step = base / static_cast<float>(std::max<uint32_t>(h1, 1) * 2);
   float scale = base * static_cast<float>(factor);
   for (int i = 0; i < 64; ++i, scale += step) {
@@ -112,33 +177,131 @@ float PickCaptureScale() {
 
 } // namespace
 
-bool Active() { return PortFreeCam::Active(); }
+bool Active() { return sActive; }
 
-float Fov() { return PortFreeCam::FovOverride(); }
-void SetFov(float degrees) {
-  if (std::isfinite(degrees)) {
-    PortFreeCam::SetFovOverride(degrees > 0.f ? std::clamp(degrees, 20.f, 120.f) : 0.f);
+bool Enter(CStateManager& mgr, std::string& why) {
+  if (sActive) {
+    return true;
+  }
+  if (!CanEnter(mgr, why)) {
+    return false;
+  }
+  sPrior.active = PortFreeCam::Active();
+  sPrior.frozen = PortFreeCam::Frozen();
+  sPrior.showPlayer = PortFreeCam::ShowPlayer();
+  sPrior.speed = PortFreeCam::Speed();
+  sPrior.fov = PortFreeCam::FovOverride();
+  sPrior.pose = PortFreeCam::GetPose();
+  if (!sPrior.active) {
+    PortFreeCam::SetActive(true, &mgr);
+  }
+  // The photo's own start: where the game camera is, not where a free camera was left.
+  if (sPrior.active) {
+    PortFreeCam::SetActive(false, &mgr);
+    PortFreeCam::SetActive(true, &mgr);
+  }
+  PortFreeCam::SetFrozen(true);
+  PortFreeCam::SetShowPlayer(true);
+  PortFreeCam::SetSpeed(sSpeed);
+  PortFreeCam::Pose pose = PortFreeCam::GetPose();
+  pose.roll = 0.f;
+  PortFreeCam::SetPose(pose);
+  // The game camera's field of view, before the widening to the window's aspect.
+  const float fov = mgr.GetCameraManager(0)->GetCurrentCamera(mgr, true)->GetFov();
+  PortFreeCam::SetFovOverride(std::clamp(std::isfinite(fov) ? fov : 55.f, kFovMin, kFovMax));
+  sWorld = mgr.GetWorld();
+  sPanelShown = true;
+  sPanelFocus = false;
+  sActive = true;
+  return true;
+}
+
+void Exit() {
+  if (!sActive) {
+    return;
+  }
+  sActive = false;
+  sPanelFocus = false;
+  if (sPhase != Phase::Idle) {
+    sPhase = Phase::Idle;
+    VISetFrameBufferScale(RestoreScale());
+  }
+  PortMouse::SetPhotoCapture(false);
+  PortFreeCam::SetFovOverride(0.f);
+  PortFreeCam::SetFrozen(sPrior.frozen);
+  PortFreeCam::SetShowPlayer(sPrior.showPlayer);
+  PortFreeCam::SetSpeed(sPrior.speed);
+  if (sPrior.active) {
+    PortFreeCam::SetPose(sPrior.pose);
+    PortFreeCam::SetFovOverride(sPrior.fov);
+  } else {
+    PortFreeCam::SetActive(false, nullptr);
+  }
+  sWorld = nullptr;
+}
+
+void RequestEnter() {
+  if (!sActive) {
+    sRequestEnter = true;
+    sRequestExit = false;
+    sRequestAt = Now();
   }
 }
-float Roll() { return PortFreeCam::GetPose().roll; }
-void SetRoll(float degrees) {
-  if (std::isfinite(degrees)) {
-    PortFreeCam::Pose pose = PortFreeCam::GetPose();
-    pose.roll = std::clamp(degrees, -180.f, 180.f);
-    PortFreeCam::SetPose(pose);
+
+void RequestExit() {
+  if (sActive) {
+    sRequestExit = true;
+    sRequestEnter = false;
   }
 }
-float Speed() { return PortFreeCam::Speed(); }
-void SetSpeed(float speed) { PortFreeCam::SetSpeed(speed); }
-bool ShowSamus() { return PortFreeCam::ShowPlayer(); }
-void SetShowSamus(bool show) { PortFreeCam::SetShowPlayer(show); }
 
-int Supersample() { return sSupersample; }
-void SetSupersample(int factor) { sSupersample = factor >= 4 ? 4 : factor >= 2 ? 2 : 1; }
+void RequestToggle() {
+  if (sActive) {
+    RequestExit();
+  } else {
+    RequestEnter();
+  }
+}
+
+void Tick(CStateManager& mgr, bool inPlay) {
+  if (sActive) {
+    std::string why;
+    if (sRequestExit || !inPlay || mgr.GetWorld() != sWorld ||
+        mgr.GetPlayer(0) == nullptr || !PortFreeCam::Active()) {
+      Exit();
+    }
+    sRequestExit = false;
+    sRequestEnter = false;
+    return;
+  }
+  sRequestExit = false;
+  if (!inPlay) {
+    return;
+  }
+  if (sRequestEnter) {
+    sRequestEnter = false;
+    std::string why;
+    if (!Enter(mgr, why)) {
+      Say("Can't start photo mode: " + why);
+    }
+  }
+}
 
 void Frame() {
   const double now = Now();
-  if (!Active()) {
+  // The mouse is the camera's while it looks (not on a phone, not with the F1 overlay open).
+  PortMouse::SetPhotoCapture(MouseLook() && !PortOverlay::Visible());
+  // Tick only runs while the game plays: a request made over a menu or a load has no taker.
+  if (sRequestEnter && now - sRequestAt > kPendingTimeoutSeconds) {
+    sRequestEnter = false;
+    Say("Can't start photo mode: the game isn't in play");
+  }
+  // The game session ended under photo mode (quit to the title): no Tick comes to notice.
+  double sessionTime = 0.0;
+  if (sActive && !PortOverlay::GameTime(sessionTime)) {
+    Exit();
+  }
+  if (!sActive) {
     if (sPhase != Phase::Idle) {
       sPhase = Phase::Idle;
       VISetFrameBufferScale(RestoreScale());
@@ -163,14 +326,20 @@ void Frame() {
                              std::chrono::system_clock::now().time_since_epoch())
                              .count();
       sLast.path = "screenshots/metroid-prime-2-photo-" + std::to_string(stamp) + ".png";
+#if defined(__ANDROID__)
+      // SDL opens a relative path as an APK asset there, which can't be written.
+      if (const char* root = SDL_GetAndroidInternalStoragePath()) {
+        sLast.path = std::string(root) + "/" + sLast.path;
+      }
+#endif
       aurora::request_screenshot_png(sLast.path.c_str());
       sPhase = Phase::Saving;
       sPhaseAt = now;
     }
     break;
   case Phase::Saving: {
-    uint32_t w = 0;
-    uint32_t h = 0;
+    unsigned w = 0;
+    unsigned h = 0;
     const int state = aurora::screenshot_png_state(&w, &h);
     if (state == 0 && now - sPhaseAt < kSaveTimeoutSeconds) {
       break;
@@ -191,12 +360,125 @@ void Frame() {
   }
 }
 
+bool Input(const CFinalInput& input) {
+  if (!sActive) {
+    return PortFreeCam::Input(input);
+  }
+  if (!PortOverlay::Visible() && sPhase == Phase::Idle && sPanelFocus) {
+    // The panel has the pad: ImGui reads it, so only the way out is handled here.
+    if (input.PStart()) {
+      RequestExit();
+    } else if (input.PY() || input.PB()) {
+      sPanelFocus = false;
+    }
+    return true;
+  }
+  if (!PortOverlay::Visible() && sPhase == Phase::Idle) {
+    const float dt = std::clamp(input.DeltaTime(), 0.f, 0.1f);
+    if (input.PA()) {
+      RequestCapture();
+    }
+    if (input.PB() || input.PStart()) {
+      RequestExit();
+    }
+    if (input.PY()) {
+      if (sPanelShown) {
+        sPanelFocus = true;
+      } else {
+        SetPanelShown(true);
+      }
+    }
+    const float side = (input.DDPRight() ? 1.f : 0.f) - (input.DDPLeft() ? 1.f : 0.f);
+    if (side != 0.f) {
+      // Steps blended over the tick, not jumps (PortFreeCam::SetPose).
+      if (input.DX()) {
+        PortFreeCam::SetFovOverride(std::clamp(Fov() + side * kFovRate * dt, kFovMin, kFovMax), false);
+      } else {
+        PortFreeCam::Pose pose = PortFreeCam::GetPose();
+        pose.roll = std::clamp(pose.roll + side * kRollRate * dt, -180.f, 180.f);
+        PortFreeCam::SetPose(pose, false);
+      }
+    }
+  }
+  // Frozen while a shot is taken, so nothing moves under it.
+  if (sPhase != Phase::Idle) {
+    return true;
+  }
+  if (MouseLook() && !PortOverlay::Visible()) {
+    float yaw = 0.f;
+    float pitch = 0.f;
+    if (PortMouse::TakePhotoLook(yaw, pitch)) {
+      PortFreeCam::AddTouchTurn(yaw, pitch);
+    }
+  }
+  return PortFreeCam::Input(input);
+}
+
+float Fov() {
+  const float fov = PortFreeCam::FovOverride();
+  return fov > 0.f ? fov : 55.f;
+}
+void SetFov(float degrees) {
+  if (std::isfinite(degrees)) {
+    PortFreeCam::SetFovOverride(std::clamp(degrees, kFovMin, kFovMax));
+  }
+}
+float Roll() { return PortFreeCam::GetPose().roll; }
+void SetRoll(float degrees) {
+  if (std::isfinite(degrees)) {
+    PortFreeCam::Pose pose = PortFreeCam::GetPose();
+    pose.roll = std::clamp(degrees, -180.f, 180.f);
+    PortFreeCam::SetPose(pose);
+  }
+}
+bool ShowSamus() { return PortFreeCam::ShowPlayer(); }
+void SetShowSamus(bool show) { PortFreeCam::SetShowPlayer(show); }
+
+float Speed() { return sActive ? PortFreeCam::Speed() : sSpeed; }
+void SetSpeed(float speed) {
+  if (std::isfinite(speed)) {
+    sSpeed = std::clamp(speed, 0.1f, 500.f);
+    if (sActive) {
+      PortFreeCam::SetSpeed(sSpeed);
+    }
+  }
+}
+
+int Supersample() { return sSupersample; }
+void SetSupersample(int factor) { sSupersample = factor >= 4 ? 4 : factor >= 2 ? 2 : 1; }
+
+bool PanelShown() { return sPanelShown; }
+void SetPanelShown(bool shown) {
+  sPanelShown = shown;
+  if (!shown) {
+    sPanelFocus = false;
+  }
+}
+// Held right mouse button: the mouse looks around even with the panel up.
+static bool RightMouseHeld() {
+#ifdef __ANDROID__
+  return false;
+#else
+  return (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_RMASK) != 0;
+#endif
+}
+bool MouseLook() {
+#ifdef __ANDROID__
+  return false;
+#else
+  return sActive && sPhase == Phase::Idle && (!sPanelShown || RightMouseHeld());
+#endif
+}
+bool PanelWantsCursor() { return sActive && sPanelShown && !RightMouseHeld(); }
+bool PanelFocused() { return sActive && sPanelShown && sPanelFocus; }
+
 bool RequestCapture(int factor) {
-  if (!Active() || sPhase != Phase::Idle) {
+  if (!sActive || sPhase != Phase::Idle) {
     return false;
   }
   sCaptureFactor = factor > 0 ? (factor >= 4 ? 4 : factor >= 2 ? 2 : 1) : sSupersample;
   sLast = CaptureResult{};
+  sPanelFocus = false;
   sPhase = Phase::Hiding;
   sPhaseFrames = 0;
   return true;
@@ -204,5 +486,11 @@ bool RequestCapture(int factor) {
 
 bool Capturing() { return sPhase != Phase::Idle; }
 CaptureResult LastCapture() { return sLast; }
+
+std::string TakeMessage() {
+  std::string text;
+  text.swap(sMessage);
+  return text;
+}
 
 } // namespace PortPhoto

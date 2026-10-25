@@ -10,6 +10,7 @@
 #include "port_input_map.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
+#include "port_photo.h"
 #include "port_pointer.h"
 #include "port_savestate.h"
 #include "port_touch.h"
@@ -1302,7 +1303,7 @@ void PollPortActions() {
   }
   if (out.Pressed(Action::Screenshot)) aurora::request_screenshot();
   if (out.Pressed(Action::PhotoMode)) {
-    PortFreeCam::SetActive(!PortFreeCam::Active(), nullptr);
+    PortPhoto::RequestToggle();
   }
 }
 

@@ -2,6 +2,8 @@
 #define METROID_PRIME_PORT_PORT_DEBUG_H
 #include <cstdint>
 
+union SDL_Event;
+
 // Runtime debug settings shared between the platform layer and the game.
 // Defaults come from environment variables so existing workflows keep working,
 // and the in-game debug window can toggle them live.
@@ -180,6 +182,9 @@ void UpdateControllerNav();
 // Builds the debug windows for the current ImGui frame. Call once per presented
 // frame, after Aurora begins the frame and before it ends it.
 void DrawUI();
+
+// photo.cpp: SDL finger events for photo mode (port_events.cpp feeds every event).
+void PhotoTouchEvent(const SDL_Event& event);
 
 } // namespace PortDebug
 

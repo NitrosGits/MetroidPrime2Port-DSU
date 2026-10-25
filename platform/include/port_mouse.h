@@ -244,6 +244,10 @@ bool UiActive();
 // Relative motion as it arrives from SDL's event queue, and the once-per-loop latch that
 // turns the pending deltas into this tick's deltas.
 void AddMotion(float dx, float dy);
+// Photo mode's mouse look: holds relative capture on request (and releases only its own), and hands
+// out the travel latched by BeginTick as a turn in degrees (false when there was none).
+void SetPhotoCapture(bool want);
+bool TakePhotoLook(float& yawDegrees, float& pitchDegrees);
 // Gyro aim on the pointer (MP1's PollGyro pointer branch): yaw (right) and pitch (up) in rad/s
 // over dt seconds; `sweep` radians of pad turn move the pointer across the screen, and the
 // vertical travel is scaled by `scaleY` (the gyro's vertical over horizontal sensitivity).
