@@ -255,6 +255,8 @@ on scannables"; asked how, "they flash".
   hard cap. Verified end to end: `resume: wrote ... (Area 0)` then `loading it instead of the card's save`
   and `Samus is back in Area 0; the resume state is used up`, both runs exit 0, 0 unmatched. The door-lock
   apply and the real window-close path were not exercised.
+  Superseded 2026-10-25 (qr1): the resume file is kept until the next snapshot, snapshots are taken
+  during play, and a boot prompt asks; see platform/README.md "Quick resume".
 - Merged-tree gates: host build 0 FAILED (binary 15:14), matching build "87 files OK",
   94.14% fuzzy / 63.29% matched. Every touched upstream file strips CLEAN.
 

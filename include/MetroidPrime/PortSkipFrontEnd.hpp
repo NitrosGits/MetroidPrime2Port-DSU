@@ -32,6 +32,13 @@ bool StartGame();
 // only replaces a save the skip loaded).
 bool Started();
 
+// The quick-resume prompt's Yes: arms the skip for card file `fileIdx` as if MP2_SKIP_FRONTEND=1
+// MP2_SLOT=<fileIdx> were set, so the boot loads that save and the resume file then replaces it.
+void ArmFromResume(int fileIdx);
+
+// True once the skip is armed (by the environment or ArmFromResume).
+bool Armed();
+
 } // namespace PortSkipFrontEnd
 
 #endif

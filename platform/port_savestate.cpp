@@ -19,6 +19,7 @@
 #include "MetroidPrime/PortSkipFrontEnd.hpp"
 
 #include "Kyoto/Alloc/CMemory.hpp"
+#include "Kyoto/Input/IController.hpp"
 #include "Kyoto/CPakFile.hpp"
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/CResLoader.hpp"
@@ -1170,5 +1171,127 @@ void Tick(CStateManager& mgr) {
     DoLoad(mgr, load);
   }
 }
+
+} // namespace PortSaveState
+
+// --- the resume prompt ---------------------------------------------------------------------------
+// Staged from the boot's splash (CSplashScreen ticks it), drawn by the overlay (DrawResumePrompt).
+
+namespace {
+
+enum PromptStage { kPromptCheck, kPromptAsk, kPromptAccepting, kPromptDone };
+
+PromptStage sPromptStage = kPromptCheck;
+int sPromptTicks = 0;
+std::atomic< int > sPromptAnswer{-1}; // -1 none, 0 no, 1 yes (from the overlay's buttons)
+std::atomic< bool > sPromptYes{true};
+std::atomic< bool > sPromptShown{false};
+std::mutex sPromptMutex;
+PortSaveState::ResumeInfo sPromptInfo;
+
+constexpr int kPromptIgnoreTicks = 15;  // presses that started the boot do not answer
+constexpr int kPromptCheckTicks = 120;  // wait this long for the save folder
+constexpr int kPromptAcceptTicks = 600; // give up holding the splash
+
+bool PromptEnvBlocks() {
+  return PortSkipFrontEnd::Armed() || std::getenv("MP2_WORLD") != nullptr ||
+         std::getenv("MP2_TELEPORT") != nullptr;
+}
+
+} // namespace
+
+namespace PortSaveState {
+
+bool ResumePromptTick() {
+  switch (sPromptStage) {
+  case kPromptCheck: {
+    if (!ResumeActive() || PromptEnvBlocks()) {
+      sPromptStage = kPromptDone;
+      return false;
+    }
+    if (SlotPath(kResumeSlot).empty() && ++sPromptTicks < kPromptCheckTicks) {
+      return false;
+    }
+    ResumeInfo info;
+    if (!ResumeOffer(info)) {
+      sPromptStage = kPromptDone;
+      return false;
+    }
+    {
+      std::lock_guard< std::mutex > lock(sPromptMutex);
+      sPromptInfo = info;
+    }
+    sPromptYes.store(!info.crashedAgain);
+    sPromptAnswer.store(-1);
+    sPromptTicks = 0;
+    sPromptStage = kPromptAsk;
+    sPromptShown.store(true);
+    SetMessage("resume: asking" + std::string(info.crashedAgain ? " (crashed again)" : ""));
+    return true;
+  }
+  case kPromptAsk: {
+    ++sPromptTicks;
+    int answer = sPromptAnswer.exchange(-1);
+    if (sPromptTicks > kPromptIgnoreTicks && gpController != nullptr) {
+      const auto& pad = gpController->GetGamepadData(0);
+      if (pad.GetButton(kBU_Left).GetPressEvent() || pad.GetButton(kBU_Right).GetPressEvent()) {
+        sPromptYes.store(!sPromptYes.load());
+      }
+      if (answer < 0 && (pad.GetButton(kBU_A).GetPressEvent() ||
+                         pad.GetButton(kBU_Start).GetPressEvent())) {
+        answer = sPromptYes.load() ? 1 : 0;
+      }
+    }
+    if (answer < 0) {
+      if (const char* hook = std::getenv("MP2_RESUME_ANSWER")) {
+        if (sPromptTicks > 180) {
+          answer = hook[0] == 'y' ? 1 : 0;
+        }
+      }
+    }
+    if (answer < 0) {
+      return true;
+    }
+    sPromptShown.store(false);
+    if (answer == 0) {
+      SetMessage("resume: declined");
+      sPromptStage = kPromptDone;
+      return false;
+    }
+    ResumeInfo info;
+    {
+      std::lock_guard< std::mutex > lock(sPromptMutex);
+      info = sPromptInfo;
+    }
+    PortSkipFrontEnd::ArmFromResume(ResumeAccept(info));
+    sPromptTicks = 0;
+    sPromptStage = kPromptAccepting;
+    return true;
+  }
+  case kPromptAccepting:
+    if (PortSkipFrontEnd::Started() || ++sPromptTicks > kPromptAcceptTicks) {
+      sPromptStage = kPromptDone;
+      return false;
+    }
+    return true;
+  case kPromptDone:
+    break;
+  }
+  return false;
+}
+
+bool ResumePromptShown(ResumeInfo& out, bool& yes) {
+  if (!sPromptShown.load()) {
+    return false;
+  }
+  {
+    std::lock_guard< std::mutex > lock(sPromptMutex);
+    out = sPromptInfo;
+  }
+  yes = sPromptYes.load();
+  return true;
+}
+
+void AnswerResumePrompt(bool yes) { sPromptAnswer.store(yes ? 1 : 0); }
 
 } // namespace PortSaveState

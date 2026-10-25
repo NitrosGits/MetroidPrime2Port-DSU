@@ -480,8 +480,14 @@ void FillRawState(PortInput::RawState& raw, unsigned mouseHeld, bool focused) {
   if ((contexts & PortInput::kCtxMorphBall) != 0) menuPad |= PAD_BUTTON_Y | PAD_TRIGGER_R;
   const unsigned menuMask = PortInputMap::MouseButtonsFor(actions, menuPad);
   static PortMouse::ButtonGate sMenuGate;
+  // The resume prompt answers by its own buttons; a click on it must not also reach the game as A.
+  const auto ResumePromptUp = [] {
+    PortSaveState::ResumeInfo info;
+    bool yes = false;
+    return PortSaveState::ResumePromptShown(info, yes);
+  };
   const bool menuLive =
-      PortMouse::Enabled() && (contexts & PortInput::kCtxGameplay) == 0 && !PortOverlay::Visible() && focused;
+      PortMouse::Enabled() && (contexts & PortInput::kCtxGameplay) == 0 && !PortOverlay::Visible() && focused && !ResumePromptUp();
   mouse |= (sMenuGate.Poll(menuLive, mouseHeld & menuMask) & PortInputMap::kMouseButtonMask) << kMouseMenu;
   mouse |= (ReadMouseButtons(mouseHeld) & PortInputMap::kMouseButtonMask) << kMouseGameplay;
   raw.mouseButtons = mouse;

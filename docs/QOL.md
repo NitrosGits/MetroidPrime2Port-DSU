@@ -63,8 +63,8 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 5. **Save tools**: the card file is done - `save info|export|import|backup|backups` on the console,
    `MP2_CARD_BACKUP` (F1 > Saves) and a hook that copies the card before every write (detail in
    `docs/STATUS.md`). What is left of MP1's set does not fit this tree yet: **save states** are done
-   (F5/F9, `platform/port_savestate*.cpp`, room state included). **Quick resume** is not: MP2 resumes
-   from the card's own save (`MP2_SKIP_FRONTEND`); **region conversion** is refused by design (MP2's save
+   (F5/F9, `platform/port_savestate*.cpp`, room state included). **Quick resume** is done (qr1: snapshots in play, crash
+   marker, boot prompt; platform/README.md); **region conversion** is refused by design (MP2's save
    carries per-release `SAVW`/area data); **slot-level copy/erase** would have to reproduce the front
    end's option shuffling; raw-image cards are **import only**, and MP1's Dolphin/Trilogy folder
    discovery has no MP2 counterpart.

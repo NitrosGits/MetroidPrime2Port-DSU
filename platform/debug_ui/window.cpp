@@ -7,6 +7,7 @@
 #include "port_input_remap_ui.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
+#include "port_savestate.h"
 
 #include <SDL3/SDL.h>
 #include <imgui.h>
@@ -15,6 +16,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <ctime>
 #include <string>
 
 namespace PortDebug {
@@ -296,6 +298,63 @@ std::string HotkeyHint() {
   return hint;
 }
 
+// The boot's "Resume where you left off?" prompt: a dimmed viewport with a centred window. Yes and
+// No call AnswerResumePrompt; the pad and keys answer through the splash (CSplashScreen).
+void DrawResumePrompt() {
+  PortSaveState::ResumeInfo info;
+  bool yes = true;
+  if (ImGui::GetCurrentContext() == nullptr || !PortSaveState::ResumePromptShown(info, yes)) {
+    return;
+  }
+  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  const float scale = std::max(1.f, ImGui::GetFontSize() / 13.f);
+  ImGui::GetBackgroundDrawList()->AddRectFilled(
+      viewport->Pos, ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y),
+      IM_COL32(0, 0, 0, 150));
+  const float width = std::min(viewport->Size.x - 24.f * scale, 440.f * scale);
+  ImGui::SetNextWindowPos(
+      ImVec2(viewport->Pos.x + viewport->Size.x * 0.5f, viewport->Pos.y + viewport->Size.y * 0.5f),
+      ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+  ImGui::SetNextWindowSize(ImVec2(width, 0.f), ImGuiCond_Always);
+  if (ImGui::Begin("##resume-prompt", nullptr,
+                   ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoNav |
+                       ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove)) {
+    const char* title = info.crashedAgain
+                            ? "The game closed unexpectedly again after resuming here.\nResume anyway?"
+                        : info.crashedAfterThis ? "The game closed unexpectedly.\nResume where you left off?"
+                                                : "Resume where you left off?";
+    ImGui::TextWrapped("%s", title);
+    ImGui::Spacing();
+    char when[32] = "";
+    const std::time_t t = static_cast< std::time_t >(info.savedAt);
+    std::tm local{};
+    if (localtime_r(&t, &local) != nullptr) {
+      std::strftime(when, sizeof(when), "%Y-%m-%d %H:%M", &local);
+    }
+    ImGui::TextDisabled("%s", info.room.c_str());
+    ImGui::TextDisabled("Saved %s", when);
+    ImGui::Spacing();
+    const float button = (width - ImGui::GetStyle().WindowPadding.x * 2.f -
+                          ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+    const auto answer = [&](const char* label, bool value) {
+      const bool chosen = yes == value;
+      if (chosen) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+      }
+      if (ImGui::Button(label, ImVec2(button, 0.f))) {
+        PortSaveState::AnswerResumePrompt(value);
+      }
+      if (chosen) {
+        ImGui::PopStyleColor();
+      }
+    };
+    answer("Yes", true);
+    ImGui::SameLine();
+    answer("No", false);
+  }
+  ImGui::End();
+}
+
 // After the frame's settings are applied (PortOverlay::Draw): saves a changed setting, feeds the
 // pad to ImGui, and draws the window while it is open.
 void DrawUI() {
@@ -306,8 +365,14 @@ void DrawUI() {
   }
   UpdateControllerNav();
   // While the window is open the cursor belongs to it, not to the game's aim.
-  PortMouse::SetUiActive(sVisible);
+  PortSaveState::ResumeInfo promptInfo;
+  bool promptYes = true;
+  const bool promptUp = PortSaveState::ResumePromptShown(promptInfo, promptYes);
+  PortMouse::SetUiActive(sVisible || promptUp);
   BeginTopToastStack();
+  if (!sVisible) {
+    DrawResumePrompt();
+  }
   DrawMenuHintToast();
   DrawShaderCompilationToast();
   if (!sVisible) {

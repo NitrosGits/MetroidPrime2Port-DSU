@@ -16,6 +16,7 @@
 #ifdef TARGET_PC
 #include "port_harness.h"
 #include "port_overlay.h"
+#include "port_savestate.h"
 
 #include <cstdio>
 #endif
@@ -80,6 +81,12 @@ CIOWin::EMessageReturn CSplashScreen::OnMessage(const CArchitectureMessage& mess
                                                 CArchitectureQueue& queue) {
   switch (message.GetType()) {
   case kAM_TimerTick: {
+#ifdef TARGET_PC
+    // Port: the quick-resume prompt holds the splash while it is up.
+    if (PortSaveState::ResumePromptTick()) {
+      break;
+    }
+#endif
     mTexturesLoaded = true;
     if ((mSplashTexture.valid() && !mSplashTexture->TryCache()) ||
         (mPressStartTexture.valid() && !mPressStartTexture->TryCache())) {
@@ -162,6 +169,15 @@ CIOWin::EMessageReturn CSplashScreen::OnMessage(const CArchitectureMessage& mess
     if (!mTexturesLoaded) {
       break;
     }
+#ifdef TARGET_PC
+    {
+      PortSaveState::ResumeInfo promptInfo;
+      bool promptYes = false;
+      if (PortSaveState::ResumePromptShown(promptInfo, promptYes)) {
+        break;
+      }
+    }
+#endif
     const CFinalInput& input = MakeMsg::GetParmUserInput(message).GetUserInput();
     if (mProgressivePhase == kPP_Selection) {
       if (input.DLALeft() || input.DDPLeft()) {

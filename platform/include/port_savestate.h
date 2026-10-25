@@ -92,6 +92,13 @@ std::string ResumeStatus();
 void RequestResumeSnapshot(); // console: take and write a snapshot now
 void RequestResumeLoad();     // console: load the resume file
 
+// The boot's resume prompt. ResumePromptTick runs once per splash tick (game thread) and is true
+// while the splash must be held; ResumePromptShown fills what the overlay draws (any thread);
+// AnswerResumePrompt is the overlay's Yes/No.
+bool ResumePromptTick();
+bool ResumePromptShown(ResumeInfo& out, bool& yes);
+void AnswerResumePrompt(bool yes);
+
 // --- room state (platform/port_savestate_room.cpp), game thread only -------------------------
 
 // One tagged piece of an object's state; an unknown tag is skipped on load.
