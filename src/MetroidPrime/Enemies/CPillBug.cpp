@@ -445,6 +445,7 @@ bool CPillBug::Landed(CStateManager& mgr, const CTriggerData& data) const { retu
 // @ fn_48_2930
 bool CPillBug::HitPlayer(CStateManager& mgr, const CTriggerData& data) const { return mHitPlayer; }
 
+// @ fn_48_274C
 bool CPillBug::CloseToPath(CStateManager& mgr, const CTriggerData& data) const {
   if (mgr.Random()->Next() & 3) {
     return false;
