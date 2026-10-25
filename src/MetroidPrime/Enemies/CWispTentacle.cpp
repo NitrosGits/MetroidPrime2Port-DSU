@@ -62,6 +62,7 @@ static const char* const skArmEndLocator = "M_arm_end";
 static const char* const skLockOnLocator = "lockon_target_LCTR";
 static const char* const skClawAttachLocator = "claw_attach_LCTR";
 
+// @ fn_86_3628
 CWispTentacle::CWispTentacle(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                              const CTransform4f& xf, const CModelData& modelData,
                              const CPatternedInfo& patternedInfo, const CDamageInfo& attackDamage,
@@ -146,6 +147,7 @@ CWispTentacle::CWispTentacle(TUniqueId uid, const rstl::string& name, const CEnt
 // @ fn_86_0
 CWispTentacle::~CWispTentacle() {}
 
+// @ fn_86_2A18 forced (tools/cov/specs/wisp3_force.py, wisp3_hall.con: Create tests, last-touched player/bomb for HitObject/Damage)
 void CWispTentacle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId senderId = msg.GetSenderId();
   switch (msg.GetMessage()) {
@@ -474,6 +476,7 @@ void CWispTentacle::Flinch(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_86_1B54
 void CWispTentacle::UpdateGrabbedPirate(float dt, CStateManager& mgr) {
   CSpacePirate* pirate = TCastToPtr< CSpacePirate >(mgr.ObjectById(mPirateId));
   if (!pirate) {
@@ -554,6 +557,7 @@ void CWispTentacle::Render(const CStateManager& mgr) const {
   CPatterned::Render(mgr);
 }
 
+// @ fn_86_13D4
 void CWispTentacle::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;

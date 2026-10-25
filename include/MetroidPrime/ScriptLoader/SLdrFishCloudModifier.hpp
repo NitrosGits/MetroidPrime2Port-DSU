@@ -25,6 +25,7 @@ inline SLdrFishCloudModifier::SLdrFishCloudModifier() : editorProperties() {
   influencePriority = 0.40000001f;
 }
 
+// @ fn_20_2EC
 inline SLdrFishCloudModifier::~SLdrFishCloudModifier() {}
 
 #endif

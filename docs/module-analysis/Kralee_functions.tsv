@@ -17,7 +17,7 @@ offset	fn	size	class	name	slice	what	marker
 000C8	fn_37_C8	24	T	RELExit	kr1	REL runtime (module entry)	yes
 000EC	fn_37_EC	20	T	RELMain	kr1	REL runtime (module entry)	yes
 0010C	fn_37_10C	30	B	SetFuncPtrs()	kr1	upstream body (CKralee)	yes
-0013C	fn_37_13C	704	B	LoadKralee(CStateManager&, CInputStream&, CEntityInfo&)	-	upstream body (CKralee)	no
+0013C	fn_37_13C	704	B	LoadKralee(CStateManager&, CInputStream&, CEntityInfo&)	kral2	upstream body (CKralee)	yes
 00840	fn_37_840	40	H	rstl::optional_object<CModelData>::optional_object(const rstl::optional_object<CModelData>&)	-	weak/template copy	no
 00880	fn_37_880	20	H	rstl::construct<CModelData>(void*, const CModelData&)	-	weak/template copy	no
 008A0	fn_37_8A0	28	H	rstl::construction_policy<CModelData, 0>::construct(void*, const CModelData&)	-	weak/template copy	no
@@ -27,7 +27,7 @@ offset	fn	size	class	name	slice	what	marker
 00AC4	fn_37_AC4	64	H	rstl::auto_ptr<CAnimData>::~auto_ptr()	-	weak/template copy	no
 00B28	fn_37_B28	60	H	rstl::optional_object<CModelData>::~optional_object()	-	weak/template copy	no
 00B88	fn_37_B88	70	H	SLdrKralee::~SLdrKralee()	-	weak/template copy	no
-00BF8	fn_37_BF8	220	B	SLdrKralee::SLdrKralee()	-	upstream body (SLdrKralee)	no
+00BF8	fn_37_BF8	220	B	SLdrKralee::SLdrKralee()	kral2	upstream body (SLdrKralee)	yes
 00E18	fn_37_E18	1B0	B	CKralee::WarpOutExit(CStateManager&, float)	kr1	upstream body (CKralee)	yes
 00FC8	fn_37_FC8	50	H	rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::~basic_string()	-	weak/template copy	no
 01018	fn_37_1018	68	B	CKralee::AddToRenderer(const CStateManager&) const	-	upstream body (CKralee)	no
@@ -49,7 +49,7 @@ offset	fn	size	class	name	slice	what	marker
 02094	fn_37_2094	48	H	CBodyStateCmd::~CBodyStateCmd()	-	weak/template copy	no
 020DC	fn_37_20DC	300	B	CKralee::Patrol(CStateManager&, EStateMsg, float)	-	upstream body (CKralee)	no
 023DC	fn_37_23DC	70	B	CKralee::~CKralee()	kr1	upstream body (CKralee)	yes
-0244C	fn_37_244C	448	B	CKralee::CKralee(TUniqueId, const rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>&, CEntityInfo&, const CTransform4f&, const CModelData&, const CPatternedInfo&, const CActorParameters&, float, float, float, float, float, float, float, float, bool, float, float, float, float, float, unsigned int, unsigned int, unsigned short, unsigned short, bool, float, float, float, float)	-	upstream body (CKralee)	no
+0244C	fn_37_244C	448	B	CKralee::CKralee(TUniqueId, const rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>&, CEntityInfo&, const CTransform4f&, const CModelData&, const CPatternedInfo&, const CActorParameters&, float, float, float, float, float, float, float, float, bool, float, float, float, float, float, unsigned int, unsigned int, unsigned short, unsigned short, bool, float, float, float, float)	kral2	upstream body (CKralee)	yes
 02894	fn_37_2894	94	H	CCECharacterInfo::CParticleResData::~CParticleResData()	-	weak/template copy	no
 02928	fn_37_2928	80	H	CCECharacterInfo::CParticleResData::CParticleResData(const rstl::vector<unsigned int, rstl::rmemory_allocator>&, const rstl::vector<unsigned int, rstl::rmemory_allocator>&, const rstl::vector<unsigned int, rstl::rmemory_allocator>&, const rstl::vector<unsigned int, rstl::rmemory_allocator>&, const rstl::vector<unsigned int, rstl::rmemory_allocator>&, const rstl::vector<unsigned int, rstl::rmemory_allocator>&)	-	weak/template copy	no
 029A8	fn_37_29A8	100	H	rstl::vector<unsigned int, rstl::rmemory_allocator>::vector(const rstl::vector<unsigned int, rstl::rmemory_allocator>&)	-	weak/template copy	no

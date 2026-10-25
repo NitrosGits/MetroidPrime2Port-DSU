@@ -26,28 +26,28 @@ offset	fn	size	class	name	slice	what	marker
 00C10	fn_46_C10	54	H	__dt__15TToken<6CModel>Fv	-	weak copy / template instance	no
 00C64	fn_46_C64	64	H	__dt__Q24rstl20auto_ptr<9CAnimData>Fv	-	weak copy / template instance	no
 00CC8	fn_46_CC8	60	H	__dt__Q24rstl29optional_object<10CModelData>Fv	-	weak copy / template instance	no
-00D28	fn_46_D28	7C	B	__dt__19SLdrOctapedeSegmentFv	oct1	SLdrOctapedeSegment dtor (header)	no
-00DA4	fn_46_DA4	270	B	__ct__19SLdrOctapedeSegmentFv	oct1	SLdrOctapedeSegment ctor: loader defaults fixed (oct1), in the header	no
-01014	fn_46_1014	BC	B	Burn__16COctapedeSegmentFR13CStateManagerff	oct1	Burn: burn-disabled arm not forceable	no
+00D28	fn_46_D28	7C	B	__dt__19SLdrOctapedeSegmentFv	oct3	Header member teardown; 16 loader executions; ABI null/delete paths absent for stack local	yes
+00DA4	fn_46_DA4	270	B	__ct__19SLdrOctapedeSegmentFv	oct3	Header defaults match retail including oct1 corrections; 16 loader executions, EH-only gaps	yes
+01014	fn_46_1014	BC	B	Burn__16COctapedeSegmentFR13CStateManagerff	oct1	Existing source marker; TSV synchronized in oct3	yes
 010D0	fn_46_10D0	100	B	Freeze__16COctapedeSegmentFR13CStateManagerRC9CVector3f13CUnitVector3fff	oct1	upstream body	yes
 011D0	fn_46_11D0	2C	B	ThinkAboutMove__16COctapedeSegmentFf	oct1	upstream body	yes
-011FC	fn_46_11FC	11C	B	DoUserAnimEvent__16COctapedeSegmentFR13CStateManagerRC13CInt32POINode14EUserEventTypef	oct1	DoUserAnimEvent: non-SoundPlay default arm not reached (only SoundPlay events ship)	no
-01318	fn_46_1318	1C8	B	Explode__16COctapedeSegmentFR13CStateManager	oct1	Explode: TCastTo<CScriptEffect> fail arm data-dependent (all 0p targets are effects)	no
-014E0	fn_46_14E0	3D8	B	CollidedWith__16COctapedeSegmentFRC9TUniqueIdRC18CCollisionInfoListR13CStateManager	oct1	CollidedWith: list-count-0, live-segment and non-mask collision arms not reached	no
+011FC	fn_46_11FC	11C	B	DoUserAnimEvent__16COctapedeSegmentFR13CStateManagerRC13CInt32POINode14EUserEventTypef	oct1	Existing source marker; TSV synchronized in oct3	yes
+01318	fn_46_1318	1C8	B	Explode__16COctapedeSegmentFR13CStateManager	oct1	Existing source marker; TSV synchronized in oct3	yes
+014E0	fn_46_14E0	3D8	B	CollidedWith__16COctapedeSegmentFRC9TUniqueIdRC18CCollisionInfoListR13CStateManager	oct3	25/26 edges; only GCC static-guard contention edge absent from retail remains	yes
 018B8	fn_46_18B8	4AC	B	Bounce__16COctapedeSegmentFR13CStateManagerRC9CVector3fb	oct1	upstream body	yes
-01D64	fn_46_1D64	40	B	Cross__9CVector3fFRC9CVector3fRC9CVector3f	oct1	Cross: inlined vector helper; equivalent	no
+01D64	fn_46_1D64	40	B	Cross__9CVector3fFRC9CVector3fRC9CVector3f	oct3	Header arithmetic matches 1D64..1DA0; 43 inline executions in Death/Bounce	yes
 01DA4	fn_46_1DA4	348	B	Dead__16COctapedeSegmentFR13CStateManager9EStateMsgf	oct1	upstream body	yes
 020EC	fn_46_20EC	650	B	Death__16COctapedeSegmentFR13CStateManagerRC9CVector3f18EScriptObjectState	oct1	upstream body	yes
 0273C	fn_46_273C	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
-0278C	fn_46_278C	F0	B	FindHeadSegment__FR13CStateManager9TUniqueId	oct1	FindHeadSegment: cast-fail arm data-dependent	no
+0278C	fn_46_278C	F0	B	FindHeadSegment__FR13CStateManager9TUniqueId	oct1	Existing source marker; TSV synchronized in oct3	yes
 0287C	fn_46_287C	20	B	AddToRenderer__16COctapedeSegmentCFRC13CStateManager	oct1	upstream body	yes
 0289C	fn_46_289C	20	B	PreRender__16COctapedeSegmentFR13CStateManager	oct1	upstream body	yes
 028BC	fn_46_28BC	68	B	Render__16COctapedeSegmentCFRC13CStateManager	oct1	upstream body	yes
-02924	fn_46_2924	6E0	B	Think__16COctapedeSegmentFfR13CStateManager	oct1	Think: occlusion arms not reached	no
+02924	fn_46_2924	6E0	B	Think__16COctapedeSegmentFfR13CStateManager	oct3	72/72 edges; area/member writes before loads, restored on same return	yes
 03004	fn_46_3004	4C	H	SetOverrideFPos__17CParticleElectricFRC9CVector3f	-	weak copy / template instance	no
 03050	fn_46_3050	4C	H	SetOverrideIPos__17CParticleElectricFRC9CVector3f	-	weak copy / template instance	no
 0309C	fn_46_309C	20	B	PreThink__16COctapedeSegmentFfR13CStateManager	oct1	upstream body	yes
-030BC	fn_46_30BC	3AC	B	AcceptScriptMsg__16COctapedeSegmentFR13CStateManagerRC10CScriptMsg	oct1	AcceptScriptMsg: cast-fail and head==self arms data-dependent	no
+030BC	fn_46_30BC	3AC	B	AcceptScriptMsg__16COctapedeSegmentFR13CStateManagerRC10CScriptMsg	oct3	46/46 edges; invalid connections, head/self and populated follower, repeated messages	yes
 03468	fn_46_3468	C	H	clear__Q24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
 03474	fn_46_3474	4C	B	SetupStateMachine__16COctapedeSegmentFR13CStateManager	oct1	upstream body	yes
 034C0	fn_46_34C0	5B0	B	Patrol__16COctapedeSegmentFR13CStateManager9EStateMsgf	oct1	upstream body	yes

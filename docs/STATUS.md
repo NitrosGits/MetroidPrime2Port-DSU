@@ -3,6 +3,19 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-25 (port orchestrator): batch34, last behaviour rows
+
+Integration `integ/batch34` (`../wt-mp2-batch34`, from port 92bcb4775) merged kral2/kral2b, oct3, spa3/spa3b/spa3c,
+fish2/fish2b and wisp3/wisp3b: FishCloud 56, Kralee 18, OctapedeSegment 24, ScriptPlayerActor 33 and WispTentacle 35
+behaviour rows all marked; progress 5880 markers, behaviour 5491/5491 (100%). An astra (`openai/gpt-6-astra#xhigh`)
+fresh-context review of every new marker found three bad proofs, all reworked: spa3 C30 count rewrite (now a real
+count-3 RenderShadowBuffer with the beam model aliased as grapple), fish2 Touch 740/750 (real normalization-false
+arms, now forced via `fishcloud_touch_norm_force.py`), kral2 244C (block3->5 initiallyInvisible ternary, proven by
+`tools/scan_kralee_props.py`). Gates: build-port-link links, 87 files OK, gen_files_cmake --check, smoke59b vs
+smoke58d no regressions. Evidence in `../evidence-archive/{kral2,oct3,spa3,fish2,wisp3}`.
+Caveats: many forced arms have no natural trigger (no shipped grapple model for ScriptPlayerActor, WispTentacle
+last-touched player/bomb); WallCrawler/Ripper/ScriptCoin still never spawned; H/T rows (copies 2056/4743) don't count.
+
 ## 2026-10-20 (port orchestrator): lanes in flight
 
 Read a lane's result with the openchamber tool (`session.messages`, `lastAssistant`), review with

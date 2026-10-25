@@ -222,6 +222,9 @@ void COctapedeSegment::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+#ifdef TARGET_PC
+// @ fn_46_30BC
+#endif
 void COctapedeSegment::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_AreaLoaded: {
@@ -290,6 +293,9 @@ void COctapedeSegment::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
 // @ fn_46_309C
 void COctapedeSegment::PreThink(float dt, CStateManager& mgr) { CWallCrawler::PreThink(dt, mgr); }
 
+#ifdef TARGET_PC
+// @ fn_46_2924
+#endif
 void COctapedeSegment::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -565,6 +571,9 @@ void COctapedeSegment::Bounce(CStateManager& mgr, const CVector3f& normal, bool 
   }
 }
 
+#ifdef TARGET_PC
+// @ fn_46_14E0
+#endif
 void COctapedeSegment::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                     CStateManager& mgr) {
   static CMaterialList skBounceMask(skBounceMaterialA, skBounceMaterialB, skBounceMaterialC,

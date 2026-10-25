@@ -1,0 +1,14 @@
+# spa3: sand_temple_dark (42b935e4) layer 10, as spa_sandtempledark.con up to the Increments (offline model
+# set-up, mBackupModelData engaged: tools/cov/specs/spa3_force.py forces !IsMaxSpeed and holds the
+# countdown), then both actors are deleted while the backup is still engaged (the destructor's live arm).
+@f260 layer 10
+@f300 god 1; give darkSuit 1; give lightSuit 1
+@f320 obj e0024022f; obj e00240396
+@f340 send e0024022f Activate
+@f360 send e00240396 Activate
+@f700 obj e0024022f
+@f720 send e0024022f Increment
+@f740 send e00240396 Increment
+@f1000 send e0024022f Delete
+@f1020 send e00240396 Delete
+@f1200 obj e0024022f

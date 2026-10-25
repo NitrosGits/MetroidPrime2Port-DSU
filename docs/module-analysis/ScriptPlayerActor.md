@@ -78,7 +78,41 @@ Every write is one call, restored at the next entry.
 | SetIntoStateManager 970 | 16/18 | 0x573's `!set && previous` (the two-actor chain in spa2_templedark.con) | 580:1/4 and 580:2/4: `actor`/`actor->mIsPlayerActor` are in registers at 0x580, so `loc:` writes of them (and of `id.value`) do not reach the test |
 | GetSuitCharIdx FDC | 3/4 | mCharacterCount 0 (both count arms) | 514:1/2 (the inner count arm): needs renderSuit(suit) >= mCharacterCount with suit < mCharacterCount; `$rdx` writes at entry did not produce it |
 | GetNextSuitCharIdx 103C | 4/6 | - | 489:0/2 and 495:1/2: mFlags/mSuit writes at entry do not change the branch (the two suit assignments compile to one select; the branch gcov reports on that line is not the one the C++ reads) |
-| dtor 2E3C | - | - | inline in the header (no standalone body to mark) |
+| dtor 2E3C | - | - | inline in the header; see section 7 |
 
 No retail divergence and no source change in this pass: the bodies still match the asm as the survey
 records.
+
+## 7. spa3 (2026-10-25): forced arms, `tools/cov/specs/spa3_force.py` + `tools/drivers/spa3_templedark.con`
+
+Per-call cycling forcers (this/mgr captured at entry; no register restore). Runs: f2 (`42b935e4,03_sand_temple_dark`, `--fast --frames 2200`), f3 (`SPA3_ACS=1`, unknown-ACS), plus natural a..j.
+
+| fn | result | note |
+|---|---|---|
+| C0 LoadPlayerActor | ALL-ARMS, marked | unknown-ACS arm forced (`SPA3_ACS=1`, ancs=0xffffffff at loc:599) |
+| FDC GetSuitCharIdx | ALL-ARMS, marked | (suit,count) pairs; inner arm needs `give gravityBoost` (Dark renders 5, `CPlayerState.cpp:597`) |
+| 103C GetNextSuitCharIdx | ALL-ARMS, marked | all (mFlags&2, mSuit) pairs; spa2 missed it with call-number one-shots |
+| 970 SetIntoStateManager | 17/18, unmarked | 580:2 (chain actor that is not a player actor) not reached |
+| AB8 SetupEnvFx | 15/17, unmarked | 549:4/5 (rain with no model data) not reached |
+| C30 PreRender | 18/21, unmarked | 530:4/9, 535:3 not reached; `loc:530` writes land after the test (crash at 535 with a null shadow) |
+| 2630 Think | 63/67, unmarked | 200:3, 221:8/10, 227:4 not reached |
+| 2E3C dtor | 29 deletes, unmarked | all but the `mBackupModelData` live arm ran; that arm needs a delete within 2 PreRenders of `SetupOfflineModelData` (`.cpp:369`, countdown at 522-526); 368:1 is itself untaken |
+
+## 8. spa3 slice 2 (2026-10-25): the five open rows closed
+
+Merged evidence: frozen cov binary sha256 `c40ad8cb…6fbaf`; gcda, logs and merged report under `/tmp/opencode/spa3-ev/` (runs f3, f5..f12 plus natural a..j). Spec `tools/cov/specs/spa3_force.py`; drivers `spa3_templedark.con`, `spa3_backup_delete.con` (`spa3_hive_shadow.con` is a failed attempt: no shadow plus live grapple; kept for the record).
+
+| fn | merged result | how the last arms closed |
+|---|---|---|
+| 970 SetIntoStateManager | 22/22, 18/18, marked | `sia_not_player`: clears `mIsPlayerActor` on another chain actor at the `actor->mIsPlayerActor` read (580:2) |
+| AB8 SetupEnvFx | 12/12, 17/17, marked | rain arm: producer forced; no-shadow via mFlags 0x20 |
+| C30 PreRender | 13/13, 21/21, marked | 535:3 `HasGrappleModelData() ? 3 : 2`: no run loads a grapple model (the ctor builds CStaticRes beam/grapple data), so `grapple_alias` at `f7cddd` makes the load return the beam pointer and `alias_count` (f7cdff) also stores that valid `CModelData*` in the on-stack `models[2]` (`rsp+0x80`). The count stays 3 and `RenderShadowBuffer` really runs with it (spa3c run f13, `forced.log`: `RSB count 3 models [suit, beam, beam]`, 5 hits, game rc 0, caught/reach-stub 0). A forced alias, not a natural state |
+| 2630 Think | 45/45, 67/67, marked | per-call forcers at the model-loaded tests (219/224/225), cinematic camera, loading blocks |
+| 2E3C dtor | 100% blocks, marked | `mBackupModelData` live arm: `SPA3_ONLY=offl` forces `SetupOfflineModelData`'s IsMaxSpeed test (`*SetupOfflineModelData+0xbe`, `je f7a0b8`) false and holds the countdown (`movl $2,0x4c8` at f7a10e) ; `spa3_backup_delete.con` deletes the actor. `SPA3_MAXSPEED=1` run covers the skip arm |
+
+`single_ptr<CProjectedShadow>` (dtor 2E3C): retail asm (`ScriptPlayerActor/asm/.../CScriptPlayerActor.s:3414`) calls `__dt__16CProjectedShadowFv(*0x3f4, r4=1)` with no caller null check; host `~single_ptr(){delete mPtr;}` (`rstl/single_ptr.hpp:15`) is a null-safe deleting dtor. Equivalent. The optional at 0x3e4 guarded by byte 0x3f0 is `mBackupModelData`; tokens at 0x3e0/0x3dc/0x3d8 follow. No source change.
+
+### 8b. spa3c rework (2026-10-25)
+
+- C30: the first version rewrote the count to 2 (`alias_count`), so the count-3 call never ran. Now no count rewrite; models[2] is a valid pointer (the beam model). Evidence `/tmp/opencode/spa3-ev/c/f13` (run `42b935e4,03_sand_temple_dark`, `--fast --frames 2600`).
+- One cited merge for every marker, including 103C (needs run f2): set in `/tmp/opencode/spa3-ev/c/merge_set.txt` (f13, f12..f5, f3, f2, a..j), report `/tmp/opencode/spa3-ev/c/merged_report.txt`: Think, SetupEnvFx, SetIntoStateManager, PreRender, GetNextSuitCharIdx, GetSuitCharIdx, LoadPlayerActor, SetupOfflineModelData all ALL-ARMS. C0/FDC/103C/2E3C numbers in section 7 and 8 come from this merge.
