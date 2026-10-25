@@ -9,6 +9,7 @@
 
 #include "rstl/math.hpp"
 #ifdef TARGET_PC
+#include "MetroidPrime/ScriptObjects/CScriptColorModulate.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTextPane.hpp"
 #include "port_pointer.h"
 #include "port_pointer_menu.h"
@@ -90,8 +91,31 @@ void CScriptGuiMenu::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) 
 }
 
 #ifdef TARGET_PC
-// Pointer: hover selects the item whose text pane is under the pointer, a click
+// Pointer: hover selects the item whose text panes are under the pointer, a click
 // presses A (the base Think turns it into the menu's A connections), right click B.
+// An item reaches its panes directly or through the color modulate its Entered/Exited drive.
+static bool PortItemContains(CStateManager& mgr, CEntity* item, float gx, float gy, int depth) {
+  for (rstl::vector< SConnection >::const_iterator c = item->GetConnectionList().begin();
+       c != item->GetConnectionList().end(); ++c) {
+    const TUniqueId tid = mgr.GetIdForScript(c->objId);
+    CEntity* target = mgr.ObjectById(tid);
+    if (target == nullptr) {
+      continue;
+    }
+    if (TCastToPtr< CScriptTextPane >(target)) {
+      float x0, y0, x1, y1;
+      if (PortTextPaneBounds(tid, x0, y0, x1, y1) && gx >= x0 && gx <= x1 && gy >= y0 &&
+          gy <= y1) {
+        return true;
+      }
+    } else if (depth > 0 && TCastToPtr< CScriptColorModulate >(target) &&
+               PortItemContains(mgr, target, gx, gy, depth - 1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void CScriptGuiMenu::PortPointerInput(CStateManager& mgr) {
   if (!GetActive() || mItems.size() == 0 || !PortPointerMenu::Begin()) {
     return;
@@ -108,32 +132,20 @@ void CScriptGuiMenu::PortPointerInput(CStateManager& mgr) {
   }
   float gx, gy;
   int count;
-  const bool hasPos = PortPointer::Position(gx, gy);
-  const bool clicked = PortPointerMenu::TakeClickPoint(gx, gy, count);
-  if (!hasPos && !clicked) {
+  bool clicked = PortPointerMenu::PeekClickPoint(gx, gy);
+  if (!clicked && !PortPointer::Position(gx, gy)) {
     return;
   }
   for (int i = 0; i < mItems.size(); ++i) {
     CEntity* item = mgr.ObjectById(mItems[i]);
-    if (item == nullptr || IsItemLocked(i, mgr)) {
+    if (item == nullptr || IsItemLocked(i, mgr) || !PortItemContains(mgr, item, gx, gy, 1)) {
       continue;
     }
-    for (rstl::vector< SConnection >::const_iterator c = item->GetConnectionList().begin();
-         c != item->GetConnectionList().end(); ++c) {
-      const TUniqueId tid = mgr.GetIdForScript(c->objId);
-      if (!TCastToPtr< CScriptTextPane >(mgr.ObjectById(tid))) {
-        continue;
-      }
-      float x0, y0, x1, y1;
-      if (PortTextPaneBounds(tid, x0, y0, x1, y1) && gx >= x0 && gx <= x1 && gy >= y0 &&
-          gy <= y1) {
-        SetSelection(i, mgr);
-        if (clicked) {
-          PortPointerMenu::PressA(input);
-        }
-        return;
-      }
+    SetSelection(i, mgr);
+    if (clicked && PortPointerMenu::TakeClickPoint(gx, gy, count)) {
+      PortPointerMenu::PressA(input);
     }
+    return;
   }
 }
 #endif
