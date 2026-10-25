@@ -335,6 +335,8 @@ static constexpr std::array DepthConvPipelines{
 
 static wgpu::BindGroupLayout g_bindGroupLayout;
 static wgpu::BindGroupLayout g_depthBindGroupLayout;
+static wgpu::BindGroupLayout g_depthBindGroupLayoutMS;
+static absl::flat_hash_map<GXTexFmt, wgpu::RenderPipeline> g_depthPipelinesMS; // Core devices only
 static wgpu::Sampler g_nearestSampler;
 static wgpu::Sampler g_linearSampler;
 static absl::flat_hash_map<GXTexFmt, wgpu::RenderPipeline> g_pipelines;
@@ -621,6 +623,16 @@ void initialize() {
       .entries = depthBindGroupLayoutEntries.data(),
   };
   g_depthBindGroupLayout = g_device.CreateBindGroupLayout(&depthBindGroupLayoutDescriptor);
+  if (webgpu::g_hasCoreFeatures) {
+    auto msEntries = depthBindGroupLayoutEntries;
+    msEntries[0].texture.multisampled = true;
+    const wgpu::BindGroupLayoutDescriptor msDescriptor{
+        .label = "TexCopyConv Depth MS Bind Group Layout",
+        .entryCount = 2,
+        .entries = msEntries.data(),
+    };
+    g_depthBindGroupLayoutMS = g_device.CreateBindGroupLayout(&msDescriptor);
+  }
 
   g_blitPipeline = create_pipeline(
       {GX_TF_RGBA8, FragPassthrough, webgpu::g_graphicsConfig.surfaceConfiguration.format, "TexCopyConv Blit"},
@@ -638,6 +650,13 @@ void initialize() {
       if (conv.outputFormat != to_wgpu(conv.fmt)) {
         Log.fatal("Output format mismatch for {}", conv.fmt);
       }
+    }
+    // The same shaders on a multisampled source: textureLoad's last argument becomes the sample index.
+    std::string msPreamble = DepthShaderPreamble;
+    const std::string_view single = "texture_depth_2d";
+    msPreamble.replace(msPreamble.find(single), single.size(), "texture_depth_multisampled_2d");
+    for (const auto& conv : DepthConvPipelines) {
+      g_depthPipelinesMS[conv.fmt] = create_pipeline(conv, msPreamble, g_depthBindGroupLayoutMS);
     }
     g_depthSnapshotBindGroupLayout = create_depth_snapshot_layout(false, "Depth Snapshot Bind Group Layout");
     g_depthSnapshotBindGroupLayoutMS = create_depth_snapshot_layout(true, "Depth Snapshot MS Bind Group Layout");
@@ -672,6 +691,8 @@ void shutdown() {
   g_blitPipeline = {};
   g_bindGroupLayout = {};
   g_depthBindGroupLayout = {};
+  g_depthBindGroupLayoutMS = {};
+  g_depthPipelinesMS.clear();
   g_nearestSampler = {};
   g_linearSampler = {};
   g_depthSnapshotBindGroupLayout = {};
@@ -703,7 +724,7 @@ static void execute(const wgpu::CommandEncoder& cmd, const ConvRequest& req, con
         },
     };
     const wgpu::BindGroupDescriptor bindGroupDescriptor{
-        .layout = g_depthBindGroupLayout,
+        .layout = req.srcSamples > 1 ? g_depthBindGroupLayoutMS : g_depthBindGroupLayout,
         .entryCount = bindGroupEntries.size(),
         .entries = bindGroupEntries.data(),
     };
@@ -790,11 +811,23 @@ void run(const wgpu::CommandEncoder& cmd, const ConvRequest& req) {
     execute(cmd, req, domain_pipeline(req.fmt, req.domain, req.dst->format));
     return;
   }
+  if (req.srcSamples > 1) {
+    const auto it = g_depthPipelinesMS.find(req.fmt);
+    if (it == g_depthPipelinesMS.end()) {
+      Log.fatal("No multisampled copy conversion pipeline for format {}", static_cast<int>(req.fmt));
+    }
+    execute(cmd, req, it->second);
+    return;
+  }
   const auto it = g_pipelines.find(req.fmt);
   if (it == g_pipelines.end()) {
     Log.fatal("No copy conversion pipeline for format {}", static_cast<int>(req.fmt));
   }
   execute(cmd, req, it->second);
+}
+
+bool depth_conversion_supported(GXTexFmt fmt, uint32_t msaaSamples) noexcept {
+  return msaaSamples > 1 ? g_depthPipelinesMS.contains(fmt) : g_pipelines.contains(fmt);
 }
 
 void blit(const wgpu::CommandEncoder& cmd, const ConvRequest& req) {
