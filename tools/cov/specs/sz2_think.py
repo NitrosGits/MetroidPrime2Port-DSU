@@ -79,7 +79,7 @@ lines = dict(natural={}, forced={})
 # C thread, so it answers while gdb is stuck in a callback).
 TRACE_FROM = int(os.environ.get('SZ2_TRACE_FROM', '14'))
 trace = dict(file=None, lines=0)
-stall = dict(last=time.monotonic(), want=False, fired=False, this=None, restore=None)
+stall = dict(last=time.monotonic(), pid=0, want=False, fired=False, this=None, restore=None)
 STALL_IDLE = float(os.environ.get('SZ2_STALL_IDLE', '40'))  # seconds without any breakpoint activity
 
 
@@ -87,6 +87,7 @@ def traced(kind):
     def wrap(fn):
         def inner(self):
             stall['last'] = time.monotonic()
+            stall['pid'] = gdb.selected_inferior().pid
             try:
                 if state['index'] >= TRACE_FROM and trace['lines'] < 40000:
                     if trace['file'] is None:
@@ -789,12 +790,38 @@ def stall_interrupt():
         gdb.execute('interrupt')
 
 
+def task_states(pid):
+    """one line per task: tid, state letter (t = stopped by the debugger), wchan, schedstat (ns run, ns wait, slices)"""
+    lines = []
+    for task in sorted(os.listdir('/proc/%d/task' % pid)):
+        try:
+            base = '/proc/%d/task/%s/' % (pid, task)
+            lines.append('%s %s %s %s' % (task, open(base + 'stat').read().split(')')[1].split()[0],
+                                          open(base + 'wchan').read(), open(base + 'schedstat').read().strip()))
+        except OSError as error:
+            lines.append('%s FAILED %s' % (task, error))
+    return lines
+
+
+def stall_sample(pid):
+    """before the interrupt (so the debugger has not stopped anything yet): two samples of every task, 1 s apart"""
+    with open(os.path.join(os.environ['COV_OUT'], 'stall_pre.txt'), 'w') as f:
+        for n in range(2):
+            f.write('### sample %d t=%.3f\n' % (n, time.monotonic()) + '\n'.join(task_states(pid)) + '\n')
+            f.flush()
+            time.sleep(1)
+
+
 def stall_watch():
     while True:
         time.sleep(2)
         if stall['fired']:
             return
         if state['eligible'] and time.monotonic() - stall['last'] > STALL_IDLE:
+            try:
+                stall_sample(stall['pid'])
+            except Exception as error:
+                log('STALL_SAMPLE_FAILED', error=str(error))
             gdb.post_event(stall_interrupt)
             return
 

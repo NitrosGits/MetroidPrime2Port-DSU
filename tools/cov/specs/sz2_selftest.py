@@ -58,7 +58,7 @@ class Tests(unittest.TestCase):
                     raise RuntimeError('cannot arm return')
         self.gdb = types.SimpleNamespace(
             Breakpoint=object, FinishBreakpoint=Finish,
-            selected_inferior=lambda: types.SimpleNamespace(num=self.ctx[0]),
+            selected_inferior=lambda: types.SimpleNamespace(num=self.ctx[0], pid=4242),
             selected_thread=lambda: types.SimpleNamespace(global_num=self.ctx[1]),
             newest_frame=lambda: Frame(self.stack, self.stack[0]))
         sys.modules['gdb'] = self.gdb
@@ -389,6 +389,17 @@ class Tests(unittest.TestCase):
         self.m.time.sleep = sleep
         self.m.stall_watch()
         self.assertEqual(posted, [self.m.stall_interrupt])
+
+    def test_stall_sample_reads_proc_tasks(self):
+        import tempfile
+        self.m.time.sleep = lambda s: None
+        lines = self.m.task_states(os.getpid())
+        self.assertTrue(lines and lines[0].split()[1] in 'RSDTtZ')
+        with tempfile.TemporaryDirectory() as d:
+            os.environ['COV_OUT'] = d
+            self.m.stall_sample(os.getpid())
+            text = open(os.path.join(d, 'stall_pre.txt')).read()
+        self.assertEqual(text.count('### sample'), 2)
 
     def test_log_has_a_monotonic_time(self):
         with open(Path(__file__).with_name('sz2_think.py')) as f:
