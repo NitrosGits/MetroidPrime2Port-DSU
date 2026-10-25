@@ -174,6 +174,22 @@ void CStreamAudioManager::StopSoftwareAudio(CStreamAudioManager::ESoftwareChanne
   }
 }
 
+#ifdef TARGET_PC
+bool CStreamAudioManager::PortIsPlaying(ESoftwareChannel chan, const rstl::string& fileName) {
+  const SDSPStreamCacheEntry& qp = s_QueuedPlayers[chan];
+  if (qp.mPlayState != 0) {
+    return CStringExtras::CompareCaseInsensitive(qp.mFileName, fileName) == 0;
+  }
+  const SDSPStreamCacheEntry& p = s_Players[chan];
+  return p.mPlayState != 0 && p.mPlayState != 3 &&
+         CStringExtras::CompareCaseInsensitive(p.mFileName, fileName) == 0;
+}
+
+bool CStreamAudioManager::PortIsCurrentTrack(const rstl::string& fileName) {
+  return fileName != rstl::string_l("") && mCurrentAudioFile == fileName;
+}
+#endif
+
 void CStreamAudioManager::PlaySoftwareAudio(ESoftwareChannel chan, const rstl::string& fileName,
                                             float fadeIn, float fadeOut, int volume, bool music) {
   SDSPStreamCacheEntry& p = s_Players[chan];

@@ -73,6 +73,8 @@ About 120 are Remastered/HDR, Dread Samus import or third-person camera (not por
     (`312b693c7`, `588b0577e`, `3dc11112f`; MP2's scan visor differs, check first).
 12. **Save states / audio** (merges into 7): restore the playing music (`bf86ab937`, `26d51db53`);
     a save mid-cinematic resumes it (`7478ebbbd`).
+    DONE (sav1): music (CScriptStreamedMusic restart) and cinematic shot time restored in
+    `platform/port_savestate_room.cpp`; no MP2 hold/CScriptMidi hook; audio rows already present.
 13. **Game options**: walk speed 50-200% (`62d94159f`); hint delay and Show current hint
     (`319685eed`; only if MP2's hint system has the same hook).
 
