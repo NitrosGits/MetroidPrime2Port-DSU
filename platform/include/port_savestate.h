@@ -60,6 +60,11 @@ void RequestLoad(int slot);
 void RequestModReload();
 bool ModReloadActive();
 bool ReloadModsNow();
+// The pause menu's share: the pause screen holds the suit model, no room is running and Tick does not
+// run, so the request cannot take the world-restart route. Returns true once, on the frame it reopened
+// the PAKs over the new mods (when no resource is mid-load); the caller then refreshes the pause
+// screen's models. The room reloads in full on the next Tick, so the world follows after unpausing.
+bool ServicePausedModReload();
 
 // The outcome of the last request, for the overlay ("" before the first).
 std::string LastMessage();

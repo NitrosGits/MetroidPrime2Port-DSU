@@ -48,6 +48,10 @@ public:
   void ProcessControllerInput(const CFinalInput& input);
   void Draw() const;
   bool IsDone() const;
+#ifdef TARGET_PC
+  // After a mods reload: drop the shown scan's models/textures and fetch them again.
+  void PortReloadScanModels();
+#endif
 
 private:
   // Guessed names for target-derived states and drawing records.

@@ -977,3 +977,11 @@ void CInGameGuiManager::StopSounds(const CStateManager& mgr) {
     mSamusHud->StopSounds(mgr);
   }
 }
+
+#ifdef TARGET_PC
+void CInGameGuiManager::PortReloadPauseModels() {
+  if (mPauseScreen.get() != nullptr) {
+    mPauseScreen->PortReloadScanModels();
+  }
+}
+#endif

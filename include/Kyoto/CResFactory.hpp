@@ -71,6 +71,10 @@ public:
   void AsyncIdle(uint time, const bool);
 
   CResLoader& GetResLoader() { return mResLoader; }
+#ifdef TARGET_PC
+  // True while a resource is still loading (the pak reopen of a mods reload must wait for none).
+  bool PortHasPendingLoads() const { return !mLoadList.empty(); }
+#endif
   CFactoryMgr& GetFactoryMgr() { return mFactoryMgr; }
   FourCC GetResourceTypeById(CAssetId id) { return GetResLoader().GetResourceTypeById(id); }
   rstl::vector< rstl::pair< rstl::string, SObjectTag > > GetResourceIdToNameList() const;

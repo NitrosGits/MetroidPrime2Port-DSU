@@ -37,8 +37,11 @@ not a hue cluster: low-saturation, not-dark texels of its four body textures tak
 saturation and keep their value (glow, lens, trim and dark-metal texels stay; Dark and Varia are
 coloured enough that they need no main slot). A saved `suit_colour_light=RRGGBB` is the accent;
 `-,RRGGBB` is main only. Limits: the Samus body model in cutscenes and some pause screen meshes
-were not located, so they keep original colours. Changes show after a restart or the Apply now
-button (the F1 Mods page's mod reload: `reloadmods`).
+were not located, so they keep original colours; the first-person arm cannon is not the suit and
+stays as is. The pause menu's Inventory Varia Suit model (LogBook.pak sheets) is recoloured too.
+Changes show after a restart or the Apply now button (`reloadmods`), also with the pause menu
+open: `CMFGame` services the reload while paused and `CPauseScreen::PortReloadScanModels` reloads
+the open Inventory model (the room follows when unpaused).
 
 ## Reload, folder, texture pack (MP1 sync 21)
 

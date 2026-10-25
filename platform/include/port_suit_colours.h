@@ -48,7 +48,7 @@ struct Image {
 };
 
 // Bump when the output changes: the cache is remade when its stamp differs.
-inline constexpr int kVersion = 3;
+inline constexpr int kVersion = 4;
 
 // CPlayerState::EPlayerSuit order.
 inline constexpr int kSuitCount = 3;

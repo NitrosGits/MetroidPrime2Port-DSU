@@ -8,6 +8,7 @@
 #include "port_harness.h"
 #include "port_overlay.h"
 #include "port_photo.h"
+#include "port_savestate.h"
 #include "port_pipeline_context.h"
 #endif
 
@@ -167,6 +168,10 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
     // The console normally runs inside the state manager's update; this serves it on frames
     // where the flow state skipped that update (portal transition, cinematic skip, pause).
     PortConsole::IdleTick(*mStateManager);
+    // A mods reload asked for while paused (Apply now, `reloadmods`): no update runs to service it.
+    if (mFlowState == kFS_Paused && PortSaveState::ServicePausedModReload()) {
+      mGuiManager->GetPlayerGuiManager(0).PortReloadPauseModels();
+    }
 #endif
     if (!mStateManager->mSaveGameScreen.null() &&
         mStateManager->mSaveGameScreen->Update(dt) != kMR_Normal && mFlowState == kFS_Paused) {

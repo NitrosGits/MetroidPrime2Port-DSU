@@ -104,9 +104,9 @@ void DrawVideoDisplay() {
       }
       ImGui::EndDisabled();
       ImGui::SetItemTooltip("Recolours the suit textures and rebuilds the room (the same as Game > Mods >\n"
-                            "Reload mods), so the suit shows the new colours without a restart. It runs while\n"
-                            "the game is playing (also with this overlay open), not while the pause menu is\n"
-                            "open; on the title screen they apply at the next start.");
+                            "Reload mods), so the suit shows the new colours without a restart. In the pause\n"
+                            "menu it refreshes the Inventory model at once and the room follows when you\n"
+                            "unpause; on the title screen they apply at the next start.");
       ImGui::TextDisabled("Colours not applied yet: Apply now, or they apply at the next start.");
     }
   }
