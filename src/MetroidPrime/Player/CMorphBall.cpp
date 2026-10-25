@@ -1420,7 +1420,7 @@ void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) co
 
   const bool shadow = lights != nullptr && lights->HasShadowLight() && mWorldShadow.get() != nullptr;
   if (shadow) {
-    mWorldShadow->EnableModelProjectedShadow(ballXf, lights->GetShadowLightIndex(), 1.f);
+    mWorldShadow->EnableModelProjectedShadow(ballXf, lights->GetShadowLightArrayIndex(), 1.f);
   }
   if (mPlayer.GetDeathAlpha() > 0.f && mBallModel.get() != nullptr) {
     if (hacked.first) {
