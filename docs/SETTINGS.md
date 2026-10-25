@@ -65,6 +65,10 @@ Controls > Controller settings:
 
 Controls > Remap:
 
+- Presets... (beside Reset...): one click applies Classic or Mouse & keyboard to the keyboard, or
+  GameCube, Remastered, Modern or Southpaw to all controllers, replacing your own bindings
+  there; a selected kind or model keeps its own on top. Reset... removes a device's own
+  bindings (after a confirmation), bringing back the Classic and GameCube layouts.
 - `menu_standard_buttons`: Separate menu buttons (menus and the map read the "Menus and map"
   rows; ignored while the touch controls are on); env `MP2_MENU_STANDARD_BUTTONS`.
 
