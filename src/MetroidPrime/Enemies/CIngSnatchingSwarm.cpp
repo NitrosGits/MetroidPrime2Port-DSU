@@ -129,6 +129,7 @@ SIngSnatchingSwarmData::SIngSnatchingSwarmData(
   mIgnorePlayer = ignorePlayer;
 }
 
+// @ fn_33_41CC
 CIngSnatchingSwarm::CIngSnatchingSwarm(TUniqueId uid, const rstl::string& name,
                                        const CEntityInfo& info, const CTransform4f& xf,
                                        const CVector3f& scale, const SIngSnatchingSwarmData& data)
@@ -467,6 +468,7 @@ void CIngSnatchingSwarm::SnatchTarget(CStateManager& mgr, int msg, float dt) {
   }
 }
 
+// @ fn_33_29A8
 void CIngSnatchingSwarm::SelectTarget(CStateManager& mgr, float dt) {
   rstl::reserved_vector< SSnatchCandidate, 1024 > candidates;
   const CObjectList& list = mgr.GetObjectListById(kOL_Actor);
@@ -652,6 +654,7 @@ float CIngSnatchingSwarm::CalculateArcLength() const {
   return 0.f;
 }
 
+// @ fn_33_17C8
 bool CIngSnatchingSwarm::FollowArc(float time) {
   const float speed = mArcSpeedScale * mData.mMaxLinearSpeed;
   if (mArcPoints.size() == 4 && speed > 0.f) {
