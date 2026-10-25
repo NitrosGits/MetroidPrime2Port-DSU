@@ -28,7 +28,7 @@ _LOG = os.path.join(_OUT, 'swb16.log')
 _T = 'CSwarmBasics::Think(float, CStateManager&)'
 _U = 'CSwarmBasics::UpdateAllBoidMovement(CStateManager&, float)'
 _FN = {'T': _T, 'U': _U}
-CF, ZF = 0x1, 0x40
+CF, ZF, SF, OF = 0x1, 0x40, 0x80, 0x800
 
 # name: (fn, site off, jcc, taken off, fallthrough off, this register, forced outcome)
 # forced outcome: True = take the jump, False = fall through, 'inv' = the opposite of the natural outcome,
@@ -52,6 +52,7 @@ SITES = {
     'S15': ('T', 0x43e, 'je', 0x467, 0x440, 'rbp', True),   # e3767e 858 !mActive (e376a7 test)
     'S16': ('T', 0x455, 'ja', 0x46b, 0x457, 'rbp', False),  # e37695 858 mFreezeTimer >= 0.1 (e37697 lock add)
     'S17': ('T', 0x469, 'je', 0x3f8, 0x46b, 'rbp', True),   # e376a9 859 !mLaunched -> skip (e37638 lock add)
+    'S18': ('T', 0x29b, 'jle', 0xa9b, 0x2a1, 'rbp', False),  # e374db 818 --x52c_ > 0: keep creating (e374e1 lock add)
     'U1': ('U', 0x14, 'je', 0xc0, 0x1a, 'rdi', True),       # e31424 883 !mAnimated -> ret (e314d0 ret)
     'U2': ('U', 0x3b, 'je', 0xa7, 0x3d, 'rdi', True),       # e3144b 885 count == 0 -> epilogue (e314b7 lock add)
 }
@@ -60,7 +61,9 @@ OCC_SEQ = {600 + 97 * k: OCC[k % len(OCC)] for k in range(2 * len(OCC))}
 ROT = ['S6', 'S7', 'S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16', 'S17', 'U1', 'U2']
 BUDGET, GAP = 3, 40
 OCC_RESTORE = (0x12e, 0xa23, 0xa31)   # e3736e (774 continue), e37c63 (771 return), e37c71 (774 return)
-ENTRY, EXIT, S8ARM, S8DONE, URET = 0x83, 0x51, 0x940, 0xa1e, 0x59b
+# EXIT T+0x5a (e3729a): the GetActive-false path (T+0x51) and the main return (jmp at T+0x619) both pass it
+ENTRY, EXIT, S8ARM, S8DONE, URET = 0x83, 0x5a, 0x940, 0xa1e, 0x59b
+S18DONE = 0x2bf      # e374ff: both exits of the 814 create loop (T+0x2b6 end, T+0xa9b break) join here
 
 _st = dict(seq=0, opens=0, closes=0, unattributed=0, forced={}, natural={}, flagRestored=0, memRestored=0,
            budget={k: BUDGET for k in SITES}, last={k: -10 ** 9 for k in SITES}, rot=0, s8last=-10 ** 9,
@@ -112,6 +115,8 @@ def _put(addr, data, what):
 
 def _taken(jcc, fl):
     c, z = bool(fl & CF), bool(fl & ZF)
+    if jcc == 'jle':
+        return z or bool(fl & SF) != bool(fl & OF)
     return {'je': z, 'jne': not z, 'jbe': c or z, 'jae': not c, 'ja': not c and not z, 'jb': c}[jcc]
 
 
@@ -119,7 +124,8 @@ def _flags_for(jcc, fl, want):
     # smallest change of CF/ZF that gives outcome `want`
     if _taken(jcc, fl) == want:
         return fl
-    for cand in (fl ^ ZF, fl ^ CF, fl ^ CF ^ ZF, fl & ~(CF | ZF), fl | CF, fl | ZF, fl | CF | ZF):
+    for cand in (fl ^ ZF, fl ^ CF, fl ^ CF ^ ZF, fl & ~(CF | ZF), fl | CF, fl | ZF, fl | CF | ZF,
+                 fl & ~(ZF | SF | OF)):
         if _taken(jcc, cand) == want:
             return cand
     raise RuntimeError('no flags for ' + jcc)
@@ -212,7 +218,7 @@ def _on_entry():
     if seq % 2000 == 0:
         _summary()
     _acts[tid] = dict(seq=seq, cfa=_reg('rsp') + 0x2558, this=_reg('rdi'), plan=set(plan), done=set(),
-                      s8=s8, s8armed=False, occ=None, cool=None, u=None)
+                      s8=s8, s8armed=False, occ=None, cool=None, u=None, x52c=None)
     _st['opens'] += 1
     if plan:
         _log('seq %d open this=%#x cfa=%#x plan=%s' % (seq, _reg('rdi'), _reg('rsp') + 0x2558, plan))
@@ -225,7 +231,7 @@ def _on_exit():
         return  # GetActive() false: no activation was opened
     del _acts[tid]
     _st['closes'] += 1
-    if act['occ'] is not None or act['cool'] is not None:
+    if act['occ'] is not None or act['cool'] is not None or act['x52c'] is not None:
         _fail('seq %d closed with a pending member restore' % act['seq'])
     if tid in _pend:
         _fail('seq %d closed with a pending eflags restore' % act['seq'])
@@ -243,6 +249,14 @@ def _on_site(name):
     if name == 'S8':
         if act['s8armed']:
             _force(name, act)
+        return
+    if name == 'S18':
+        if _st['budget']['S18'] > 0 and act['x52c'] is None and _taken('jle', _reg('eflags')):
+            # 818 just stored the decremented x52c_ (0x7f8) and counted the boid (mCreatedBoids 0x7a4)
+            act['x52c'] = (_mem(act['this'] + 0x7f8, 4), _mem(act['this'] + 0x7a4, 4))
+            _force(name, act)
+            _st['budget']['S18'] -= 1
+            act['done'].add(name)
         return
     if name not in act['plan'] or name in act['done']:
         return
@@ -291,6 +305,19 @@ def _on_s8done():
     act['cool'] = None
     act['done'].add('S8')
     act['s8armed'] = False
+
+
+def _on_s18done():
+    act = _owned('S18')
+    if act is None or act['x52c'] is None:
+        return
+    cur = (_mem(act['this'] + 0x7f8, 4), _mem(act['this'] + 0x7a4, 4))
+    ok = _put(act['this'] + 0x7f8, act['x52c'][0], 'x52c_')
+    ok &= _put(act['this'] + 0x7a4, act['x52c'][1], 'mCreatedBoids')
+    if ok:
+        _log('seq %d x52c_/mCreatedBoids %s/%s -> %s/%s at T+%#x' % (
+            act['seq'], cur[0].hex(), cur[1].hex(), act['x52c'][0].hex(), act['x52c'][1].hex(), S18DONE))
+    act['x52c'] = None
 
 
 def _on_uentry():
@@ -373,6 +400,7 @@ for _o in OCC_RESTORE:
     _at('T', _o, (lambda o: lambda: _on_occ_restore(o))(_o))
 _at('T', S8ARM, _on_s8arm)
 _at('T', S8DONE, _on_s8done)
+_at('T', S18DONE, _on_s18done)
 _at('U', 0, _on_uentry)
 gdb.events.exited.connect(_summary)
 _log('loaded: %d breakpoints, occlusion plans at %s' % (len(_bps), sorted(OCC_SEQ)))
