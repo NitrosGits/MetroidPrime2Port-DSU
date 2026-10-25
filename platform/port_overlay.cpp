@@ -64,6 +64,9 @@ int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
 int sScanSpeed = PortOverlay::kScanSpeedDefault;
 int sLanguage = 0;
 int sElevatorRide = PortOverlay::kElevatorRide_Original;
+bool sMinimapTap = true;
+int sPromptGlyphs = 0;
+bool sSwapVisors = false;
 bool sIgtTimer = false;
 bool sOriginalExperience = false;
 int sHintDelay = 0;
@@ -745,6 +748,17 @@ void SetFastMorph(bool enabled) {
   Persist();
 }
 
+bool MinimapTap() {
+  ReadEnv();
+  return EnvBool("MP2_MINIMAP_TAP", sMinimapTap);
+}
+
+void SetMinimapTap(bool enabled) {
+  ReadEnv();
+  sMinimapTap = enabled;
+  Persist();
+}
+
 bool PointerMenus() {
   ReadEnv();
   return EnvBool("MP2_POINTER_MENUS", sPointerMenus);
@@ -1399,6 +1413,20 @@ void SetLanguage(int index) {
   ReadEnv();
   sLanguage = std::clamp(index, 0, kLanguageMax);
   Persist();
+}
+
+const char* PromptGlyphs() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return "gamecube";
+  }
+  static constexpr const char* kNames[] = {nullptr, "xbox", "playstation", "switch", "gamecube", "keyboard"};
+  return kNames[EnvIntIn("MP2_PROMPT_GLYPHS", sPromptGlyphs, kPromptGlyphs_Auto, kPromptGlyphs_Keyboard)];
+}
+
+bool SwapVisors() {
+  ReadEnv();
+  return !OriginalExperience() && EnvBool("MP2_SWAP_VISORS", sSwapVisors);
 }
 
 int ElevatorRide() {

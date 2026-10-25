@@ -1,6 +1,10 @@
 #include "MetroidPrime/Tweaks/CTweakPlayerControls.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrTweakPlayerControls.hpp"
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
+
 bool CTweakPlayerControls::GetFreeLookTurnsPlayer() const {
   return mData->booleans.freeLookTurnsPlayer;
 }
@@ -59,6 +63,16 @@ bool CTweakPlayerControls::GetAssistedAimingIgnoreVertical() const {
 
 CControlMapper::EFunctionList
 CTweakPlayerControls::GetMapping(CControlMapper::ECommands command) const {
+#ifdef TARGET_PC
+  // Swap the Scan and Echo visor buttons (F1 Controls > Options).
+  if (PortOverlay::SwapVisors()) {
+    if (command == CControlMapper::kC_EnviroVisor) {
+      command = CControlMapper::kC_XrayVisor;
+    } else if (command == CControlMapper::kC_XrayVisor) {
+      command = CControlMapper::kC_EnviroVisor;
+    }
+  }
+#endif
   switch (command) {
   case CControlMapper::kC_Forward:
     return static_cast< CControlMapper::EFunctionList >(mData->controls.forward);

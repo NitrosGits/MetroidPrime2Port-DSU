@@ -104,6 +104,24 @@ const int kScanSpeedMax = 400;
 const int kScanSpeedDefault = 100;
 int ScanSpeed();
 void SetScanSpeed(int percent);
+// Glyph set the on-screen prompts are forced to (`MP2_PROMPT_GLYPHS`: 0 follow the input in use,
+// 1 Xbox, 2 PlayStation, 3 Switch, 4 GameCube, 5 keyboard); PromptGlyphs() is the device name or
+// nullptr to follow the input. Original experience shows the GameCube art.
+enum EPromptGlyphs {
+  kPromptGlyphs_Auto,
+  kPromptGlyphs_Xbox,
+  kPromptGlyphs_PlayStation,
+  kPromptGlyphs_Switch,
+  kPromptGlyphs_GameCube,
+  kPromptGlyphs_Keyboard
+};
+const char* PromptGlyphs();
+// Swap the Scan and Echo visor buttons (`MP2_SWAP_VISORS`): each takes the other's D-pad direction
+// and number key (CTweakPlayerControls::GetMapping). Thread-safe enough: read on the game thread.
+bool SwapVisors();
+// Tap or click on the HUD minimap opens the map screen (default on; MP2_MINIMAP_TAP).
+bool MinimapTap();
+void SetMinimapTap(bool enabled);
 // Elevator ride (`MP2_ELEVATOR_RIDE`: original|fast|skip): Fast doubles the ride's clock, Skip ends
 // it as soon as the next world has loaded (CWorldTransManager).
 enum EElevatorRide { kElevatorRide_Original, kElevatorRide_Fast, kElevatorRide_Skip };

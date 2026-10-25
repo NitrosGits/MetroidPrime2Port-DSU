@@ -25,6 +25,19 @@
 namespace PortDebug {
 
 void DrawControlsOptions() {
+  ImGui::SeparatorText("On-screen prompts");
+  int glyphs = sPromptGlyphs;
+  if (ImGui::Combo("Button glyphs", &glyphs,
+                   "Follow the input in use\0" "Xbox\0" "PlayStation\0" "Nintendo Switch\0" "GameCube\0"
+                   "Keyboard & mouse\0")) {
+    sPromptGlyphs = std::clamp(glyphs, static_cast< int >(PortOverlay::kPromptGlyphs_Auto),
+                               static_cast< int >(PortOverlay::kPromptGlyphs_Keyboard));
+    Changed(true);
+  }
+  ItemHelp("Which buttons the game's prompts and tutorials show. Follow: the keyboard, controller or "
+           "touch layout you last used. GameCube shows the game's own art; Original experience "
+           "forces it.");
+
   ImGui::SeparatorText("Buttons");
   // Original experience (Game > Cutscenes) reads the tweaks below as retail.
   const bool locked = PortOverlay::OriginalExperience();
@@ -38,6 +51,8 @@ void DrawControlsOptions() {
   Changed(ImGui::Checkbox("Remastered charge (rapid fire)", &sRapidCharge));
   ItemHelp("As in Metroid Prime Remastered: holding fire after the press shot fires a few quick "
            "shots. Power Beam only.");
+  Changed(ImGui::Checkbox("Swap the Scan and Echo visor buttons", &sSwapVisors));
+  ItemHelp("Swaps the two visors' D-pad directions (and 6/8 on the keyboard).");
   ImGui::EndDisabled();
 
   ImGui::SeparatorText("Aiming");
@@ -76,6 +91,8 @@ void DrawControlsOptions() {
   Changed(ImGui::Checkbox("Point and click menus", &sPointerMenus));
   ItemHelp("Mouse and touch in the pause screens and the map: hover and click items, drag and "
            "scroll the map, right click to go back. Gamepad and keyboard work as before.");
+  Changed(ImGui::Checkbox("Tap minimap for map", &sMinimapTap));
+  ItemHelp("A tap or click on the HUD minimap opens the map screen, like the map button.");
   ImGui::BeginDisabled(!sPointerMenus);
   Changed(ImGui::Checkbox("Swap map finger gestures", &sMapSwapFingers));
   ItemHelp("Touch only: one finger pans the map and two rotate it, instead of two panning and "
