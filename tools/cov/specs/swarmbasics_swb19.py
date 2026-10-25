@@ -29,7 +29,8 @@ import json
 import os
 
 state = {'ctor': 0, 'forced': 0, 'restored': 0, 'restore_fail': 0, 'touch': 0,
-         'touch_log': 0, 'keys': {}, 'err': '', 'pending': None, 'done': False}
+         'touch_log': 0, 'keys': {}, 'err': '', 'pending': None, 'done': False,
+         'ticks': 0, 'vuln': []}
 
 COV_OUT = os.environ.get('COV_OUT', '/var/tmp/swb19')
 LOG = os.path.join(COV_OUT, 'swb19.jsonl')
@@ -59,6 +60,52 @@ def symbol(prefix):
             matches.append(parts[2])
     check(len(matches) == 1, 'one native symbol: ' + prefix)
     return matches[0]
+
+def quote(name):
+    return "'" + name + "'"
+
+def ctor_symbol():
+    """The CSwarmBasics constructor.  The build has both the complete-object (C1) and base-object
+    (C2) symbols at ONE address, so accept several names only when they resolve to the same
+    function, and prefer C1 (what the factories call)."""
+    names = []
+    for line in open(os.environ['COV_NM']):
+        raw, dem = line.rstrip('\n').split('\t')
+        parts = raw.split()
+        if len(parts) == 3 and parts[1] in 'tTW' and dem.startswith('CSwarmBasics::CSwarmBasics(') \
+                and 'clone' not in dem and '.cold' not in dem:
+            names.append(parts[2])
+    check(bool(names), 'the CSwarmBasics constructor symbol')
+    addresses = {}
+    for name in names:
+        addresses.setdefault(iv('(long)&' + quote(name)), []).append(name)
+    check(len(addresses) == 1, 'one constructor address: %s' % sorted(addresses))
+    same = list(addresses.values())[0]
+    log('CTOR-SYMBOLS', names=same, address=list(addresses)[0])
+    for name in same:
+        if 'C1E' in name:
+            return name
+    return same[0]
+
+def vulnerability(this, swarm_count):
+    """The swarm's damage-vulnerability table: mWeaponIndices[kWT_Max] index into mVulnerabilities,
+    plus the charged and combo override words.  Read once per swarm so the report can say which
+    weapon types are kE_Reflect / kE_Immune (and therefore which of Touch's arms are data-dead)."""
+    rows = []
+    try:
+        base = '((CSwarmBasics*)%d)->mDamageVulnerability' % this
+        indices = [iv(base + '.mWeaponIndices[%d]' % i) for i in range(21)]
+        count = iv(base + '.mVulnerabilities.mCount')
+        entries = []
+        for i in range(min(count, 8)):
+            entry = base + '.mVulnerabilities.mItems[%d]' % i
+            entries.append([float(ev(entry + '.mDamageMultiplier')), iv(entry + '.mEffect'),
+                            iv(entry + '.mIgnoreRadius')])
+        rows = dict(swarm=this, indices=indices, count=count, entries=entries,
+                    charged=iv(base + '.mChargedBeamWord'), combo=iv(base + '.mComboWord'))
+        log('VULN', **rows)
+    except gdb.error as error:
+        log('VULN-ERR', swarm=this, error=str(error)[:120])
 
 def dyn(addr):
     """The actor's dynamic type from its vtable (no inferior call)."""
@@ -100,8 +147,25 @@ class CtorReturn(gdb.FinishBreakpoint):
         state['err'] = 'ctor frame discarded before the fixture restored'
         log('FAIL', label=state['err'])
 
+def ctor_site():
+    """The inlined GetModelDataForAnimRes test inside the CSwarmBasics constructor, found in the
+    ctor's own disassembly: `cmpl $0xffffffff,(%rsi)` on the animRes asset id.  A file:line
+    breakpoint on line 188 does not bind in this build ("No compiled code for line 188"), so the
+    site is located by that instruction and set as symbol+offset, which relocates with the PIE."""
+    ctor = ctor_symbol()
+    text = gdb.execute('disassemble ' + quote(ctor), to_string=True)
+    hits = [line for line in text.splitlines() if 'cmpl' in line and '0xffffffff' in line
+            and '(%rsi)' in line]
+    check(len(hits) == 1, 'one kInvalidAssetId test in the ctor: %d found' % len(hits))
+    address = int(hits[0].split('<')[0].strip().rstrip(':'), 16)
+    start = int(gdb.parse_and_eval('(long)&' + quote(ctor)))
+    log('SITE', instruction=hits[0].strip(), address=address, ctor_start=start,
+        offset=address - start)
+    return ctor, address - start
+
+
 class CtorSite(gdb.Breakpoint):
-    """The inlined GetModelDataForAnimRes call site: source line 188 inside CSwarmBasics::CSwarmBasics."""
+    """The inlined GetModelDataForAnimRes call site inside the real CSwarmBasics constructor."""
 
     def stop(self):
         state['ctor'] += 1
@@ -138,11 +202,42 @@ class CtorSite(gdb.Breakpoint):
             log('FAIL', label='ctor site: %s: %s' % (type(error).__name__, error))
         return False
 
+# ------------------------------------------------------------------- boid position sampling
+
+class PartitionTick(gdb.Breakpoint):
+    """Every 250th UpdatePartition of a swarm: log its live boid translations, so a later driver can
+    `tp` the player onto a real boid (the player's box overlap is what the Touch arms need)."""
+
+    def stop(self):
+        state['ticks'] += 1
+        this = iv('$rdi')
+        if this not in state['vuln']:
+            state['vuln'].append(this)
+            vulnerability(this, len(state['vuln']))
+        if state['ticks'] % 250:
+            return False
+        try:
+            editor = iv('((CEntity*)%d)->mEditorId.value' % this)
+            count = iv('((CSwarmBasics*)%d)->mBoids.mCount' % this)
+            rows = []
+            for i in range(min(count, 8)):
+                base = '((CSwarmBasics*)%d)->mBoids.mItems[%d]' % (this, i)
+                if not iv(base + '.mActive'):
+                    continue
+                rows.append([round(float(ev(base + '.mTransform.m%d3' % axis)), 3)
+                             for axis in range(3)])
+            log('BOIDS', n=state['ticks'], swarm=this, editor_id=editor, count=count,
+                touch_radius=float(ev('((CSwarmBasics*)%d)->mTouchRadius' % this)),
+                positions=rows)
+        except gdb.error as error:
+            log('BOIDS-ERR', error=str(error)[:120])
+        return False
+
 # ---------------------------------------------------------------------------- the Touch logger
 
 def ball_state(player):
     try:
-        ball = iv('((CPlayer*)%d)->mMorphBall.mItem' % player)
+        ball = iv('((CPlayer*)%d)->mMorphBall.mPtr' % player)
         return iv('((CMorphBall*)%d)->mBallState' % ball) if ball else -1
     except gdb.error:
         return -2
@@ -219,8 +314,10 @@ def install():
     with open(binary, 'rb') as f:
         digest = hashlib.file_digest(f, 'sha256').hexdigest()
     log('BINARY', path=binary, sha256=digest)
-    CtorSite('CSwarmBasics.cpp:188', internal=True)
+    ctor, offset = ctor_site()
+    CtorSite('*(%s + %d)' % (quote(ctor), offset), internal=True)
     TouchLog('*' + symbol('CSwarmBasics::Touch('), internal=True)
+    PartitionTick('*' + symbol('CSwarmBasics::UpdatePartition('), internal=True)
     gdb.events.exited.connect(finished)
 
 if os.environ.get('SWB19_SELFTEST') != '1':

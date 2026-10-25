@@ -11,6 +11,17 @@
 @f420 tp -338.4 -87.7 -6.7
 @f700 obj u041d
 @f720 lockon 1
+# ---- held charge with the light beam + sunburst owned: releasing a FULLY charged light shot is the
+#      only way the gun builds a real CLightComboProjectile (`shoot ... charged` spawns a plain
+#      charged beam: run 1 logged no comboed weapon mode at all).
+@f740 beam light
+@f760 press a 0
+@f880 stick 0 0
+@f920 press a 0
+@f1040 stick 0 0
+@f1100 tp -338.4 -87.7 -6.7
+@f1120 press a 0
+@f1240 stick 0 0
 # ---- power beam: plain, charged, missile
 @f740 shoot u041d
 @f760 shoot u041d
@@ -57,6 +68,10 @@
 @f2160 boost
 @f2220 tp -338.4 -87.7 -6.7
 @f2260 boost
+# ---- one more held-charge sunburst from inside the swarm
+@f2290 tp -338.4 -87.7 -6.7
+@f2295 press a 0
+@f2400 stick 0 0
 # ---- more light charged shots with the cannon ball still owned
 @f2300 press x 30
 @f2340 beam light
