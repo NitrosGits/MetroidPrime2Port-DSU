@@ -84,10 +84,10 @@ Six dirs merge with
 | 135C TurnAround | 7/8 → dead | CanIssueCommand false arm `forced (pud1_force.py: mAnimationState kAS_NotReady)`; edge 592:3/4 dead, same three-value msg switch (0x1364/0x1380/0x138C) |
 | 2B98 KnockOffPlayers | 27/28 → dead | edge 289:1/2 dead: 0x2BF0 (`x838 >= player min.z`) implies min.z <= max.z, so 0x2C54 (`min.z - max.z >= 0.2f`) is never taken |
 | 19C4 SetupCollisionManager | 42/43 → dead | edge 475:3/4 (the TCastToPtr null at 0x1D24) dead: those ids are the manager's own, one `rs_new CCollisionActor` per joint in the call that fills them (CCollisionActorManager.cpp:121-196) |
-| 2DA4 WeaponHitsWeakSpot | 9/10 at pud1 | 248:3/4 open at pud1 (0x2DF8: WeaponHits false while open — a weapon mode the open vulnerability rejects; power, charge and missile all hit). **pud2 measured it** (see below); the geometric sides are the ones the pud2 runs miss |
+| 2DA4 WeaponHitsWeakSpot | 9/10 at pud1; **10/10 at pud5, marked** (see pud5 section) | 257:3/4 (open, WeaponHits false) by the pud2 fixture; the below-box (260:1/4) and above-box (260:3/4) geometric sides by the pud5 fixture, `PUD5_SIDE=below` / `above` |
 | 23F0 UpdatePlayerContact | 35/42 at pud1; **39/42 at pud3** (see pud3 section) | 311:1/2, 338:1/2 (cast null, as 19C4), 341:1/2 (no touch bounds), 353/358/382 (hasGroundCollider false: the player always has kMT_GroundCollider here), 370:1/2 (zero-length push direction) |
 | 34E0 Think | 15/18 at pud1; **17/18 at pud3, marked at pud4** (see pud4 section) | 97:1/2 and 99:1/6 need mShockWaveSfx == 0, but `CSfxHandle(0)` makes mID `(++mRefCount << 14) | 0` (CSfxHandle.cpp:5), never 0; 104:1/2 needs the player exactly at the wave's x/y (0x3678 CanBeNormalized) |
-| 42C LoadPuddleSpore | 12/16 | 670:1/2 (modelData null: the shipped model always loads), 678/692 edges (temporaries' exception clean-up) |
+| 42C LoadPuddleSpore | 12/16 at pud1..pud5, left unmarked (see pud5 section) | 686:1/2 (modelData null, a real arm: needs an unresolvable model+ancs id), 707:2/6 (the `unknown_0x5cdc877d` ternary: one value never loaded), 694:2/4 and 694:3/4 (the block reached only through the EH landing pads) |
 
 Fixes in this pass (TARGET_PC only):
 
@@ -215,3 +215,21 @@ call = 0x8533, rax = 0, UpdateEmitter 0 and CanBeNormalized 0 calls, restore rea
 - Remaining arm 108:3/6 (sfx set, id == kInvalidUniqueId) is dead: `mShockWaveSfx` is non-null only after cpp:196, which follows
   cpp:195 in the same `if (shockWave)`; the id is `AllocateUniqueId()` of the CShockWave, which never returns kInvalidUniqueId
   (CStateManager.cpp:2392-2394 remaps it to version 0); nothing else writes either field after the ctor. Marked.
+
+## pud5 (2026-10-25, base 5b3e19261): WeaponHitsWeakSpot 2DA4 marked, LoadPuddleSpore 42C left unmarked
+
+Fixture `pud5_belowbox.py` (+ selftest, 12 scenarios): at the entry of one real `WeaponHitsWeakSpot` call (only the first spore, only from
+Touch/GetCollisionResponseType, only in kPS_Open, up.z >= 0.9 and 0.999*up.z >= sine so the dot test is decided by arithmetic) the
+referenced `position.z` word is replaced by `touch-box centre.z -/+ 1.0e6`, recorded before the write, read back, restored at the
+return (FinishBreakpoint armed before the write), read back. `PUD5_SIDE=above` selects the +1e6 side. Launch 1 failed on a fixture
+bug (`mTouchBounds.min.z`; the members are `mZ`), nothing was written (fail-closed); fixed and re-run.
+- `/tmp/opencode/pud5-frozen/` (executed-binary sha256 b18a9911..., r1 = below, r2 = above, gcda/gcno, diag, fixture): both summaries
+  status=OK, forced_ret=0x1, restored=1, game rc 0, caught/reach-stub 0. r1 takes 260:1/4 (retail 0x2E70 `fcmpo f1,-sine` / 0x2E74
+  `ble`, dot <= -sine -> true), r2 takes 260:3/4 (0x2E78/0x2E7C `bge`, dot >= sine -> true). r1+r2 merged: 9/10; the last edge
+  257:3/4 (IsOpen, WeaponHits false) was measured by pud2 on an older binary with the identical function body (diff empty), not
+  re-run here (launch budget spent).
+- 2DA4: marked. asmcheck reports XCALL GetDamageVulnerability (retail makes that call through vtable +0x40 at 0x2DD4-0x2DE4, same false
+  positive as Blogg.md:192, GeomBlobV2.md:338).
+- 42C: not marked. Untaken: 686:1/2 (`modelData` null -> return nullptr; forceable by writing an unresolvable asset id into
+  `animationInformation.ancs` at the LdrToModelData call, not run), 707:2/6 (the `unknown_0x5cdc877d` ternary: the data of this area
+  only loads one value), 694:2/4 and 694:3/4 (reached only from the exception landing pads). Next: one launch per arm.

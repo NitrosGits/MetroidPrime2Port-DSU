@@ -252,7 +252,7 @@ void CPuddleSpore::Touch(CActor& actor, CStateManager& mgr) {
 // @ fn_51_2EA8
 rstl::optional_object< CAABox > CPuddleSpore::GetTouchBounds() const { return mTouchBounds; }
 
-// fn_51_2DA4
+// @ fn_51_2DA4
 bool CPuddleSpore::WeaponHitsWeakSpot(const CVector3f& position, const CWeaponMode& mode) const {
   if (IsOpen() && GetDamageVulnerability()->WeaponHits(mode, false)) {
     const CUnitVector3f direction(position - mTouchBounds.GetCenterPoint());
