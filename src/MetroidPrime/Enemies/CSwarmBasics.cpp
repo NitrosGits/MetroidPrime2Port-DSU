@@ -1463,6 +1463,7 @@ void CSwarmBasics::ApplyRadiusDamage(CVector3f pos, const CDamageInfo& info, CSt
   }
 }
 
+// @ fn_80_220C
 void CSwarmBasics::Touch(CActor& actor, CStateManager& mgr) {
   CActor::Touch(actor, mgr);
   if (CGameProjectile* projectile = TCastToPtr< CGameProjectile >(actor)) {
