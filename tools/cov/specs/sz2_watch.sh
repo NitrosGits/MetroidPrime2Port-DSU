@@ -18,6 +18,11 @@ while kill -0 "$RUN" 2>/dev/null; do
     PID=; for p in $(pgrep -x metroid_prime2_); do
       [ "$(readlink -f /proc/$p/exe)" = "$(readlink -f "$ROOT/build-port-link/metroid_prime2_port")" ] && PID=$p; done
     echo "watchdog: no output for ${IDLE}s, SIGSEGV to game pid ${PID:-none}" | tee "$OUT/watchdog.log"
+    { date; ps -eo pid,ppid,stat,wchan:24,pcpu,etime,cmd --forest | grep -E "[g]db|[m]etroid_prime2_|[t]ools/cov"
+      for p in $PID $(pgrep -f "^gdb -q -batch -nx"); do
+        echo "== $p"; cat /proc/$p/status 2>/dev/null | grep -E "^(Name|State|SigQ|SigPnd|ShdPnd|TracerPid)"
+        for t in /proc/$p/task/*; do echo "$(basename $t) $(cut -d' ' -f2,3 $t/stat) $(cat $t/wchan 2>/dev/null)"; done
+      done; } > "$OUT/procdump.log" 2>&1
     [ -n "$PID" ] && kill -SEGV "$PID"
     fired=1
   fi

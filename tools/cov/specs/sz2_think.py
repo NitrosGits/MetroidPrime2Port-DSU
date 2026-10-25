@@ -15,6 +15,7 @@ port source.  Echo emitter and game light are scratch memory (one mmap'd page), 
 Line counters on Think's source lines count natural and forced hits separately.
 """
 import gdb
+import faulthandler
 import hashlib
 import json
 import os
@@ -70,6 +71,31 @@ CASES = [
 state = dict(index=0, active={}, failed=0, infra=0, restores=0, ignored=0, eligible=0, skipped_nonempty=0, skipped_emitter=0,
              scratch=0, results=[])
 lines = dict(natural={}, forced={})
+
+
+# A stall diagnosis aid: every stop() after window TRACE_FROM writes one line (kind, thread, rsp, pc) to
+# sz2.trace, and faulthandler dumps all Python threads to faulthandler.log every 45 s (it runs on its own
+# C thread, so it answers while gdb is stuck in a callback).
+TRACE_FROM = int(os.environ.get('SZ2_TRACE_FROM', '14'))
+trace = dict(file=None, lines=0)
+
+
+def traced(kind):
+    def wrap(fn):
+        def inner(self):
+            try:
+                if state['index'] >= TRACE_FROM and trace['lines'] < 40000:
+                    if trace['file'] is None:
+                        trace['file'] = open(os.path.join(os.environ['COV_OUT'], 'sz2.trace'), 'a', buffering=1)
+                    trace['lines'] += 1
+                    trace['file'].write('%.3f %s %s idx=%d active=%d rsp=%#x\n' % (
+                        time.monotonic(), kind, getattr(self, 'kind', ''), state['index'], len(state['active']),
+                        int(gdb.parse_and_eval('$rsp'))))
+            except Exception:
+                pass
+            return fn(self)
+        return inner
+    return wrap
 
 
 def log(event, **values):
@@ -385,6 +411,7 @@ class Window(gdb.FinishBreakpoint):
             problems.append('calls got %r expected %r' % (self.calls, calls))
         return got, calls, problems
 
+    @traced('finish')
     def stop(self):
         if self.closed:
             failure('duplicate finish; no stale writes', True)
@@ -470,6 +497,7 @@ def make_scratch():
 
 
 class Entry(gdb.Breakpoint):
+    @traced('entry')
     def stop(self):
         if state['infra']:
             return True
@@ -550,6 +578,7 @@ class Mock(gdb.Breakpoint):
         super().__init__('*' + symbol, internal=True)
         self.kind = kind
 
+    @traced('mock')
     def stop(self):
         try:
             w = owned()
@@ -671,6 +700,7 @@ class LineCount(gdb.Breakpoint):
         super().__init__(spec, internal=True)
         self.line = line
 
+    @traced('line')
     def stop(self):
         try:
             w = state['active'].get(context())
@@ -683,6 +713,7 @@ class LineCount(gdb.Breakpoint):
 
 
 def summary(event):
+    faulthandler.cancel_dump_traceback_later()
     ok = state['index'] == len(CASES) and not state['active'] and not state['failed']
     log('EXIT', ok=ok, completed=state['index'], pending=len(state['active']), failed=state['failed'],
         restores=state['restores'], ignored_nested=state['ignored'], eligible=state['eligible'],
@@ -697,6 +728,7 @@ def install():
     with open(binary, 'rb') as f:
         digest = hashlib.file_digest(f, 'sha256').hexdigest()
     log('BINARY', path=binary, sha256=digest)
+    faulthandler.dump_traceback_later(45, repeat=True, file=open(os.path.join(os.environ['COV_OUT'], 'faulthandler.log'), 'w'))
     think = symbol('CScriptSafeZone::Think(')
     Entry('*' + think, internal=True)
     for prefix, kind in (
