@@ -161,7 +161,7 @@ offset	fn	size	class	name	slice	what	marker
 09FFC	fn_80_9FFC	130	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::vector	-	weak copy / template instance	no
 0A12C	fn_80_A12C	54	H	CHealthInfo::CHealthInfo	-	weak copy / template instance	no
 0A180	fn_80_A180	3C	H	rstl::reserved_vector<CSwarmBasics::CBoid*, 125>::~reserved_vector	-	weak copy / template instance	no
-0A1BC	fn_80_A1BC	44	B	GetModelDataForAnimRes	-	upstream body (CSwarmBasics)	no
+0A1BC	fn_80_A1BC	44	B	GetModelDataForAnimRes	-	upstream body (CSwarmBasics)	yes
 0A200	fn_80_A200	34	B	CompareBoidsByListenerDistance	-	upstream body (CSwarmBasics)	no
 0A234	fn_80_A234	34	H	CompareBoidsByListenerDistanceReverse	-	weak copy / template instance	no
 0A268	fn_80_A268	2C	H	CompareBoidRefsByListenerDistance	-	weak copy / template instance	no

@@ -844,3 +844,101 @@ Still open in this slice, with what is measured and what each needs:
 |---|---|---|
 | 220C Touch | 48/72 lines, 49/93 branches, unmarked | 93 branch rows over three independent paths: the `CLightComboProjectile` arm (`CanCreateRay`, `CreateRay`, the `xa8_`/`xaa_` pair) needs a real Sunburst projectile in the air; the `CEnergyProjectile` arm needs a charge/beam projectile hit plus its explode-reflect `kWCR_EnemyNormal` branch; the player path needs the cannon-ball (`kIT_CannonBall`) and screw-attack states and the `mDamageCooldownTimer` arm. A forced-call fixture is not enough here: it has to drive real projectiles through the real collision callbacks, so this body needs its own slice (a Sunburst/seeker driver plus a `Touch` spec), not a row in this one |
 | A1BC GetModelDataForAnimRes | inlined into the ctor (objdiff None, no gcov entry), unmarked | the body is `animRes.GetId() != kInvalidAssetId ? CModelData(animRes) : CModelDataNull()`, and a `static` free function inlined into its only caller cannot be called natively. The invalid-id arm needs a **constructor call with an invalid asset id** - i.e. a real actor whose SLdr resolves no model - which no shipped swarm provides, and the ctor's own marker (fn_80_8FE0) does not distinguish the two sides. Needs either a `-fno-inline`-style build of just this unit with a documented reason, or a fixture that calls the ctor with a fabricated `CAnimRes` (a real caller-visible path, so it needs a decision by the orchestrator, not this lane) |
+
+## swb19: GetModelDataForAnimRes marked (both arms), Touch 64/93 branches - not marked
+
+Branch `decomp/swb19` from `255e5d22d`. Source change: one marker line. Not touched: Think,
+UpdateAllBoidMovement, Render, HardwareLight, PreRenderBoid. Runs live in `/var/tmp/swb19/run{1,3,4}`
+(evidence copy `/tmp/opencode/reports/swb19-evidence/`), all `42b935e4,01_sand_entrance`,
+`tools/drivers/swb19_touch.con`, `--fast`, `game rc=0`, `caught/reach-stub: 0`.
+
+### fn_80_A1BC GetModelDataForAnimRes - MARKED, both arms, forced
+
+The helper is a `static` inlined into its only caller, so it has no symbol to call and no gcov row
+of its own; its code is attributed to **source line 188 inside the constructor's initialiser list**.
+Evidence (`build-port-cov`, gcno frozen before the marker,
+sha256 `16e527be2b9c10a0d4c30215889e8d65936e261a31b67ad4af9e965b83b5e728`):
+
+| arm | asm (host, inlined) | gcov line 188 |
+|---|---|---|
+| valid `CModelData(animRes)` | `0xe39734 cmpl $0xffffffff,(%rsi)` then `0xe39783 call CModelData::CModelData(CAnimRes const&)` | `branch 0 taken 5`, `call 2 returned 5` |
+| invalid `CModelDataNull()` | `0xe39763 je` past the ctor call to the null copy | `branch 1 taken 1` (forced) |
+| host EH unwind edge | - | `branch 4 taken 0` (a throw edge; nothing in the arm throws) |
+
+Retail has the same body **out of line** at 0xA1BC (the ctor calls it: `0x9020 bl fn_80_A1BC`):
+`0xA1C4 lwz r5,0x0(r4)` (the CAnimRes's first word, `mAncsId`), `0xA1CC addis r0,r5,0x1` /
+`0xA1D4 cmplwi r0,0xffff` = `id == kInvalidAssetId` (0xFFFFFFFF, the `addis` idiom), `0xA1DC beq
+.L_0000A1E8`; valid -> `0xA1E0 bl __ct__10CModelDataFRC8CAnimRes`, invalid -> `0xA1E8 bl fn_80_87B8`,
+which is the local 5-instruction `CModelData::CModelDataNull()` (`bl __ct__10CModelDataFv`; TSV row
+087B8, class H). Same two arms, same order, same target functions.
+
+Fixture (`tools/cov/specs/swarmbasics_swb19.py`): a **file:line breakpoint on line 188 does not bind**
+("No compiled code for line 188", run 1: `ctor_sites=0`), so the fixture finds the single
+`cmpl $0xffffffff,(%rsi)` in the ctor's own disassembly (logged as `SITE`, ctor+68) and sets it as
+`symbol+offset`, which relocates with the PIE. At that stop it writes `mAncsId = 0xFFFFFFFF` through
+the `animRes` reference, reads the write back, and restores the original word with a readback at the
+constructor's return. Run 4: `FORCE anim_id_before=0xBFABAEEE written=0xFFFFFFFF` then
+`RESTORE readback=eeabaabf (0xBFABAEEE) model_datas=0` - the invalid arm's *effect* (a null
+CModelData) read on the actor. `ctor_sites=6`: the other five constructors took the valid arm
+naturally, so both sides of the ternary ran in one run.
+
+**Port finding (asked for, not fixed here).** With the null model the actor crashes the game:
+`CSwarmBasics::AllocateSkinnedModels` (CSwarmBasics.cpp:422) runs `mModelData->PickAnimatedModel(which)`
+with no null test, and the port's `CActor::mModelData` is a `rstl::single_ptr`, so a null model is a
+null pointer there (retail's is a value; a default CModelData survives). Run 2 died exactly there
+(`SIGSEGV` in `CModelData::PickAnimatedModel this=0x0`, backtrace in the evidence). The module's other
+null-model paths already guard with `SwarmModelReady` (lines 278, 1018, 1053); `AllocateSkinnedModels`
+is the hole. The fixture keeps the run alive *without* a source change by clearing `mAnimated` on that
+one actor (a real non-animated swarm skips the body, `if (mAnimated)`) and restoring it 40 ticks
+later - both logged. Suggested fix on `port`: `if (mModelData.null()) return;` at the top of the
+`if (mAnimated)` block, quoting this evidence.
+
+`asmcheck.py check SwarmBasics ... fn_80_A1BC`: one CALL finding, a tool limit - `0xA1E8 fn_80_87B8`
+is `CModelData::CModelDataNull()` (`port`: `return CModelData()`), a host copy in another unit, not a
+module-80 body.
+
+### fn_80_220C Touch - 55/72 lines, 64/93 branches, NOT marked
+
+Merged profile of runs 1 (natural, 3000 f), 3 (ctor fixture + stand-in boid, 3200 f) and 4 (aligned
+windows + freeze/screw/spawn forces, 3200 f):
+`gcov_report.py build-port-cov /var/tmp/swb19/run{1,3,4}/gcov --module SwarmBasics`. Not marked:
+29 edges are left and none of them is proven dead except the two at 1493 (below).
+
+What the runs did establish (all real objects, all state changes measured):
+
+* `tools/cov/specs/swarmbasics_swb19.py` logs every `Touch` entry read-only: 240771 calls in run 4.
+  The swarm's touch box is large, so everything inside it touches: the actor types seen are
+  `CEnergyProjectile` (weapon modes 0/1/2/6 and charged 0/1/2/3), `CPlayer`, plus the area's static
+  actors. **No `CLightComboProjectile` ever reached Touch** - every light charge shot was a plain
+  charged beam (`w=65538`), so the light-combo block is untouched.
+* A **stand-in boid**: the player's box overlap needs the player *inside* a boid (run 1: 3215
+  player touches of the swarm box, 0 inside a boid). The fixture pins one live boid of every swarm
+  in the area onto the player's `mPosition` for a window (boid translation snapshotted first,
+  restored with a readback: 4 swarms, `glue_fail=0`). That is what took `1542:0`, `1543-1550`,
+  the cooldown sides of `1541`, and the cannon-ball overlap arm.
+* Real-state forces, each written to the field the body reads and restored with a readback:
+  a frozen boid (`mFreezeTimer = 1`, FREEZE readback `0000803f`), the player in screw-attack ball
+  mode (`mBallState = kBS_ScrewAttack`, SCREW readback `04000000`), and the player spawned morphed
+  (`mSpawnedMorphBallState = kMS_Morphed`, SPAWN readback `01000000`). Each took its arm
+  (`1537:3`, `1533:0`, `1527:1`/`1528:1`).
+
+The 29 edges left, and what each needs:
+
+| edges | arm | status |
+|---|---|---|
+| 1469-1477 (12) | `CLightComboProjectile` block (`CanCreateRay`, the ray loop, `CreateRay`, `xa8_`/`xaa_`) | needs a real Sunburst. `give sunburst 1; give chargeCombo 1; beam light; press a 0` held 200 frames then released (`stick 0 0`) never produced a comboed weapon mode; `shoot ... charged` bypasses `CPlayerGun`'s state machine. Next: hold the pad and verify `mChargePhase == kCP_Charged` in a `CPlayerGun` probe before release, or call `CAuxWeapon::FireLightCombo` with the aux weapon's own cached `CWeaponDescription` token (`mCombos[kBI_Light]`) |
+| 1493:1/5, 1493:3/5 (2) | `if (energy && !TCastToPtr<CLightComboProjectile>(energy))` | **dead by construction**: this `else` branch is entered only when the same pointer failed the identical cast at 1469 |
+| 1495:1/3, 1498-1500 (4) | `Explode` returned false -> the reflect block | the swarm's vulnerability table (logged per swarm: entries `1.0/kE_Normal`, `2.0/kE_Normal`, `0.5/kE_Normal`, `0.0/kE_Normal`; `mWeaponIndices` 0-10 -> entry 0, 11-20 -> entry 3) has **no `kE_Reflect` entry**, and Touch passes the constant `kWCR_EnemyNormal`, so `deflected` is false for every weapon. The other route, `Explode`'s first test, needs a *piercing* projectile that already has the swarm in `mCollisionCooldowns` |
+| 1507-1509 (4) | the non-energy projectile path (`mHealth -=`, `KillBoid`) | needs a `CGameProjectile` that is not a `CEnergyProjectile`: the `CBeamProjectile` family (Emperor Ing's beam, Splitter's laser). Nothing in 01_sand_entrance fires one |
+| 1464:1 (1) | `WeaponHits` false | weapon types 11-20 are `0.0/kE_Normal` for these swarms (logged); no player weapon has such a type. Needs an enemy projectile carrying `kWT_AI` or similar |
+| 1521:1 (1) | `mPlayerTouchRadius != 0` | all four sand-entrance swarms have 0 (`touch_radius` 0.7, `mPlayerTouchRadius` 0, logged); needs a swarm whose `CBasicSwarmData` sets it |
+
+Verified data facts worth keeping: `mTouchRadius` 0.7 for u041d's swarm (5 boids, positions logged),
+editor id 131736's swarm has 7 boids created at Identity and never moved (it is the forced null-model
+one); `CActor::mPosition` is the actor position the collision system uses (not `mTransform`);
+`CMorphBall::mBallState` at `mMorphBall.mPtr`, `CPlayer::mSpawnedMorphBallState` and
+`mMorphBallState` are the fields these arms read.
+
+Gates: host build `metroid_prime2_port` 0 FAILED; `gen_files_cmake.py --check` rc 0; matching
+`configure.py && ninja` `87 files OK`; `review_decomp_diff.sh 255e5d22d` one MARK; `asmcheck` one
+explained CALL finding; `retail_diff --diff 255e5d22d` (see report).
