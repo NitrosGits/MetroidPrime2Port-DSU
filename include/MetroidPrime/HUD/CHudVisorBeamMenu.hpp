@@ -40,6 +40,9 @@ private:
   }
   bool GetIsVisible() const { return mVisibleDebug && mVisibleGame; }
   void UpdateMenuWidgetTransform(int index, CGuiWidget& widget, float factor);
+#ifdef TARGET_PC
+  void PortGroupSpread();
+#endif
   CGuiFrame& mFrame;
   const TLockedToken< CStringTable >& mStrings;
   EVisorBeamMenu mType;

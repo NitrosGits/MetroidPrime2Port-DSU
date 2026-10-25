@@ -78,6 +78,13 @@ void SetAspectMode(EAspectMode mode);
 // the aspect-matched in-game HUD frames.
 bool HudWide();
 void SetHudWide(bool enabled);
+int HudSpreadMax();
+void SetHudSpreadMax(int mode);
+const char* HudSpreadMaxName(int mode);
+bool ParseHudSpreadMax(const char* name, int& mode);
+float HudSpreadCap();
+int ScanSpread();
+void SetScanSpread(int percent);
 
 // Mouse FPS mode owns aim only in playable first person; target locks retain
 // their native camera and synchronize the mouse angles for a clean handoff.

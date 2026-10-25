@@ -28,11 +28,13 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `skipcine <0|1>` — skip cutscenes the player has not seen (the F1 setting)
 - `gunoffset [<r> <f> <u>]` — arm cannon offset in metres (+-1), as the F1 Render row does
 - `msaa <1|4> | aniso <1..16>` — anti-aliasing and anisotropic filtering (applied next frame) (also `aniso`)
+- `scanspread [0..100]` — how much of the widescreen spread the scan visor side panels get (0 = 4:3 place)
 - `hudscale <50..100>` — HUD scale in percent, as the F1 HUD row does
 - `crosshair [<25..100>]` — aim crosshair size, `style classic|remastered`, opacity, color <r> <g> <b>|clear, aim <0|1> (F1 HUD)
 - `uiscale <50..200>` — the F1 window's size in percent, as the Render row does
 - `vsync <0|1>` — vertical sync, as the F1 Render row does
 - `interp [0|1]` — smooth frames: the camera between ticks with the cap off
+- `hudspread [16:9|21:9|full]` — widest screen the widescreen HUD spreads to (F1 Video > Display)
 - `aspect [4:3|16:9|window]` — aspect ratio, as the F1 Video > Display row does
 - `boost` — boost-ball release on the morphed player
 - `noise <type> [x y z]` — InformListeners at the player (6 = safe-zone noise)

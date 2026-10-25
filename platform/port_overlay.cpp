@@ -150,6 +150,16 @@ bool sLookInterpolation = true;
 // MP1's HudWide (`MP2_HUD_WIDE`, on by default as there): on a wide framebuffer the GUI spreads to the
 // screen edges; off keeps the game's 4:3 proportions, centred.
 bool sHudWide = true;
+// The widest screen the HUD spreads to (HudSpreadCap): 0 16:9, 1 21:9, 2 the whole screen. Past it the
+// HUD stays centred at that width.
+int sHudSpreadMax = 1;
+// Scan panel spread in percent (`MP2_SCAN_SPREAD`): the touch controls cover the screen edges on
+// Android, so a phone starts them at their 4:3 place.
+#if defined(__ANDROID__)
+int sScanSpread = PortOverlay::kScanSpreadMin;
+#else
+int sScanSpread = PortOverlay::kScanSpreadMax;
+#endif
 // MP1's static render scale (`MP2_RENDER_SCALE`): 0 draws the EFB at the window's own size (MP1's
 // "Auto"), 1-4 at that multiple of the render mode's 480-line base. MP2 drew at the window's size
 // before this setting, so that stays the default here (MP1's is 1).
@@ -1134,6 +1144,65 @@ void SetHudWide(bool enabled) {
   }
 }
 
+int HudSpreadMax() {
+  ReadEnv();
+  const char* env = std::getenv("MP2_HUD_SPREAD_MAX");
+  int mode = sHudSpreadMax;
+  if (env != nullptr) {
+    ParseHudSpreadMax(env, mode);
+  }
+  return std::clamp(mode, 0, 2);
+}
+
+void SetHudSpreadMax(int mode) {
+  ReadEnv();
+  mode = std::clamp(mode, 0, 2);
+  if (sHudSpreadMax != mode) {
+    sHudSpreadMax = mode;
+    Persist();
+  }
+}
+
+int ScanSpread() {
+  ReadEnv();
+  const int env = port::EnvInt("MP2_SCAN_SPREAD", -1);
+  return std::clamp(env >= kScanSpreadMin && env <= kScanSpreadMax ? env : sScanSpread,
+                    kScanSpreadMin, kScanSpreadMax);
+}
+
+void SetScanSpread(int percent) {
+  ReadEnv();
+  percent = std::clamp(percent, kScanSpreadMin, kScanSpreadMax);
+  if (sScanSpread != percent) {
+    sScanSpread = percent;
+    Persist();
+  }
+}
+
+const char* HudSpreadMaxName(int mode) {
+  return mode <= 0 ? "16:9" : mode == 1 ? "21:9" : "full";
+}
+
+bool ParseHudSpreadMax(const char* name, int& mode) {
+  const std::string text = name != nullptr ? name : "";
+  if (text == "16:9" || text == "16x9") {
+    mode = 0;
+  } else if (text == "21:9" || text == "21x9") {
+    mode = 1;
+  } else if (text == "full" || text == "0") {
+    mode = 2;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+float HudSpreadCap() {
+  const int mode = HudSpreadMax();
+  // Widths relative to 4:3.
+  return mode <= 0 ? (16.f / 9.f) / (4.f / 3.f) : mode == 1 ? (21.f / 9.f) / (4.f / 3.f) : 1e6f;
+}
+
 bool LookInterpolation() {
   ReadEnv();
   return EnvBool("MP2_LOOK_INTERPOLATION", sLookInterpolation);
@@ -1255,6 +1324,19 @@ float AspectWiden() {
     return 1.f;
   }
   return static_cast< float >(fbWidth) / static_cast< float >(sBaseFbWidth);
+}
+
+float VertPlusFov(float fovDegrees, float aspect) {
+  const int efbHeight = CGraphics::GetRenderMode().efbHeight;
+  if (sBaseFbWidth <= 0 || efbHeight <= 0 || aspect <= 0.f) {
+    return fovDegrees;
+  }
+  const float authored = static_cast< float >(sBaseFbWidth) / static_cast< float >(efbHeight);
+  if (aspect >= authored) {
+    return fovDegrees;
+  }
+  const float halfTan = tanf(0.5f * fovDegrees * 3.14159265f / 180.f) * authored / aspect;
+  return 2.f * atanf(halfTan) * 180.f / 3.14159265f;
 }
 
 void Draw() {

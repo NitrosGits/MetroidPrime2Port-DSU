@@ -358,6 +358,8 @@ const SettingKey kSettingKeys[] = {
          sHudScale = parsed;
      },
      [](std::ostream& out) { out << sHudScale; }, false, "50", "100"},
+    IntKey< &sScanSpread, PortOverlay::kScanSpreadMin, PortOverlay::kScanSpreadMax >(
+        "scan_spread", "0", "100"),
     IntKey< &sUiScale, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax >("ui_scale", "50",
                                                                             "150"),
     BoolKey< &sVsync >("vsync"),
@@ -368,6 +370,10 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sParticleInterpolation >("particle_interpolation"),
     BoolKey< &sLookInterpolation >("look_interpolation"),
     BoolKey< &sHudWide >("hud_wide"),
+    {"hud_spread_max",
+     [](const std::string& value) { PortOverlay::ParseHudSpreadMax(value.c_str(), sHudSpreadMax); },
+     [](std::ostream& out) { out << PortOverlay::HudSpreadMaxName(sHudSpreadMax); }, false, "16:9",
+     "full"},
     // 0 is the window's own size; MP1 keeps any value up to 4.
     {"render_scale",
      [](const std::string& value) {

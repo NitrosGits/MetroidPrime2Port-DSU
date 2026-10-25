@@ -1526,6 +1526,20 @@ void CmdMsaaAniso(CStateManager&, const Args& args, std::string& out) {
   out += line;
 }
 
+void CmdScanSpread(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() >= 2) {
+    const int value = ArgToInt(args[1], -1);
+    if (value < PortOverlay::kScanSpreadMin || value > PortOverlay::kScanSpreadMax) {
+      Fail("scan spread is 0..100 percent (100 = fully spread)");
+      return;
+    }
+    PortOverlay::SetScanSpread(value);
+  }
+  char line[64];
+  std::snprintf(line, sizeof(line), "scan spread %d%%\n", PortOverlay::ScanSpread());
+  out += line;
+}
+
 void CmdHudScale(CStateManager&, const Args& args, std::string& out) {
   if (args.size() < 2) {
     char line[64];
@@ -1652,6 +1666,20 @@ void CmdAspect(CStateManager&, const Args& args, std::string& out) {
   }
   out += "aspect ";
   out += PortOverlay::AspectName(PortOverlay::AspectMode());
+  out += '\n';
+}
+
+void CmdHudSpread(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() >= 2) {
+    int mode = 0;
+    if (!PortOverlay::ParseHudSpreadMax(std::string(args[1]).c_str(), mode)) {
+      Fail("usage: hudspread <16:9|21:9|full>");
+      return;
+    }
+    PortOverlay::SetHudSpreadMax(mode);
+  }
+  out += "hudspread ";
+  out += PortOverlay::HudSpreadMaxName(PortOverlay::HudSpreadMax());
   out += '\n';
 }
 
@@ -4261,6 +4289,8 @@ const CommandSpec kCommands[] = {
     {"msaa", CmdMsaaAniso,
       "msaa <1|4> | aniso <1..16>  anti-aliasing and anisotropic filtering (applied next frame)\n"},
     {"aniso", CmdMsaaAniso, ""},
+    {"scanspread", CmdScanSpread,
+      "scanspread [0..100]         how far the scan visor side panels spread (0 = 4:3 place)\n"},
     {"hudscale", CmdHudScale,
       "hudscale <50..100>          HUD scale in percent, as the F1 HUD row does\n"},
     {"crosshair", CmdCrosshair,
@@ -4272,6 +4302,8 @@ const CommandSpec kCommands[] = {
       "vsync <0|1>                 vertical sync, as the F1 Render row does\n"},
     {"interp", CmdInterp,
       "interp [0|1]                smooth frames: the camera between ticks with the cap off\n"},
+    {"hudspread", CmdHudSpread,
+      "hudspread [16:9|21:9|full]  widest screen the HUD spreads to, as the F1 Video row does\n"},
     {"aspect", CmdAspect,
       "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"},
     {"boost", CmdBoost,

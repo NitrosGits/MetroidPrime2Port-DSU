@@ -104,10 +104,27 @@ void DrawVideoDisplay() {
   }
   ImGui::SetItemTooltip("Spreads the HUD to the screen edges on a wide screen. Off keeps its 4:3\n"
                         "proportions, centred.");
+  {
+    static const char* const kSpreadMax[] = {"16:9", "21:9", "Full screen"};
+    int spreadMax = PortOverlay::HudSpreadMax();
+    ImGui::BeginDisabled(!hudWide);
+    if (ImGui::Combo("Widest HUD spread", &spreadMax, kSpreadMax, 3)) {
+      PortOverlay::SetHudSpreadMax(spreadMax);
+    }
+    ImGui::EndDisabled();
+    ImGui::SetItemTooltip("The widest screen the HUD spreads to; on a wider one it stays centred at\n"
+                          "that width. Applies only with the widescreen HUD on.");
+  }
   // Read by CGuiCamera::Draw while CSamusHud::Draw is drawing the HUD
   // (PortOverlay::HudScalingActive): the HUD's projection is scaled about the screen centre.
   Changed(ImGui::SliderInt("HUD scale", &sHudScale, PortOverlay::kHudScaleMin, PortOverlay::kHudScaleMax, "%d%%"));
   ImGui::SetItemTooltip("Shrinks the HUD toward the middle; the helmet and menus keep their size.");
+  ImGui::BeginDisabled(!hudWide);
+  Changed(ImGui::SliderInt("Scan panel spread", &sScanSpread, PortOverlay::kScanSpreadMin,
+                           PortOverlay::kScanSpreadMax, "%d%%"));
+  ImGui::EndDisabled();
+  ImGui::SetItemTooltip("How far the scan visor's side panels spread to the screen edges. 0 keeps\n"
+                        "them at their 4:3 place near the centre (default on a phone).");
   if (sAimCrosshair) {
     Changed(ImGui::SliderInt("Crosshair opacity", &sCrosshairOpacity, PortOverlay::kCrosshairOpacityMin,
                              PortOverlay::kCrosshairOpacityMax, "%d%%"));

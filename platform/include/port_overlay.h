@@ -360,6 +360,21 @@ void SetLookInterpolation(bool enabled);
 // keeps the game's 4:3 proportions centred. Only matters while the framebuffer is wider than 4:3.
 bool HudWide();
 void SetHudWide(bool enabled);
+// Widest screen the HUD spreads to (`MP2_HUD_SPREAD_MAX`, key `hud_spread_max`): 0 = 16:9, 1 = 21:9
+// (default), 2 = full. Past it the HUD stays centred at that width. HudSpreadCap is the width
+// relative to 4:3 that CGuiCamera clamps the spread to.
+int HudSpreadMax();
+void SetHudSpreadMax(int mode);
+const char* HudSpreadMaxName(int mode);
+bool ParseHudSpreadMax(const char* name, int& mode);
+float HudSpreadCap();
+// How much of the horizontal widescreen spread the scan visor's side panels get, in percent
+// (`MP2_SCAN_SPREAD`, key `scan_spread`): 100 = fully spread (default), 0 = their 4:3 place near the
+// centre, out from under a phone's touch controls (0 by default on Android).
+const int kScanSpreadMin = 0;
+const int kScanSpreadMax = 100;
+int ScanSpread();
+void SetScanSpread(int percent);
 // MP1's static render scale (`MP2_RENDER_SCALE`, F1 > Video > Quality): 0 = the window's own size
 // (default), else kRenderScaleMin-kRenderScaleMax x the render mode's base, through
 // VISetFrameBufferScale from Draw. Photo mode's capture overrides it while it runs.
@@ -386,6 +401,10 @@ void ApplyAspect();
 // The render mode's width over the game's own (1 at 4:3): CGuiCamera::Draw widens its projection by
 // it, so the GUI keeps its proportions on a wide framebuffer.
 float AspectWiden();
+// Below the game's 4:3 the world view keeps its width and gains height (Vert+, as the Prime 1 port
+// does): the vertical field of view in degrees that shows the authored horizontal extent on a
+// framebuffer `aspect` wide. Wider than the authored aspect, or non-positive input, returns fov.
+float VertPlusFov(float fovDegrees, float aspect);
 bool Visible();
 // Builds the window. Call once per presented frame, inside the open Aurora frame.
 void Draw();

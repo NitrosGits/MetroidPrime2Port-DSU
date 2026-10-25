@@ -77,6 +77,8 @@ extern bool sPoseInterpolation;
 extern bool sParticleInterpolation;
 extern bool sLookInterpolation;
 extern bool sHudWide;
+extern int sHudSpreadMax;
+extern int sScanSpread;
 extern float sRenderScale;
 extern int sAspectMode;
 extern bool sOverlayWindowed;

@@ -74,33 +74,170 @@ static void PortDrawSlicedPiece(const CGuiCamera& camera, const CGuiWidget* widg
 
 static void PortDrawSliced(const CGuiCamera& camera, const CGuiWidget* widget,
                            const CGuiWidgetDrawParms& parms, const CTransform4f& view,
-                           const CTransform4f& fromView) {
+                           const CTransform4f& fromView, bool curved, float depth) {
   u32 scissor[4];
   GXGetScissor(&scissor[0], &scissor[1], &scissor[2], &scissor[3]);
   const float halfWidth = camera.GetSpreadHalfWidth();
   const float inner = CGuiCamera::kSpreadSliceInner * halfWidth;
-  const float outer = CGuiCamera::kSpreadSliceOuter * halfWidth;
-  const float warpedOuter = outer + camera.GetSpreadSliceOffset(outer);
+  const float outer =
+      (curved ? CGuiCamera::kSpreadCurveOuter : CGuiCamera::kSpreadSliceOuter) * halfWidth;
   // Past the screen edge, so the outer scissors reach it.
   const float edge = 2.f * camera.GetSpreadScreenHalfWidth();
-  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, -inner, inner, -inner, inner);
-  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, inner, outer, inner,
-                      warpedOuter);
-  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, -outer, -inner,
-                      -warpedOuter, -inner);
-  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, outer, edge, warpedOuter,
-                      edge + warpedOuter - outer);
-  PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, -edge, -outer,
-                      -edge - warpedOuter + outer, -warpedOuter);
+  // The slices are cut in the unlagged (authored) tangents and carried through the HUD lag at the
+  // model's view depth: each piece is the linear map through its lagged end points.
+  const auto piece = [&](float from, float to, float fromWarped, float toWarped) {
+    PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor,
+                        camera.GetLaggedTangent(from, depth), camera.GetLaggedTangent(to, depth),
+                        camera.GetLaggedTangent(fromWarped, depth),
+                        camera.GetLaggedTangent(toWarped, depth));
+  };
+  piece(-inner, inner, -inner, inner);
+  // The band is one linear piece, or for the eased curve enough chords that the joints don't
+  // show; each maps its authored span onto the warped one, mirrored on the left.
+  const int pieces = curved ? 16 : 1;
+  float from = inner;
+  float fromWarped = inner;
+  for (int i = 1; i <= pieces; ++i) {
+    const float to = inner + (outer - inner) * static_cast< float >(i) / pieces;
+    const float toWarped = to + camera.GetSpreadSliceOffset(to, curved);
+    piece(from, to, fromWarped, toWarped);
+    piece(-to, -from, -toWarped, -fromWarped);
+    from = to;
+    fromWarped = toWarped;
+  }
+  piece(outer, edge, fromWarped, edge + fromWarped - outer);
+  piece(-edge, -outer, -edge - fromWarped + outer, -fromWarped);
   GXSetScissor(scissor[0], scissor[1], scissor[2], scissor[3]);
 }
 
-static void PortDrawSpread(const CGuiCamera& camera, const CGuiWidget* widget,
-                           const CGuiWidgetDrawParms& parms) {
+// Cluster members (the visor/beam selectors) share their group's anchor, so the cluster moves as one
+// unit instead of each icon and lozenge drifting by its own bounding box. Kept out of CGuiFrame so
+// the frame's layout is unchanged; entries are dropped with the frame.
+struct SPortSpreadAnchor {
+  const CGuiFrame* frame;
+  const CGuiWidget* member;
+  const CGuiWidget* group;
+};
+static SPortSpreadAnchor sPortSpreadAnchors[256];
+static int sPortSpreadAnchorCount = 0;
+
+static const CGuiWidget* PortFindSpreadAnchor(const CGuiFrame* frame, const CGuiWidget* widget) {
+  for (int i = 0; i < sPortSpreadAnchorCount; ++i) {
+    if (sPortSpreadAnchors[i].frame == frame && sPortSpreadAnchors[i].member == widget) {
+      return sPortSpreadAnchors[i].group;
+    }
+  }
+  return nullptr;
+}
+
+void CGuiFrame::SetSpreadAnchor(const CGuiWidget* member, const CGuiWidget* anchor) {
+  for (int i = 0; i < sPortSpreadAnchorCount; ++i) {
+    if (sPortSpreadAnchors[i].frame == this && sPortSpreadAnchors[i].member == member) {
+      sPortSpreadAnchors[i].group = anchor;
+      return;
+    }
+  }
+  if (sPortSpreadAnchorCount < 256) {
+    SPortSpreadAnchor& entry = sPortSpreadAnchors[sPortSpreadAnchorCount++];
+    entry.frame = this;
+    entry.member = member;
+    entry.group = anchor;
+  }
+}
+
+void CGuiFrame::SetSpreadAnchorTree(const CGuiWidget* root) {
+  if (root == nullptr) {
+    return;
+  }
+  SetSpreadAnchor(root, root);
+  for (rstl::vector< CGuiWidget* >::const_iterator it = mWidgets.begin(); it != mWidgets.end();
+       ++it) {
+    for (const CGuiObject* obj = (*it)->GetParent(); obj != nullptr; obj = obj->GetParent()) {
+      if (obj == root) {
+        SetSpreadAnchor(*it, root);
+        break;
+      }
+    }
+  }
+}
+
+// Widgets moved by only part of the horizontal spread (the scan visor's side panels). Kept beside
+// the anchors for the same reason; `weight` is read at every draw.
+struct SPortSpreadWeight {
+  const CGuiFrame* frame;
+  const CGuiWidget* member;
+  float (*weight)();
+};
+static SPortSpreadWeight sPortSpreadWeights[256];
+static int sPortSpreadWeightCount = 0;
+
+static float PortFindSpreadWeight(const CGuiFrame* frame, const CGuiWidget* widget) {
+  for (int i = 0; i < sPortSpreadWeightCount; ++i) {
+    if (sPortSpreadWeights[i].frame == frame && sPortSpreadWeights[i].member == widget) {
+      const float w = sPortSpreadWeights[i].weight();
+      return w < 0.f ? 0.f : (w > 1.f ? 1.f : w);
+    }
+  }
+  return 1.f;
+}
+
+void CGuiFrame::SetSpreadWeightTree(const CGuiWidget* root, float (*weight)()) {
+  if (root == nullptr || weight == nullptr) {
+    return;
+  }
+  for (rstl::vector< CGuiWidget* >::const_iterator it = mWidgets.begin(); it != mWidgets.end();
+       ++it) {
+    const CGuiObject* obj = *it;
+    for (; obj != nullptr && obj != root; obj = obj->GetParent()) {
+    }
+    if (obj == nullptr) {
+      continue;
+    }
+    int slot = -1;
+    for (int i = 0; i < sPortSpreadWeightCount; ++i) {
+      if (sPortSpreadWeights[i].frame == this && sPortSpreadWeights[i].member == *it) {
+        slot = i;
+      }
+    }
+    if (slot < 0 && sPortSpreadWeightCount < 256) {
+      slot = sPortSpreadWeightCount++;
+    }
+    if (slot >= 0) {
+      sPortSpreadWeights[slot].frame = this;
+      sPortSpreadWeights[slot].member = *it;
+      sPortSpreadWeights[slot].weight = weight;
+    }
+  }
+}
+
+
+static void PortDropSpreadWeights(const CGuiFrame* frame) {
+  int kept = 0;
+  for (int i = 0; i < sPortSpreadWeightCount; ++i) {
+    if (sPortSpreadWeights[i].frame != frame) {
+      sPortSpreadWeights[kept++] = sPortSpreadWeights[i];
+    }
+  }
+  sPortSpreadWeightCount = kept;
+}
+
+static void PortDropSpreadAnchors(const CGuiFrame* frame) {
+  int kept = 0;
+  for (int i = 0; i < sPortSpreadAnchorCount; ++i) {
+    if (sPortSpreadAnchors[i].frame != frame) {
+      sPortSpreadAnchors[kept++] = sPortSpreadAnchors[i];
+    }
+  }
+  sPortSpreadAnchorCount = kept;
+}
+
+static void PortDrawSpread(const CGuiFrame* frame, const CGuiCamera& camera,
+                           const CGuiWidget* widget, const CGuiWidgetDrawParms& parms) {
   const float spread = camera.GetAspectSpread();
+  const float spreadY = camera.GetSpreadY();
   CTransform4f savedXf = CTransform4f::Identity();
   bool savedValid = false;
-  if (spread == 1.f || widget->GetParent() == nullptr) {
+  if ((spread == 1.f && spreadY == 1.f) || widget->GetParent() == nullptr) {
     widget->Draw(parms);
     return;
   }
@@ -109,9 +246,15 @@ static void PortDrawSpread(const CGuiCamera& camera, const CGuiWidget* widget,
   const CTransform4f world = widget->GetWorldTransform();
   CVector3f anchor = world.GetTranslation();
   bool stretch = false;
+  bool stretchY = false;
   float eyeMinDepth = 0.f;
+  float eyeDepth = 0.f;
   CAABox bounds(CVector3f(0.f, 0.f, 0.f), CVector3f(0.f, 0.f, 0.f));
-  if (widget->GetWidgetTypeID() == 'MODL' &&
+  const CGuiWidget* group = PortFindSpreadAnchor(frame, widget);
+  const float weight = sPortSpreadWeightCount > 0 ? PortFindSpreadWeight(frame, widget) : 1.f;
+  if (group != nullptr) {
+    anchor = group->GetWorldTransform().GetTranslation();
+  } else if (weight == 1.f && widget->GetWidgetTypeID() == 'MODL' &&
       static_cast< const CGuiModel* >(widget)->PortGetBounds(bounds)) {
     anchor = world * bounds.GetCenterPoint();
     const CAABox eyeBounds = bounds.GetTransformedAABox(invView * world);
@@ -120,22 +263,41 @@ static void PortDrawSpread(const CGuiCamera& camera, const CGuiWidget* widget,
       quarterWidth *= eyeBounds.GetMaxPoint().GetY();
     }
     eyeMinDepth = eyeBounds.GetMinPoint().GetY();
+    eyeDepth = eyeBounds.GetCenterPoint().GetY();
     const float centerX = camera.GetSpreadCenterX();
-    stretch = quarterWidth > 0.f && eyeBounds.GetMinPoint().GetX() < centerX - quarterWidth &&
+    if (spreadY != 1.f) {
+      // Meshes reaching both outer quarters of the authored height (the helmet's bars) stretch so
+      // they land on the top and bottom edges.
+      float quarterHeight = 0.5f * camera.GetSpreadHalfHeight();
+      if (camera.IsPerspective()) {
+        quarterHeight *= eyeBounds.GetMaxPoint().GetY();
+      }
+      const float centerZ = camera.GetSpreadCenterZ();
+      stretchY = quarterHeight > 0.f && eyeBounds.GetMinPoint().GetZ() < centerZ - quarterHeight &&
+                 eyeBounds.GetMaxPoint().GetZ() > centerZ + quarterHeight &&
+                 (!camera.IsPerspective() || eyeMinDepth > 0.f);
+    }
+    stretch = spread != 1.f && quarterWidth > 0.f &&
+              eyeBounds.GetMinPoint().GetX() < centerX - quarterWidth &&
               eyeBounds.GetMaxPoint().GetX() > centerX + quarterWidth;
   }
   if (stretch && (!camera.IsPerspective() || eyeMinDepth > 0.f) &&
       camera.GetSpreadScreenHalfWidth() > 0.f) {
-    PortDrawSliced(camera, widget, parms, view, invView * world);
+    PortDrawSliced(camera, widget, parms, view, invView * world, true,
+                   camera.IsPerspective() ? eyeDepth : 0.f);
     return;
   }
   CTransform4f moved = world;
-  if (stretch) {
+  if (stretchY) {
+    moved = view * CTransform4f::Translate(0.f, 0.f, camera.GetSpreadCenterZ()) *
+            CTransform4f::Scale(1.f, 1.f, spreadY) *
+            CTransform4f::Translate(0.f, 0.f, -camera.GetSpreadCenterZ()) * invView * world;
+  } else if (stretch) {
     moved = view * CTransform4f::Translate(camera.GetSpreadCenterX(), 0.f, 0.f) *
             CTransform4f::Scale(spread, 1.f, 1.f) *
             CTransform4f::Translate(-camera.GetSpreadCenterX(), 0.f, 0.f) * invView * world;
   } else {
-    moved = camera.GetSpreadTransform(anchor) * world;
+    moved = camera.GetSpreadTransform(anchor, weight) * world;
   }
   if (widget->PortSetWorldTransform(moved, savedXf, savedValid)) {
     widget->Draw(parms);
@@ -187,7 +349,15 @@ CGuiFrame::CGuiFrame(CInputStream& in, CSimplePool* pool)
   LoadWidgetsInGame(in, pool, mVersion);
 }
 
+#ifdef TARGET_PC
+CGuiFrame::~CGuiFrame() {
+  PortDropSpreadAnchors(this);
+  PortDropSpreadWeights(this);
+  delete mRootWidget;
+}
+#else
 CGuiFrame::~CGuiFrame() { delete mRootWidget; }
+#endif
 
 void CGuiFrame::LoadWidgetsInGame(CInputStream& in, CSimplePool* pool, uint version) {
   const int count = in.Get< int >();
@@ -265,7 +435,7 @@ void CGuiFrame::Draw(const CGuiWidgetDrawParms& parms) const {
     CGuiWidget* widget = *it;
     if (widget->GetIsVisible()) {
 #ifdef TARGET_PC
-      PortDrawSpread(*mCamera, widget, parms);
+      PortDrawSpread(this, *mCamera, widget, parms);
 #else
       widget->Draw(parms);
 #endif
@@ -279,7 +449,7 @@ void CGuiFrame::Draw(const CGuiWidgetDrawParms& parms) const {
     CGuiWidget* widget = *it;
     if (widget->GetIsVisible()) {
 #ifdef TARGET_PC
-      PortDrawSpread(*mCamera, widget, parms);
+      PortDrawSpread(this, *mCamera, widget, parms);
 #else
       widget->Draw(parms);
 #endif

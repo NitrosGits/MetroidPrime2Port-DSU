@@ -27,6 +27,10 @@ CCinematicCamera::CCinematicCamera(TUniqueId uid, const CTransform4f& xf, bool a
 , mFlags(0)
 , mPaused(false) {
   // The original initializes mSlowMotionScale in Reset, not here.
+#ifdef TARGET_PC
+  // Port: cinematics are framed by their authors; Vert+ would reframe them below 4:3.
+  SetFovFitted(true);
+#endif
 }
 
 CCinematicCamera::~CCinematicCamera() {}

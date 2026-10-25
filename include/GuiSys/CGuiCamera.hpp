@@ -43,6 +43,12 @@ public:
   void SetSpreadable(bool spreadable) { mSpreadable = spreadable; }
   float GetAspectSpread() const { return mSpread; }
   float GetSpreadCenterX() const { return mSpreadCenterX; }
+  // The vertical spread, the same remap on the screen-up axis: 1 unless the window is narrower
+  // than 4:3, where the frame keeps its authored width and gains height. Half the authored height
+  // as a tangent per unit depth (perspective) or in world units (ortho), about GetSpreadCenterZ.
+  float GetSpreadY() const { return mSpreadY; }
+  float GetSpreadHalfHeight() const { return mSpreadHalfHeight; }
+  float GetSpreadCenterZ() const { return mSpreadCenterZ; }
   // Half the authored width as a tangent per unit depth (perspective), or in world units (ortho).
   float GetSpreadHalfWidth() const { return mSpreadHalfWidth; }
   // Half the drawn view's width in the same units: widened by the aspect, larger by the HUD scale.
@@ -54,10 +60,23 @@ public:
   // centre).
   static const float kSpreadSliceInner;
   static const float kSpreadSliceOuter;
-  float GetSpreadSliceOffset(float t) const;
+  // `curved`: the eased variant for the helmet's arcs, a wider band with a smoothstep stretch.
+  static const float kSpreadCurveOuter;
+  float GetSpreadSliceOffset(float t, bool curved = false) const;
   // The spread of a compact widget or cluster anchored at `worldAnchor`: an exact screen-space
   // slide, the whole side offset past the middle slice, none inside it. `weight` fades it.
   CTransform4f GetSpreadTransform(const CVector3f& worldAnchor, float weight = 1.f) const;
+  // HUD lag moves the frame's content on screen. `idleToView` maps the frame's unlagged view space
+  // onto the drawn one (identity at rest). The spread is applied in the unlagged space and carried
+  // through the lag, so content keeps its shape while it lags (MP1 sync: warp before lag).
+  void SetSpreadLag(const CTransform4f& idleToView) {
+    mSpreadLag = idleToView;
+    mSpreadLagInv = idleToView.GetInverse();
+  }
+  // Places a camera at `xf` whose unlagged pose is unrotated at `idlePos`, and sets the lag to match.
+  void SetHudO2WTransform(const CTransform4f& xf, const CVector3f& idlePos);
+  // The drawn screen tangent of unlagged tangent `tangent` at view depth `depth`.
+  float GetLaggedTangent(float tangent, float depth) const;
 #endif
   UCameraParms GetParms() const { return mCameraParms; }
   void SetParms(const UCameraParms& parms) { mCameraParms = parms; }
@@ -69,9 +88,14 @@ private:
   bool mSpreadable = false;
   mutable float mSpread = 1.f;
   mutable float mSpreadCenterX = 0.f;
+  mutable float mSpreadY = 1.f;
+  mutable float mSpreadHalfHeight = 0.f;
+  mutable float mSpreadCenterZ = 0.f;
   mutable float mSpreadHalfWidth = 0.f;
   mutable float mSpreadScreenHalfWidth = 0.f;
   mutable CTransform4f mSpreadView = CTransform4f::Identity();
+  CTransform4f mSpreadLag = CTransform4f::Identity();
+  CTransform4f mSpreadLagInv = CTransform4f::Identity();
 #endif
 };
 CHECK_SIZEOF(CGuiCamera, 0xd8)

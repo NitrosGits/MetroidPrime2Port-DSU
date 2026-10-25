@@ -1765,7 +1765,11 @@ CVector3f CCompoundTargetReticle::CalculateOrbitZoneReticlePosition(const CState
                                                                     bool lag) const {
   const CGameCamera& camera = *mgr.GetCameraManager(mPlayerIndex)->GetCurrentCamera(mgr, true);
   const CPlayer* player = mgr.GetPlayer(mPlayerIndex);
+#ifdef TARGET_PC
+  float halfFov = camera.GetRenderFov() * 0.5f;
+#else
   float halfFov = camera.GetFov() * 0.5f;
+#endif
   float halfHeight =
       static_cast< float >(player->GetTweakPlayer()->GetOrbitZoneHeight(CPlayer::kZI_Targeting));
   float distance = 224.f / halfHeight;
@@ -1882,8 +1886,13 @@ void CTargetingManager::Draw(const CStateManager& mgr, bool hideLockOn) const {
   CGraphics::SetViewPointMatrix(cameraXf);
   float height = static_cast< float >(CGraphics::GetViewport().mHeight);
   float width = static_cast< float >(CGraphics::GetViewport().mWidth);
+#ifdef TARGET_PC
+  gpRender->SetPerspective(camera.GetRenderFov(), width, height, camera.GetNearClipDistance(),
+                           camera.GetFarClipDistance());
+#else
   gpRender->SetPerspective(camera.GetFov(), width, height, camera.GetNearClipDistance(),
                            camera.GetFarClipDistance());
+#endif
   mTargetReticle.Draw(mgr, hideLockOn);
 }
 
@@ -2033,8 +2042,13 @@ void COrbitPointMarker::Draw(const CStateManager& mgr) const {
       CGraphics::SetViewPointMatrix(cameraXf);
       float height = static_cast< float >(CGraphics::GetViewport().mHeight);
       float width = static_cast< float >(CGraphics::GetViewport().mWidth);
+#ifdef TARGET_PC
+      gpRender->SetPerspective(camera.GetRenderFov(), width, height, camera.GetNearClipDistance(),
+                               camera.GetFarClipDistance());
+#else
       gpRender->SetPerspective(camera.GetFov(), width, height, camera.GetNearClipDistance(),
                                camera.GetFarClipDistance());
+#endif
 
       float scale;
       if (mLastFreeOrbit) {

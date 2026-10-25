@@ -1232,7 +1232,7 @@ void CStateManager::SetupViewForDraw(const CViewport& viewport) {
 #ifdef TARGET_PC
   // Port: photo mode's field of view (0 keeps the camera's own).
   const float fovDegrees =
-      PortFreeCam::FovOverride() > 0.f ? PortFreeCam::FovOverride() : camera->GetFov();
+      PortFreeCam::FovOverride() > 0.f ? PortFreeCam::FovOverride() : camera->GetRenderFov();
 #else
   const float fovDegrees = camera->GetFov();
 #endif
@@ -1403,8 +1403,13 @@ void CStateManager::ResetViewAfterDraw(const CViewport& viewport, const CTransfo
 
   const float height = CGraphics::GetViewport().mHeight;
   const float width = CGraphics::GetViewport().mWidth;
+#ifdef TARGET_PC
+  gpRender->SetPerspective(camera->GetRenderFov(), width, height, camera->GetNearClipDistance(),
+                           camera->GetFarClipDistance());
+#else
   gpRender->SetPerspective(camera->GetFov(), width, height, camera->GetNearClipDistance(),
                            camera->GetFarClipDistance());
+#endif
 }
 
 void CStateManager::DrawAdditionalFilters() {
@@ -1452,8 +1457,13 @@ void CStateManager::DrawReflection(const CVector3f& point) {
   const float height = static_cast< float >(viewport.mHeight);
   const float width = static_cast< float >(viewport.mWidth);
   const CGraphics::CProjectionState backupProjection = CGraphics::GetProjectionState();
+#ifdef TARGET_PC
+  gpRender->SetPerspective(camera.GetRenderFov(), width, height, camera.GetNearClipDistance(),
+                           camera.GetFarClipDistance());
+#else
   gpRender->SetPerspective(camera.GetFov(), width, height, camera.GetNearClipDistance(),
                            camera.GetFarClipDistance());
+#endif
   player->RenderReflectedPlayer(*this);
 
   CGraphics::SetViewPointMatrix(backupView);
