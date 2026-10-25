@@ -6,6 +6,11 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
 #include "rstl/math.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/CCameraManager.hpp"
+#include "port_overlay.h"
+#endif
 
 CFluidPlaneManager::CFluidProfile CFluidPlaneManager::sProfile;
 
@@ -29,7 +34,26 @@ CFluidPlaneManager::CFluidPlaneManager()
   }
 }
 
+#ifdef TARGET_PC
+namespace {
+float sPortLastDt = 0.f;
+uint sPortUpdateGeneration = 0;
+} // namespace
+
+float CFluidPlaneManager::PortPresentLag() {
+  const float t = CCameraManager::GetPresentationInterpolation();
+  if (t < 0.f || t >= 1.f || sPortUpdateGeneration != CActor::PortTickGeneration() ||
+      !PortOverlay::ParticleInterpolation())
+    return 0.f;
+  return (1.f - t) * sPortLastDt;
+}
+#endif
+
 void CFluidPlaneManager::Update(float dt) {
+#ifdef TARGET_PC
+  sPortLastDt = dt;
+  sPortUpdateGeneration = CActor::PortTickGeneration();
+#endif
   mUvTime = dt + mUvTime;
   for (CSplashRecord* it = mSplashes.begin(); it != mSplashes.end(); ++it) {
     it->SetTime(dt + it->GetTime());

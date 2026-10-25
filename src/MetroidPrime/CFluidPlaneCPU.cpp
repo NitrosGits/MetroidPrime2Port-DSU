@@ -296,7 +296,12 @@ void CFluidPlaneCPU::RenderSetup(const CStateManager& mgr, float alpha, const CT
   if (!gkWaterEnable) {
     return;
   }
+#ifdef TARGET_PC
+  // Port: the water UV clock reads the presented time between ticks (smooth frames).
+  const float uvTime = mgr.GetFluidPlaneManager()->GetUVTime() - CFluidPlaneManager::PortPresentLag();
+#else
   const float uvTime = mgr.GetFluidPlaneManager()->GetUVTime();
+#endif
   const bool hasLightmap = HasLightMap();
   bool hasDoubleLightmap = false;
   const int envMapType =

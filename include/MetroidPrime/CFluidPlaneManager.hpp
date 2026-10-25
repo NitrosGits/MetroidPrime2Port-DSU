@@ -45,6 +45,10 @@ public:
   void CreateSplash(TUniqueId splasher, CStateManager& mgr, const CScriptWater& water,
                     const CVector3f& pos, float factor, bool sfx);
   float GetUVTime() const { return mUvTime; }
+#ifdef TARGET_PC
+  // Port: seconds the draw reads behind the last Update between ticks (smooth frames), else 0.
+  static float PortPresentLag();
+#endif
 
   static CFluidProfile sProfile;
 
