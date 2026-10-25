@@ -119,6 +119,7 @@
 {"Video", "Display", "Suit colours", "Random", "suit colour color random randomise randomize shuffle surprise"},
 {"Video", "Display", "Display", "Aspect ratio", "widescreen 16:9 4:3 stretch"},
 {"Video", "Display", "HUD and view", "Widescreen HUD (spread to edges)", "hud wide ultrawide"},
+{"Video", "Display", "HUD and view", "Widest HUD spread", "hud ultrawide 21:9 16:9 centred cap"},
 {"Video", "Display", "HUD and view", "HUD scale", "interface size shrink"},
 {"Video", "Display", "HUD and view", "Crosshair opacity", "reticle cursor alpha transparency"},
 {"Video", "Display", "HUD and view", "Crosshair style", "reticle cursor classic remastered"},

@@ -1594,6 +1594,20 @@ void CmdAspect(CStateManager&, const Args& args, std::string& out) {
   out += '\n';
 }
 
+void CmdHudSpread(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() >= 2) {
+    int mode = 0;
+    if (!PortOverlay::ParseHudSpreadMax(std::string(args[1]).c_str(), mode)) {
+      Fail("usage: hudspread <16:9|21:9|full>");
+      return;
+    }
+    PortOverlay::SetHudSpreadMax(mode);
+  }
+  out += "hudspread ";
+  out += PortOverlay::HudSpreadMaxName(PortOverlay::HudSpreadMax());
+  out += '\n';
+}
+
 // One object as `objs` and `obj` show it: uid, editor id, class, area; an actor's position too when
 // `withPosition`. `inactive` when it is not active.
 void DescribeObject(const CEntity& ent, bool withPosition, std::string& out) {
@@ -4211,6 +4225,8 @@ const CommandSpec kCommands[] = {
       "vsync <0|1>                 vertical sync, as the F1 Render row does\n"},
     {"interp", CmdInterp,
       "interp [0|1]                smooth frames: the camera between ticks with the cap off\n"},
+    {"hudspread", CmdHudSpread,
+      "hudspread [16:9|21:9|full]  widest screen the HUD spreads to, as the F1 Video row does\n"},
     {"aspect", CmdAspect,
       "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"},
     {"boost", CmdBoost,

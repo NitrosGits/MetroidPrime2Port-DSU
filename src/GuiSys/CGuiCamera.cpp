@@ -135,7 +135,9 @@ void CGuiCamera::Draw(const CGuiWidgetDrawParms& parms) const {
   // Port: the projection above is widened by portWiden; the widgets of a spreadable camera (the
   // in-game HUD) then move out by the same factor so they reach the wide view's edges, each keeping
   // its shape and anchoring (CGuiFrame::Draw). 1 = no spread.
-  mSpread = mSpreadable && PortOverlay::HudWide() && portWiden > 1.f ? portWiden : 1.f;
+  mSpread = mSpreadable && PortOverlay::HudWide() && portWiden > 1.f
+                  ? (portWiden < PortOverlay::HudSpreadCap() ? portWiden : PortOverlay::HudSpreadCap())
+                  : 1.f;
   mSpreadView = CTransform4f::Translate(parms.GetCameraOffset()) * GetWorldTransform();
   mSpreadY = mSpreadable && PortOverlay::HudWide() && portWiden < 1.f ? 1.f / portWiden : 1.f;
   if (mProjection == kProjection_Perspective) {

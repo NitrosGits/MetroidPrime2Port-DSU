@@ -33,6 +33,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `uiscale <50..200>` — the F1 window's size in percent, as the Render row does
 - `vsync <0|1>` — vertical sync, as the F1 Render row does
 - `interp [0|1]` — smooth frames: the camera between ticks with the cap off
+- `hudspread [16:9|21:9|full]` — widest screen the widescreen HUD spreads to (F1 Video > Display)
 - `aspect [4:3|16:9|window]` — aspect ratio, as the F1 Video > Display row does
 - `boost` — boost-ball release on the morphed player
 - `noise <type> [x y z]` — InformListeners at the player (6 = safe-zone noise)

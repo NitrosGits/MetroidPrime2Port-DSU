@@ -323,6 +323,14 @@ void SetLookInterpolation(bool enabled);
 // keeps the game's 4:3 proportions centred. Only matters while the framebuffer is wider than 4:3.
 bool HudWide();
 void SetHudWide(bool enabled);
+// Widest screen the HUD spreads to (`MP2_HUD_SPREAD_MAX`, key `hud_spread_max`): 0 = 16:9, 1 = 21:9
+// (default), 2 = full. Past it the HUD stays centred at that width. HudSpreadCap is the width
+// relative to 4:3 that CGuiCamera clamps the spread to.
+int HudSpreadMax();
+void SetHudSpreadMax(int mode);
+const char* HudSpreadMaxName(int mode);
+bool ParseHudSpreadMax(const char* name, int& mode);
+float HudSpreadCap();
 // MP1's static render scale (`MP2_RENDER_SCALE`, F1 > Video > Quality): 0 = the window's own size
 // (default), else kRenderScaleMin-kRenderScaleMax x the render mode's base, through
 // VISetFrameBufferScale from Draw. Photo mode's capture overrides it while it runs.

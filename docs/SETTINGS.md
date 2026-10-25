@@ -151,6 +151,8 @@ Video > Display:
 - `fullscreen`, `vsync`, `aspect`: Display > Fullscreen (F11), Vsync, Aspect ratio. `MP2_ASPECT`
   takes `4:3`, `16:9` or `window`; `MP2_WIDESCREEN=1` also gives 16:9.
 - `hud_wide`, `hud_scale`: HUD and view > Widescreen HUD, HUD scale.
+- `hud_spread_max` (`16:9`, `21:9`, `full`; default `21:9`, env `MP2_HUD_SPREAD_MAX`): HUD and view >
+  Widest HUD spread; past that width the HUD stays centred.
 - `crosshair_style`, `crosshair_opacity`: HUD and view > Crosshair style, Crosshair opacity.
 - `crosshair_color`, `crosshair_custom_color`: the crosshair's colour (env `MP2_CROSSHAIR_COLOR`);
   no overlay row yet.
