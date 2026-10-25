@@ -67,6 +67,12 @@ class CtpRet(gdb.FinishBreakpoint):
         r = self.rec
         try:
             r['done'] = True
+            for this, m, old in r['restore']:
+                gdb.execute('set var %s->%s = %s' % (this, m, old))
+                back = str(int(gdb.parse_and_eval(this + '->' + m)))
+                state['restored'] = state.get('restored', 0) + 1
+                if back != old:
+                    problem('restore readback %s != %s (%s)' % (back, old, m))
             if r['stack_pos'] is not None and state['ctp'] and state['ctp'][-1] is r:
                 state['ctp'].pop()
             else:
@@ -97,8 +103,29 @@ class CtpBp(gdb.Breakpoint):
             state['ctp_entries'] += 1
             frame = gdb.newest_frame()
             rec = {'this': ev('$rdi'), 'entry_sp': ev('$rsp'), 'thread': gdb.selected_thread().num,
-                   'done': False, 'forced': None, 'stack_pos': len(state['ctp'])}
+                   'done': False, 'forced': None, 'stack_pos': len(state['ctp']), 'restore': []}
             state['ctp'].append(rec)
+            # The other two open arms (line 458 mPathLoops false, line 473 equal entries): on the owned
+            # frame only, calls 21..1500, one member per call, put back (and read back) at the return.
+            n = state['ctp_entries']
+            if 20 < n <= 1500:
+                this = '((CPillBug*)%d)' % rec['this']
+                if n % 3 == 0:
+                    members = [('mPathLoops', '0')]
+                elif n % 3 == 1 and int(gdb.parse_and_eval(this + '->mPath.mCount')) >= 2:
+                    members = [('mPath.mItems[1].value', str(int(gdb.parse_and_eval(this + '->mPath.mItems[0].value'))))]
+                else:
+                    members = []
+                for m, v in members:
+                    old = str(int(gdb.parse_and_eval(this + '->' + m)))
+                    gdb.execute('set var %s->%s = %s' % (this, m, v))
+                    back = str(int(gdb.parse_and_eval(this + '->' + m)))
+                    rec['restore'].append((this, m, old))
+                    state['arms'] = state.get('arms', 0) + 1
+                    if state['arms'] <= 6:
+                        log('CloseToPath #%d bug %#x: %s ORIGINAL %s -> %s readback %s' % (n, rec['this'], m, old, v, back))
+                    if back != v:
+                        problem('arm write readback %s != %s' % (back, v))
             CtpRet(frame, rec)
         except Exception as e:
             problem('ctp entry exception %r' % e)
@@ -221,7 +248,10 @@ def summarize():
         p.append('no mode B call returned')
     if len(state['ctp_rets']) < len(fa) + len(fb):
         p.append('CloseToPath returns logged %d < forced %d' % (len(state['ctp_rets']), len(fa) + len(fb)))
+    if state.get('arms', 0) != state.get('restored', 0) or not state.get('arms'):
+        p.append('arm writes %s restores %s' % (state.get('arms', 0), state.get('restored', 0)))
     status = 'OK' if not p else 'FAIL'
+    log('arm writes %s, restores (all read back) %s' % (state.get('arms', 0), state.get('restored', 0)))
     line = ('status=%s binary=%s installed=%d ctp_entries=%d ray_calls=%d modeA=%d modeB=%d ctp_returns_true=%d reason=%s\n'
             % (status, state['binary'], state['installed'], state['ctp_entries'], state['ray_calls'], len(fa), len(fb),
                len([r for r in state['ctp_rets'] if r[2] == 1]), '; '.join(p) or '-'))
