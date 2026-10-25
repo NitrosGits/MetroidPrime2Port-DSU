@@ -109,3 +109,14 @@ other modules' __sinit rows):
 |---|---|
 | 3D1C SLdrIngSpiderballGuardianData (copy) | implicit copy ctor, compiler-generated from the struct definition |
 | 406C __sinit_CIngSpiderballGuardian_cpp | compiler-generated from the trigger/state/code tables |
+
+## Coverage evidence (lane isg3, 2026-10-25)
+
+Natural fight run `/tmp/opencode/isg3-nat/out` (spec `isbg.py`+`isbg.con`) plus forced run
+`/tmp/opencode/isg3-force/out` (`tools/cov/specs/isg3_force.py`, `force_ret.py`; single-call writes restored
+at return, FORCE_INNER guardian positions not restored); both on the coverage binary sha256
+`abc9f7b0afe58f42d93a2596a60662e1878594c28fb121997e0e6e4de89b821d`, frozen in `/tmp/opencode/isg3-frozen/`.
+`gcov_report.py` merged: fn_35_303C 14/14 lines 12/12 branches, fn_35_19D0 30/30 and 14/14, fn_35_1878 10/10
+and 8/8, all ALL-ARMS. fn_35_178: the only open edge (752, `return nullptr`) is dead by data
+(`tools/scan_isg_loader.py`: one ISBG placement, ancs 0x4e6c079a is ANCS). fn_35_3D1C: layout proof in
+`SLdrIngSpiderballGuardian.hpp`.
