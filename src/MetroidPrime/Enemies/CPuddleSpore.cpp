@@ -86,7 +86,7 @@ void CPuddleSpore::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
-// fn_51_34E0
+// @ fn_51_34E0
 void CPuddleSpore::Think(float dt, CStateManager& mgr) {
   mAimPosition = GetAimPosition(mgr, 0.f);
   if (mSecondaryTimerRunning) { // 0x354C lbz 0x85c / 0x3554 beq (bit 0x40)

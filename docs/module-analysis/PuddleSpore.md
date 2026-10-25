@@ -86,7 +86,7 @@ Six dirs merge with
 | 19C4 SetupCollisionManager | 42/43 → dead | edge 475:3/4 (the TCastToPtr null at 0x1D24) dead: those ids are the manager's own, one `rs_new CCollisionActor` per joint in the call that fills them (CCollisionActorManager.cpp:121-196) |
 | 2DA4 WeaponHitsWeakSpot | 9/10 at pud1 | 248:3/4 open at pud1 (0x2DF8: WeaponHits false while open — a weapon mode the open vulnerability rejects; power, charge and missile all hit). **pud2 measured it** (see below); the geometric sides are the ones the pud2 runs miss |
 | 23F0 UpdatePlayerContact | 35/42 at pud1; **39/42 at pud3** (see pud3 section) | 311:1/2, 338:1/2 (cast null, as 19C4), 341:1/2 (no touch bounds), 353/358/382 (hasGroundCollider false: the player always has kMT_GroundCollider here), 370:1/2 (zero-length push direction) |
-| 34E0 Think | 15/18 at pud1; **16/18 at pud3** (see pud3 section) | 97:1/2 and 99:1/6 need mShockWaveSfx == 0, but `CSfxHandle(0)` makes mID `(++mRefCount << 14) | 0` (CSfxHandle.cpp:5), never 0; 104:1/2 needs the player exactly at the wave's x/y (0x3678 CanBeNormalized) |
+| 34E0 Think | 15/18 at pud1; **17/18 at pud3, marked at pud4** (see pud4 section) | 97:1/2 and 99:1/6 need mShockWaveSfx == 0, but `CSfxHandle(0)` makes mID `(++mRefCount << 14) | 0` (CSfxHandle.cpp:5), never 0; 104:1/2 needs the player exactly at the wave's x/y (0x3678 CanBeNormalized) |
 | 42C LoadPuddleSpore | 12/16 | 670:1/2 (modelData null: the shipped model always loads), 678/692 edges (temporaries' exception clean-up) |
 
 Fixes in this pass (TARGET_PC only):
@@ -202,3 +202,16 @@ guarded frame equality plus (inferior, thread) ownership, snapshot/arm/write/rea
 - 34E0: 22/22 lines, 16/18 arms. 108:3/6 dead (id and sfx set together at cpp:195-196, id never reset). 110:1/2 (null shock wave
   object while the sfx plays) is unproven (not forced, not proven dead), so Think stays unmarked.
 - Fix (TARGET_PC): ctor `mShockWaveSfx()` instead of `(0)`: CSfxHandle(0) gives a non-zero ID; retail stores the null word.
+
+## pud4 (2026-10-25, base 1bf0c3b6d): Think 34E0 marked
+
+Fixture `pud3_contact_think.py` gained `think-id` (selftest 15 OK). At the `IsPlaying` call site (Think+367, host) of an owned
+Think the 16-bit mShockWaveId (this+0x944 host, retail 0x854; parsed from the reload `movzwl 0x944(%rbx),%esi` at +394) is
+replaced by a stale id (version bit 0x8000 flipped), read back, restored with readback after the `GetObjectById` call (+404).
+Run `/tmp/opencode/pud4-frozen/run2` (binary sha256 07654cea... unchanged, game rc 0, PASS): id 0x0533 -> 0x8533, esi at the
+call = 0x8533, rax = 0, UpdateEmitter 0 and CanBeNormalized 0 calls, restore readback 0x0533. Launch 1 failed on a fixture bug
+(IdAfter missed the `*` address prefix, so the result was read at the wrong place); fixed, re-run passed.
+- Think: 22/22 lines, 17/18 arms; 110:1/2 covered by the forced run.
+- Remaining arm 108:3/6 (sfx set, id == kInvalidUniqueId) is dead: `mShockWaveSfx` is non-null only after cpp:196, which follows
+  cpp:195 in the same `if (shockWave)`; the id is `AllocateUniqueId()` of the CShockWave, which never returns kInvalidUniqueId
+  (CStateManager.cpp:2392-2394 remaps it to version 0); nothing else writes either field after the ctor. Marked.

@@ -9,6 +9,11 @@ Three arms the fight cannot reach on its own are taken on REAL invocations only:
   think-cbn  Think 0x3670 `bl CanBeNormalized` / 0x3678 beq: the local direction vector (the `this` of the
              call) is zeroed for that one call, so the real CanBeNormalized returns false;
   upc-cbn    UpdatePlayerContact 0x2880 `bl CanBeNormalized` / 0x2888 beq: same;
+  think-id   Think 0x35D8..0x3608 / GetObjectById (pud4, retail 0x3600 IsPlaying, then reload of mShockWaveId at
+             this+0x854, host +0x944): at the IsPlaying call site of an owned Think (sfx playing, id valid) the
+             16-bit id is replaced by a stale one (version bit flipped), read back, and restored (read back) at
+             the instruction after the GetObjectById call.  Oracle: the call's esi is the stale id, rax is 0,
+             UpdateEmitter and CanBeNormalized are skipped.
   upc-gc     UpdatePlayerContact 0x27F0..0x2804 (HasMaterial kMT_GroundCollider, inlined in both builds):
              bit 0x25 of the player's CMaterialList is cleared at the invocation's first DoBoundsOverlap
              call and the whole u64 is restored at the invocation's return.  The oracle is the real
@@ -28,9 +33,12 @@ NEED = 2                    # forced successes wanted per arm; one is enough to 
 GC_BIT = 0x25               # kMT_GroundCollider
 PLAYER_BIT = 0x20           # kMT_Player
 CBN_SITES = [('think', 'CPuddleSpore::Think(', 473), ('upc', 'CPuddleSpore::UpdatePlayerContact(', 955)]
+ID_SITES = dict(play=('CPuddleSpore::Think(', 367, 'IsPlaying'),
+                call=('CPuddleSpore::Think(', 404, 'GetObjectById'),
+                load=('CPuddleSpore::Think(', 394, None))   # movzwl <id off>(%rbx),%esi: the reload we rely on
 OVERLAP_SITE = 706          # UpdatePlayerContact+706: the loop's first CAABox::DoBoundsOverlap call (0x26C8)
 state = dict(active={}, failed=0, restores=0, ignored=0, problems=[], nat_think=0, nat_upc=0,
-             think_ok=0, upc_cbn_ok=0, gc_ok=0, windows=0, upc_noeffect=0)
+             think_ok=0, id_ok=0, upc_cbn_ok=0, gc_ok=0, windows=0, upc_noeffect=0)
 
 
 def log(event, **values):
@@ -107,6 +115,8 @@ class Window(gdb.FinishBreakpoint):
         self.entry_gc = None          # player had kMT_GroundCollider on entry (UPC only)
         self.cbn_pending = None       # (forced, snapshot) between the call site and the instruction after it
         self.gc_snapshot = None
+        self.id_snap = None           # Think: snapshot of mShockWaveId while a stale id is written
+        self.id_stale = self.id_arg = self.id_ret = None
         super().__init__(frame, internal=True)   # MUST succeed before any write
         check(ctx not in state['active'] or kind not in state['active'][ctx], 'nested owned ' + kind)
         state['active'].setdefault(ctx, {})[kind] = self
@@ -124,6 +134,15 @@ class Window(gdb.FinishBreakpoint):
         log('RESTORE_GC', fields=rows, errors=errors)
         self.gc_snapshot = None
         check(not errors, 'gc restore failed ' + str(errors))
+
+    def restore_id(self):
+        if self.id_snap is None:
+            return
+        rows, errors = self.id_snap.restore()
+        state['restores'] += 1
+        log('RESTORE_ID', fields=rows, errors=errors)
+        self.id_snap = None
+        check(not errors, 'id restore failed ' + str(errors))
 
     def close(self):
         self.closed = True
@@ -145,6 +164,7 @@ class Window(gdb.FinishBreakpoint):
         try:
             check(state['active'].get(self.ctx, {}).get(self.kind) is self, 'finish window ownership')
             self.restore_gc()
+            self.restore_id()
             self.judge()
         except Exception as error:
             failure(error)
@@ -160,13 +180,20 @@ class Window(gdb.FinishBreakpoint):
         failure('%s unwound before return (forced=%s)' % (self.kind, self.forced))
         try:
             self.restore_gc()
+            self.restore_id()
         except Exception as error:
             failure(error)
         self.close()
 
     def judge(self):
         if self.kind == 'think':
-            if self.forced == 'cbn':
+            if self.forced == 'id':
+                check(self.id_stale is not None and self.id_arg == self.id_stale, 'GetObjectById not given the stale id')
+                check(self.id_ret == 0, 'GetObjectById returned non-null for the stale id')
+                check(self.emitter == 0 and not self.cbn, 'branch after a null object was not skipped')
+                state['id_ok'] += 1
+                log('RESULT', fn='Think', arm='shockwave-null', stale=self.id_stale, emitter=self.emitter)
+            elif self.forced == 'cbn':
                 check([r for k, r in self.cbn if k == 'forced'] == [0], 'forced Think CanBeNormalized not false')
                 check(self.emitter == 0, 'UpdateEmitter ran on the false arm')
                 state['think_ok'] += 1
@@ -226,6 +253,7 @@ def abort(error):
         for w in list(table.values()):
             try:
                 w.restore_gc()
+                w.restore_id()
             except Exception as restore_error:
                 failure(restore_error)
     return True
@@ -327,6 +355,70 @@ class Cbn(gdb.Breakpoint):
             return abort(error)
 
 
+class IdArm(gdb.Breakpoint):
+    """The IsPlaying call site in Think: sfx is playing and the id is valid when this is reached."""
+
+    def __init__(self, address, offset):
+        super().__init__('*' + address, internal=True)
+        self.offset = offset
+
+    def stop(self):
+        if state['failed']:
+            return True
+        try:
+            w = owned_here('think')
+            if w is None or w.forced is not None or w.id_snap is not None:
+                return False
+            if not (state['nat_think'] >= 1 and state['think_ok'] >= 1 and state['id_ok'] < 1):
+                return False
+            address = w.this + self.offset
+            snap = Snapshot([('mShockWaveId', address, 2)], gdb.selected_inferior())
+            original = int.from_bytes(snap.saved[0][2], 'little')
+            check(original != 0xffff, 'id invalid at the IsPlaying call')
+            stale = original ^ 0x8000
+            if stale == 0xffff:
+                stale = original ^ 0x4000
+            w.id_snap, w.forced, w.id_stale = snap, 'id', stale     # armed BEFORE the write
+            log('ARM_ID', originals=snap.originals(), stale=stale)
+            gdb.selected_inferior().write_memory(address, stale.to_bytes(2, 'little'))
+            back = int.from_bytes(bytes(gdb.selected_inferior().read_memory(address, 2)), 'little')
+            check(back == stale, 'stale id readback')
+            return False
+        except Exception as error:
+            return abort(error)
+
+
+class IdCall(gdb.Breakpoint):
+    """The GetObjectById call site: the argument register must carry the stale id."""
+
+    def stop(self):
+        if state['failed']:
+            return True
+        try:
+            w = owned_here('think')
+            if w is not None and w.forced == 'id' and w.id_snap is not None:
+                w.id_arg = iv('$esi') & 0xffff
+            return False
+        except Exception as error:
+            return abort(error)
+
+
+class IdAfter(gdb.Breakpoint):
+    """The instruction after the call: read the result, restore the id (read back)."""
+
+    def stop(self):
+        if state['failed']:
+            return True
+        try:
+            w = owned_here('think')
+            if w is not None and w.forced == 'id' and w.id_snap is not None:
+                w.id_ret = iv('$rax')
+                w.restore_id()
+            return False
+        except Exception as error:
+            return abort(error)
+
+
 class Overlap(gdb.Breakpoint):
     """The first DoBoundsOverlap call site of an UpdatePlayerContact invocation (this frame is the owner)."""
 
@@ -421,13 +513,36 @@ def site_address(kind, name, offset):
     CbnAfter(after, kind)
 
 
+def id_sites():
+    """Dry-run checked sites of the Think id force; returns the id field offset (parsed from the reload)."""
+    texts = {}
+    for key, (name, offset, needle) in ID_SITES.items():
+        site = '*%s+%d' % (symbol(name), offset)
+        lines = gdb.execute('x/2i ' + site, to_string=True).strip().splitlines()
+        if needle:
+            check('call' in lines[0] and needle in lines[0], 'id site %s mismatch: %s' % (key, lines[0]))
+        else:
+            check('movzwl' in lines[0] and '(%rbx),%esi' in lines[0], 'id reload mismatch: ' + lines[0])
+        texts[key] = (site, lines)
+        log('SITE', site=site, insn=lines[0].strip())
+    text = texts['load'][1][0]
+    id_offset = int(text.split('movzwl')[1].split('(')[0].strip(), 16)
+    after = int(texts['call'][1][1].split()[0], 16) - int(texts['call'][1][0].split()[0], 16)
+    check(0 < after < 16, 'call length')
+    name = ID_SITES['call'][0]
+    IdArm(texts['play'][0][1:], id_offset)
+    IdCall(texts['call'][0], internal=True)
+    IdAfter('*%s+%d' % (symbol(name), ID_SITES['call'][1] + after), internal=True)
+    log('ID_OFFSET', offset=id_offset)
+
+
 def summary(event=None):
     pending = sum(len(t) for t in state['active'].values())
-    ok = (not state['failed'] and not pending and state['nat_think'] >= 1 and state['think_ok'] >= 1
+    ok = (not state['failed'] and not pending and state['nat_think'] >= 1 and state['think_ok'] >= 1 and state['id_ok'] >= 1
           and state['nat_upc'] >= 1 and state['gc_ok'] >= 1 and state['upc_cbn_ok'] >= 1)
     log('EXIT', ok=ok, pending=pending, failed=state['failed'], restores=state['restores'],
         ignored_nested=state['ignored'], windows=state['windows'], nat_think=state['nat_think'],
-        think_ok=state['think_ok'], nat_upc=state['nat_upc'], gc_ok=state['gc_ok'],
+        think_ok=state['think_ok'], id_ok=state['id_ok'], nat_upc=state['nat_upc'], gc_ok=state['gc_ok'],
         upc_cbn_ok=state['upc_cbn_ok'], upc_noeffect=state['upc_noeffect'], problems=state['problems'])
     with open(os.path.join(os.environ['COV_OUT'], 'pud3.summary.txt'), 'w') as f:
         f.write(('PASS' if ok else 'FAIL') + ' ' + json.dumps(
@@ -454,6 +569,7 @@ def install():
         site_address(kind, name, offset)
     Material(symbol('CActor::RemoveMaterial(EMaterialTypes, CStateManager&)'), 'R')
     Material(symbol('CActor::AddMaterial(EMaterialTypes, CStateManager&)'), 'A')
+    id_sites()
     Emitter('*' + symbol('CSfxManager::UpdateEmitter('), internal=True)
     gdb.events.exited.connect(summary)
 
