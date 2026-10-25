@@ -226,7 +226,7 @@ void Exit() {
     sPhase = Phase::Idle;
     VISetFrameBufferScale(RestoreScale());
   }
-  PortMouse::SetPhotoCapture(false);
+  PortMouse::EndPhotoCapture();
   PortFreeCam::SetFovOverride(0.f);
   PortFreeCam::SetFrozen(sPrior.frozen);
   PortFreeCam::SetShowPlayer(sPrior.showPlayer);
@@ -290,7 +290,9 @@ void Tick(CStateManager& mgr, bool inPlay) {
 void Frame() {
   const double now = Now();
   // The mouse is the camera's while it looks (not on a phone, not with the F1 overlay open).
-  PortMouse::SetPhotoCapture(MouseLook() && !PortOverlay::Visible());
+  if (sActive) {
+    PortMouse::SetPhotoCapture(MouseLook() && !PortOverlay::Visible());
+  }
   // Tick only runs while the game plays: a request made over a menu or a load has no taker.
   if (sRequestEnter && now - sRequestAt > kPendingTimeoutSeconds) {
     sRequestEnter = false;

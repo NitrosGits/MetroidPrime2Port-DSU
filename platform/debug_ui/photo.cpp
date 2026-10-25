@@ -150,7 +150,7 @@ void DrawPhotoUI() {
     std::vector<ImVec4>& windows;
     ~TouchFrameAtExit() { PhotoTouchFrame(enabled, std::move(windows)); }
   } touchFrame{touchEnabled, touchWindows};
-  PortPhoto::Frame();
+  // PortPhoto::Frame() runs once per frame from PortOverlay::Draw, before this.
   static std::string sMessage;
   static double sMessageAt = 0.0;
   const double now = ImGui::GetTime();

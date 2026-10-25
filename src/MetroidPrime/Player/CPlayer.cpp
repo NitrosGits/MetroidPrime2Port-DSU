@@ -105,6 +105,7 @@
 #include "MetroidPrime/PortScanTarget.hpp"
 #include "port_freecam.h"
 #include "port_overlay.h"
+#include "port_photo.h"
 #endif
 
 // NonMatching structure pass; incomplete behavior is explicit below.
@@ -2913,7 +2914,8 @@ void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
   PortMouse::SetPointerAim(direct && PortOverlay::PointerAim(),
                            PortOverlay::PointerAimBox() / 100.f,
                            PortOverlay::PointerAimTurn() * (PortMouse::kPi / 180.f));
-  if (!direct) {
+  // Photo mode owns the pointer grab (PortPhoto::Frame), and the free camera owns the view.
+  if (!direct || PortPhoto::Active()) {
     return;
   }
   const bool allowed = MouseAimAllowed(mgr);

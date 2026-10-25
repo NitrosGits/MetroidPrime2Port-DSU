@@ -186,9 +186,11 @@ SDL_Window* GameWindow() {
   return sWindow;
 }
 
+bool sPhotoOwnsCapture = false;
+
 // Relative capture is what makes the motion relative and keeps the desktop cursor out of the
 // game; leaving it off outside gameplay keeps the cursor usable for menus and the desktop.
-void SetCapture(bool captured) {
+void ApplyCapture(bool captured) {
   if (captured == sCaptured) {
     return;
   }
@@ -203,6 +205,14 @@ void SetCapture(bool captured) {
   } else {
     SDL_ShowCursor();
     ClearPendingTravel();
+  }
+}
+
+// Everything but photo mode (UpdateAim, SetUiActive, Reset, which a disabled touch source runs
+// every frame) is shut out while photo mode owns the grab.
+void SetCapture(bool captured) {
+  if (!sPhotoOwnsCapture) {
+    ApplyCapture(captured);
   }
 }
 
@@ -397,16 +407,19 @@ void AddMotion(float dx, float dy) {
   sPendingY += dy;
 }
 
-// Photo mode (PortPhoto): relative capture for the free camera's mouse look. Only a capture this
-// asked for is released, so it never fights the aim's own.
+// Photo mode (PortPhoto) owns the grab while active: UpdateAim is not reached then, so whatever
+// gameplay left grabbed is released here unless the free camera's mouse look wants it, and
+// nothing else (SetCapture) can change it. EndPhotoCapture hands it back, released, so
+// gameplay's next UpdateAim re-grabs normally.
 void SetPhotoCapture(bool want) {
-  static bool sHeld = false;
-  if (want) {
-    sHeld = true;
-    SetCapture(true);
-  } else if (sHeld) {
-    sHeld = false;
-    SetCapture(false);
+  sPhotoOwnsCapture = true;
+  ApplyCapture(want);
+}
+
+void EndPhotoCapture() {
+  if (sPhotoOwnsCapture) {
+    sPhotoOwnsCapture = false;
+    ApplyCapture(false);
   }
 }
 
