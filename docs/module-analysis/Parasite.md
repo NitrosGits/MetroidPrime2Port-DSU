@@ -138,9 +138,34 @@ of sight, frozen, contact-damage timer arms), UpdateJumpVelocity, CloseToWall/Hi
 CollidedWith, ShouldAttack, Patrol (pause timer), Attack/Retreat/Halt (jump arms; Brizgee lacks the
 anims), TelegraphAttack (one chain arm), TargetPatrol (no-waypoint arm), DoFlockingBehavior,
 GetContactDamage (shell-broken Brizgee), GetCollisionResponseType (non-Crystallite), UpdateShell,
-UpdateCollisionActors, SetupIceZoomerVulnerability, LoadParasite (ldr2: 0 PARA placements on the
-disc, console cannot supply 0x7e397fed - see the ldr2 table above),
+UpdateCollisionActors, SetupIceZoomerVulnerability,
 UpdateWalkerAnimation, MassiveFrozenDeath, AddDoorRepulsors, the Recursive/GetClosestWaypoint pair.
+### ldr3: fn_47_1568 LoadParasite (marked)
+
+All 22 property arms, the `default` skip and the `!modelData` refusal ran from a synthetic
+property stream (`tools/cov/specs/parasite_ldr3_stream.con`). The 0x7e397fed actor-parameters
+id comes from a desync: `prop c3cc437f 0x007e397f prop ed000000 0` writes id c3cc437f (a bool;
+`ReadBool` eats one byte, `00`), so the next id read is `7e 39 7f ed` with size 0, and
+`LoadTypedefActorParameters` reads count 0 (default SLdrActorParameters). The top-level count still
+matches; 5 trailing bytes are left unread. `prop 12345678 1` takes the `default` arm. Floats are the
+SLdrParasite ctor defaults, so the spawned Parasite behaves as an unedited one.
+
+- Binary `/var/tmp/ldr3/frozen/metroid_prime2_port` sha256 febd723c9a9b..., gcno.tar f98ce2a4...
+- `/var/tmp/ldr3/run_para1`: fixture commit f09cd9c8a (con sha 0353d975...), every case line of
+  `SLdrParasite.inc` count 1, `default` 1.
+- `/var/tmp/ldr3/run_para2`: fixture commit 9124e0fd1 (con sha b07c1beb...), adds an ancs-less
+  `spawn PARA` -> "refused" (the `!modelData` arm).
+- Merged: 14/14 lines, 11/11 branches.
+
+Asm (retail 0x1568..0x1C04): the compare chain stores to fixed offsets - flavor 0x4cc, floats
+0x78c..0x7cc in the C++ member order, initiallyPaused `stb` 0x7d0 (0x18DC..0x18F8), default
+`ReadBytes` 0x1900/0x1908; editor 0x1784, patterned 0x17AC, actor 0x17BC. `!modelData`: `lbz 0x1d8`
+/ `bne` 0x1958/0x195C. Ctor args 0x1AA4..0x1B94 match: `li r0,6` (kBT_WallWalker), f1..f8 =
+0x78c..0x7a8, the rest on the stack, 0.0 (rodata_58), initiallyPaused, type `li r12,0`, invalid sfx x3
+(lbl_8041E2E6), -1 asset ids, 0.0/1.0, `CDamageInfo()` (fn_47_1C04), `LdrToPatternedInfo(r5=0)`
+(fn_8023A1D8). asmcheck's CALL/BRANCH counts differ as for LoadBrizgee (the `.inc` body hides the
+calls); checked by hand.
+
 Next: break a Brizgee shell (damage on a shell collision actor, then contact damage with
 `mVulnerable`), `spawn PARA ... ancs u052d` for the Parasite-only arms, a jump driver on the
 Crystallite (Attack/Retreat until `kAS_Jump`), MassiveFrozenDeath (freeze + power bomb).

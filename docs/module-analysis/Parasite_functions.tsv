@@ -32,7 +32,7 @@ offset	fn	size	class	name	slice	what	marker
 00CF8	fn_47_CF8	6AC	B	LoadBrizgee__FR13CStateManagerR12CInputStreamR11CEntityInfo	para1	upstream loader; para1 defaults fix	yes
 013A4	fn_47_13A4	94	H	__dt__11SLdrBrizgeeFv	-	weak copy / template instance	no
 01438	fn_47_1438	130	H	__ct__11SLdrBrizgeeFv	para1	loader defaults (SLdr ctor); para1 fix	no
-01568	fn_47_1568	69C	B	LoadParasite__FR13CStateManagerR12CInputStreamR11CEntityInfo	para1	upstream loader; para1 defaults fix	no
+01568	fn_47_1568	69C	B	LoadParasite__FR13CStateManagerR12CInputStreamR11CEntityInfo	para1	upstream loader; para1 defaults fix	yes (ldr3)
 01C04	fn_47_1C04	90	H	__ct__11CDamageInfoFv	-	weak copy / template instance	no
 01C94	fn_47_1C94	70	H	__dt__12SLdrParasiteFv	-	weak copy / template instance	no
 01D04	fn_47_1D04	238	H	__ct__12SLdrParasiteFv	para1	loader defaults (SLdr ctor); para1 fix	no

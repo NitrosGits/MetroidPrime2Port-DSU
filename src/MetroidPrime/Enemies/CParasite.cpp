@@ -1288,6 +1288,7 @@ void CParasite::UpdateShell(CStateManager& mgr, int state) {
   }
 }
 
+// @ fn_47_1568
 CEntity* LoadParasite(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrParasite sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrParasite.inc"
