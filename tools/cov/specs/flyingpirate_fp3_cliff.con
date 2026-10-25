@@ -1,7 +1,33 @@
-# fp3: 01_cliff_entrance (world 1baa96c2), layers 3 and 4 hold the aerotroopers and the cover
-# points; the pirates and cover points are listed so a later driver can address them by uid.
+# fp3: 01_cliff_entrance (world 1baa96c2), layers 3 and 4: aerotroopers u063e (eid 0x2034e) and
+# u0626 (eid 0x201d1), 18 cover points (uids from the discovery run: objs at f400). Same fight as
+# flyingpirate_sandfalls.con with the pirates placed beside the god-mode player.
 @f30 layer 3
 @f60 layer 4
-@f400 objs flyingpirate
-@f420 objs coverpoint
-@f900 objs flyingpirate
+@f400 objs flyingpirate; objs coverpoint
+@f560 god 1; give missiles 50; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
+@f580 obj u063e; obj u0626
+@f600 place u063e player 25
+@f700 stick 0 127 60
+@f710 trigcall u063e HearPlayer; trigcall u0626 HearPlayer
+@f720 trigcall u063e HearPlayer; trigcall u0626 HearPlayer
+@f800 fsm u063e Taunt
+@f900 fsm u063e Lurk
+@f1000 fsm u063e Dodge
+@f1100 fsm u063e Attack
+@f1200 shoot u063e
+@f1230 shoot u063e
+@f1260 shoot u063e missile
+@f1300 place u0626 player 20
+@f1340 place u0626 player 15
+@f1500 shoot u0626 charged
+@f1600 damage u0626 5 10
+@f1700 fsm u063e Land
+@f1800 fsm u063e Walk
+@f1900 fsm u063e Retreat
+@f2000 damage u063e 10 0 missile
+@f2200 obj u063e; obj u0626
+@f2400 damage u0626 1000
+@f2700 obj u0626
+@f3000 damage u063e 1000 0 dark
+@f3300 obj u063e
+@f3500 status
