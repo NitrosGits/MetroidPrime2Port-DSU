@@ -15,8 +15,9 @@ while kill -0 "$RUN" 2>/dev/null; do
   now="$(stat -c %s "$OUT/game.log" "$OUT/sz2.jsonl" 2>/dev/null | tr '\n' ' ')"
   if [ "$now" != "$last" ]; then last=$now; since=$SECONDS; continue; fi
   if [ $((SECONDS - since)) -ge "$IDLE" ] && [ "$fired" = 0 ]; then
-    PID=; for p in $(pgrep -x metroid_prime2_); do
-      [ "$(readlink -f /proc/$p/exe)" = "$(readlink -f "$ROOT/build-port-link/metroid_prime2_port")" ] && PID=$p; done
+    # the game forks a helper (sleeping in a pipe read): the signal goes to the busiest process of this binary
+    PID=; for p in $(ps -eo pid=,pcpu= --sort=-pcpu | awk '{print $1}'); do
+      [ "$(readlink -f /proc/$p/exe 2>/dev/null)" = "$(readlink -f "$ROOT/build-port-link/metroid_prime2_port")" ] && { PID=$p; break; }; done
     echo "watchdog: no output for ${IDLE}s, SIGSEGV to game pid ${PID:-none}" | tee "$OUT/watchdog.log"
     { date; ps -eo pid,ppid,stat,wchan:24,pcpu,etime,cmd --forest | grep -E "[g]db|[m]etroid_prime2_|[t]ools/cov"
       for p in $PID $(pgrep -f "^gdb -q -batch -nx"); do
