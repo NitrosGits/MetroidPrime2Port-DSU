@@ -459,6 +459,52 @@ A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
 
+## Crash soak (pre-release)
+
+`tools/mpsoak.py` is the pre-release smoke: it drives the harness through the shipping matrix -- the
+user's mods folder and a build with none (`MP2_MODS` at an empty directory), Dawn validation and
+robustness back on (`MP2_DAWN_DISABLE=skip_validation,disable_robustness`, which makes any WebGPU
+error fatal in game) and the release toggles -- at MSAA 1 and 4, switched inside the same game with
+the console's `msaa N`. Every run also passes `MP_GX_CHECK_ARRAYS=1`: aurora then walks each indexed
+draw's vertex indices and drops a draw that would read past one of its arrays, logging
+`gx: vertex array overrun:` once per array.
+
+    python3 tools/mpsoak.py --evidence-dir build/s-release-<date>/soak
+    python3 tools/mpsoak.py --dry-run --evidence-dir /tmp/soak-dry    # the commands only, no game
+
+MP1 has this soak on `tools/mprig.py`, a rig manager that keeps one game alive across a tour of
+rooms; this tree has none, so it is built on `tools/run_gameplay.sh` instead: one game per (mode,
+toggles), booted straight into the tour's first area (`WORLD=<world>,<area>`, "Booting into a world
+and an area"), the other areas reached with the console's `world <world> <area>` and `warp <area>`
+(`tools/mp2con.py`), and MSAA switched with `msaa N`, so one process covers both sample counts. The
+screenshots come from the display that run's own Xvfb is on (`tools/shot.sh`); it takes display `:97`
+and console port `4791` (`--display`/`--port`), away from the smoke suite's (`:760+`, its own ports)
+and the coverage runs' (`:1100+`, `501xx`). Every cell first waits for a game slot
+(`tools/games_running.sh --wait`) and `GODMODE=1` is on, so a hazard cannot end the tour.
+
+A row FAILs on `port: crashed:`, `[port] caught`, `WebGPU error`, `Device lost:`, an aurora `[fatal]`
+line (aurora logs `[level] [module] message`, so `Log.fatal`/`FATAL` starts `[fatal]`), on a warp
+that lands nowhere, and on the game process going away; `not supported; skipped`, `[reach-stub` and
+`is a port stand-in` lines are `warn`, and the shutdown's `Device lost: Device was destroyed` is a
+warn (every run prints it). After a death it writes the whole run log to
+`<evidence>/<mode>-<toggles>-msaa<N>-<area>-crash.txt`, restarts the run and carries on with the
+next area. Screenshots land in `<evidence>/<mode>-<toggles>-msaa<N>/<NN>-<area>.png`; `summary.tsv`
+has a row per (mode, toggles, msaa, area) with `ok`, `warn` or `FAIL` and the first matching log
+line, and the exit status is 1 when any row FAILs. A cell's game is stopped with SIGTERM at the end
+(the port's own clean-quit path); `--keep` leaves it running and prints its display and port.
+
+The default tour is 12 areas across the five campaign worlds, light and dark (Dark Aether's
+atmosphere and safe-zone volumes are what the MSAA/depth-copy path is for): `--rooms` takes
+`world:area` pairs, where the world half is anything `tools/world_areas.py` resolves (`agon`,
+`torvus`, an MLVL id, part of its name) and the area half is a slot index, an MREA id or (part of)
+the area's name in that world. Both halves become ids before they reach the game, so no warp
+depends on name resolution; a name that does not resolve, or that matches two areas, lists the
+candidates. `--modes`/`--toggles`/`--msaa` narrow the matrix and `--settle` (game updates in an area
+before its shot) trades time for a settled picture. Keep areas whose warp lands on a save station out
+of the tour: the save prompt pauses the game, a paused game performs no update, and every later warp
+then fails as "the game stopped updating". The full matrix takes a few minutes: the warps are the
+cost (~2 s in a cached world, ~10 s into a cold one).
+
 ## Headless runs
 
 For runs that need no picture (console scripts, logic checks, the smoke): `MP2_HEADLESS=1` (the
