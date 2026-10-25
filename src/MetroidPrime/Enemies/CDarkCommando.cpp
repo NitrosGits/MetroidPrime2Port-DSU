@@ -565,7 +565,11 @@ void CDarkCommando::Render(const CStateManager& mgr) const {
   if (mAlive && mCloakFading) {
     const float warp = CMath::FastSinR(3.1415927f * alpha);
     if (warp > 0.f) {
+#ifdef TARGET_PC
+      mgr.DrawSpaceWarp(PortPresentedPoint(GetBoundingBox().GetCenterPoint()), warp);
+#else
       mgr.DrawSpaceWarp(GetBoundingBox().GetCenterPoint(), warp);
+#endif
     }
   }
   if (alpha > 0.f) {

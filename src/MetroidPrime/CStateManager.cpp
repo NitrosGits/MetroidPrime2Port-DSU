@@ -485,7 +485,21 @@ void CStateManager::BuildDynamicLightListForWorld() {
   for (int idx = list.GetFirstObjectIndex(); idx != -1; idx = list.GetNextObjectIndex(idx)) {
     const CGameLight* light = static_cast< const CGameLight* >(list[idx]);
     if (light && light->GetActive()) {
+#ifdef TARGET_PC
+      // Port: lights follow their actor's presented pose, so moving lights
+      // (the morph ball's glow, projectile lights) glide between ticks.
+      CLight value = light->GetLight();
+      CTransform4f toCur = CTransform4f::Identity();
+      if (light->PortPresentedView(CTransform4f::Identity(), toCur)) {
+        const CTransform4f toPresented = toCur.GetQuickInverse();
+        if (value.GetType() != kLT_Directional)
+          value.SetPosition(toPresented * value.GetPosition());
+        if (value.GetType() != kLT_Point)
+          value.SetDirection(toPresented.Rotate(value.GetDirection()).AsNormalized());
+      }
+#else
       const CLight& value = light->GetLight();
+#endif
       if (value.GetIntensity() > FLT_EPSILON && value.GetRadius() > FLT_EPSILON) {
         if (const CScriptDynamicLight* dynamicLight =
                 TCastToConstPtr< CScriptDynamicLight >(light)) {
@@ -1481,7 +1495,16 @@ void CStateManager::DrawSpaceWarp(const CVector3f& position, float strength) con
   }
 
   const CGameCamera* camera = mCameraManager->GetCurrentCamera(*this, true);
+#ifdef TARGET_PC
+  // The scene is drawn from the presented camera: carry the point into the sim camera's frame as
+  // the presented one sees it, so the warp stays on it between ticks. Identity when not blended.
+  const CVector3f simPosition =
+      mCameraManager->GetSimulationCameraTransform(*this, true) *
+      (mCameraManager->GetCurrentCameraTransform(*this, true).GetQuickInverse() * position);
+  gpRender->DrawSpaceWarp(camera->ConvertToScreenSpace(simPosition), strength);
+#else
   gpRender->DrawSpaceWarp(camera->ConvertToScreenSpace(position), strength);
+#endif
 }
 
 void CStateManager::TouchSky() { GetWorld()->TouchSky(); }

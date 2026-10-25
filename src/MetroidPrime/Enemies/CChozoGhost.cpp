@@ -354,7 +354,12 @@ void CChozoGhost::PreRender(CStateManager& mgr) {
 // @ fn_8_43F0
 void CChozoGhost::Render(const CStateManager& mgr) const {
   if (mSpaceWarpTime > 0.f) {
+#ifdef TARGET_PC
+    mgr.DrawSpaceWarp(PortPresentedPoint(mSpaceWarpPosition),
+                      CMath::FastSinR(M_PIF * mSpaceWarpTime / mFadeOutDelay));
+#else
     mgr.DrawSpaceWarp(mSpaceWarpPosition, CMath::FastSinR(M_PIF * mSpaceWarpTime / mFadeOutDelay));
+#endif
   }
   CPatterned::Render(mgr);
 }

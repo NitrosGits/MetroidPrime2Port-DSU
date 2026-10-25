@@ -348,7 +348,8 @@ void CShrieker::Render(const CStateManager& mgr) const {
             (center - projectile->GetTranslation()).Magnitude() / mData.mMissileDeflectionRadius;
 #ifdef TARGET_PC
         // 0x5164 fcmpo 0,ratio; ble / 0x517C fcmpo 1,ratio; bge: retail clamps to [0, 1].
-        mgr.DrawSpaceWarp(projectile->GetTranslation(), 1.f - CMath::Clamp(0.f, ratio, 1.f));
+        mgr.DrawSpaceWarp(projectile->PortPresentedPoint(projectile->GetTranslation()),
+                          1.f - CMath::Clamp(0.f, ratio, 1.f));
 #else
         mgr.DrawSpaceWarp(projectile->GetTranslation(), 1.f - rstl::min_val(ratio, 1.f));
 #endif

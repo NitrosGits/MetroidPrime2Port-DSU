@@ -1760,7 +1760,7 @@ void CCommandoPirate::Render(const CStateManager& mgr) const {
   if (GetAlive() && x920_ == 1) {                                // 0x0000C5CC..0x0000C5E8
     const float warp = CMath::FastSinR(3.1415927f * alpha);      // rodata_4F4, 0x0000C5F8
     if (warp > 0.f) {                                            // 0x0000C608..0x0000C60C
-      mgr.DrawSpaceWarp(GetBoundingBox().GetCenterPoint(), warp);  // 0x0000C618..0x0000C634
+      mgr.DrawSpaceWarp(PortPresentedPoint(GetBoundingBox().GetCenterPoint()), warp);  // 0x0000C618..0x0000C634
     }
   }
   if (alpha > 0.f) {                                            // 0x0000C640..0x0000C644

@@ -348,7 +348,11 @@ void CEnergyProjectile::Render(const CStateManager& mgr) const {
     if (mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Combat) {
       const float warpTime = 1.f - float(mProjectile.GameTime());
       if (warpTime > 0.f) {
+#ifdef TARGET_PC
+        mgr.DrawSpaceWarp(PortPresentedPoint(GetTranslation()), 0.75f * warpTime);
+#else
         mgr.DrawSpaceWarp(GetTranslation(), 0.75f * warpTime);
+#endif
       }
     }
     mProjectile.RenderParticles();
