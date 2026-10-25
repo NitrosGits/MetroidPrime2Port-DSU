@@ -57,6 +57,9 @@ public:
     return CVector3f(x, y, z);
   }
   inline float MagSquared() const { return GetX() * GetX() + GetY() * GetY() + GetZ() * GetZ(); }
+#ifdef TARGET_PC
+  // @ fn_46_1D64
+#endif
   static CVector3f Cross(const CVector3f& lhs, const CVector3f& rhs) {
     const float x = (lhs.GetY() * rhs.GetZ()) - (rhs.GetY() * lhs.GetZ());
     const float y = (lhs.GetZ() * rhs.GetX()) - (rhs.GetZ() * lhs.GetX());

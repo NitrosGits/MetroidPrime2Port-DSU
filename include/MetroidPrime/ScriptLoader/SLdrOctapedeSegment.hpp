@@ -52,6 +52,9 @@ struct SLdrOctapedeSegment {
   float unknown_0x0c4763d7;              // 0x0c4763d7
 };
 
+#ifdef TARGET_PC
+// @ fn_46_DA4
+#endif
 inline SLdrOctapedeSegment::SLdrOctapedeSegment()
 : editorProperties()
 , patterned()
@@ -124,6 +127,9 @@ inline SLdrOctapedeSegment::SLdrOctapedeSegment()
 #endif
 }
 
+#ifdef TARGET_PC
+// @ fn_46_D28
+#endif
 inline SLdrOctapedeSegment::~SLdrOctapedeSegment() {}
 
 #endif

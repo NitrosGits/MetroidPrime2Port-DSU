@@ -1,0 +1,16 @@
+# Supplement to octapede_forced.con: repeat Create on an active controller and
+# deliver Landed while attached, bouncing-with-budget and bouncing-without-budget.
+@f120 god 1
+@f130 tp -198 119 -124
+@f140 face 270
+@f180 send u0483 Create; send u0483 Landed; send u0483 Landed; send u0483 Landed
+@f300 damage u0483 1
+@f320 damage u0483 1 light
+@f340 damage u0480 1 dark
+@f360 shoot u0474 charged
+@f500 kill u0467
+@f520 kill u0487
+@f540 kill u045a
+@f560 kill u043c
+@f800 objs Octapede
+@f1000 objs Octapede
