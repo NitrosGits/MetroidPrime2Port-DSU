@@ -80,6 +80,9 @@ public:
   void SetGlobalTranslation(const CVector3f& translation) override;
   void SetGlobalScale(const CVector3f& scale) override;
   void SetLocalScale(const CVector3f& scale) override;
+#ifdef TARGET_PC
+  void PortSetSpawnSpread(const CVector3f& spread, const CVector3f& origin) override;
+#endif
   void SetParticleEmission(bool emission) override;
   void SetModulationColor(const CColor& col) override;
   const CTransform4f& GetOrientation() const override;
@@ -172,6 +175,8 @@ private:
   // Presentation smoothing (particle_interpolation, MP1's FRAME_INTERPOLATION.md phase 6): what
   // the last two ticks drew, recorded at draw time, since grapple and beam swooshes are written
   // directly by their owners rather than stepped by Update.
+  CVector3f mPortSpawnSpread{1.f, 1.f, 1.f}; // PortSetSpawnSpread
+  CVector3f mPortSpawnOrigin{0.f, 0.f, 0.f};
   struct SPortSegment {
     CVector3f pos;
     CVector3f useOffset;
