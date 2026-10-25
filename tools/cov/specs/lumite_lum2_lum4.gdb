@@ -85,6 +85,37 @@ if hints:
     setpos(hq, p0)
 print('lum4 calls done')
 end
+
+# Dead: the switch's third arm (Deactivate: no case matches), and the IsDead-true arm for real: the body state info's current
+# state is switched to the death state (pas::kAS_Death, a CBSDie) with its mIsDead set, so Dead's `GetCurrentState()->IsDead()`
+# (slot 0x18, not CBodyState::IsDead) takes the indirect call into CBSDie::IsDead (true) and the fade starts.
+set $lm_fd = $t->mFadeToDeath
+set $lm_pg = $t->mPrevOnGround
+set $lm_ad = $t->mAlphaDelta
+python
+run('call $t->Dead(*$m, kStateMsg_Deactivate, 0.016f)')
+gdb.execute('set $lm_bc = *(long*)((char*)$t + 0x530)')
+gdb.execute('set $lm_bsi = (CBodyStateInfo*)((char*)$lm_bc + 0x4c8)')
+gdb.execute('set $lm_ms = $lm_bsi->mState')
+gdb.execute('set $lm_die = ((CBSDie**)$lm_bsi->mStates.mData)[(int)pas::kAS_Death]')
+print('lum4 die state', int(gdb.parse_and_eval('(long)$lm_die')), 'cur', int(gdb.parse_and_eval('$lm_ms')))
+gdb.execute('set $lm_dd = $lm_die->mIsDead')
+gdb.execute('set $lm_z = (float*)malloc(16)')
+for i in range(3):
+    gdb.execute('set var $lm_z[%d] = 0.0f' % i)
+gdb.execute('call $t->SetVelocityWR(*(CVector3f*)$lm_z)')
+gdb.execute('set var $t->mPrevOnGround = 0')
+gdb.execute('set var $t->mFadeToDeath = 0')
+gdb.execute('set var $lm_die->mIsDead = 1')
+gdb.execute('set var $lm_bsi->mState = pas::kAS_Death')
+run('call $t->Dead(*$m, kStateMsg_Update, 0.016f)')
+print('lum4 dead fade', int(gdb.parse_and_eval('$t->mFadeToDeath')), 'alphaDelta', getf('$t->mAlphaDelta'))
+gdb.execute('set var $lm_bsi->mState = $lm_ms')
+gdb.execute('set var $lm_die->mIsDead = $lm_dd')
+gdb.execute('set var $t->mFadeToDeath = $lm_fd')
+gdb.execute('set var $t->mPrevOnGround = $lm_pg')
+gdb.execute('set var $t->mAlphaDelta = $lm_ad')
+end
 set var $t->mHop = $lm_hop
 set var $t->mSurface = $lm_srf
 printf "lum4 done\n"
