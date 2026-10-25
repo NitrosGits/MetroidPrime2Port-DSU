@@ -446,6 +446,20 @@ bool CMysteryFlyer::LineOfSight(CStateManager& mgr, const CTriggerData& data) co
 
 // fn_45_C10
 void CMysteryFlyer::JoinTeam(CStateManager& mgr) {
+#ifdef TARGET_PC
+  // Retail 0xC10: `lhz 0x920; cmplw kInvalidUniqueId; bne -> end` (0xC40), so an id that is already
+  // set skips everything; only when it was invalid: GetAssociatedTeamId, sth 0x920, then (0xC6C beq
+  // -> end) ObjectById/TCastToPtr (0xC88 beq -> end) and JoinTeam(Projectile=2, Unknown=3, Invalid=-1).
+  if (mTeamAiMgrId == kInvalidUniqueId) {
+    mTeamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
+    if (mTeamAiMgrId != kInvalidUniqueId) {
+      if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId))) {
+        team->JoinTeam(*this, CTeamAiRole::kTAR_Projectile, CTeamAiRole::kTAR_Unknown,
+                       CTeamAiRole::kTAR_Invalid);
+      }
+    }
+  }
+#else
   if (mTeamAiMgrId == kInvalidUniqueId) {
     mTeamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
   }
@@ -455,6 +469,7 @@ void CMysteryFlyer::JoinTeam(CStateManager& mgr) {
                      CTeamAiRole::kTAR_Invalid);
     }
   }
+#endif
 }
 
 // fn_45_B68
