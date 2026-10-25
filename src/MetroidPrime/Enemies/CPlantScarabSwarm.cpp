@@ -21,6 +21,7 @@
 #include "MetroidPrime/SwarmRenderHelpers.hpp"
 #include "MetroidPrime/TGameTypes.hpp"
 
+// @ fn_49_2300
 CPlantScarabSwarm::CPlantScarabSwarm(
     TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
     const CVector3f& boundingBoxExtent, const CTransform4f& xf, const CAnimRes& animRes,

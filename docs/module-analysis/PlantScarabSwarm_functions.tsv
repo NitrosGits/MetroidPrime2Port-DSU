@@ -42,7 +42,7 @@ offset	fn	size	class	name	slice	what	marker
 0217C	fn_49_217C	84	H	__dt__Q24rstl55vector<18CAdvancementDeltas,Q24rstl17rmemory_allocator>Fv	-	weak/template copy	no
 02200	fn_49_2200	54	H	__dt__Q24rstl36vector<i,Q24rstl17rmemory_allocator>Fv	-	weak/template copy	no
 02254	fn_49_2254	AC	H	__dt__Q24rstl59single_ptr<Q218SwarmRenderHelpers23CSwarmSkinnedModelState>Fv	-	weak/template copy	no
-02300	fn_49_2300	534	B	__ct__17CPlantScarabSwarmF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC9CVector3fRC12CTransform4fRC8CAnimRes16CActorParametersRC15CBasicSwarmDataiiffffff11CDamageInfofUiUiUiUiUiUsUsffff	-	upstream body (CPlantScarabSwarm)	no
+02300	fn_49_2300	534	B	__ct__17CPlantScarabSwarmF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC9CVector3fRC12CTransform4fRC8CAnimRes16CActorParametersRC15CBasicSwarmDataiiffffff11CDamageInfofUiUiUiUiUiUsUsffff	met7	upstream body (CPlantScarabSwarm)	yes
 02834	fn_49_2834	58	H	push_back_unsafe__Q24rstl55vector<18CAdvancementDeltas,Q24rstl17rmemory_allocator>FRC18CAdvancementDeltas	-	weak/template copy	no
 0288C	fn_49_288C	38	H	push_back_unsafe__Q24rstl47vector<10CModelData,Q24rstl17rmemory_allocator>FRC10CModelData	-	weak/template copy	no
 028C4	fn_49_28C4	20	H	construct<10CModelData>__4rstlFPvRC10CModelData	-	weak/template copy	no

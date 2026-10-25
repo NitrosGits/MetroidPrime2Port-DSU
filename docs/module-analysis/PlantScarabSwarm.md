@@ -618,3 +618,16 @@ writes expired stack storage in `out_of_scope` (it reports the obligation unrest
 summary fails on unreturned calls, unrestored attempts, missing phase writes and install failure. These
 changes and the corrected cpp:71 explanation above were **not** exercised by the two archived boots -
 those ran the earlier fixture and their evidence is untouched.
+
+## Ctor fn_49_2300 (met7, 2026-10-25), marked
+
+Asm (CPlantScarabSwarm.s 2597-2936) compared with cpp:24-75 in order: base `CSwarmBasics(..., true)`; stores
+0x598/0x59c/0x5a0 (attackerCount, proximity, timer from the data struct), 0x5a4 = rodata_1C * maxAttackAngle;
+zeroed vectors at 0x5ac/0x5b8/0x5c8/0x5d8; 0x5fc/0x600 intoAttackSpeed/attackSpeed; the bouncy-grenade ctor
+(mass, speed, damage, ..., b=true); 0x654/0x658 launch speed / explode distance. Guard `animRes id != -1 &&
+intoAttackAnimation != -1`, three reserves, base = mModelDatas.size() (0x490 -> 0x5f8), the per-attacker loop
+(model, delta, loop off + animating on, -1 slot), then the shared model/deltas and bit = base + count. Retail
+repeats the animating-bit store once more per model (idempotent). No mismatch, no TARGET_PC change needed.
+Arms: 24/26 edges measured (psc9). cpp:65 false (attackAnimation == -1) is dead in shipped data: the only
+caller is the loader (cpp:359) and `tools/scan_pssm_props.py` shows attackAnimation = 1 in all 3 placements.
+cpp:71 is dead by the only-writer argument above.
