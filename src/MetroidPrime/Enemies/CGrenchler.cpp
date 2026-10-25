@@ -69,6 +69,17 @@
 
 CVector3f gGrenchlerAimOffset(0.f, 0.f, 0.5f); // Guessed name
 
+// Retail `__sinit_CGrenchler_cpp` (0x14234-0x14F00) writes exactly these three tables and nothing
+// else: `lis` 0x14298/0x14A08/0x14E80 take .data 0x2B0 (57 triggers), 0x7C0 (32 states), 0x9D8
+// (2 code funcs); 273 word copies (`stw` 0x1431C-0x14EF0 = 91 entries x 3) put a **virtual** mfp
+// {adjust 0, vtoff, fn 0}. All 91 vtoffs (0x148..0x2B0) index the class vtable at .data 0xA54
+// (0x2B4 bytes; this REL ships no `__vt__` symbol for it - it is the one object whose every slot
+// the vtoffs land on) and each slot's relocation names the same-named CGrenchler function, so the
+// name/vtoff pairs are 1:1 (names .rodata 0x316..0x78B). The host declares the same 91 virtual and
+// its mfps resolve to the same bodies; note `BreakGrappleLoop` and `CanGrapple` are folded to one
+// address in the host binary (identical ported bodies), so the slot reads back as the latter.
+// No call, no branch; the only other stores are stmw r14 0x14244 (frame 0x100, lmw 0x14EF4).
+// @ fn_27_14234
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"AbortCharge", static_cast< CPatterned::StateMachine::TriggerFunc >(&CGrenchler::AbortCharge)},
     {"Alerted", static_cast< CPatterned::StateMachine::TriggerFunc >(&CGrenchler::Alerted)},
