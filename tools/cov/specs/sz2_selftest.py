@@ -341,6 +341,10 @@ class Tests(unittest.TestCase):
         import tempfile
         cmds = []
         self.gdb.execute = lambda c, to_string=False: cmds.append(c) or ('out of ' + c if to_string else None)
+        switched = []
+        fifo = types.SimpleNamespace(name='Aurora FIFO pro', switch=lambda: switched.append(1))
+        other = types.SimpleNamespace(name='Main thread', switch=lambda: switched.append(2))
+        self.gdb.selected_inferior = lambda: types.SimpleNamespace(threads=lambda: [other, fifo], pid=os.getpid())
         self.m.iv = lambda e: 0
         self.m.stall.update(want=True, this=0x40, restore=('c', [{'label': 'mActivation'}], []))
         with tempfile.TemporaryDirectory() as d:
@@ -352,6 +356,9 @@ class Tests(unittest.TestCase):
         self.assertEqual(cmds[-1], 'kill')
         self.assertIn('mActivation', text)
         self.assertIn('print *(CScriptSafeZone*)64', cmds)
+        self.assertEqual(switched, [1])  # only the FIFO worker is inspected
+        self.assertIn('info locals', cmds)
+        self.assertIn('frame function aurora::gx::fifo::(anonymous namespace)::worker_main', cmds)
         for name in self.m.FIFO_STATE:  # the render-side state is dumped too
             self.assertIn("print '%s'" % name, cmds)
         self.assertFalse(self.m.stall['want'])

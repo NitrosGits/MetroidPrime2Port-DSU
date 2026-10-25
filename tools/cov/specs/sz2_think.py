@@ -735,7 +735,8 @@ FIFO_STATE = ['aurora::gx::fifo::detail::sInDisplayList',
               'aurora::gx::fifo::(anonymous namespace)::sPublished',
               'aurora::gx::fifo::(anonymous namespace)::sProcessed',
               'aurora::gx::fifo::(anonymous namespace)::sStreamBase',
-              'aurora::gx::(anonymous namespace)::sDrawSyncToken']
+              'aurora::gx::(anonymous namespace)::sDrawSyncToken',
+              'aurora::gx::fifo::(anonymous namespace)::sWorkerWake']
 
 
 def stall_dump(event):
@@ -752,6 +753,19 @@ def stall_dump(event):
     run('thread apply all bt 30')
     run('info registers rip rsp')
     run('x/6i $pc')
+    for thread in gdb.selected_inferior().threads():  # the FIFO worker's loop locals (event, processed, published)
+        if (thread.name or '').startswith('Aurora FIFO'):
+            thread.switch()
+            run('frame function aurora::gx::fifo::(anonymous namespace)::worker_main')
+            run('info locals')
+    pid = gdb.selected_inferior().pid  # per-task scheduler view: is the worker runnable, did it get CPU
+    for task in sorted(os.listdir('/proc/%d/task' % pid)):
+        try:
+            base = '/proc/%d/task/%s/' % (pid, task)
+            out.append('### task %s %s | wchan %s | schedstat %s' % (task, open(base + 'stat').read().split(')')[1].split()[0],
+                       open(base + 'wchan').read(), open(base + 'schedstat').read().strip()))
+        except Exception as error:
+            out.append('### task %s FAILED %s' % (task, error))
     for name in FIFO_STATE:
         run("print '%s'" % name)
     this = stall['this']
