@@ -438,6 +438,17 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out) {
                out.areas.size());
 }
 
+// The running timers ApplyObject restored stopped, started once the last saved area is in.
+static void StartHeldTimers(CStateManager& mgr, RoomApplyProgress& progress) {
+  for (uint32_t editorId : progress.held) {
+    if (CScriptTimer* timer = TCastToPtr< CScriptTimer >(
+            mgr.ObjectById(mgr.GetIdForScript(TEditorId(editorId))))) {
+      PortRoomState::SetTimer(*timer, PortRoomState::TimerTime(*timer), true);
+    }
+  }
+  progress.held.clear();
+}
+
 int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress& progress) {
   const CWorld* world = mgr.World();
   if (world == nullptr) {
@@ -477,14 +488,8 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
     }
     now.insert(ra.area);
   }
-  if (waiting == 0 && !progress.held.empty()) {
-    for (uint32_t editorId : progress.held) {
-      if (CScriptTimer* timer = TCastToPtr< CScriptTimer >(
-              mgr.ObjectById(mgr.GetIdForScript(TEditorId(editorId))))) {
-        PortRoomState::SetTimer(*timer, PortRoomState::TimerTime(*timer), true);
-      }
-    }
-    progress.held.clear();
+  if (waiting == 0) {
+    StartHeldTimers(mgr, progress);
   }
   if (now.empty()) {
     return waiting;
@@ -555,13 +560,7 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
     std::fprintf(stderr, "[savestate] room: area %d restored\n", area);
   }
   if (waiting == 0) {
-    for (uint32_t editorId : progress.held) {
-      if (CScriptTimer* timer = TCastToPtr< CScriptTimer >(
-              mgr.ObjectById(mgr.GetIdForScript(TEditorId(editorId))))) {
-        PortRoomState::SetTimer(*timer, PortRoomState::TimerTime(*timer), true);
-      }
-    }
-    progress.held.clear();
+    StartHeldTimers(mgr, progress);
   }
   return waiting;
 }
