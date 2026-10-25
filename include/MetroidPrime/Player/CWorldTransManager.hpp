@@ -122,6 +122,10 @@ private:
   bool mIntroTextSeen : 1;
   bool mLongShaft : 1;
   bool mIntroAudioStopped : 1;
+#ifdef TARGET_PC
+  // Port: PortOverlay::ElevatorRide() Skip: the ride ends as soon as the load is done.
+  bool mPortSkipRide : 1;
+#endif
 };
 CHECK_SIZEOF(CWorldTransManager, 0x4b0)
 

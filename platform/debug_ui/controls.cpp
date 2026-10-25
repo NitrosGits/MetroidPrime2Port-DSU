@@ -26,6 +26,9 @@ namespace PortDebug {
 
 void DrawControlsOptions() {
   ImGui::SeparatorText("Buttons");
+  // Original experience (Game > Cutscenes) reads the tweaks below as retail.
+  const bool locked = PortOverlay::OriginalExperience();
+  ImGui::BeginDisabled(locked);
   Changed(ImGui::Checkbox("Toggle Lock-On", &sLockOnToggle));
   ItemHelp("Press L once to lock on, scan or grapple, and again to let go. With no target, L works "
            "as usual.");
@@ -35,11 +38,14 @@ void DrawControlsOptions() {
   Changed(ImGui::Checkbox("Remastered charge (rapid fire)", &sRapidCharge));
   ItemHelp("As in Metroid Prime Remastered: holding fire after the press shot fires a few quick "
            "shots. Power Beam only.");
+  ImGui::EndDisabled();
 
   ImGui::SeparatorText("Aiming");
+  ImGui::BeginDisabled(locked);
   Changed(ImGui::Checkbox("Auto-aim", &sAutoAim));
   ItemHelp("On, as the original: without Lock-On, shots home in on the enemy nearest the screen "
            "centre. Off: shots go where you aim.");
+  ImGui::EndDisabled();
   Changed(ImGui::Checkbox("Pointer aim (Trilogy style)", &sPointerAim));
   ItemHelp("Mouse, right stick, gyro or a touch drag moves a crosshair and shots follow it; the view "
            "turns when it nears the edge. Needs Mouse aim, Twin stick or Touch aim.");
@@ -77,10 +83,12 @@ void DrawControlsOptions() {
   ImGui::EndDisabled();
 
   ImGui::SeparatorText("Morph ball");
+  ImGui::BeginDisabled(locked);
   Changed(ImGui::Checkbox("Fast Morph", &sFastMorph));
   ItemHelp("The morph and unmorph transitions take 0.2 s instead of the game's second.");
   Changed(ImGui::Checkbox("Spring Ball (C-stick up)", &sSpringBall));
   ItemHelp("A small jump in morph ball, as in Metroid Prime Trilogy. Needs the Morph Ball Bombs.");
+  ImGui::EndDisabled();
 
   // The game's own option, so it is the same switch as the pause menu's and is
   // saved with the other game options.

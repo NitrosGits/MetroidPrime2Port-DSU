@@ -61,6 +61,11 @@ bool sFastMorph = false;
 bool sPointerMenus = true;
 bool sMapSwapFingers = false;
 int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
+int sScanSpeed = PortOverlay::kScanSpeedDefault;
+int sLanguage = 0;
+int sElevatorRide = PortOverlay::kElevatorRide_Original;
+bool sIgtTimer = false;
+bool sOriginalExperience = false;
 int sHintDelay = 0;
 bool sSpringBall = false;
 bool sSpringFlick = false;
@@ -515,6 +520,9 @@ bool Visible() {
 
 bool SkipCinematics() {
   ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
   return EnvBool("MP2_SKIP_CINEMATICS", sSkipCinematics);
 }
 
@@ -552,6 +560,9 @@ void SetBootLogos(int mode) {
 
 int WorldNameCard() {
   ReadEnv();
+  if (OriginalExperience()) {
+    return kScreen_Show;
+  }
   return EnvScreenMode("MP2_WORLD_NAME", sWorldNameCard);
 }
 
@@ -722,6 +733,9 @@ void SetGodMode(bool enabled) {
 
 bool FastMorph() {
   ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
   return EnvBool("MP2_FAST_MORPH", sFastMorph);
 }
 
@@ -755,11 +769,17 @@ void SetMapSwapFingers(bool swap) {
 
 int WalkSpeed() {
   ReadEnv();
+  if (OriginalExperience()) {
+    return kWalkSpeedDefault;
+  }
   return EnvIntIn("MP2_WALK_SPEED", sWalkSpeed, kWalkSpeedMin, kWalkSpeedMax);
 }
 
 float HintDelaySeconds() {
   ReadEnv();
+  if (OriginalExperience()) {
+    return 0.f;
+  }
   return static_cast< float >(EnvIntIn("MP2_HINT_DELAY", sHintDelay, kHintDelayMin, kHintDelayMax)) *
          60.f;
 }
@@ -784,6 +804,9 @@ void SetWalkSpeed(int percent) {
 
 bool SpringBall() {
   ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
   return EnvBool("MP2_SPRING_BALL", sSpringBall);
 }
 
@@ -823,6 +846,9 @@ float SpringBallFlickRate() {
 
 bool LockOnToggle() {
   ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
   return EnvBool("MP2_LOCK_ON_TOGGLE", EnvBool("MP2_LOCKON_TOGGLE", sLockOnToggle));
 }
 
@@ -834,6 +860,9 @@ void SetLockOnToggle(bool enabled) {
 
 bool StickyCharge() {
   ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
   return EnvBool("MP2_STICKY_CHARGE", sStickyCharge);
 }
 
@@ -845,6 +874,9 @@ void SetStickyCharge(bool enabled) {
 
 bool AutoAim() {
   ReadEnv();
+  if (OriginalExperience()) {
+    return true;
+  }
   return EnvBool("MP2_AUTO_AIM", sAutoAim);
 }
 
@@ -964,6 +996,9 @@ void SetMenuStandardButtons(bool enabled) {
 
 bool RapidCharge() {
   ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
   return EnvBool("MP2_RAPID_CHARGE", sRapidCharge);
 }
 
@@ -1332,6 +1367,103 @@ unsigned DriverWorkarounds() {
 bool LowPowerGpu() {
   ReadEnv();
   return sLowPowerGpu;
+}
+
+int ScanSpeed() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return kScanSpeedDefault;
+  }
+  return EnvIntIn("MP2_SCAN_SPEED", sScanSpeed, kScanSpeedMin, kScanSpeedMax);
+}
+
+void SetScanSpeed(int percent) {
+  ReadEnv();
+  sScanSpeed = std::clamp(percent, kScanSpeedMin, kScanSpeedMax);
+  Persist();
+}
+
+int Language() {
+  ReadEnv();
+  return EnvIntIn("MP2_LANGUAGE", sLanguage, 0, kLanguageMax);
+}
+
+void SetLanguage(int index) {
+  ReadEnv();
+  sLanguage = std::clamp(index, 0, kLanguageMax);
+  Persist();
+}
+
+int ElevatorRide() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return kElevatorRide_Original;
+  }
+  const char* env = port::EnvString("MP2_ELEVATOR_RIDE");
+  if (env != nullptr && std::strcmp(env, "original") == 0) {
+    return kElevatorRide_Original;
+  }
+  if (env != nullptr && std::strcmp(env, "fast") == 0) {
+    return kElevatorRide_Fast;
+  }
+  if (env != nullptr && std::strcmp(env, "skip") == 0) {
+    return kElevatorRide_Skip;
+  }
+  return EnvIntIn("MP2_ELEVATOR_RIDE", sElevatorRide, kElevatorRide_Original, kElevatorRide_Skip);
+}
+
+void SetElevatorRide(int mode) {
+  ReadEnv();
+  sElevatorRide = std::clamp(mode, static_cast< int >(kElevatorRide_Original),
+                             static_cast< int >(kElevatorRide_Skip));
+  Persist();
+}
+
+bool IgtTimer() {
+  ReadEnv();
+  return EnvBool("MP2_IGT_TIMER", sIgtTimer);
+}
+
+void SetIgtTimer(bool enabled) {
+  ReadEnv();
+  sIgtTimer = enabled;
+  Persist();
+}
+
+static double sGameTime = 0.0;
+static bool sGameTimeValid = false;
+
+void NoteGameTime(double seconds) {
+  sGameTime = seconds;
+  sGameTimeValid = true;
+}
+
+void ClearGameTime() { sGameTimeValid = false; }
+
+bool GameTime(double& seconds) {
+  seconds = sGameTime;
+  return sGameTimeValid;
+}
+
+static bool sReturnToTitleRequested = false;
+
+void RequestReturnToTitle() { sReturnToTitleRequested = true; }
+
+bool ConsumeReturnToTitleRequest() {
+  const bool requested = sReturnToTitleRequested;
+  sReturnToTitleRequested = false;
+  return requested;
+}
+
+bool OriginalExperience() {
+  ReadEnv();
+  return EnvBool("MP2_ORIGINAL_EXPERIENCE", sOriginalExperience);
+}
+
+void SetOriginalExperience(bool enabled) {
+  ReadEnv();
+  sOriginalExperience = enabled;
+  Persist();
 }
 
 } // namespace PortOverlay

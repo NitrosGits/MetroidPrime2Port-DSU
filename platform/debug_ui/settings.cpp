@@ -175,6 +175,7 @@ std::string sGameOptions;
 bool sGameOptionsRestored = false;
 
 const SettingKey kSettingKeys[] = {
+    BoolKey< &sOriginalExperience >("original_experience"),
     BoolKey< &sSkipCinematics >("skip_cinematics"),
     IntKey< &sBootLogos, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off >(
         "boot_logos", "0", "2"),
@@ -185,6 +186,12 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sMapSwapFingers >("map_swap_fingers"),
     IntKey< &sWalkSpeed, PortOverlay::kWalkSpeedMin, PortOverlay::kWalkSpeedMax >("walk_speed", "50",
                                                                                   "200"),
+    IntKey< &sScanSpeed, PortOverlay::kScanSpeedMin, PortOverlay::kScanSpeedMax >("scan_speed", "50",
+                                                                                  "400"),
+    IntKey< &sElevatorRide, PortOverlay::kElevatorRide_Original, PortOverlay::kElevatorRide_Skip >(
+        "elevator_ride", "0", "2"),
+    BoolKey< &sIgtTimer >("igt_timer"),
+    IntKey< &sLanguage, 0, PortOverlay::kLanguageMax >("language", "0", "6"),
     IntKey< &sHintDelay, PortOverlay::kHintDelayMin, PortOverlay::kHintDelayMax >("hint_delay", "0",
                                                                                   "30"),
     BoolKey< &sSpringBall >("spring_ball"),

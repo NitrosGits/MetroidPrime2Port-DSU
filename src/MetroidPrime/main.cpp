@@ -1025,11 +1025,15 @@ void CMain::ResetGameState() {
 }
 
 int CMain::GetLanguage() const {
+#ifdef TARGET_PC
+  return PortOverlay::Language();
+#else
   int language = mOsContext->GetLanguage();
   if (language == 5) {
     language = 0;
   }
   return language;
+#endif
 }
 
 void CMain::UpdateStreamedAudio() { CStreamAudioManager::Update(1.f / 60.f); }

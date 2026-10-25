@@ -37,6 +37,7 @@ namespace PortDebug {
 
 // Screenshot, photo mode and exit; the top of the Game page (settings are on System).
 void DrawGameSection() {
+  double igt = 0.0;
   ImGui::SeparatorText("Game");
   const std::string shotKeys = PortInputRemap::BindingsText(PortInput::Action::Screenshot, " / ");
   const std::string shotLabel =
@@ -54,6 +55,16 @@ void DrawGameSection() {
     PortFreeCam::SetActive(true, nullptr);
     sVisible = false;
   }
+  ImGui::SameLine();
+  // Only while a game runs: the game tick quits to the front end as the pause menu's Quit does.
+  ImGui::BeginDisabled(!PortOverlay::GameTime(igt));
+  if (ImGui::Button("Return to title")) {
+    PortOverlay::RequestReturnToTitle();
+    sVisible = false;
+  }
+  ImGui::EndDisabled();
+  ItemHelp("Leaves the game for the title screen, as the pause menu's Quit does. Progress since the "
+           "last save station is lost.");
   ImGui::SameLine();
   if (ImGui::Button("Exit game")) {
     ImGui::OpenPopup("Exit game?");
@@ -78,9 +89,17 @@ void DrawGameSection() {
 
 void DrawCutscenesSection() {
   ImGui::SeparatorText("Cutscenes");
+  Changed(ImGui::Checkbox("Original experience", &sOriginalExperience));
+  ItemHelp("The game as it shipped: skippable cutscenes, world name, walk speed, hint delay, scan "
+           "speed, elevator ride and the Controls page's charge, lock-on, morph ball and auto-aim "
+           "tweaks all act as retail while this is on. Your values are kept and return when it is "
+           "off.");
+  const bool locked = PortOverlay::OriginalExperience();
+  ImGui::BeginDisabled(locked);
   // The game reads this every frame in its cinematic flow state.
   Changed(ImGui::Checkbox("Skippable cutscenes", &sSkipCinematics));
   ItemHelp("START or A skips any cutscene, seen or not. Off: START skips only the ones already seen.");
+  ImGui::EndDisabled();
   // Read by CSplashScreen, so a change applies from the next launch.
   int bootLogos = sBootLogos;
   if (ImGui::Combo("Boot logos", &bootLogos, "Show\0" "Skip with A or Start\0" "Off\0")) {
@@ -90,6 +109,7 @@ void DrawCutscenesSection() {
   ItemHelp("The health warning and the Nintendo, Retro and Dolby logos at launch. Applies at the next "
            "launch.");
   // Read by CMFGameLoader, so a change applies from the next load.
+  ImGui::BeginDisabled(locked);
   int worldName = sWorldNameCard;
   if (ImGui::Combo("World name on load", &worldName, "Show\0" "Skip with A or Start\0" "Off\0")) {
     sWorldNameCard = std::clamp(worldName, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off);
@@ -97,6 +117,8 @@ void DrawCutscenesSection() {
   }
   ItemHelp("The world's name typed out while a save loads. The first boot's intro text is not "
            "affected.");
+  ImGui::EndDisabled();
+  ImGui::BeginDisabled(locked);
   int walkSpeed = sWalkSpeed;
   if (ImGui::SliderInt("Walk speed", &walkSpeed, PortOverlay::kWalkSpeedMin,
                        PortOverlay::kWalkSpeedMax, "%d%%", ImGuiSliderFlags_AlwaysClamp)) {
@@ -105,6 +127,29 @@ void DrawCutscenesSection() {
   }
   ItemHelp("How fast Samus moves on foot, walking, strafing and circle-strafing, in percent of "
            "the original speed. Jumps, dashes, turning and the Morph Ball are unchanged.");
+  int scanSpeed = sScanSpeed;
+  if (ImGui::SliderInt("Scan speed", &scanSpeed, PortOverlay::kScanSpeedMin,
+                       PortOverlay::kScanSpeedMax, "%d%%", ImGuiSliderFlags_AlwaysClamp)) {
+    sScanSpeed = scanSpeed;
+    Changed(true);
+  }
+  ItemHelp("How fast a scan fills, in percent of the original speed. 200 takes half the time.");
+  int elevatorRide = sElevatorRide;
+  if (ImGui::Combo("Elevator ride", &elevatorRide, "Original\0" "Fast\0" "Skip\0")) {
+    sElevatorRide = std::clamp(elevatorRide, static_cast< int >(PortOverlay::kElevatorRide_Original),
+                               static_cast< int >(PortOverlay::kElevatorRide_Skip));
+    Changed(true);
+  }
+  ItemHelp("The ride between worlds. Fast plays it at double speed; Skip leaves as soon as the next "
+           "world has loaded. Applies from the next ride.");
+  int language = sLanguage;
+  if (ImGui::Combo("Language", &language,
+                   "English\0" "German\0" "French\0" "Spanish\0" "Italian\0" "Dutch\0"
+                   "Japanese\0")) {
+    sLanguage = std::clamp(language, 0, static_cast< int >(PortOverlay::kLanguageMax));
+    Changed(true);
+  }
+  ItemHelp("The language of the game's text. Applies from the next launch.");
   int hintDelay = sHintDelay;
   if (ImGui::SliderInt("Hint delay", &hintDelay, PortOverlay::kHintDelayMin,
                        PortOverlay::kHintDelayMax, hintDelay == 0 ? "Game default" : "%d min",
@@ -115,6 +160,7 @@ void DrawCutscenesSection() {
   ItemHelp("The longest a hint waits before it first shows. Game default keeps the game's own "
            "timing; a shorter wait also applies to hints already waiting in your save. Needs the "
            "in-game hint system on.");
+  ImGui::EndDisabled();
   ImGui::BeginDisabled(gpGameState == nullptr ||
                        !gpGameState->GameOptions().GetIsHintSystemEnabled());
   if (ImGui::Button("Show current hint")) {
@@ -153,6 +199,9 @@ void DrawGameAudio() {
 
 void DrawSpeedrunSection() {
   ImGui::SeparatorText("Speedrun");
+  Changed(ImGui::Checkbox("On-screen in-game time", &sIgtTimer));
+  ItemHelp("The save file's play time in the bottom-right corner while a game runs. It stops in "
+           "cutscenes, menus and loads.");
   bool liveSplit = PortLiveSplit::Enabled();
   if (ImGui::Checkbox("LiveSplit", &liveSplit)) {
     PortLiveSplit::SetEnabled(liveSplit);

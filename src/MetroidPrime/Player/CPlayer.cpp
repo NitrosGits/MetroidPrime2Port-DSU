@@ -3679,8 +3679,15 @@ void CPlayer::UpdateScanningState(const CFinalInput& input, CStateManager& mgr, 
           }
 
           float totalTime = scanInfo->GetTotalDownloadTime();
+#ifdef TARGET_PC
+          // Scan speed (F1 > Game): the scan's clock runs at this percent of the real one.
+          const float scanDt = dt * (static_cast< float >(PortOverlay::ScanSpeed()) / 100.f);
+          mScanningTime = rstl::min_val(mScanningTime + scanDt, totalTime);
+          mCurScanTime += scanDt;
+#else
           mScanningTime = rstl::min_val(mScanningTime + dt, totalTime);
           mCurScanTime += dt;
+#endif
           mPlayerState->SetScanTime(scanInfo->GetScannableObjectId(), mScanningTime / totalTime);
           if (mScanningTime >= totalTime && mCurScanTime >= gpTweakGui->GetScanSidesStartTime()) {
             SetScanningState(kSS_ScanComplete, mgr);

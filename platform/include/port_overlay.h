@@ -95,6 +95,41 @@ const int kWalkSpeedMax = 200;
 const int kWalkSpeedDefault = 100;
 int WalkSpeed();
 void SetWalkSpeed(int percent);
+// Scan speed in percent (`MP2_SCAN_SPEED`, 100 = retail): ScanSpeed() scales the time a scan takes
+// (CPlayer::UpdateScanningState).
+const int kScanSpeedMin = 50;
+const int kScanSpeedMax = 400;
+const int kScanSpeedDefault = 100;
+int ScanSpeed();
+void SetScanSpeed(int percent);
+// Elevator ride (`MP2_ELEVATOR_RIDE`: original|fast|skip): Fast doubles the ride's clock, Skip ends
+// it as soon as the next world has loaded (CWorldTransManager).
+enum EElevatorRide { kElevatorRide_Original, kElevatorRide_Fast, kElevatorRide_Skip };
+int ElevatorRide();
+void SetElevatorRide(int mode);
+// Text language (`MP2_LANGUAGE`: 0 English, 1 German, 2 French, 3 Spanish, 4 Italian, 5 Dutch,
+// 6 Japanese): CMain::GetLanguage returns it; read once at startup. A string table without that
+// language falls back to its first one.
+const int kLanguageMax = 6;
+int Language();
+void SetLanguage(int index);
+// On-screen in-game time (`MP2_IGT_TIMER`): the save file's play time in the bottom-right corner.
+// NoteGameTime is fed by the game tick, ClearGameTime when the game session ends.
+bool IgtTimer();
+void SetIgtTimer(bool enabled);
+void NoteGameTime(double seconds);
+void ClearGameTime();
+bool GameTime(double& seconds);
+// Return to the title (F1 > Game): RequestReturnToTitle asks the next game tick to quit as the
+// pause menu's Quit does; ConsumeReturnToTitleRequest takes it.
+void RequestReturnToTitle();
+bool ConsumeReturnToTitleRequest();
+// Original experience (`MP2_ORIGINAL_EXPERIENCE`): the port's gameplay and cutscene tweaks read as
+// retail while on (skippable cutscenes, world name card, walk speed, hint delay, scan speed,
+// elevator ride, fast morph, spring ball, toggle lock-on, sticky charge, rapid charge, auto-aim on).
+// Mods, input, video and audio settings are not touched.
+bool OriginalExperience();
+void SetOriginalExperience(bool enabled);
 // Hint delay in minutes (`MP2_HINT_DELAY`, 0 = the game's own timing): HintDelaySeconds() caps the
 // wait before a hint first shows (CHintOptions::Update), 0 when off. RequestShowHint() (F1 button,
 // `hintshow`) asks the next CHintOptions::Update to show the hint the game would show next;
