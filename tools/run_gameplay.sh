@@ -150,5 +150,6 @@ if [ -n "${WATCH:-}" ]; then
 fi
 echo "exit=$RC at $(date +%T)" >> "$LOG"
 # The run's own exit code, so a caller can chain on it: 125 is a STOP_ON_STALL early end, 0 is the game's clean quit path (MP2_FRAMES),
-# 124 the backstop `timeout`, 139 a crash and 134 an abort.
+# 124 the backstop `timeout`. A signal shows as its bare number with uutils `timeout` (11 a crash,
+# 6 an abort, 13 SIGPIPE) and as 128 + it with GNU's (139, 134, 141).
 exit $RC

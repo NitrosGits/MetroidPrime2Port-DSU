@@ -949,6 +949,15 @@ int main(int argc, char** argv) {
   // MP2_PIPELINE_LAZY=1: build pipelines on first use and prefetch an area's recorded ones as it
   // streams in (MP1 sync package 10); off by default, as on desktop MP1.
   config.pipelineCacheLazy = port::EnvFlag("MP2_PIPELINE_LAZY");
+  // Aurora's own logger is fmt::println(stderr), which throws when the write fails, from inside a
+  // noexcept function: with the log copier gone (EPIPE) the next line Aurora logged aborted the
+  // game. Same format, through stdio, whose errors are only a lost line.
+  config.logCallback = [](AuroraLogLevel level, const char* module, const char* message,
+                          unsigned int len) {
+    static const char* const kNames[] = {"debug", "info", "warning", "error", "fatal"};
+    const char* name = static_cast< unsigned >(level) < 5 ? kNames[level] : "unknown";
+    std::fprintf(stderr, "[%s] [%s] %.*s\n", name, module, static_cast< int >(len), message);
+  };
   // Lazy mode keeps built pipelines until memory runs short (MP1 issue #187): under 1024 MiB
   // available it releases those a minute of frames didn't draw, under 512 MiB all but the last
   // frames'. MP_PIPELINE_TRIM_MIB / MP_PIPELINE_TRIM_SEVERE_MIB override the levels (0 turns one off).

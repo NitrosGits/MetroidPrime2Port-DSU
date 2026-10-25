@@ -24,6 +24,9 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #endif
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <sys/prctl.h>
+#endif
 
 namespace PortLogFile {
 
@@ -139,6 +142,14 @@ int OpenTerminal(bool& socket) {
   signal(SIGINT, SIG_IGN);
   signal(SIGQUIT, SIG_IGN);
   signal(SIGPIPE, SIG_IGN);
+  // Nor may a kill meant for the game end it first: it leaves on its own once the game is gone.
+  // Its own name too: the game's main thread renames itself, so a kill by name (`pkill -x`,
+  // `pgrep metroid_prime2_port`) used to find only the copiers of every run on the machine.
+  signal(SIGTERM, SIG_IGN);
+  signal(SIGHUP, SIG_IGN);
+#if defined(__linux__)
+  prctl(PR_SET_NAME, "mp2-log-copier", 0, 0, 0);
+#endif
   long long written = 0;
   bool truncated = false;
   char buffer[8192];
@@ -275,6 +286,9 @@ void Start(const std::string& userDirectory) {
   dup2(fds[1], STDOUT_FILENO);
   dup2(fds[1], STDERR_FILENO);
   close(fds[1]);
+  // A copier that is gone must cost the log, not the run: without this the next line printed
+  // killed the game with SIGPIPE, silently (the log was the pipe), exit 13 under uutils timeout.
+  signal(SIGPIPE, SIG_IGN);
   // stdout to a pipe is fully buffered and abort() flushes nothing: a line at a time, and
   // stderr straight out, keeps the last messages before a crash.
   std::setvbuf(stdout, nullptr, _IOLBF, 0);
