@@ -60,11 +60,6 @@ rider for the null-actor arms. Merged with the tail21 driver run, `caught/reach-
 | dtor delete-flag / ctor 109 cleanup | compiler-generated (D0/D2 split, EH cleanup) |
 
 Unmarked:
-- UpdateAim (1F28): the snap arm is dead (both callers pass `li r5,0`: Patrol 0x2C34, Attack 0x2EFC).
-  The horizontal-limit arms (403/407; the limits are 179°), the |dot|<1e-4 arms and the elevation
-  clamp arms never ran. Forcing them needs gdb (`tools/cov/force.sh`).
-- Attack (2C6C): the clamp arm of the inline `Limit(dot,1)` never ran.
-- Fire (CF0): the weapon-not-loaded arm never ran (load timing).
 - Death and KnockBack: empty and never called.
 
 ## Smoke family
@@ -84,8 +79,18 @@ amt1's driver (`tools/drivers/aimannedturret_alamofront.con`, 14000 f) natural, 
 | 6D8 LoadTypedefAIMannedTurretData | marked: objdiff 100% (the compare tree is the Data property ids) |
 | A18 ~SLdrAIMannedTurretData | marked: objdiff 100% |
 | A88 SLdrAIMannedTurretData ctor | marked: objdiff 100% (0xA88 stfs/stw defaults) |
-| 5B0 ~SLdrAIMannedTurret | not byte-identical (objdiff 74.2%): GCC inlines sub-object dtors MWCC called; same order as retail (0x5B0 chain) |
-| 4964 SLdrAIMannedTurretData (copy) | implicit copy ctor: 100% objdiff but compiler-generated, no source line to mark |
+| 5B0 ~SLdrAIMannedTurret | marked (amt3): member teardown only; not byte-identical (objdiff 74.2%): GCC inlines sub-object dtors MWCC called; same order as retail (0x5B0 chain) |
+| 4964 SLdrAIMannedTurretData (copy) | marked (amt3) above the struct: implicit memberwise copy, word map + static_assert layout |
 | 1F28 UpdateAim | 45/56. Forced and taken: the `snap` arm (`$rdx = 1` at the body entry; both callers pass 0) closed 410/411/412/444. Still open: 402/403/404 and 417/418/419 (`|dot| >= 1e-4` false), 422/426 (the horizontal rotation limits, 179 deg) and 451/453/458 (the elevation animations). The `loc:` writes of `mAimDirection` failed - force.py binds `$this` to `$rdi`, which no longer holds the object mid-function; the fix is to capture `$rdi` at the body entry into a convenience variable and cast it back in the `loc:` set |
 | 2C6C Attack | 21/22: only 278:0/2 (the inlined `CMath::Limit(dot, 1)` clamp, needs a non-unit `mAimDirection`) |
 | 0CF0 Fire | 8/10: 585:1/2 (`mWeaponToken.IsLoaded()` false - the token streams in before the driver's first shot; `CObjectReference::IsLoaded` is inlined so FORCE_INNER found no symbol) and 596:1/2 (`projectile != nullptr` false, needs a failed allocation) |
+
+## amt3 (2026-10-25): Fire, UpdateAim, Attack marked
+
+Bodies match retail (NaN compares included); no TARGET_PC change. Fixture `tools/cov/specs/amt3_force.py`
+(19dca9583): single-object filter (first UpdateAim `this`), writes owned by the non-inline frame
+(Attack+896 sits in inlined `CMath::Limit`; comparing `newest_frame()` there never matched), originals
+recorded, readback, restore at return. Run `build-port-cov/amt3-run_force2` (06_sand_alamofront, 14000 f,
+rc 0, caught 0); frozen copy `/tmp/opencode/amt3-frozen/force2` (binary 269d86ba...). In that run every
+non-throw arm of the three bodies is taken; unrun arcs are landing pads. Fire's null-projectile arm
+(retail 0xE48) is folded on the host (throwing new). Snap stays code-dead in retail (li r5,0 at 0x2C34/0x2EFC).

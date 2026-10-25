@@ -12,7 +12,7 @@ offset	fn	size	class	name	slice	what	marker
 00418	fn_1_418	AC	H	__as__11CMayaSplineFRC11CMayaSpline	-	weak copy / template instance	no
 004C4	fn_1_4C4	E0	H	__as__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>FRCQ24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
 005A4	fn_1_5A4	C	H	clear__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
-005B0	fn_1_5B0	7C	B	__dt__18SLdrAIMannedTurretFv	-	upstream SLdr loader (SLdrAIMannedTurret.inc)	no
+005B0	fn_1_5B0	7C	B	__dt__18SLdrAIMannedTurretFv	amt3	SLdr dtor: member teardown only, same order as retail (amt3)	yes
 0062C	fn_1_62C	58	H	__dt__11CMayaSplineFv	-	weak copy / template instance	no
 00684	fn_1_684	54	H	__dt__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
 006D8	fn_1_6D8	340	B	LoadTypedefAIMannedTurretData__FR22SLdrAIMannedTurretDataR12CInputStream	-	upstream SLdr loader (SLdrAIMannedTurret.inc)	no
@@ -21,7 +21,7 @@ offset	fn	size	class	name	slice	what	marker
 00B74	fn_1_B74	114	H	fn_1_B74	-	dead: unreferenced in the REL	no
 00C88	fn_1_C88	3C	H	fn_1_C88	-	dead: unreferenced in the REL	no
 00CC4	fn_1_CC4	2C	H	fn_1_CC4	-	dead: unreferenced in the REL	no
-00CF0	fn_1_CF0	2A8	B	Fire__15CAIMannedTurretFR13CStateManager	amt1	Fire: weapon-not-loaded arm unrun (load timing, not data-provable)	no
+00CF0	fn_1_CF0	2A8	B	Fire__15CAIMannedTurretFR13CStateManager	amt3	Fire: not-loaded/no-anim forced; null projectile alloc-failure only (amt3)	yes
 00F98	fn_1_F98	48	H	None__18CImpactVisorEffectFv	-	weak copy / template instance	no
 00FE0	fn_1_FE0	B4	H	__ct__18CImpactVisorEffectFRCQ24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>RCQ24rstl52optional_object<Q218CImpactVisorEffect11SBlurEffect>RCQ24rstl34optional_object<Q24rstl9pair<i,f>>	-	weak copy / template instance	no
 01094	fn_1_1094	40	H	__ct__Q24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>FRCQ24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>	-	weak copy / template instance	no
@@ -43,7 +43,7 @@ offset	fn	size	class	name	slice	what	marker
 019C4	fn_1_19C4	450	B	Think__15CAIMannedTurretFfR13CStateManager	amt1	upstream body (CAIMannedTurret)	yes
 01E14	fn_1_1E14	C4	B	UpdateRider__15CAIMannedTurretFR13CStateManagerf	amt1	upstream body (CAIMannedTurret)	yes
 01ED8	fn_1_1ED8	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
-01F28	fn_1_1F28	730	B	UpdateAim__15CAIMannedTurretFR13CStateManagerfb	amt1	UpdateAim: snap arm dead (callers li r5,0); horizontal limit, elevation clamp and |dot|<1e-4 arms unrun	no
+01F28	fn_1_1F28	730	B	UpdateAim__15CAIMannedTurretFR13CStateManagerfb	amt3	UpdateAim: |dot|, limit, clamp, snap arms forced; snap code-dead (amt3)	yes
 02658	fn_1_2658	40	H	Cross__9CVector3fFRC9CVector3fRC9CVector3f	-	weak copy / template instance	no
 02698	fn_1_2698	98	B	Render__15CAIMannedTurretCFRC13CStateManager	amt1	upstream body (CAIMannedTurret)	yes
 02730	fn_1_2730	140	B	PreRender__15CAIMannedTurretFR13CStateManager	amt1	upstream body (CAIMannedTurret)	yes
@@ -56,7 +56,7 @@ offset	fn	size	class	name	slice	what	marker
 02A98	fn_1_2A98	C	B	CheckReady__15CAIMannedTurretCFR13CStateManagerRC12CTriggerData	amt1	upstream body (CAIMannedTurret)	yes
 02AA4	fn_1_2AA4	4	B	Dead__15CAIMannedTurretFR13CStateManager9EStateMsgf	amt1	upstream body (CAIMannedTurret)	yes
 02AA8	fn_1_2AA8	1C4	B	Patrol__15CAIMannedTurretFR13CStateManager9EStateMsgf	amt1	upstream body (CAIMannedTurret)	yes
-02C6C	fn_1_2C6C	2D8	B	Attack__15CAIMannedTurretFR13CStateManager9EStateMsgf	amt1	Attack: line 270 Limit(dot,1) clamp arm unrun (numeric only)	no
+02C6C	fn_1_2C6C	2D8	B	Attack__15CAIMannedTurretFR13CStateManager9EStateMsgf	amt3	Attack: Limit |dot|>1 arm forced at inlined Limit (amt3)	yes
 02F44	fn_1_2F44	5C	H	__dt__15CProjectileInfoFv	-	weak copy / template instance	no
 02FA0	fn_1_2FA0	1C8	B	Start__15CAIMannedTurretFR13CStateManager9EStateMsgf	amt1	upstream body (CAIMannedTurret)	yes
 03168	fn_1_3168	8C	B	GetOrbitPosition__15CAIMannedTurretCFRC13CStateManager	amt1	upstream body (CAIMannedTurret)	yes
@@ -82,7 +82,7 @@ offset	fn	size	class	name	slice	what	marker
 04830	fn_1_4830	90	H	GetNewDerivedObject__46TObjOwnerDerivedFromIObj<18CWeaponDescription>FP18CWeaponDescription	-	weak copy / template instance	no
 048C0	fn_1_48C0	5C	H	__dt__31CObjOwnerDerivedFromIObjUntypedFv	-	weak copy / template instance	no
 0491C	fn_1_491C	48	H	__dt__4IObjFv	-	weak copy / template instance	no
-04964	fn_1_4964	F4	B	__ct__22SLdrAIMannedTurretDataFRC22SLdrAIMannedTurretData	-	upstream SLdr loader (SLdrAIMannedTurret.inc)	no
+04964	fn_1_4964	F4	B	__ct__22SLdrAIMannedTurretDataFRC22SLdrAIMannedTurretData	amt3	implicit memberwise copy, word map + static_assert layout (amt3)	yes
 04A58	fn_1_4A58	2BC	H	__ct__23SLdrDamageVulnerabilityFRC23SLdrDamageVulnerability	-	weak copy / template instance	no
 04D14	fn_1_4D14	98	H	reserve__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>Fi	-	weak copy / template instance	no
 04DAC	fn_1_4DAC	5C	H	uninitialized_copy<Q24rstl124pointer_iterator<15CMayaSplineKnot,Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P15CMayaSplineKnot>__4rstlFQ24rstl124pointer_iterator<15CMayaSplineKnot,Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl124pointer_iterator<15CMayaSplineKnot,Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P15CMayaSplineKnot	-	weak copy / template instance	no
