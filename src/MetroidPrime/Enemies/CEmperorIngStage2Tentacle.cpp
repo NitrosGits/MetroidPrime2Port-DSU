@@ -30,6 +30,16 @@ static const SJointPair skJoints[] = {
 
 static EMaterialTypes skTouchMaterial = kMT_Solid; // Guessed name
 
+// Retail `__sinit_CEmperorIngStage2Tentacle_cpp` (0x1ED0-0x1F90) writes exactly these two tables
+// and nothing else: `lis` 0x1EDC and 0x1F04 take the table addresses, then 15 word copies (`stw`
+// 0x1F48-0x1F80) put each entry's member pointer at +4/+8/+0xC as {adjust 0, vtoff -1
+// (non-virtual), fn = address}. Values read from the REL's module-17 relocation list: names .rodata
+// 0x88/0x8F/0x99/0x9E/0xAB, functions .text 0x12D4 Attack, 0x1288 Retracted, 0x124C Dead,
+// 0x1234 ShouldAttack, 0x1218 ShouldRetract - the same names, order and targets as below; the name
+// words are static relocations already in the file, not sinit writes. No call, no branch; the only
+// other store is the register save stmw r25 0x1EE0 (frame 0x30, restored lmw 0x1F84). skJoints and
+// the material words are constant initialisers in .data, not written.
+// @ fn_17_1ED0
 static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Attack",
      static_cast< CPatterned::StateMachine::StateFunc >(&CEmperorIngStage2Tentacle::Attack)},
