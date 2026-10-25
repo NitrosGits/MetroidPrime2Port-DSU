@@ -6,7 +6,7 @@
 # boosting true). Phase B (cannonBall given): morph ball rolling through the boids so ballDamage
 # and cannonBall are both true. Phase C: cannonBall taken away again, standing touches.
 @f210 layer 2
-@f300 god 1; give morphBall 1; give boostBall 1; give spiderBall 1; give screwAttack 1; give spaceJumpBoots 1; fastmorph 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give powerBeam 1; give sunburst 1; give darkburst 1; give sonicBoom 1; give superMissile 1
+@f300 god 1; give morphBall 1; give boostBall 1; give spiderBall 1; give screwAttack 1; give spaceJumpBoots 1; fastmorph 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give powerBeam 1; give chargeCombo 1; give sunburst 1; give darkburst 1; give sonicBoom 1; give superMissile 1
 @f380 send u041d Activate; send u04ff Activate; send u05c4 Activate; send u05c6 Activate
 @f420 tp -338.4 -87.7 -6.7
 @f700 obj u041d
@@ -16,12 +16,12 @@
 #      charged beam: run 1 logged no comboed weapon mode at all).
 @f740 beam light
 @f760 press a 0
-@f880 stick 0 0
-@f920 press a 0
-@f1040 stick 0 0
+@f960 stick 0 0
+@f1000 press a 0
+@f1200 stick 0 0
 @f1100 tp -338.4 -87.7 -6.7
-@f1120 press a 0
-@f1240 stick 0 0
+@f1220 press a 0
+@f1420 stick 0 0
 # ---- power beam: plain, charged, missile
 @f740 shoot u041d
 @f760 shoot u041d
@@ -81,10 +81,14 @@
 # ---- Phase C: cannonBall taken away, standing touches and a boost
 @f2560 take cannonBall 1
 @f2600 beam power
-@f2620 tp -338.4 -87.7 -6.7
-@f2680 shoot u041d
-@f2740 shoot u041d
-@f2800 noise 6
-@f2840 tp -338.4 -87.7 -6.7
-@f2900 obj u041d
-@f2950 shoot u041d
+@f2620 press x 30
+@f2640 tp -338.4 -87.7 -6.7
+@f2700 boost
+@f2760 tp -338.4 -87.7 -6.7
+@f2820 press x 30
+@f2860 tp -338.4 -87.7 -6.7
+@f2900 shoot u041d
+@f2960 shoot u041d charged
+@f3020 noise 6
+@f3060 tp -338.4 -87.7 -6.7
+@f3120 obj u041d

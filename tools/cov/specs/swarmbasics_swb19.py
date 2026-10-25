@@ -31,9 +31,18 @@ import os
 state = {'ctor': 0, 'forced': 0, 'restored': 0, 'restore_fail': 0, 'touch': 0,
          'touch_log': 0, 'keys': {}, 'err': '', 'pending': None, 'done': False,
          'ticks': 0, 'vuln': [], 'repair': None, 'glue': {}, 'glue_applied': 0,
-         'glue_restored': 0, 'glue_fail': 0, 'mgr': 0}
-GLUE_START = int(os.environ.get('SWB19_GLUE_START', '1200'))
-GLUE_END = int(os.environ.get('SWB19_GLUE_END', '2100'))
+         'glue_restored': 0, 'glue_fail': 0, 'mgr': 0, 'freeze': None, 'screw': None,
+         'spawn': None}
+# Tick numbers are CSwarmBasics::UpdatePartition calls, about four per game frame (one per swarm),
+# so 8000..11600 is roughly frames 2000..2900 - the driver's warped/morphed phases.
+GLUE_START = int(os.environ.get('SWB19_GLUE_START', '8000'))
+GLUE_END = int(os.environ.get('SWB19_GLUE_END', '11600'))
+FREEZE_START = int(os.environ.get('SWB19_FREEZE_START', '8400'))
+FREEZE_END = int(os.environ.get('SWB19_FREEZE_END', '8800'))
+SCREW_START = int(os.environ.get('SWB19_SCREW_START', '10600'))
+SCREW_END = int(os.environ.get('SWB19_SCREW_END', '11000'))
+SPAWN_START = int(os.environ.get('SWB19_SPAWN_START', '11200'))
+SPAWN_END = int(os.environ.get('SWB19_SPAWN_END', '11600'))
 
 COV_OUT = os.environ.get('COV_OUT', '/var/tmp/swb19')
 LOG = os.path.join(COV_OUT, 'swb19.jsonl')
@@ -148,7 +157,7 @@ class CtorReturn(gdb.FinishBreakpoint):
             # that body (`if (mAnimated)`), so clear the flag for this actor only, log it, and put
             # it back later.  The arm itself has already run and been counted.
             write('((CSwarmBasics*)%d)->mAnimated' % self.swarm, '0')
-            state['repair'] = dict(swarm=self.swarm, until=GLUE_START + 40, animated=animated,
+            state['repair'] = dict(swarm=self.swarm, until=900, animated=animated,
                                    readback=iv('((CSwarmBasics*)%d)->mAnimated' % self.swarm))
             log('REPAIR', swarm=self.swarm, animated_was=animated,
                 animated_now=state['repair']['readback'],
@@ -234,6 +243,76 @@ def player_position(mgr):
         pass
     return None, 0
 
+def force_windows(this):
+    """Two real game states no shipped sand-entrance swarm reaches on its own, each written to the
+    field the body reads and restored with a readback:
+
+    * a frozen boid (mFreezeTimer > 0: FreezeBoids is a CHomingBlob path) for Touch's
+      `it->mFreezeTimer <= 0.f` false side;
+    * the player in screw-attack ball mode (CMorphBall::kBS_ScrewAttack) with no cannon ball, for
+      `!cannonBall && !InScrewAttackMode()`;
+    * the player SPAWNED morphed (kMS_Morphed: a save made in ball form), for the
+      GetSpawnedMorphballState ternary's non-unmorphed side.
+    """
+    tick = state['ticks']
+    inf = gdb.selected_inferior()
+    if FREEZE_START <= tick <= FREEZE_END and state['freeze'] is None:
+        try:
+            if iv('((CSwarmBasics*)%d)->mBoids.mCount' % this) > 1:
+                address = iv('(long)&((CSwarmBasics*)%d)->mBoids.mItems[1].mFreezeTimer' % this)
+                original = inf.read_memory(address, 4)
+                inf.write_memory(address, gdb.parse_and_eval('(float)1.0').bytes)
+                state['freeze'] = dict(swarm=this, address=address, original=original.tobytes() if hasattr(original, 'tobytes') else bytes(original))
+                log('FREEZE', swarm=this, address=address, original=state['freeze']['original'].hex(),
+                    readback=bytes(inf.read_memory(address, 4)).hex(), tick=tick)
+        except gdb.error as error:
+            log('FREEZE-ERR', error=str(error)[:100])
+    if tick > FREEZE_END and state['freeze'] is not None:
+        record = state['freeze']
+        inf.write_memory(record['address'], record['original'])
+        log('FREEZE-UNDO', swarm=record['swarm'],
+            readback=bytes(inf.read_memory(record['address'], 4)).hex(),
+            ok=bytes(inf.read_memory(record['address'], 4)) == record['original'])
+        state['freeze'] = None
+    if tick == SCREW_START and state['screw'] is None and state['mgr']:
+        try:
+            player = iv('((CStateManager*)%d)->mPlayers[0]' % state['mgr'])
+            ball = iv('((CPlayer*)%d)->mMorphBall.mPtr' % player)
+            if ball:
+                address = iv('(long)&((CMorphBall*)%d)->mBallState' % ball)
+                original = bytes(inf.read_memory(address, 4))
+                inf.write_memory(address, (4).to_bytes(4, 'little'))     # kBS_ScrewAttack
+                state['screw'] = dict(address=address, original=original,
+                                      ball=ball, player=player)
+                log('SCREW', player=player, ball=ball, original=original.hex(),
+                    readback=bytes(inf.read_memory(address, 4)).hex(), tick=tick)
+        except gdb.error as error:
+            log('SCREW-ERR', error=str(error)[:100])
+    if tick > SCREW_END and state['screw'] is not None:
+        record = state['screw']
+        inf.write_memory(record['address'], record['original'])
+        log('SCREW-UNDO', readback=bytes(inf.read_memory(record['address'], 4)).hex(),
+            ok=bytes(inf.read_memory(record['address'], 4)) == record['original'])
+        state['screw'] = None
+    if tick == SPAWN_START and state['spawn'] is None and state['mgr']:
+        try:
+            player = iv('((CStateManager*)%d)->mPlayers[0]' % state['mgr'])
+            address = iv('(long)&((CPlayer*)%d)->mSpawnedMorphBallState' % player)
+            original = bytes(inf.read_memory(address, 4))
+            inf.write_memory(address, (1).to_bytes(4, 'little'))         # CPlayer::kMS_Morphed
+            state['spawn'] = dict(address=address, original=original, player=player)
+            log('SPAWN', player=player, original=original.hex(),
+                readback=bytes(inf.read_memory(address, 4)).hex(), tick=tick)
+        except gdb.error as error:
+            log('SPAWN-ERR', error=str(error)[:100])
+    if tick > SPAWN_END and state['spawn'] is not None:
+        record = state['spawn']
+        inf.write_memory(record['address'], record['original'])
+        log('SPAWN-UNDO', readback=bytes(inf.read_memory(record['address'], 4)).hex(),
+            ok=bytes(inf.read_memory(record['address'], 4)) == record['original'])
+        state['spawn'] = None
+
+
 def glue(this):
     """Stand-in-boid: keep one live boid of every swarm in the area on the player during the
     window, so the real collision system's player-vs-swarm Touch reaches Touch's own per-boid box
@@ -307,6 +386,7 @@ class PartitionTick(gdb.Breakpoint):
         if this not in state['vuln']:
             state['vuln'].append(this)
             vulnerability(this, len(state['vuln']))
+        force_windows(this)
         glue(this)
         if state['ticks'] % 250:
             return False
