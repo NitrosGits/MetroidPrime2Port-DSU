@@ -78,6 +78,9 @@ static void PortDrawSliced(const CGuiCamera& camera, const CGuiWidget* widget,
                            const CGuiWidgetDrawParms& parms, const CTransform4f& view,
                            const CTransform4f& fromView, bool curved, float depth,
                            float split = 0.f) {
+  // Width (of the authored half-width) past a rigid split's cut that stretches over the gap: clear of
+  // the energy digits and of the glass brackets at 16:9.
+  static const float kSpreadSplitBand = 0.11f;
   u32 scissor[4];
   GXGetScissor(&scissor[0], &scissor[1], &scissor[2], &scissor[3]);
   const float halfWidth = camera.GetSpreadHalfWidth();
@@ -99,10 +102,14 @@ static void PortDrawSliced(const CGuiCamera& camera, const CGuiWidget* widget,
   };
   piece(-inner, inner, -inner, inner);
   if (split > 0.f) {
-    // Rigid split: both sides slide whole by the full spread offset, leaving the gap empty.
+    // Rigid split: past a narrow band both sides slide whole by the full spread offset. The band
+    // holds only the glass's gradient and stretches across the gap, so the gradient stays unbroken.
     const float moved = camera.GetSpreadSliceOffset(edge);
-    piece(inner, edge, inner + moved, edge + moved);
-    piece(-edge, -inner, -edge - moved, -inner - moved);
+    const float band = inner + kSpreadSplitBand * halfWidth;
+    piece(inner, band, inner, band + moved);
+    piece(-band, -inner, -band - moved, -inner);
+    piece(band, edge, band + moved, edge + moved);
+    piece(-edge, -band, -edge - moved, -band - moved);
     GXSetScissor(scissor[0], scissor[1], scissor[2], scissor[3]);
     return;
   }
