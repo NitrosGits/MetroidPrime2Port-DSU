@@ -470,8 +470,14 @@ void CMorphBall::RenderToShadowTex(CStateManager& mgr) {
   }
 
   const float ballRadius = mRadius;
+#ifdef TARGET_PC
+  // Cast from the presented ball so the shadow doesn't step behind it at the tick rate.
+  const CVector3f center = mPlayer.PortPresentedPoint(
+      mPlayer.GetTranslation() + mPlayer.GetPrimitiveOffset() + CVector3f(0.f, 0.f, ballRadius));
+#else
   const CVector3f center =
       mPlayer.GetTranslation() + mPlayer.GetPrimitiveOffset() + CVector3f(0.f, 0.f, ballRadius);
+#endif
   const float extent = 1.5f * mRadius;
   const CAABox aabb(CVector3f(center.GetX() - extent, center.GetY() - extent, center.GetZ() - 10.f),
                     CVector3f(center.GetX() + extent, center.GetY() + extent, center.GetZ()));
@@ -1434,9 +1440,14 @@ void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) co
     mSpiderBallGlassModel->Render(mgr, ballXf, mActorLights.get(), glassFlags);
   }
 
-  for (int i = 0; i < 6; ++i) {
-    if (mWakeEffects[i].get() != nullptr) {
-      mWakeEffects[i]->Render();
+  {
+    // Wakes are emitted at world points (contacts, the ball's last tick position), so they
+    // blend themselves and must not ride the player's shift.
+    CPortRenderScopeSuspend portWorldFx(true);
+    for (int i = 0; i < 6; ++i) {
+      if (mWakeEffects[i].get() != nullptr) {
+        mWakeEffects[i]->Render();
+      }
     }
   }
 
