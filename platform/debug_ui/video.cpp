@@ -6,6 +6,7 @@
 
 #include "port_input_remap_ui.h"
 #include "port_overlay.h"
+#include "port_savestate.h"
 #include "port_suit_colours.h"
 #include "port_video.h"
 
@@ -61,9 +62,10 @@ void DrawVideoDisplay() {
       ImGui::EndCombo();
     }
     ImGui::SetItemTooltip(
-        "Each suit's colours, saved per suit (* = changed). Recoloured from your disc at\n"
-        "startup, so the change shows everywhere it is used. A mod's own suit textures are\n"
-        "left alone. The Light Suit is mostly colourless: only its accents change.");
+        "Each suit's colours, saved per suit (* = changed). Recoloured from your disc, so the\n"
+        "change shows everywhere it is used; Apply now (or a restart) puts it in the game.\n"
+        "A mod's own suit textures are left alone. The Light Suit's Main colour tints its\n"
+        "silver and white body; its Accent is the gold trim.");
     for (int slot = 0; slot < suit.slots; ++slot) {
       ImGui::PushID(slot);
       const std::optional< uint32_t > picked = PortSuitColours::Colour(sSuitColoursSuit, slot);
@@ -91,9 +93,21 @@ void DrawVideoDisplay() {
       PortSuitColours::Randomise(sSuitColoursSuit, std::random_device{}());
       Changed(true);
     }
-    ImGui::SetItemTooltip("Random colours for every slot of this suit; restart to see them.");
+    ImGui::SetItemTooltip("Random colours for every slot of this suit; Apply now to see them.");
     if (PortSuitColours::Pending(true)) {
-      ImGui::TextDisabled("Restart the game to apply the suit colours.");
+      // Not on every picker drag frame: the reload rebuilds the room, so it is the player's click.
+      const bool reloading = PortSaveState::ModReloadActive();
+      ImGui::SameLine();
+      ImGui::BeginDisabled(reloading);
+      if (ImGui::Button(reloading ? "Applying..." : "Apply now")) {
+        PortSaveState::RequestModReload();
+      }
+      ImGui::EndDisabled();
+      ImGui::SetItemTooltip("Recolours the suit textures and rebuilds the room (the same as Game > Mods >\n"
+                            "Reload mods), so the suit shows the new colours without a restart. It runs while\n"
+                            "the game is playing (also with this overlay open), not while the pause menu is\n"
+                            "open; on the title screen they apply at the next start.");
+      ImGui::TextDisabled("Colours not applied yet: Apply now, or they apply at the next start.");
     }
   }
 

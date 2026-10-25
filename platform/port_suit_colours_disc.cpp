@@ -69,6 +69,18 @@ std::vector<uint32_t> Sources(int suit) {
   }
 }
 
+// Whether the suit's body slot applies to this texture. The Light Suit's body
+// is silver and white, and its other textures (glow blob 0662A1C7, ring 087D0789,
+// lights 95E79836, trim C6A37961, the small white C9B164A1) are glows, lenses and
+// trim whose neutral texels must stay: only the four with the armour plates and
+// arm are body. The other suits have no body slot.
+bool BodyTexture(int suit, uint32_t id) {
+  if (suit != kLight) {
+    return true;
+  }
+  return id == 0x091A32D6 || id == 0x0C32C6DA || id == 0x8A598DD2 || id == 0xA240A5D3;
+}
+
 // Every resource of the base disc's PAKs, read on demand.
 class DiscReader {
 public:
@@ -276,7 +288,7 @@ std::vector<PortMods::LooseResource> Collect(
                    FileName(id).c_str());
       continue;
     }
-    const size_t changed = Recolour(image, suit, picks);
+    const size_t changed = Recolour(image, suit, picks, BodyTexture(suit, id));
     std::fprintf(stderr, "suit colours: %s: %s: %zu of %d texels recoloured\n", info.name, FileName(id).c_str(),
                  changed, image.width * image.height);
     if (changed == 0) {
