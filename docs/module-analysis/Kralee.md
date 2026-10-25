@@ -155,12 +155,36 @@ The ctor's three open edges:
 - **88:1/2, 91:1/2** are the skip arms: gcov's fall-through edge is the `push_back_unsafe` body and it ran twice
   (`branch 1 taken 2 (fallthrough)`, `branch 2 taken 0`), the untaken edge being the `cmp $0xffffffff` / `je`
   (host 0xf28020 and 0xf28040), i.e. the id-invalid case no placement has.
-- **82:1/3** is the init list's last line (`, mWarpEffectTransform(CTransform4f::Identity()) {`), which holds no
-  source condition: its two annotated blocks are calls (`gcov -a` prints `call 0 returned 2` and `call 3 returned 2`
-  for that line), and the untaken arc (gcno block 6 -> 37) lands on the exception-dispatch block whose only line is
-  the closing brace (CKralee.cpp:98) and which jumps into the `.cold` landing pads. It is the same call/exception
-  arc pair gcov labels `(throw)` on lines 84/86/87 of this body, so it is not a source arm. (gcov's JSON omits the
-  throw flag on this one arc, which is why `gcov_report` lists it.)
+- **82:1/3** is a real source arm, corrected in **kral2b (2026-10-25)**: gcov's untaken normal edge is
+  **block 3 -> 5, count 0**, not the EH edge 6 -> 37. Block 3 maps to lines 82/58; the init-list attribution
+  at line 82 hides `mWarpState(initiallyInvisible ? kWS_Invisible : kWS_Visible)` at line 58. In the frozen
+  kral2 host binary (`../evidence-archive/kral2/bin/metroid_prime2_port`), `0xf27db1 test %r15b,%r15b`,
+  `0xf27db7 mov $1,%eax`, and **`0xf27dbc jne 0xf27dc9`** select Invisible (1) when the argument is true;
+  the false path increments its coverage counter and clears eax to Visible (0), then stores to `0x964(%rbx)`.
+  Thus the untaken arm is **initiallyInvisible=true**, dead by shipped data: property **0x738d1c80 is explicitly
+  byte 00 on all ten placements**, and none of the generated objects is KRAL (scan below).
+  `SLdrKralee.inc:120-122` reads the bool, `CKralee.cpp:429` forwards it unchanged; omission would also yield
+  false (`SLdrKralee.hpp:103`), but no shipped KRAL relies on that default. The EH arc exists separately and
+  cannot discharge this ternary. The marker at `CKralee.cpp:40` is just `// @ fn_37_244C`, with no proof label.
+
+**Reproducible kral2b scan** (read-only, `MP2_DISC` optionally selects the user's G2ME01 ISO):
+
+```sh
+python3 tools/scan_kralee_props.py
+```
+
+Exit 0; each of the ten placement lines reports `initiallyInvisible=false(explicit:00)`. Exact summary:
+
+```text
+== 10 KRAL placements, 0 generated KRAL objects: ancs NOWHERE=0, ancs present=10, warpIn valid=10, warpOut valid=10, warpIn unset=0, warpOut unset=0, unknown prop id=0
+== initiallyInvisible: false=10, true=0, explicit=10, default=0
+== coverage: worlds=12/12, areas=291/291, SCLY layers=1620/1620, SCGN sections=291/291, SCGN objects=7764, parse_errors=0
+```
+
+The scanner visits every MLVL resource (including unnamed worlds), every SCLY layer and the SCGN section
+after each area's layers, extracting script sections even from multi-section MREA blocks. Generated KRAL
+records, if present, receive their own `KRAL SCGN` lines and the same property decoding. Invalid/truncated
+records or missing sections produce diagnostics and a nonzero exit, so partial scans cannot establish absence.
 
 **415:1/2** is LoadKralee's null return (gcno block 63 -> 73, the direction the two spawns rule out). kral2's force
 attempt failed for a reason worth recording: `LdrToModelData` returns `rstl::optional_object<CModelData>` by value,
