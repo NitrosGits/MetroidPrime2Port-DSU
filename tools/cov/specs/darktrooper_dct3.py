@@ -54,24 +54,28 @@ API = {}
 
 # ----------------------------------------------------------------- pure part (selftested)
 def ctor_symbols(nm_lines):
-    """The frozen ctor's entry symbols from an nm dump: the C1/C2 clones, no .cold."""
-    out = []
+    """One ctor symbol per address from an nm dump: C1 and C2 are aliases in this binary, and the
+    .cold clone is a different body. Two breakpoints on one address would run the entry twice."""
+    out, seen = [], set()
     for line in nm_lines:
         raw, _, demangled = line.rstrip('\n').partition('\t')
         parts = raw.split()
-        if len(parts) != 3 or parts[2] in out:
+        if len(parts) != 3 or '.cold' in demangled:
             continue
-        if demangled.startswith(CTOR_PREFIX) and '.cold' not in demangled:
-            out.append(parts[2])
+        if not demangled.startswith(CTOR_PREFIX) or parts[0] in seen:
+            continue
+        seen.add(parts[0])
+        out.append(parts[2])
     return out
 
 
 def best_symbols(nm_lines):
-    out = []
+    out, seen = [], set()
     for line in nm_lines:
         raw, _, demangled = line.rstrip('\n').partition('\t')
         parts = raw.split()
-        if len(parts) == 3 and demangled.startswith(BEST) and parts[2] not in out:
+        if len(parts) == 3 and demangled.startswith(BEST) and parts[0] not in seen:
+            seen.add(parts[0])
             out.append(parts[2])
     return out
 

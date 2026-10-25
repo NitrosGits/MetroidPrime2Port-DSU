@@ -167,7 +167,12 @@ def main():
     mod = load_spec(tmp, force='5:E1')
 
     # ---- pure part
-    ok('ctor symbols: C1/C2 only', len(mod.ctor_symbols(open(tmp / 'nm.txt').readlines())) == 2)
+    nm = open(tmp / 'nm.txt').readlines()
+    ok('ctor symbols: C1/C2 aliases collapse to one', len(mod.ctor_symbols(nm)) == 1)
+    nm2 = nm + ['0000000000d60000 t _ZN12CDarkTrooperC1E9TUniqueIdEE2\t'
+                'CDarkTrooper::CDarkTrooper(TUniqueId)\n']
+    ok('ctor symbols: a distinct address is kept', len(mod.ctor_symbols(nm2)) == 2)
+    ok('ctor symbols: .cold dropped', all('.cold' not in s for s in mod.ctor_symbols(nm)))
     ok('best symbol: two-arg overload only',
        mod.best_symbols(open(tmp / 'nm.txt').readlines()) ==
        ['_ZNK12CPASDatabase17FindBestAnimationERK16CPASAnimParmDatai'])
