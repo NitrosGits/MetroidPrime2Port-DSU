@@ -4,14 +4,14 @@ offset	fn	size	class	name	slice	what	marker
 00050	fn_20_50	20	T	RELMain	-	REL runtime	no
 00070	fn_20_70	3C	B	SetRelLoaderFunctionToLoader	fish1	upstream body (CFishCloud)	yes
 000AC	fn_20_AC	240	B	LoadFishCloudModifier	fish1	upstream body (CFishCloud)	yes
-002EC	fn_20_2EC	54	B	SLdrFishCloudModifier::~SLdrFishCloudModifier	-	header inline dtor	no
+002EC	fn_20_2EC	54	B	SLdrFishCloudModifier::~SLdrFishCloudModifier	-	header inline dtor	yes
 00340	fn_20_340	838	B	LoadFishCloud	fish1	upstream body (CFishCloud)	yes
 00B78	fn_20_B78	94	H	CActorParameters::operator=	-	weak copy / template instance	no
 00C0C	fn_20_C0C	7C	H	CLightParameters::operator=	-	weak copy / template instance	no
 00C88	fn_20_C88	94	H	CActorParameters::CActorParameters	-	weak copy / template instance	no
 00D1C	fn_20_D1C	7C	H	CLightParameters::CLightParameters	-	weak copy / template instance	no
-00D98	fn_20_D98	64	B	SLdrFishCloud::~SLdrFishCloud	-	header inline dtor	no
-00DFC	fn_20_DFC	1A4	B	SLdrFishCloud::SLdrFishCloud	-	retail deathSound default -1 fixed (fish1, TARGET_PC); header inline, unmarked	no
+00D98	fn_20_D98	64	B	SLdrFishCloud::~SLdrFishCloud	-	header inline dtor	yes
+00DFC	fn_20_DFC	1A4	B	SLdrFishCloud::SLdrFishCloud	-	retail deathSound default -1 fixed (fish1, TARGET_PC); header inline, marked (fish2)	yes
 00FA0	fn_20_FA0	80	B	CFishCloud::RenderParticles	fish1	upstream body (CFishCloud)	yes
 01020	fn_20_1020	7C	B	CFishCloud::UpdateParticles	fish1	upstream body (CFishCloud)	yes
 0109C	fn_20_109C	A8	B	CFishCloud::AddParticles	fish1	upstream body (CFishCloud)	yes
@@ -32,7 +32,7 @@ offset	fn	size	class	name	slice	what	marker
 02148	fn_20_2148	158	B	CFishCloud::UpdatePartitionList	-	partly covered: out-of-partition index 766/768	no
 022A0	fn_20_22A0	C	H	rstl::vector<CFishCloud::CBoid*, rstl::rmemory_allocator>::clear	-	weak copy / template instance	no
 022AC	fn_20_22AC	40	B	CFishCloud::CreatePartitionList	fish1	upstream body (CFishCloud)	yes
-022EC	fn_20_22EC	7DC	B	CFishCloud::Touch	-	partly covered: 669 no touch bounds, 686/688 spawned morph, 690/711/721 morph-ball arms	no
+022EC	fn_20_22EC	7DC	B	CFishCloud::Touch	-	fish2 marked: all live arms (forced 698/702/705/706, natural rest); 740/750 throw edges dead	yes
 02AC8	fn_20_2AC8	3C	H	rstl::optional_object<CAABox>::~optional_object	-	weak copy / template instance	no
 02B04	fn_20_2B04	D4	B	CFishCloud::KillBoid	fish1	upstream body (CFishCloud)	yes
 02BD8	fn_20_2BD8	2EC	B	CFishCloud::Render	fish1	upstream body; forced arms (fishcloud_force.py)	yes
@@ -88,7 +88,7 @@ offset	fn	size	class	name	slice	what	marker
 06784	fn_20_6784	30	B	CFishCloud::CModifierSource::operator<	fish1	upstream body (CFishCloud)	yes
 067B4	fn_20_67B4	1C	B	CFishCloud::CModifierSource::CModifierSource	fish1	upstream body (CFishCloud)	yes
 067D0	fn_20_67D0	104	B	CFishCloudModifier::RemoveSelf	-	data arms (85/89/92) not run; Delete on area unload not proven	no
-068D4	fn_20_68D4	11C	B	CFishCloudModifier::AddSelf	-	data arms (85/89/92): every FSHM has one MDFY/FOLW link to a FISH in its area	no
+068D4	fn_20_68D4	11C	B	CFishCloudModifier::AddSelf	-	fish2 marked: 89/93/96 arms forced (fishcloud_addself_force.py)	yes
 069F0	fn_20_69F0	BC	B	CFishCloudModifier::AcceptScriptMsg	fish1	upstream body (CFishCloud)	yes
 06AAC	fn_20_6AAC	120	B	CFishCloudModifier::CFishCloudModifier	fish1	upstream body (CFishCloud)	yes
 06BCC	fn_20_6BCC	20	B	CModelDataNull	-	static CModelDataNull, folded into the ctor on host	no
