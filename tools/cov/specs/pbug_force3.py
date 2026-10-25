@@ -2,10 +2,10 @@
 # bug is stood on its own destination waypoint (mDestPos, CActor::mPosition is what GetTranslation()
 # returns) for the duration of one call, so that waypoint's segment starts inside the sphere and
 # RaySphereIntersection reports T = radius < mag. The position is put back when the call returns,
-# so the rest of the frame (and the fight) sees the bug where it was. The first 60 calls are
+# so the rest of the frame (and the fight) sees the bug where it was. The first 400 calls are
 # forced; the body's own random gate (Next() & 3) lets about one in four through.
 #   BUILD=$PWD/build-port-link tools/cov/force.sh tools/cov/specs/pbug_force3.py <out> \
-#     42b935e4,0b_sand_hall --con tools/cov/specs/pillbug_sandhall.con --fast --frames 3000
+#     1baa96c2,06_cliff_spiderballguardian --con tools/cov/specs/pillbug_cliff.con --fast --frames 4500
 import os
 
 import gdb
@@ -40,7 +40,7 @@ class _Back(gdb.FinishBreakpoint):
 
 def close_stand(gdb):
     _n[0] += 1
-    if _n[0] > 60:
+    if _n[0] > 400:
         return
     try:
         this = int(gdb.parse_and_eval('(long)$rdi'))
