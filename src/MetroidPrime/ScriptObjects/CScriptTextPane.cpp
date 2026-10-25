@@ -7,6 +7,34 @@
 #include "MetroidPrime/ScriptLoader/SLdrTextPane.hpp"
 #include "rstl/math.hpp"
 
+#ifdef TARGET_PC
+#include "port_pointer.h"
+#include <string.h>
+
+namespace {
+struct SPortPaneRect {
+  ushort id;
+  float x0, y0, x1, y1;
+};
+SPortPaneRect sPortPaneRects[64];
+int sPortPaneCount = 0;
+int sPortPaneFrame = -1;
+} // namespace
+
+bool PortTextPaneBounds(TUniqueId id, float& x0, float& y0, float& x1, float& y1) {
+  for (int i = 0; i < sPortPaneCount; ++i) {
+    if (sPortPaneRects[i].id == id.value) {
+      x0 = sPortPaneRects[i].x0;
+      y0 = sPortPaneRects[i].y0;
+      x1 = sPortPaneRects[i].x1;
+      y1 = sPortPaneRects[i].y1;
+      return true;
+    }
+  }
+  return false;
+}
+#endif
+
 CScriptTextPane::CScriptTextPane(
     TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
     const CVector3f& pivotOffset, float width, float height, int extentX, int extentY,
@@ -129,6 +157,38 @@ void CScriptTextPane::Render(const CStateManager& mgr) const {
     break;
   }
   mTextSupport.Render();
+#ifdef TARGET_PC
+  if (PortPointer::Enabled() && extentX != 0 && extentY != 0) {
+    const int frame = static_cast< int >(CGraphics::GetFrameCounter());
+    if (frame != sPortPaneFrame) {
+      sPortPaneFrame = frame;
+      sPortPaneCount = 0;
+    }
+    float minX = 1e30f, minY = 1e30f, maxX = -1e30f, maxY = -1e30f;
+    bool ok = true;
+    for (int c = 0; c < 4 && ok; ++c) {
+      const CVector3f p(static_cast< float >((c & 1) ? extentX : 0), 0.f,
+                        static_cast< float >((c & 2) ? -extentY : 0));
+      float gx, gy;
+      if (!PortGuiHit::Project(CTransform4f::Identity() * model, p, gx, gy)) {
+        ok = false;
+        break;
+      }
+      minX = gx < minX ? gx : minX;
+      maxX = gx > maxX ? gx : maxX;
+      minY = gy < minY ? gy : minY;
+      maxY = gy > maxY ? gy : maxY;
+    }
+    if (ok && sPortPaneCount < 64) {
+      SPortPaneRect& r = sPortPaneRects[sPortPaneCount++];
+      r.id = GetUniqueId().value;
+      r.x0 = minX;
+      r.y0 = minY;
+      r.x1 = maxX;
+      r.y1 = maxY;
+    }
+  }
+#endif
 }
 
 bool CScriptTextPane::CanRenderUnsorted(const CStateManager& mgr) const { return mBlendMode == 0; }

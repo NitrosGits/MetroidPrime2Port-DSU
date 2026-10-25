@@ -16,6 +16,7 @@
 #ifdef TARGET_PC
 #include "port_harness.h"
 #include "port_overlay.h"
+#include "port_pointer_menu.h"
 #include "port_savestate.h"
 
 #include <cstdio>
@@ -207,6 +208,20 @@ CIOWin::EMessageReturn CSplashScreen::OnMessage(const CArchitectureMessage& mess
         (input.PA() || input.PStart()) && mSplashTimeout > 0.5f &&
         PortOverlay::BootLogos() == PortOverlay::kScreen_Skippable) {
       mSplashTimeout = 0.5f;
+    }
+    // Port: a click or tap acts as A on every logo and prompt.
+    if (PortPointerMenu::Begin() && PortPointerMenu::TakeClick()) {
+      if (mProgressivePhase == kPP_Selection) {
+        CGraphics::SetProgressiveMode(mProgressiveMode);
+        mProgressiveSelectionTimeout = 5.f;
+        mProgressivePhase = kPP_Confirmation;
+      } else if (mProgressivePhase == kPP_Confirmation) {
+        mProgressiveSelectionTimeout = 0.f;
+      } else if (mSplash != kSplashScreen_ProgressiveCheck && mProgressivePhase == kPP_Complete &&
+                 mSplashTimeout > 0.5f &&
+                 PortOverlay::BootLogos() == PortOverlay::kScreen_Skippable) {
+        mSplashTimeout = 0.5f;
+      }
     }
 #endif
     break;
