@@ -16,6 +16,8 @@ extern int sBootLogos;
 extern int sWorldNameCard;
 extern bool sLogFile;
 extern bool sFastMorph;
+extern bool sPointerMenus;
+extern bool sMapSwapFingers;
 extern int sWalkSpeed;
 extern int sHintDelay;
 extern bool sSpringBall;

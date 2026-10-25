@@ -14,6 +14,7 @@
 #include "port_input.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
+#include "port_pointer.h"
 #include "port_prompts.h"
 #include "port_savestate.h"
 #include "port_textures.h"
@@ -392,6 +393,7 @@ bool PortPumpEvents() {
   PortTouch::BeginFrame();
   // PortMouse's travel is latched per tick (PortMouse::BeginTick, from CMain), not here.
   RunInputScript(ScriptFrame());
+  PortPointer::BeginFrame();
   for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;
        ++event) {
     if (event->type == AURORA_EXIT) {
@@ -399,6 +401,10 @@ bool PortPumpEvents() {
       // written here (MP1 does it at the same point of its loop).
       PortSaveState::ResumeSave();
       return true;
+    }
+    // Menu pointer gestures; ImGui keeps the events it wants itself.
+    if (event->type == AURORA_SDL_EVENT && !PortOverlay::Visible()) {
+      PortPointer::HandleEvent(event->sdl);
     }
     if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_MOUSE_MOTION) {
       // Relative motion only, which is what SDL reports while the port holds capture; the

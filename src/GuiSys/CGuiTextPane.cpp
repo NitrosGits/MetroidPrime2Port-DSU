@@ -5,6 +5,9 @@
 #include "GuiSys/CGuiWidgetDrawParms.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
 #include "Kyoto/Streams/CInputStream.hpp"
+#ifdef TARGET_PC
+#include "port_pointer.h"
+#endif
 
 bool CGuiTextPane::sDrawPaneRects = false;
 
@@ -91,6 +94,11 @@ void CGuiTextPane::Draw(const CGuiWidgetDrawParms& parms) const {
   }
 
   const float* vertices = GetVtxBuf();
+#ifdef TARGET_PC
+  // Port: the pane's rect (not the glyphs), for mouse and touch menus.
+  PortGuiHit::RecordPoints(this, GetWorldTransform() * CTransform4f::Translate(GetScaleCenter()),
+                           vertices, 4);
+#endif
   CVector2f dimensions = GetDimensions();
   float width = mTextSupport.GetTextBoundingWidth() == 0
                     ? 0.f

@@ -116,6 +116,23 @@ void CGuiSliderGroup::Decrement() {
   mInputPending = true;
 }
 
+#ifdef TARGET_PC
+void CGuiSliderGroup::PortSetFraction(float fraction) {
+  float value = mMinVal + CMath::Clamp(0.f, fraction, 1.f) * (mMaxVal - mMinVal);
+  if (mIncrement > 0.f) {
+    value = mMinVal + floorf((value - mMinVal) / mIncrement + 0.5f) * mIncrement;
+  }
+  value = CMath::Clamp(mMinVal, value, mMaxVal);
+  const float oldRounded = mRoundedCurVal;
+  mRoundedCurVal = value;
+  mCurVal = value;
+  mState = kS_None;
+  if (oldRounded != value && mChangeCallback) {
+    mChangeCallback(this, oldRounded);
+  }
+}
+#endif
+
 CGuiWidget::EWidgetUsageFlags CGuiSliderGroup::GetWidgetUsageFlags() const {
   return EWidgetUsageFlags(kWUF_Update | kWUF_Input);
 }

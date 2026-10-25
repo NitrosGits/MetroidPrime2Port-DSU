@@ -27,6 +27,8 @@
 {"Controls", "Options", "Aiming", "Edge turn speed", "pointer turn edge"},
 {"Controls", "Options", "Aiming", "Lock-on free aim", "lock on lockon free aim cursor pointer crosshair remastered"},
 {"Controls", "Options", "Aiming", "Reset aim resets pointer and camera", "recentre center level pointer camera reset aim"},
+{"Controls", "Options", "Menus", "Point and click menus", "mouse touch pointer click pause map menu"},
+{"Controls", "Options", "Menus", "Swap map finger gestures", "touch map pan rotate two finger twist"},
 {"Controls", "Options", "Morph ball", "Fast Morph", "morph ball speed quick transform"},
 {"Controls", "Options", "Morph ball", "Spring Ball (C-stick up)", "morph ball jump bomb"},
 {"Controls", "Options", "Rumble", "Rumble", "vibration controller force feedback haptic"},

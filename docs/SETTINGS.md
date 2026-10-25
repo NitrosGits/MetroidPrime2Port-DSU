@@ -78,6 +78,9 @@ Controls > Options:
 - `reset_aim_both`: Aiming > Reset aim resets pointer and camera (the Reset aim binding, unbound
   by default, recentres the pointer under pointer aim, else levels the view); env
   `MP2_RESET_AIM_BOTH`.
+- `pointer_menus`, `map_swap_fingers`: Options > Menus > Point and click menus (mouse and touch in
+  the pause screens and the map; default on; env `MP2_POINTER_MENUS`), Swap map finger gestures
+  (touch: one finger pans the map, two rotate; env `MP2_MAP_SWAP_FINGERS`).
 - `fast_morph`, `spring_ball`: Morph ball > Fast Morph, Spring Ball (C-stick up).
 
 Controls > Mouse settings:

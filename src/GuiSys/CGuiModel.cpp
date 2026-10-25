@@ -10,6 +10,9 @@
 #include "Kyoto/Graphics/CModelFlags.hpp"
 #include "Kyoto/Streams/CInputStream.hpp"
 #ifdef TARGET_PC
+#include "port_pointer.h"
+#endif
+#ifdef TARGET_PC
 #include <set>
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,6 +90,13 @@ void CGuiModel::Draw(const CGuiWidgetDrawParms& parms) const {
   if (GetIsVisible()) {
 #ifdef TARGET_PC
     PortLogGuiModel(mModelId);
+    // Port: where the model lands on screen, for mouse and touch menus.
+    if (PortPointer::Enabled()) {
+      CAABox box = CAABox::MakeNullBox();
+      if (PortGetBounds(box)) {
+        PortGuiHit::Record(this, CGraphics::GetModelMatrix(), box.GetMinPoint(), box.GetMaxPoint());
+      }
+    }
 #endif
     if (!sDrawing) {
       CCubeMaterial::ResetCachedMaterials();

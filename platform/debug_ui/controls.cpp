@@ -66,6 +66,16 @@ void DrawControlsOptions() {
   ItemHelp("Reset aim (unbound by default) recentres the crosshair with pointer aim on, or levels "
            "the camera with it off. On: it does both.");
 
+  ImGui::SeparatorText("Menus");
+  Changed(ImGui::Checkbox("Point and click menus", &sPointerMenus));
+  ItemHelp("Mouse and touch in the pause screens and the map: hover and click items, drag and "
+           "scroll the map, right click to go back. Gamepad and keyboard work as before.");
+  ImGui::BeginDisabled(!sPointerMenus);
+  Changed(ImGui::Checkbox("Swap map finger gestures", &sMapSwapFingers));
+  ItemHelp("Touch only: one finger pans the map and two rotate it, instead of two panning and "
+           "one rotating.");
+  ImGui::EndDisabled();
+
   ImGui::SeparatorText("Morph ball");
   Changed(ImGui::Checkbox("Fast Morph", &sFastMorph));
   ItemHelp("The morph and unmorph transitions take 0.2 s instead of the game's second.");

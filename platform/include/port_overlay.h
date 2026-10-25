@@ -80,6 +80,12 @@ void SetGodMode(bool enabled);
 const float kFastMorphDuration = 0.2f;
 bool FastMorph();
 void SetFastMorph(bool enabled);
+// Point and click menus (`MP2_POINTER_MENUS`, default on; port_pointer.h) and the map's finger
+// swap (`MP2_MAP_SWAP_FINGERS`): touch pans the map with one finger and rotates with two.
+bool PointerMenus();
+void SetPointerMenus(bool enabled);
+bool MapSwapFingers();
+void SetMapSwapFingers(bool swap);
 // Walk speed (`MP2_WALK_SPEED`, percent, default 100 = retail): scales Samus's on-foot top speed,
 // acceleration and friction together (and the orbit strafe/approach speeds), so she moves k times
 // as fast and gets there in the same time. Jumps, sideways dashes, turning and the Morph Ball are

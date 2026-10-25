@@ -46,6 +46,10 @@
 #include "Kyoto/Text/CStringTable.hpp"
 #include "dolphin/os/OSCache.h"
 
+#ifdef TARGET_PC
+#include "port_pointer.h"
+#include "port_pointer_menu.h"
+#endif
 #include "rstl/StringExtras.hpp"
 #include "rstl/algorithm.hpp"
 #include "rstl/math.hpp"
@@ -829,6 +833,208 @@ void CPauseScreen::TouchVisibleNodes() {
   }
 }
 
+#ifdef TARGET_PC
+namespace {
+// Screen positions (EFB pixels) of what the last Draw showed, for hit-testing.
+struct SPortNodeHit {
+  const CScanTreeNode* node;
+  float x, y, r;
+};
+enum { kPortMaxNodeHits = 128 };
+SPortNodeHit sPortNodeHits[kPortMaxNodeHits];
+int sPortNodeHitCount = 0;
+bool sPortSliderValid = false;
+float sPortSliderX0 = 0.f, sPortSliderX1 = 0.f, sPortSliderY = 0.f;
+bool sPortSliderGrabbed = false;
+bool sPortMenuValid = false;
+float sPortMenuLX = 0.f, sPortMenuLY = 0.f, sPortMenuRX = 0.f, sPortMenuRY = 0.f;
+float sPortLastX = -1.f, sPortLastY = -1.f;
+
+void PortResetHits() {
+  sPortNodeHitCount = 0;
+  sPortSliderValid = false;
+  sPortMenuValid = false;
+}
+
+const CScanTreeNode* PortNodeAt(float x, float y) {
+  const CScanTreeNode* best = nullptr;
+  float bestDist = 1e9f;
+  for (int i = 0; i < sPortNodeHitCount; ++i) {
+    const float dx = x - sPortNodeHits[i].x;
+    const float dy = y - sPortNodeHits[i].y;
+    const float d = dx * dx + dy * dy;
+    if (d <= sPortNodeHits[i].r * sPortNodeHits[i].r && d < bestDist) {
+      bestDist = d;
+      best = sPortNodeHits[i].node;
+    }
+  }
+  return best;
+}
+
+bool PortOnSlider(float x, float y) {
+  if (!sPortSliderValid) {
+    return false;
+  }
+  const float dy = y - sPortSliderY;
+  return x >= sPortSliderX0 - 14.f && x <= sPortSliderX1 + 14.f && dy >= -24.f && dy <= 24.f;
+}
+} // namespace
+
+void CPauseScreen::PortPointerInput(CFinalInput& input) {
+  if (!close_enough(mScanTree.GetTransition(), 0.f)) {
+    return;
+  }
+  float px = 0.f, py = 0.f;
+  const bool have = PortPointer::Position(px, py);
+  const bool moved = have && (px != sPortLastX || py != sPortLastY);
+  if (have) {
+    sPortLastX = px;
+    sPortLastY = py;
+  }
+  if (PortPointerMenu::TakeBack()) {
+    PortPointerMenu::PressB(input);
+    return;
+  }
+  const int selectedId = mScanTree.GetSelectedNode();
+  rstl::rc_ptr< CScanTreeNode > node = mScanTree.GetNode(selectedId);
+  const CScanTreeNode::ENodeType type = node->GetNodeType();
+  float cx = 0.f, cy = 0.f;
+  int count = 0;
+  if (type == CScanTreeNode::kNT_Category) {
+    rstl::rc_ptr< CScanTreeCategory > category(node);
+    const int childCount = category->GetChildCount();
+    const int selected = category->GetSelectedChild();
+    const CScanTreeNode* hover = have && moved ? PortNodeAt(px, py) : nullptr;
+    int hoverId = -1;
+    for (int i = 0; hover != nullptr && i < childCount; ++i) {
+      const int childId = category->GetChild(i);
+      if (mScanTree.GetNode(childId).GetPtr() == hover) {
+        hoverId = childId;
+      }
+    }
+    if (hoverId != -1 && hoverId != selected) {
+      category->SetSelectedChild(hoverId);
+      CSfxManager::SfxStart(SFXlog_x_highlight_00_oneshot, 0x7f, 0x3f);
+      mSelectionDelay = 1.f;
+      mSelectionHighlight = 1.f;
+    }
+    if (PortPointerMenu::TakeClickPoint(cx, cy, count)) {
+      const CScanTreeNode* hit = PortNodeAt(cx, cy);
+      int hitId = -1;
+      for (int i = 0; hit != nullptr && i < childCount; ++i) {
+        const int childId = category->GetChild(i);
+        if (mScanTree.GetNode(childId).GetPtr() == hit) {
+          hitId = childId;
+        }
+      }
+      if (hitId != -1) {
+        const bool wasSelected = category->GetSelectedChild() == hitId;
+        if (!wasSelected) {
+          category->SetSelectedChild(hitId);
+          CSfxManager::SfxStart(SFXlog_x_highlight_00_oneshot, 0x7f, 0x3f);
+          mSelectionDelay = 1.f;
+          mSelectionHighlight = 1.f;
+        }
+        if (wasSelected || PortPointer::MouseIsLast()) {
+          PortPointerMenu::PressA(input);
+        }
+      } else if (hit == node.GetPtr() && node->GetParentNode() != -1 && !mOpenedFromScan) {
+        PortPointerMenu::PressB(input);
+      }
+    }
+  } else if (type == CScanTreeNode::kNT_Scan || type == CScanTreeNode::kNT_Inventory) {
+    PortPointerMenu::ViewMotion m;
+    const bool zoomedIn = !close_enough(mModelZoomAmount, 0.f);
+    if (PortPointerMenu::TakeViewMotion(m)) {
+      mModelYaw += CRelAngle::FromRadians(-0.008f * m.rotateX - m.twist);
+      const float lower = gpTweakGui->GetLogBookModelRotationClampLowerLimit();
+      const float upper = gpTweakGui->GetLogBookModelRotationClampUpperLimit();
+      mModelPitch = CRelAngle::FromDegrees(CMath::Clamp(
+          lower, CRelAngle::FromRadians(-0.008f * m.rotateY).AsDegrees() + mModelPitch.AsDegrees(),
+          upper));
+      if (zoomedIn) {
+        mModelPan += CVector3f(0.004f * m.panX, -0.3f * m.zoom, -0.004f * m.panY);
+        if (mModelPan.MagSquared() > 9.f) {
+          mModelPan = 3.f * mModelPan.AsNormalized();
+        }
+      } else if (m.zoom > 0.f) {
+        PortPointerMenu::PressX(input);
+      }
+    }
+    if (PortPointerMenu::TakeClickPoint(cx, cy, count)) {
+      PortPointerMenu::PressA(input);
+    }
+  } else if (type == CScanTreeNode::kNT_Slider) {
+    rstl::rc_ptr< CScanTreeSlider > slider(node);
+    PortPointer::Recognizer& g = PortPointer::Gestures();
+    bool apply = false;
+    if (g.Pressed() && (g.Buttons() & ~PortPointer::kButtonLeft) == 0 && g.FingerCount() <= 1 &&
+        have) {
+      float sx, sy;
+      if (!sPortSliderGrabbed && PortPointer::WindowToGui(g.PressX(), g.PressY(), sx, sy) &&
+          PortOnSlider(sx, sy)) {
+        sPortSliderGrabbed = true;
+      }
+      apply = sPortSliderGrabbed;
+    } else {
+      sPortSliderGrabbed = false;
+    }
+    if (PortPointerMenu::TakeClickPoint(cx, cy, count)) {
+      if (PortOnSlider(cx, cy)) {
+        px = cx;
+        apply = true;
+      } else {
+        PortPointerMenu::PressA(input);
+      }
+    }
+    if (apply && sPortSliderX1 > sPortSliderX0) {
+      const float value =
+          CMath::Clamp(0.f, (px - sPortSliderX0) / (sPortSliderX1 - sPortSliderX0), 1.f);
+      if (!close_enough(value, slider->GetNormalizedValue())) {
+        slider->SetNormalizedValue(value);
+        slider->ApplyNormalizedValue();
+      }
+    }
+  } else if (type == CScanTreeNode::kNT_Menu) {
+    rstl::rc_ptr< CScanTreeMenu > menu(node);
+    const int old = menu->GetCurrentOptionIndex();
+    int option = old;
+    option -= PortPointerMenu::TakeScrollSteps(40.f);
+    if (PortPointerMenu::TakeClickPoint(cx, cy, count)) {
+      const float ldx = cx - sPortMenuLX, ldy = cy - sPortMenuLY;
+      const float rdx = cx - sPortMenuRX, rdy = cy - sPortMenuRY;
+      if (sPortMenuValid && ldx * ldx + ldy * ldy < 30.f * 30.f) {
+        option = old - 1;
+      } else if (sPortMenuValid && rdx * rdx + rdy * rdy < 30.f * 30.f) {
+        option = old + 1;
+      } else {
+        PortPointerMenu::PressA(input);
+      }
+    }
+    option = rstl::max_val(0, rstl::min_val(option, menu->GetOptionCount() - 1));
+    if (option != old) {
+      menu->ApplyOption(option);
+      CSfxManager::SfxStart(SFXui_x_leftright_00_oneshot, 0x5f, 0x3f);
+    }
+  }
+}
+
+void CPauseScreen::ProcessControllerInput(const CFinalInput& frameInput) {
+  CFinalInput input = frameInput;
+  const bool pointer = PortPointerMenu::Begin();
+  if (!mQuitScreen.null()) {
+    mQuitScreen->ProcessUserInput(input);
+  } else if (mLoadState != kLS_ScanTree && mTransitionState == kTS_Active) {
+    if (pointer) {
+      PortPointerInput(input);
+    }
+    ProcessRotationInput(input);
+    ProcessSelectionInput(input);
+    ProcessButtonInput(input);
+    UpdateStickIcons(input);
+  }
+}
+#else
 void CPauseScreen::ProcessControllerInput(const CFinalInput& input) {
   if (!mQuitScreen.null()) {
     mQuitScreen->ProcessUserInput(input);
@@ -839,6 +1045,7 @@ void CPauseScreen::ProcessControllerInput(const CFinalInput& input) {
     UpdateStickIcons(input);
   }
 }
+#endif
 
 void CPauseScreen::LoadScan(int nodeId) {
   rstl::rc_ptr< CScanTreeNode > node = mScanTree.GetNode(nodeId);
@@ -1368,6 +1575,9 @@ void CPauseScreen::SetFog(bool enabled) const {
 }
 
 void CPauseScreen::Draw() const {
+#ifdef TARGET_PC
+  PortResetHits();
+#endif
   if (!mDone && mScanTree.IsLoaded() && mFont.IsLoaded() && !mFrame.null()) {
     if (!mQuitScreen.null()) {
       mQuitScreen->Draw();
@@ -1523,6 +1733,23 @@ void CPauseScreen::DrawNodes(const CTransform4f& view, rstl::vector< SNodeDraw >
 
   for (rstl::vector< SNodeDraw >::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
     const SNodeDraw& draw = *it;
+#ifdef TARGET_PC
+    if (sPortNodeHitCount < kPortMaxNodeHits && draw.mAlpha > 0.1f) {
+      const float iconScale = draw.mStyle >= 3 ? gpTweakGui->GetLogBookSelectedNodeScale()
+                                               : gpTweakGui->GetLogBookNodeScale();
+      float cx, cy, ex, ey;
+      if (PortGuiHit::Project(CTransform4f::Identity(), draw.mPosition, cx, cy) &&
+          PortGuiHit::Project(CTransform4f::Identity(),
+                              draw.mPosition + (0.2f * iconScale) * view.GetColumn(kDX), ex, ey)) {
+        const float r = 1.6f * CMath::SqrtF((ex - cx) * (ex - cx) + (ey - cy) * (ey - cy));
+        SPortNodeHit& hit = sPortNodeHits[sPortNodeHitCount++];
+        hit.node = draw.mNode.GetPtr();
+        hit.x = cx;
+        hit.y = cy;
+        hit.r = r < 14.f ? 14.f : r;
+      }
+    }
+#endif
     const float alpha = CMath::Clamp(0.f, draw.mAlpha, 1.f);
     const CColor brightness(alpha, alpha, alpha, 1.f);
     const CColor faded = brightness.WithAlphaOf(alpha);
@@ -1709,6 +1936,19 @@ void CPauseScreen::DrawSlider(const CTransform4f& view, const CVector3f& positio
   const CTransform4f local = CTransform4f::Scale(scale * sliderScale) * view.GetRotation() *
                              CTransform4f::Translate(0.f, 0.f, textOffset);
   const CTransform4f world = CTransform4f::Translate(position) * local;
+#ifdef TARGET_PC
+  {
+    const float half = 0.5f * (width - 2.f);
+    float lx, ly, rx, ry;
+    if (PortGuiHit::Project(world, CVector3f(-half, 0.f, 0.f), lx, ly) &&
+        PortGuiHit::Project(world, CVector3f(half, 0.f, 0.f), rx, ry)) {
+      sPortSliderValid = true;
+      sPortSliderX0 = lx;
+      sPortSliderX1 = rx;
+      sPortSliderY = 0.5f * (ly + ry);
+    }
+  }
+#endif
   const CColor selectionColor =
       gpTweakGui->GetLogBookSliderSelectionColor().WithAlphaModulatedBy(alpha);
   const CColor backgroundColor =
@@ -1808,6 +2048,10 @@ void CPauseScreen::DrawMenuNode(const CTransform4f& view, const CVector3f& origi
       const CTransform4f rightXf = CTransform4f::Translate(position) * right;
       CGraphics::SetModelMatrix(rightXf);
       const CColor rightColor = rightEnabled ? enabled : disabled;
+#ifdef TARGET_PC
+      sPortMenuValid = PortGuiHit::Project(leftXf, CVector3f::Zero(), sPortMenuLX, sPortMenuLY) &&
+                       PortGuiHit::Project(rightXf, CVector3f::Zero(), sPortMenuRX, sPortMenuRY);
+#endif
       arrow->Draw(CModelFlags(CModelFlags::kT_One, rightColor));
     }
   }

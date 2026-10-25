@@ -455,6 +455,7 @@ if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_controls.cpp
         platform/port_save.cpp platform/port_savestate.cpp platform/port_savestate_room.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
         platform/port_crash.cpp platform/port_watchdog.cpp platform/port_storage_report.cpp
+        platform/port_pointer.cpp platform/port_pointer_menu.cpp
         platform/port_events.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp
         platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp
         platform/port_gyro_motion.cpp
@@ -563,6 +564,12 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_resume_logic_tests PRIVATE platform/include)
     add_test(NAME port_resume_logic_tests COMMAND port_resume_logic_tests)
     set_tests_properties(port_resume_logic_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # Pointer menus' pure parts (port_pointer_math.h, port_pointer_gesture.h): letterbox mapping,
+    # projection rects, the gesture recogniser. Header-only.
+    add_executable(port_pointer_tests tests/port_pointer.cpp)
+    target_include_directories(port_pointer_tests PRIVATE platform/include)
+    add_test(NAME port_pointer_tests COMMAND port_pointer_tests)
+    set_tests_properties(port_pointer_tests PROPERTIES TIMEOUT 30 LABELS port)
     # The presentation rules (platform/include/port_presentation_rules.h): snapshot freshness, the
     # actor blend's snap rules and the morph ball's pivoted blend. Header-only.
     add_executable(port_presentation_rules_tests tests/port_presentation_rules.cpp)

@@ -198,6 +198,34 @@ public:
     mB28_A = held;
     mB24_PA = pressed;
   }
+  // Pointer menus (port_pointer.h) turn a click or right click into a press.
+  void PortSetB(bool held, bool pressed) {
+    mB29_B = held;
+    mB25_PB = pressed;
+  }
+  void PortSetX(bool held, bool pressed) {
+    mB30_X = held;
+    mB26_PX = pressed;
+  }
+  void PortSetY(bool held, bool pressed) {
+    mB31_Y = held;
+    mB27_PY = pressed;
+  }
+  void PortSetR(bool held, bool pressed) {
+    mB26_R = held;
+    mB30_PR = pressed;
+    mAnaRightTrigger = held ? 1.f : 0.f;
+    mAnaRightTriggerP = pressed ? 1.f : 0.f;
+  }
+  void PortSetStart(bool held, bool pressed) {
+    mB31_Start = held;
+    mB27_PStart = pressed;
+  }
+  // A left stick Y press (paging): value is +1 up, -1 down.
+  void PortPressLeftStickY(float value) {
+    mAnaLeftY = value;
+    mB25_enableAnaLeftYP = true;
+  }
 #endif
 
 private:

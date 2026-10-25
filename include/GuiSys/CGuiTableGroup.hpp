@@ -44,6 +44,13 @@ public:
 
   void SetVertical(bool vertical) { mVertical = vertical; }
 
+#ifdef TARGET_PC
+  // Pointer menus (port_pointer.h): jump to a row, advance or cancel like a press.
+  bool PortSelect(int worker);
+  bool PortAdvance() { return DoAdvance(); }
+  bool PortCancel() { return DoCancel(); }
+#endif
+
   bool HasMenuAdvanceCallback() const { return mDoMenuAdvance; }
 
 private:

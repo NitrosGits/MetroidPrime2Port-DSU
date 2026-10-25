@@ -88,6 +88,9 @@ private:
   void ProcessRotationInput(const CFinalInput& input);
   void ProcessModelInput(const CFinalInput& input, bool allowTranslation);
   void UpdateStickIcons(const CFinalInput& input);
+#ifdef TARGET_PC
+  void PortPointerInput(CFinalInput& input);
+#endif
   void SetFog(bool enabled) const;
   void DrawScanTree(const CTransform4f& view, const CVector3f& origin, int nodeId, bool skipParent,
                     rstl::vector< SNodeDraw >& nodes) const;
