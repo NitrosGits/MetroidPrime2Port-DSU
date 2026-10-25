@@ -31,6 +31,15 @@ static EMaterialTypes skCeiling = kMT_Ceiling;                    // Guessed nam
 static EMaterialTypes skWall = kMT_Wall;                          // Guessed name
 static EMaterialTypes skFloor = kMT_Floor;                        // Guessed name
 
+// Retail `__sinit_CSporbProjectile_cpp` (0xFB88-0xFE64) writes exactly these two tables and nothing
+// else: `lis` 0xFB90 and 0xFD38 take the table addresses, then 60 word copies (`stw`
+// 0xFC5C-0xFE54) put each entry's member pointer at +4/+8/+0xC as {adjust 0, vtoff -1
+// (non-virtual), fn = address}. Trigger names .rodata 0x2A0..0x2FF -> .text 0xE8DC/0xE918/0xE8FC/
+// 0xE8C0/0xE8A4/0xE894/0xE880/0xE86C/0xE858; state names .rodata 0x30A..0x34D -> .text 0xEFD8/
+// 0xEF8C/0xEF10/0xEED8/0xEEA0/0xEBA8/0xE934/0xEE68/0xEE14/0xEDDC/0xEB70 - the same names, order
+// and targets as below; the name words are static relocations already in the file. No call, no
+// branch; the only other store is the register save stmw r14 0xFB8C (frame 0x70, lmw 0xFE58).
+// @ fn_76_FB88
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"AnimOver", static_cast< CPatterned::StateMachine::TriggerFunc >(&CSporbProjectile::AnimOver)},
     {"ShouldPatrol",

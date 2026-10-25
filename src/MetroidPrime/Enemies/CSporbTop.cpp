@@ -20,6 +20,15 @@
 static EMaterialTypes skExcludeCharacter = kMT_Character; // Guessed name
 static EMaterialTypes skExcludePlayer = kMT_Player;       // Guessed name
 
+// Retail `__sinit_CSporbTop_cpp` (0x2430-0x26A8) writes exactly these two tables and nothing else:
+// `lis` 0x2438 and 0x25E0 take the table addresses, then 51 word copies (`stw` 0x2538-0x2698) put
+// each entry's member pointer at +4/+8/+0xC as {adjust 0, vtoff -1 (non-virtual), fn = address}.
+// Trigger names .rodata 0x14/0x1D/0x2A/0x37/0x42/0x4F/0x5B -> .text 0x1230/0x126C/0x1250/0x1214/
+// 0x11F8/0x11E8/0x11D4; state names .rodata 0x66/0x6C/0x73/0x7A/0x81/0x8B/0x90/0x97/0x9D/0xA2 ->
+// .text 0x1F94/0x1F2C/0x1EF4/0x1CC0/0x1814/0x15D8/0x1288/0x1568/0x15A0/0x1A6C - the same names,
+// order and targets as below; the name words are static relocations already in the file. No call,
+// no branch; the only other store is the register save stmw r14 0x2434 (frame 0x70, lmw 0x269C).
+// @ fn_76_2430
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"AnimOver", static_cast< CPatterned::StateMachine::TriggerFunc >(&CSporbTop::AnimOver)},
     {"ShouldPatrol",

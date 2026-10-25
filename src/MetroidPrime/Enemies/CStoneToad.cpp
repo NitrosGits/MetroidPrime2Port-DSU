@@ -26,6 +26,15 @@
 #include "REL/REL_Setup.h"
 #include "rstl/StringExtras.hpp"
 
+// Retail `__sinit_CStoneToad_cpp` (0x3810-0x3A68) writes exactly these two tables and nothing else:
+// `lis` 0x3818 and 0x39C0 take the table addresses, then 48 word copies (`stw` 0x391C-0x3A58) put
+// each entry's member pointer at +4/+8/+0xC as {adjust 0, vtoff -1 (non-virtual), fn = address}.
+// Trigger names .rodata 0x20/0x2D/0x3C/0x4D/0x5C/0x6D/0x76/0x84 -> .text 0x1560/0x14E8/0x1534/
+// 0x14C8/0x149C/0x156C/0x148C/0x1478; state names .rodata 0x90/0x96/0x9D/0xA6/0xAB/0xB4/0xBE/0xCE
+// -> .text 0x2168/0x1EC0/0x1978/0x193C/0x186C/0x158C/0x1C84/0x1A48 - the same names, order and
+// targets as below; the name words are static relocations already in the file. No call, no branch;
+// the only other store is the register save stmw r14 0x3814 (frame 0x70, restored lmw 0x3A5C).
+// @ fn_77_3810
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"ShouldPatrol",
      static_cast< CPatterned::StateMachine::TriggerFunc >(&CStoneToad::ShouldPatrol)},
