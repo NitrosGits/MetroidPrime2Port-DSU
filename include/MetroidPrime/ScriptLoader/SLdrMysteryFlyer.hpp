@@ -21,6 +21,15 @@ struct SLdrMysteryFlyerData {
   bool needsToGenerate;      // 0x5f3fffd6
 };
 
+// @ fn_45_A08
+// Branch-free retail body (0xA08-0xA84; the REL symbol table labels it __dt__16SLdrMysteryFlyer, the
+// body is the SLdrMysteryFlyerData constructor): stw -1 -> +0x0 shotProjectile (kInvalidAssetId);
+// bl SLdrDamageInfo ctor at +0x4 (zeroes the four members; the host ctor is the DOL one); 0xA38
+// stw 0xB -> +0x4 shotDamage.dI_WeaponType; 0xA54 stfs rodata_8 (5.0) -> +0x8 dI_Damage; 0xA60
+// stfs rodata_C (10.0) -> +0x14 hoverSpeed (shotDamage is 0x10 bytes); 0xA64 stfs rodata_0 (2.0)
+// -> +0x18 hoverHeight; 0xA68 stfs rodata_8 (5.0) -> +0x1C separationDistance; 0xA6C stb 1 ->
+// +0x20 needsToGenerate. Seven stores, same field and value as the host ctor below. No branch, no
+// arm: nothing beyond the loader running is needed.
 inline SLdrMysteryFlyerData::SLdrMysteryFlyerData()
 : shotProjectile(kInvalidAssetId), shotDamage() {
   shotDamage.dI_WeaponType = 11;
@@ -97,6 +106,13 @@ inline SLdrMysteryFlyer::SLdrMysteryFlyer()
 #endif
 }
 
+// @ fn_45_7C4
+// Retail body (0x7C4-0x840; the REL symbol table labels it __ct__16SLdrMysteryFlyer, the body is the
+// destructor): the delete-flag guards are the usual `this != null` / `flags > 0 -> Free`, between
+// them only the four member destructor calls (Data at +0x2F8, ActorParameters +0x280,
+// PatternedAITypedef +0x3C, EditorProperties +0x0), each of which is empty or releases nothing
+// host-side. No store, no data-dependent arm: the host destructor is the same four trivial member
+// destructions.
 inline SLdrMysteryFlyer::~SLdrMysteryFlyer() {}
 
 #endif
