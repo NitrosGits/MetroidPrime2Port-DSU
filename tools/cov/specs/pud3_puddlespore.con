@@ -1,0 +1,38 @@
+# Torvus Bog 0d_swamp_hall_dark (3dfd2249,cbc72d79): CPuddleSpore e00150015, pud3 driver (run 3).
+# Contact in Attack, then away, then morphed contact, then Platform (TurnAround) contact; pud3_contact_think.py
+# forces the arms the fight cannot reach, on real invocations only.
+@f300 god 1; give morphBall 1; give missile 50; fastmorph 1; objs Player
+@f400 place e00150015 player 8
+@f600 fsm e00150015 InActive
+@f660 fsm e00150015 Attack
+@f700 tp 150.69 -33.56 38.3
+@f740 tp 150.69 -33.56 38.3
+@f780 tp 150.69 -33.56 38.3
+@f820 tp 150.69 -33.56 38.3
+@f860 tp 150.69 -33.56 38.3
+@f900 tp 150.69 -33.56 38.3
+@f940 tp 150.69 -33.56 38.3
+@f980 tp 150.69 -33.56 38.3
+@f1000 tp 150.7 -41.6 38.1
+@f1100 tp 150.7 -41.6 38.1
+@f1150 press x
+@f1250 tp 150.69 -33.56 38.3
+@f1300 tp 150.69 -33.56 38.3
+@f1350 tp 150.69 -33.56 38.3
+@f1400 tp 150.69 -33.56 38.3
+@f1450 press x
+@f1500 fsm e00150015 TurnAround
+@f1560 tp 150.69 -33.56 38.3
+@f1600 tp 150.69 -33.56 38.3
+@f1640 tp 150.69 -33.56 38.3
+@f1680 tp 150.69 -33.56 38.3
+@f1720 tp 150.69 -33.56 38.3
+@f1760 tp 150.69 -33.56 38.3
+@f1800 tp 150.69 -33.56 38.3
+@f1840 tp 150.69 -33.56 38.3
+@f1880 tp 150.69 -33.56 38.3
+@f1900 fsm e00150015 GetUp
+@f1960 fsm e00150015 Attack
+@f2000 tp 150.69 -33.56 38.3
+@f2040 tp 150.69 -33.56 38.3
+@f2100 objs PuddleSpore
