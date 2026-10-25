@@ -33,6 +33,9 @@ void DrawPerformanceTab() {
            "display's refresh rate.");
   ImGui::Text("Presented %.1f FPS    Frame %.2f ms", sFps,
               static_cast< double >(ImGui::GetIO().DeltaTime) * 1000.0);
+  ImGui::Text("Throughput %.1f FPS", static_cast< double >(sThroughputFps));
+  ItemHelp("Frames a second the machine produces with the pacing wait left out. Presented is what "
+           "reaches the screen; the gap between them is the headroom at the current frame cost.");
 
   // Read by the main loop's draw: with the cap on it changes nothing.
   ImGui::BeginDisabled(sFrameLimit);

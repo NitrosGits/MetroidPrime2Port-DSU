@@ -82,6 +82,7 @@ extern void* gPortGameHeapHi;
 #include "port_crash.h"
 #include "port_storage_report.h"
 #include "port_logfile.h"
+#include "port_pipeline_trim.h"
 #include "port_save.h"
 #include "port_overlay.h"
 #include "port_overlay_internal.h"
@@ -938,6 +939,13 @@ int main(int argc, char** argv) {
   // MP2_PIPELINE_LAZY=1: build pipelines on first use and prefetch an area's recorded ones as it
   // streams in (MP1 sync package 10); off by default, as on desktop MP1.
   config.pipelineCacheLazy = port::EnvFlag("MP2_PIPELINE_LAZY");
+  // Lazy mode keeps built pipelines until memory runs short (MP1 issue #187): under 1024 MiB
+  // available it releases those a minute of frames didn't draw, under 512 MiB all but the last
+  // frames'. MP_PIPELINE_TRIM_MIB / MP_PIPELINE_TRIM_SEVERE_MIB override the levels (0 turns one off).
+  if (config.pipelineCacheLazy) {
+    PortPipelineTrim::SetPressure(port::EnvInt("MP_PIPELINE_TRIM_MIB", 1024),
+                                  port::EnvInt("MP_PIPELINE_TRIM_SEVERE_MIB", 512));
+  }
 
   // F1 > Video > Compatibility (PortVideo, f1b): OpenGL ES, the storage clamp, the low-power
   // adapter and the driver workarounds' Dawn toggles, all read when the GPU device is made.

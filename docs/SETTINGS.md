@@ -37,6 +37,12 @@ Save states page:
 - `quick_resume`: Save states > Quick resume (default on); env `MP2_QUICK_RESUME`. On quitting during
   play (and as the game keeps safe points, see Resume below) `savestates/resume.mp2ss` is written; the
   next launch asks "Resume where you left off?". Console: `resume [status|save|load|clear]`.
+- `savestate_hotkeys`: Save states > the "<keys> saves, <keys> loads the selected slot" checkbox
+  (default on); env `MP2_SAVESTATE_HOTKEYS`. Off, the Save state / Load state bindings do nothing;
+  the tab's buttons and the console `state` command still work.
+- `savestate_room_state`: Save states > Keep enemies and room objects (default on); env
+  `MP2_SAVESTATE_ROOM_STATE`. Off, states and quick resume store no room objects and a load rebuilds
+  the room as a card load does. A state saved with it on loads its objects only while it is on.
 
 Game page:
 
