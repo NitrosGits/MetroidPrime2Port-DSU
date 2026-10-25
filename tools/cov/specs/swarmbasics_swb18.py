@@ -107,6 +107,10 @@ class Transaction:
 def vector(value):
     return tuple(float(value['m' + axis]) for axis in 'XYZ')
 
+def translation(expr):
+    """A CTransform4f's translation column (m03, m13, m23)."""
+    return tuple(float(ev(expr + '.m%d3' % row)) for row in range(3))
+
 def near(a, b):
     return all(abs(x - y) <= 0.0003 * max(1., abs(y)) for x, y in zip(a, b))
 
@@ -266,7 +270,7 @@ class Run(gdb.Command):
         for slot_index in range(iv(S + 'mActiveBoidIndices.mCount')):
             boid = iv(S + 'mActiveBoidIndices.mItems[%d]' % slot_index)
             check(0 <= boid < count, 'active boid index in range')
-            active.append(vector(ev(S + 'mBoids.mItems[%d].mTransform' % boid)))
+            active.append(translation(S + 'mBoids.mItems[%d].mTransform' % boid))
         state['active'] = active
         log('GEOMETRY', boids=count, active=len(active), char_index=char_index,
             max_volume=max_volume, min_volume=min_volume, area=area, sfx=sfx)
