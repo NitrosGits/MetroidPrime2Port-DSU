@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+class CGameArea;
 class CStateManager;
 
 // Save states: save anywhere, load back to the same spot (MP1's port_savestate, phase 1).
@@ -122,6 +123,10 @@ struct RoomObject {
 struct RoomArea {
   int32_t area = -1;
   uint32_t assetId = 0; // a restore skips the area when another one sits at that index
+  // FNV-1a over the area's layer and generated script data when the state was made. `known` is
+  // false for a v2 trailer (written before the fingerprint): that area restores unchecked.
+  uint64_t fingerprint = 0;
+  bool known = false;
 };
 struct RoomState {
   std::vector< RoomArea > areas;   // the areas that were loaded, so captured
@@ -141,6 +146,7 @@ struct RoomApplyStats {
 struct RoomApplyProgress {
   std::vector< int32_t > done;
   std::vector< int32_t > seen;
+  std::vector< uint32_t > held; // running timers restored stopped, started with the last area
   RoomApplyStats stats;
 };
 
@@ -148,7 +154,15 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out);
 // Applies the saved areas that are ready now and not yet done; returns how many saved areas are
 // still waiting to load.
 int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress& progress);
+// platform/port_savestate_format.cpp. The room trailer is v3 (a magic word, then 16-bit block
+// lengths and delta-varint editor ids); Decode also reads the v2 trailer old .mp2ss files carry.
+// Encode writes an empty state when a block would not fit its length field, rather than a
+// trailer the reader would refuse.
 void EncodeRoomState(const RoomState& room, std::string& out);
 bool DecodeRoomState(const std::string& in, RoomState& room);
+uint64_t Fnv1a64(const void* data, size_t size, uint64_t seed = 0xcbf29ce484222325ull);
+uint64_t AreaFingerprint(const CGameArea& area);
+// Why a saved area must not be applied to the loaded one (nullptr: restore it): its scripts differ.
+const char* RoomAreaSkipReason(const RoomArea& saved, uint64_t liveFingerprint);
 
 } // namespace PortSaveState

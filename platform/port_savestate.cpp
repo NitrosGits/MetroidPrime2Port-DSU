@@ -827,6 +827,9 @@ void TickPlacement(CStateManager& mgr) {
   const CVector3f look(pos.GetX() + lx, pos.GetY() + ly, pos.GetZ());
   player.Teleport(CTransform4f::LookAt(pos, look, CVector3f::Up()), mgr, true);
   player.SetVelocityWR(CVector3f(0.f, 0.f, 0.f));
+  // The rebuilt player has no area until its first tick files it; give it Samus's before that
+  // tick so nothing the restore starts sees an area-less player (MP1 sync 14-25).
+  mgr.SetActorAreaId(player, mgr.World()->GetCurrentAreaId());
   const CPlayer::EPlayerMorphBallState morph = player.GetMorphballTransitionState();
   const bool morphedNow = morph == CPlayer::kMS_Morphed || morph == CPlayer::kMS_Morphing;
   if (morphedNow != s.morphed) {

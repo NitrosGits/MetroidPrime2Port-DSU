@@ -290,6 +290,7 @@ public:
   rstl::string IGetInternalAreaName() const override;
 #ifdef TARGET_PC
   const rstl::string& PortGetMlvlAreaName() const override { return mPortMlvlAreaName; }
+  int PortLayerCount() const { return mLayerPhases.size(); }
 #endif
 
   int GetPhase() const { return mPhase; }
