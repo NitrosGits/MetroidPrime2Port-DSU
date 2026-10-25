@@ -131,7 +131,7 @@ std::atomic<uint64_t> sProcessed{0};
 uint64_t sStreamBase = 0;
 std::mutex sBufferMutex;
 std::atomic<uint32_t> sWorkerWake{0};
-// MP2 port: timed wait (sz2d suspected a lost wake; the stall was a gdb fixture bug, kept as hardening).
+// MP2 port: untimed atomic::wait lost wakes (sz2d: worker slept on a stale event while GXReadDrawSync spun).
 // Waits are now timed condition_variable waits that re-check their predicate; notifiers take the mutex.
 std::mutex sWakeMutex;
 std::condition_variable sWakeCv;
