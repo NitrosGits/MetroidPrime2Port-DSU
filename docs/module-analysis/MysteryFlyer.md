@@ -153,3 +153,13 @@ frame ownership under nesting. The fixture's forced mode still requires a natura
   (`bne` at 0xC40). Fixed under `TARGET_PC`. Unmarked: needs 05_portalpuzzle layers 2+3 (wasps and
   a TeamAiMgr) driven with coverage, including a second call with the id already set.
 - fn_45_23B8 `AcceptScriptMsg`: KnockBack arms need a forced body-state setup; not attempted.
+
+## mfly4 (2026-10-25): fn_45_170, C10, 23B8 marked
+
+Frozen binary `/tmp/opencode/mfly4-frozen` (sha e7c9ce37…, gcno+gcda of `mfly4_n1`, `_f1`, `_f2`, MANIFEST.sha256).
+Driver `tools/cov/specs/mfly4_portal.con` (05_portalpuzzle layers 2/3/12), fixture `tools/cov/specs/mfly4_forced.py`
+(result-only writes at call returns, single wasp, original recorded, readback, no inferior calls).
+- JoinTeam (6/6 arms): no shipped MYSF links to a TMAI (`tools/scan_mysteryflyer_loader.py`), so the valid-id arms are forced
+  (real TMAI uid, an existing non-team uid, a nonexistent uid); the id-set arm runs naturally via `fsm <wasp> Hover`.
+- AcceptScriptMsg (9/9): HasBodyState is naturally true; forced ZF at the `jne` (state == KnockBack) and al=0.
+- LoadMysteryFlyer (9/10): the `!modelData` return is dead by data (all 9 placements carry the present ANCS 0xc98c5e5f).

@@ -119,6 +119,11 @@ void CMysteryFlyer::Think(float dt, CStateManager& mgr) {
 }
 
 // fn_45_23B8
+// @ fn_45_23B8
+// Proof (mfly4, binary e7c9ce37a0af, runs mfly4_n1+f1+f2, gcov 24/24 lines, 9/9 arms): natural kSM_Create/
+// AreaLoaded/Damage/Alert; HasBodyState is naturally true, so tools/cov/specs/mfly4_forced.py forces on one
+// wasp its result at the return (original al recorded, readback): call 2 plus ZF=1 at the `jne` after
+// `cmpl $6,0x4e0` (state == KnockBack, skip arm), call 3 al=0 (no KnockBack state). Retail 0x23B8 same shape.
 void CMysteryFlyer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -445,6 +450,12 @@ bool CMysteryFlyer::LineOfSight(CStateManager& mgr, const CTriggerData& data) co
 }
 
 // fn_45_C10
+// @ fn_45_C10
+// Proof (mfly4, binary e7c9ce37a0af, runs mfly4_n1+f1+f2, gcov 7/7 lines, 6/6 arms): no shipped MYSF links
+// to a TMAI (tools/scan_mysteryflyer_loader.py), so GetAssociatedTeamId's result is forced at its return by
+// tools/cov/specs/mfly4_forced.py (original ax=0xffff recorded, readback): the real TMAI uid (JoinTeam on
+// the real team), an existing non-team uid and a uid no object has (TCastToPtr null); a later Hover Activate
+// JoinTeam on the same wasp takes the id-already-set arm naturally. Retail 0xC10..0xCBC.
 void CMysteryFlyer::JoinTeam(CStateManager& mgr) {
 #ifdef TARGET_PC
   // Retail 0xC10: `lhz 0x920; cmplw kInvalidUniqueId; bne -> end` (0xC40), so an id that is already
@@ -591,6 +602,11 @@ void CMysteryFlyer::UpdateSteering(CStateManager& mgr, float dt) {
 }
 
 // fn_45_170
+// @ fn_45_170
+// Proof (mfly4, binary e7c9ce37a0af, runs mfly4_n1+f1+f2, gcov 10/10 lines, 9/10 arms): every other arm ran
+// naturally in 0e_temple_hall and 05_portalpuzzle. The one untaken edge is the `!modelData` return: it needs
+// the wasp's ANCS id (property 0xe25fb08c) in no pak, and tools/scan_mysteryflyer_loader.py shows all 9
+// shipped placements carry ANCS 0xc98c5e5f (present), 0 unknown property ids - dead by data.
 CEntity* LoadMysteryFlyer(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrMysteryFlyer sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrMysteryFlyer.inc"
