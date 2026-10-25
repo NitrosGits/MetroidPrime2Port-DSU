@@ -495,7 +495,7 @@ def prb_body(g):
     # 'empty' fires on every PRB_PERIOD//2-th call whose boid has mIndex > 31 (checked below)
     if n == PRB_OFFSET:
         mode = 'freeze'
-    elif n % (PRB_PERIOD // 2) == 0:
+    elif n % (PRB_PERIOD // 2) == 0 or st.get('prbEmptyNext'):
         mode = 'empty'
     else:
         return
@@ -513,7 +513,9 @@ def prb_body(g):
             # an empty model list makes idx = mIndex; only a boid with mIndex > 31 takes the host
             # guard's false side (no model state is read, bit = 0), so refuse any other boid
             if _i(g, e_boid(boid, 'mIndex')) <= 31:
+                st['prbEmptyNext'] = True  # retry on the next call until a boid with mIndex > 31 shows
                 return
+            st['prbEmptyNext'] = False
             expr = e_this(this, 'mModelDatas.mCount')
             value = 0
         orig = _i(g, expr)
