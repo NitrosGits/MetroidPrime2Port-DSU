@@ -46,7 +46,7 @@ offset	fn	size	class	name	slice	what	marker
 01F7C	fn_80_1F7C	160	B	CSwarmBasics::IsBoidVisibleForLockOn	swarm1	upstream body (CSwarmBasics)	yes
 020DC	fn_80_20DC	5C	H	CRayCastResult::CRayCastResult	-	weak copy / template instance	no
 02138	fn_80_2138	D4	B	CSwarmBasics::SetExplodeTimers	-	upstream body (CSwarmBasics)	no
-0220C	fn_80_220C	854	B	CSwarmBasics::Touch	-	upstream body (CSwarmBasics)	no
+0220C	fn_80_220C	854	B	CSwarmBasics::Touch	-	upstream body (CSwarmBasics)	yes
 02A60	fn_80_2A60	3C	H	rstl::optional_object<CAABox>::~optional_object	-	weak copy / template instance	no
 02A9C	fn_80_2A9C	118	B	CSwarmBasics::ApplyRadiusDamage	-	upstream body (CSwarmBasics)	no
 02BB4	fn_80_2BB4	174	B	CSwarmBasics::GetWaypointForState	-	upstream body (CSwarmBasics)	no

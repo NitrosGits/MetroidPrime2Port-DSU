@@ -1078,3 +1078,46 @@ one); `CActor::mPosition` is the actor position the collision system uses (not `
 Gates: host build `metroid_prime2_port` 0 FAILED; `gen_files_cmake.py --check` rc 0; matching
 `configure.py && ninja` `87 files OK`; `review_decomp_diff.sh 255e5d22d` one MARK; `asmcheck` one
 explained CALL finding; `retail_diff --diff 255e5d22d` (see report).
+
+## swb20: Touch fn_80_220C marked - 72/72 lines, 92/93 branches
+
+Branch `decomp/swb20` from `5ae253246`. Source change: one marker line. Fixture
+`tools/cov/specs/swarmbasics_swb20.py` (loads swb19's Touch logger, stand-in boid and
+freeze/screw/spawn windows; swb19's ctor fixture is not installed), driver
+`tools/drivers/swb20_touch.con` (swb19's plus `give lightAmmo/darkAmmo 250`, then twice: lock on
+u041d, `beam light`, `press a 0` (charge), `press a+y 0` (missile edge = Sunburst), `stick 0 0`).
+All runs `42b935e4,01_sand_entrance --fast --frames 3400`, GPU Xvfb, `game rc=0`,
+`caught/reach-stub: 0`, binary `build-port-cov/metroid_prime2_port` sha256
+`58c6cd85c868cba81e9840c76ccb53fa0ff2ce694d7c4f9c6793138c114a4e86`, gcno sha256
+`e4aff3b4f57ec2ba78522d7c6b78ab89ac700877846b3367402d18ec4677e851` (both frozen with the run 3 gcda
+in `/var/tmp/swb20/evidence/`, `SHA256SUMS`).
+
+| run | fixture commit | Touch | note |
+|---|---|---|---|
+| `/var/tmp/swb20/run1` | `294ff6809` | 67/72, 83/93 | real Sunburst reached Touch (3 `FireLightCombo`, 1960 `CLightComboProjectile` touches); EN/EX force indices never reached |
+| `/var/tmp/swb20/run2` | `90789f499` | 69/72, 88/93 | + touch-bounds, KillBoid, player-frame writes; only 3 Explode calls |
+| `/var/tmp/swb20/run3` | `d8e8f5fe0` | **72/72, 92/93** | the marker's profile, one run (`gcov_report.py build-port-cov /var/tmp/swb20/run3/gcov --module SwarmBasics`) |
+
+Real, unforced: the whole light-combo block (`CanCreateRay` 1476 both sides, the ray loop,
+`CreateRay` valid -> `xa8_`/`xaa_`), from a real `CPlayerGun` Sunburst (`AUX-FIRE beam=2 charge=1
+loaded=1`, `FIRE-LIGHT-COMBO`); the `CEnergyProjectile` explode-true path; `CPlasmaProjectile`
+(the Sunburst's rays) as the natural non-energy projectile; the player block's ball/boost sides.
+
+Forced, each tied to one owned Touch frame and logged with real/written/readback (run 3):
+
+| arm | force | log |
+|---|---|---|
+| 1470 `WeaponHits` false | result `al`=0 at Touch+149, 40th call | `FORCE-RET WH real 0x3f000001 readback 0x0` |
+| 1472 empty touch bounds | valid byte of Touch's own sret slot (`cmpb $0x0,-0x48(%rbp)` after the projectile's `call *0x88(%rax)`, Touch+786) -> 0, 50th call | `FORCE-RET TB real 01 readback 00` |
+| 1483 `CreateRay` invalid | `ax`=kInvalidUniqueId at Touch+1382, 2nd call | `FORCE-RET CR real 0x672 readback 0xffff` |
+| 1499 `energy` null | `TCastToPtr<CEnergyProjectile>` `rax`=0 at Touch+2205 (from the 4th) | `FORCE-RET EN` x3 |
+| 1501 `Explode` false (reflect block 1504-1506) | `al`=0 at Touch+2725, 2nd call | `FORCE-RET EX real 0x1 readback 0x0` |
+| 1514/1515 `KillBoid` | 3rd null energy cast: active boids' `mHealth` -> 0.001, restored at that Touch's return (FinishBreakpoint) | `KILL-HEALTH boids=3`, `FRAME-RESTORE ok` |
+| 1527 radius != 0, 1543 frozen boid, 1547-1553 overlap / cooldown running / `ApplyDamage` | 12 player Touch frames from tick 9000: `mPlayerTouchRadius` (data 0) -> 100, first also one boid's `mFreezeTimer` -> 1; restored at the frame's return | `PL-FRAME`, `FRAME-END cooldown_timer 1.0 -> 0.98...`, `frame_fail=0` |
+
+The one branch left, `1499 edge 4` (the `energy && TCastToPtr<CLightComboProjectile>(energy)`
+true side), is **dead in retail too**: fn_80_220C casts the projectile at `0x232C bl
+"TCastToPtr<10CUnknown20>__FP7CEntity"` / `0x2334 beq .L_00002438` (the else block), and inside it
+`0x24B0 bl "TCastToPtr<17CEnergyProjectile>"` / `0x24B8 beq .L_00002650` then `0x24BC bl
+"TCastToPtr<10CUnknown20>"` / `0x24C4 bne .L_00002650` re-casts the same object, which already
+failed that type visit at 0x232C. Edge 3 at 1499 and the other `throw` edges are host EH.
