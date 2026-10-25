@@ -30,8 +30,8 @@ offset	fn	size	class	name	slice	what	marker
 00A88	fn_86_A88	54	H	TToken<CModel>::~TToken()	-	weak copy / template instance	no
 00ADC	fn_86_ADC	64	H	rstl::auto_ptr<CAnimData>::~auto_ptr()	-	weak copy / template instance	no
 00B40	fn_86_B40	60	H	rstl::optional_object<CModelData>::~optional_object()	-	weak copy / template instance	no
-00BA0	fn_86_BA0	7C	B	SLdrWispTentacle::~SLdrWispTentacle()	wisp1	SLdrWispTentacle dtor	no
-00C1C	fn_86_C1C	F8	B	SLdrWispTentacle::SLdrWispTentacle()	wisp1	SLdrWispTentacle ctor: loader defaults fixed (wisp1), in the header	no
+00BA0	fn_86_BA0	7C	B	SLdrWispTentacle::~SLdrWispTentacle()	wisp1	SLdrWispTentacle dtor: inline in the header, marked there	yes
+00C1C	fn_86_C1C	F8	B	SLdrWispTentacle::SLdrWispTentacle()	wisp1	SLdrWispTentacle ctor: inline in the header, marked there; defaults checked against asm	yes
 00D14	fn_86_D14	78	B	CWispTentacle::KnockBack(CStateManager&, const CKnockBackInfo&)	wisp1	upstream body	yes
 00D8C	fn_86_D8C	F8	B	CWispTentacle::SnapWaypointToFloor(CStateManager&)	wisp1	SnapWaypointToFloor: data-dead (no placement has a waypoint connection)	no
 00E84	fn_86_E84	5C	H	CRayCastResult::CRayCastResult(const CRayCastResult&)	-	weak copy / template instance	no
@@ -41,14 +41,14 @@ offset	fn	size	class	name	slice	what	marker
 012F8	fn_86_12F8	50	H	rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::~basic_string()	-	weak copy / template instance	no
 01348	fn_86_1348	6C	H	CMotionState::CMotionState(const CMotionState&)	-	weak copy / template instance	no
 013B4	fn_86_13B4	20	B	CWispTentacle::Touch(CActor&, CStateManager&)	wisp1	upstream body	yes
-013D4	fn_86_13D4	350	B	CWispTentacle::Think(float, CStateManager&)	wisp1	Think: !GetActive, invalid locator-seg and mPirateCaptured arms not reached	no
+013D4	fn_86_13D4	350	B	CWispTentacle::Think(float, CStateManager&)	wisp1	Think: all arms (wisp3: forced inactive, pirate-captured, invalid locator segs)	yes
 01724	fn_86_1724	5C	B	CWispTentacle::Render(const CStateManager&) const	wisp1	upstream body	yes
 01780	fn_86_1780	4C	B	CWispTentacle::PreRender(CStateManager&)	wisp1	PreRender: retail stores an uninitialised stack word into 0xfc; portal arm data-dead	no
 017CC	fn_86_17CC	174	B	CWispTentacle::Pull(CStateManager&, EStateMsg, float)	wisp1	upstream body	yes
 01940	fn_86_1940	5C	H	CBCTauntCmd::~CBCTauntCmd()	-	weak copy / template instance	no
 0199C	fn_86_199C	48	H	CBodyStateCmd::~CBodyStateCmd()	-	weak copy / template instance	no
 019E4	fn_86_19E4	170	B	CWispTentacle::Grab(CStateManager&, EStateMsg, float)	wisp1	upstream body	yes
-01B54	fn_86_1B54	250	B	CWispTentacle::UpdateGrabbedPirate(float, CStateManager&)	wisp1	UpdateGrabbedPirate: data-dead (no pirate connection)	no
+01B54	fn_86_1B54	250	B	CWispTentacle::UpdateGrabbedPirate(float, CStateManager&)	wisp1	UpdateGrabbedPirate: all arms (wisp3: live CSpacePirate, forced grabbed id)	yes
 01DA4	fn_86_1DA4	17C	B	CWispTentacle::Flinch(CStateManager&, EStateMsg, float)	wisp1	upstream body	yes
 01F20	fn_86_1F20	1AC	B	CWispTentacle::Attack(CStateManager&, EStateMsg, float)	wisp1	upstream body	yes
 020CC	fn_86_20CC	5C	H	CBCLoopAttackCmd::~CBCLoopAttackCmd()	-	weak copy / template instance	no
@@ -68,7 +68,7 @@ offset	fn	size	class	name	slice	what	marker
 0295C	fn_86_295C	24	B	CWispTentacle::ShouldPatrol(CStateManager&, const CTriggerData&) const	wisp1	upstream body	yes
 02980	fn_86_2980	2C	B	CWispTentacle::ShouldSleep(CStateManager&, const CTriggerData&) const	wisp1	upstream body	yes
 029AC	fn_86_29AC	6C	B	CWispTentacle::SetupStateMachine(CStateManager&)	wisp1	upstream body	yes
-02A18	fn_86_2A18	8FC	B	CWispTentacle::AcceptScriptMsg(CStateManager&, const CScriptMsg&)	wisp1	AcceptScriptMsg: bomb/power-bomb Damage arm and AreaLoaded loop not reached	no
+02A18	fn_86_2A18	8FC	B	CWispTentacle::AcceptScriptMsg(CStateManager&, const CScriptMsg&)	wisp1	AcceptScriptMsg: 100/108 branches (wisp3); open 176/177/194/211 dead-arm, 225/266 touched-bomb/player	no
 03314	fn_86_3314	38	H	rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>::push_back_unsafe(const CJointCollisionDescription&)	-	weak copy / template instance	no
 0334C	fn_86_334C	20	H	rstl::construct<CJointCollisionDescription>(void*, const CJointCollisionDescription&)	-	weak copy / template instance	no
 0336C	fn_86_336C	28	H	rstl::construction_policy<CJointCollisionDescription, 0>::construct(void*, const CJointCollisionDescription&)	-	weak copy / template instance	no
@@ -78,7 +78,7 @@ offset	fn	size	class	name	slice	what	marker
 0350C	fn_86_350C	84	H	rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>::~vector()	-	weak copy / template instance	no
 03590	fn_86_3590	38	H	rstl::destroy<rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>, rstl::rmemory_allocator>>(rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>, rstl::rmemory_allocator>, rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>, rstl::rmemory_allocator>)	-	weak copy / template instance	no
 035C8	fn_86_35C8	60	H	rstl::destroy_impl<rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>, rstl::rmemory_allocator>>(rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>, rstl::rmemory_allocator>, rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>, rstl::rmemory_allocator>)	-	weak copy / template instance	no
-03628	fn_86_3628	6CC	B	CWispTentacle::CWispTentacle(TUniqueId, const rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>&, const CEntityInfo&, const CTransform4f&, const CModelData&, const CPatternedInfo&, const CDamageInfo&, const CActorParameters&, bool, float, float, float, float, float, float)	wisp1	ctor: burn-bit fix (wisp1); Infinity / best<=eps arms data-dead	no
+03628	fn_86_3628	6CC	B	CWispTentacle::CWispTentacle(TUniqueId, const rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>&, const CEntityInfo&, const CTransform4f&, const CModelData&, const CPatternedInfo&, const CDamageInfo&, const CActorParameters&, bool, float, float, float, float, float, float)	wisp1	ctor: all arms (wisp3: portal, Infinity, best<=eps forced)	yes
 03CF4	fn_86_3CF4	4C	H	SAdvancementResults::SAdvancementResults(const SAdvancementResults&)	-	weak copy / template instance	no
 03D40	fn_86_3D40	3C	H	CPASAnimParmData::~CPASAnimParmData()	-	weak copy / template instance	no
 03D7C	fn_86_3D7C	184	H	CPASAnimParmData::CPASAnimParmData(pas::EAnimationState, const CPASAnimParm&, const CPASAnimParm&, const CPASAnimParm&, const CPASAnimParm&, const CPASAnimParm&, const CPASAnimParm&, const CPASAnimParm&, const CPASAnimParm&)	-	weak copy / template instance	no

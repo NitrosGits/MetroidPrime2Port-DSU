@@ -74,6 +74,31 @@ WispTentacle`). Every write is one call, restored at the next entry of the same 
 | AcceptScriptMsg 2A18 | 88/108 | `send HitObject` (0x222's cast arm) and `send AIUpdateDisabled`+`Activate` | 154/155/157/159 (the AreaLoaded loop: no shipped placement has a connection, and the list is load-time data), 166/176/177/194 (the Create body-controller and model-data arms), 211/242 (the ActorLights arms: mActorLights is not the auto_ptr the write assumed), 225/259/266 (the HitObject and Damage bomb tests: they need a bomb as the collision actor's last touched object, not a player), 253 (mCollisionManager null - nulling it crashes Think, which dereferences it) |
 | UpdateGrabbedPirate 1B54 | 4/17 | mPirateCaptured set (the body now runs) | 479:1/2 (the body itself) and everything from 482 on: it needs a live CSpacePirate, and none of the six wisp areas ships one |
 | ctor 3628 | 40/52 | - | 110:0/2 and the portal body 111-119 (mSpawnFromPortal at the ctor entry), 124:2/3 (the `time != Infinity` arm) and 127:1/2 (the `best <= FLT_EPSILON` arm), both read out of the animation database |
-| SLdr ctor/dtor BA0/C1C | - | - | inline in `SLdrWispTentacle.hpp`: no standalone body to mark |
 
 No retail divergence, no source change beyond the PreRender marker.
+
+## Third pass (wisp3, 2026-10-25)
+
+`tools/cov/specs/wisp3_force.py` + `tools/drivers/wisp3_hall.con` (wisp2's hall plus a spawned WAYP,
+a live CSpacePirate (`ancs 8169653a`, `prop` for the projectile) and a WISP wired `conn APRC Activate`;
+Flinch/Withdraw cycles; a morph-ball bomb window), merged with the wisp2 runs
+(`gcov_report.py build-port-cov /tmp/opencode/wisp3/{frc3,frc,nat}/gcov --module WispTentacle`).
+
+| body | arms | forced | result |
+|---|---|---|---|
+| ctor 3628 | 52/52 | portal (`$al`/join), Infinity (`mInf`), best<=eps (`$xmm0=0`) at `loc:*ctor+0x243/0x392/0x4e3/0x544`; labelled forced | **marked** |
+| UpdateGrabbedPirate 1B54 | 5/5 | live CSpacePirate beside the wisp, grabbed id = its uid (forced via the connection plus `mPirateCaptured`) | **marked** |
+| Think 13D4 | 17/17 | mActive clear, mPirateCaptured set, `GetLocatorSegId` -> 0xff at the lock-on and arm-end tests (`$r13`, `$rsp+0x60`) | **marked** |
+| SLdr ctor/dtor C1C/BA0 | n/a (branchless) | the loader ran (LoadWispTentacle 12/12 lines) | **marked** in the header, defaults and dtor order read off the asm |
+| AcceptScriptMsg 2A18 | 100/108 | + 253 (mCollisionManager nulled, restored before Think), 242 (`mActorLights.mPtr` nulled at Activate) | **unmarked**, below |
+
+AcceptScriptMsg open arms: 225:3/6, 225:5/6 and 266:0/2 need a CCollisionActor whose
+`GetLastTouchedObject` is the player (HitObject) or a CBomb/CPowerBomb (Damage). Tried: `send ... from`
+the wisp's own collision actors plus a real bomb beside them (`objs CBomb`), and rewriting
+`mLastTouched` of the sender from an inferior call to `ObjectById` (stalled the run, dropped); the
+actors never touch the bomb in the harness. Not dead in retail, so the function stays unmarked.
+176:1/2, 177:1/4, 177:3/4, 194:3/4 and 211:1/2 are dead after the ctor (HasAnimation and the spatial
+primitive are true for the WISP model, 211 is followed by an unguarded `ActorLights()->` at 213) but
+were not forced.
+
+Source: markers only (13D4, 1B54, 3628, C1C, BA0).
