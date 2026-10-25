@@ -78,6 +78,29 @@ About 120 are Remastered/HDR, Dread Samus import or third-person camera (not por
 13. **Game options**: walk speed 50-200% (`62d94159f`); hint delay and Show current hint
     (`319685eed`; only if MP2's hint system has the same hook).
 
+### Remaining QoL (user 2026-10-25: all of it, except the not-portable list)
+
+Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend is reported, not stubbed.
+
+14. **ptr2 pointer menus, rest**: front end (title/file select, pointer -> CScriptGuiMenu), CAutoMapper
+    map gestures (drag, pinch, tap), quit screen.
+15. **game1 Game rows**: scan speed, elevator ride skip/speed, on-screen IGT, language, restart to
+    menu, Original experience toggle.
+16. **vid1 HUD/scan**: cutscene black bars, sharp scan window, scan image spread, HUD opacity,
+    custom crosshair colour, secondary crosshairs.
+17. **vid2 rendering/system video**: sun and projected shadows, HD font, shader-compilation toast and
+    F1-hint switches, GPU self-test / renderer / driver pickers (guarded to their platforms).
+18. **sys1 System**: Discord presence, disc image check, menu sounds, memory-card import/export,
+    data folder panel.
+19. **ctl1 Controls**: button glyphs and prompts, swap visor buttons, tap minimap, Reset aim resets both.
+20. **misc1**: throughput display and simulation rate, save-state hotkeys switch, Keep room objects,
+    console `fx`, pipeline memory-pressure trim (`c401d338d`).
+21. **mod2 mods follow-ups**: model reload, combined Mods page with texture packs, Open folder,
+    Android mod picker.
+22. **spr1 Spring Ball** (user 2026-10-25): MP1's Spring Ball option (jump in Morph Ball; Echoes has
+    none natively), its binding, gyro flick and Android swipe-up triggers (`8773bfd0b`, `c35a19db4`
+    area; find the rest by `git log -i --grep=spring` in MP1).
+
 Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
 fixes (wait for package 8), decomp matches.
 
@@ -105,3 +128,4 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 - 2026-10-25: user: no update checker for now (dropped). Running (Sonnet): tch1 pkg 8 Android touch layout editor (ses_e8f53a168ffegqE1U3P55o8EDg): APK build + own emulator AVD if feasible; with col1.
 - 2026-10-25: col1 merged (pkg 8 item 2, suit colours): HSV remap + CMPR codec, Echoes texture ids (Varia 2 slots, Dark, Light; ball/suit textures), generated TXTRs through the mods loader; keys suit_colour_varia/dark/light, Video > Display. Live: morph ball recoloured; defaults generate nothing. Unshown: Dark/Light screenshots; Samus body/cutscene meshes not located (keep colours); restart to apply. Merge gates green (ctest incl. settings index), boot to gameplay 4.2 s.
 - 2026-10-25: tch1 merged (Android touch layout editor: TouchControlsView, 128-bit touch state, ball page/custom buttons, JNI, nod stub). Gates PASS (link, ctest 34/45 = all but NOT_BUILT, settings index, upstream, desktop boot). APK builds; editor unverified on device: needs a real disc + real nod build (-PandroidNodStub=false).
+- 2026-10-25: user: port all remaining QoL (packages 14-21) plus Spring Ball (22). Two Sonnet slots are taken by the decomp session, so lanes are started one Sonnet + one worker at a time.
