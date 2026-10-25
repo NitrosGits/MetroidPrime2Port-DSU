@@ -43,6 +43,12 @@ public:
   void SetSpreadable(bool spreadable) { mSpreadable = spreadable; }
   float GetAspectSpread() const { return mSpread; }
   float GetSpreadCenterX() const { return mSpreadCenterX; }
+  // The vertical spread, the same remap on the screen-up axis: 1 unless the window is narrower
+  // than 4:3, where the frame keeps its authored width and gains height. Half the authored height
+  // as a tangent per unit depth (perspective) or in world units (ortho), about GetSpreadCenterZ.
+  float GetSpreadY() const { return mSpreadY; }
+  float GetSpreadHalfHeight() const { return mSpreadHalfHeight; }
+  float GetSpreadCenterZ() const { return mSpreadCenterZ; }
   // Half the authored width as a tangent per unit depth (perspective), or in world units (ortho).
   float GetSpreadHalfWidth() const { return mSpreadHalfWidth; }
   // Half the drawn view's width in the same units: widened by the aspect, larger by the HUD scale.
@@ -71,6 +77,9 @@ private:
   bool mSpreadable = false;
   mutable float mSpread = 1.f;
   mutable float mSpreadCenterX = 0.f;
+  mutable float mSpreadY = 1.f;
+  mutable float mSpreadHalfHeight = 0.f;
+  mutable float mSpreadCenterZ = 0.f;
   mutable float mSpreadHalfWidth = 0.f;
   mutable float mSpreadScreenHalfWidth = 0.f;
   mutable CTransform4f mSpreadView = CTransform4f::Identity();

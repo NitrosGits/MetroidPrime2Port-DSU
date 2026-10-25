@@ -137,11 +137,17 @@ void CGuiCamera::Draw(const CGuiWidgetDrawParms& parms) const {
   // its shape and anchoring (CGuiFrame::Draw). 1 = no spread.
   mSpread = mSpreadable && PortOverlay::HudWide() && portWiden > 1.f ? portWiden : 1.f;
   mSpreadView = CTransform4f::Translate(parms.GetCameraOffset()) * GetWorldTransform();
+  mSpreadY = mSpreadable && PortOverlay::HudWide() && portWiden < 1.f ? 1.f / portWiden : 1.f;
   if (mProjection == kProjection_Perspective) {
     mSpreadCenterX = 0.f;
+    mSpreadCenterZ = 0.f;
+    mSpreadHalfHeight = tanf(0.5f * mCameraParms.mPerspective.mFov * 3.14159265f / 180.f);
     mSpreadHalfWidth = tanf(0.5f * mCameraParms.mPerspective.mFov * 3.14159265f / 180.f) *
                        mCameraParms.mPerspective.mAspect;
   } else {
+    mSpreadCenterZ = 0.5f * (mCameraParms.mOrthographic.mTop + mCameraParms.mOrthographic.mBottom);
+    mSpreadHalfHeight =
+        0.5f * (mCameraParms.mOrthographic.mTop - mCameraParms.mOrthographic.mBottom);
     mSpreadCenterX = 0.5f * (mCameraParms.mOrthographic.mLeft + mCameraParms.mOrthographic.mRight);
     mSpreadHalfWidth =
         0.5f * (mCameraParms.mOrthographic.mRight - mCameraParms.mOrthographic.mLeft);
@@ -172,6 +178,18 @@ float CGuiCamera::GetSpreadSliceOffset(float t, bool curved) const {
 }
 
 CTransform4f CGuiCamera::GetSpreadTransform(const CVector3f& worldAnchor, float weight) const {
+  if (mSpread == 1.f && mSpreadY != 1.f && weight != 0.f) {
+    // The vertical spread: each compact widget keeps its shape and moves to where the image remap
+    // puts its anchor (screen-up scaled by mSpreadY about the centre).
+    const CTransform4f invViewY = mSpreadView.GetInverse();
+    const CVector3f eyeY = invViewY * worldAnchor;
+    if (mProjection == kProjection_Perspective && eyeY.GetY() <= 0.f) {
+      return CTransform4f::Identity();
+    }
+    const float dz = weight * (mSpreadY - 1.f) * (eyeY.GetZ() - mSpreadCenterZ);
+    return mSpreadView * CTransform4f(1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, dz) *
+           invViewY;
+  }
   if (mSpread == 1.f || weight == 0.f) {
     return CTransform4f::Identity();
   }

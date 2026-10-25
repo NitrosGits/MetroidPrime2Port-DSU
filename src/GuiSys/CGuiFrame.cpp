@@ -170,9 +170,10 @@ static void PortDropSpreadAnchors(const CGuiFrame* frame) {
 static void PortDrawSpread(const CGuiFrame* frame, const CGuiCamera& camera,
                            const CGuiWidget* widget, const CGuiWidgetDrawParms& parms) {
   const float spread = camera.GetAspectSpread();
+  const float spreadY = camera.GetSpreadY();
   CTransform4f savedXf = CTransform4f::Identity();
   bool savedValid = false;
-  if (spread == 1.f || widget->GetParent() == nullptr) {
+  if ((spread == 1.f && spreadY == 1.f) || widget->GetParent() == nullptr) {
     widget->Draw(parms);
     return;
   }
@@ -181,6 +182,7 @@ static void PortDrawSpread(const CGuiFrame* frame, const CGuiCamera& camera,
   const CTransform4f world = widget->GetWorldTransform();
   CVector3f anchor = world.GetTranslation();
   bool stretch = false;
+  bool stretchY = false;
   float eyeMinDepth = 0.f;
   CAABox bounds(CVector3f(0.f, 0.f, 0.f), CVector3f(0.f, 0.f, 0.f));
   const CGuiWidget* group = PortFindSpreadAnchor(frame, widget);
@@ -196,7 +198,20 @@ static void PortDrawSpread(const CGuiFrame* frame, const CGuiCamera& camera,
     }
     eyeMinDepth = eyeBounds.GetMinPoint().GetY();
     const float centerX = camera.GetSpreadCenterX();
-    stretch = quarterWidth > 0.f && eyeBounds.GetMinPoint().GetX() < centerX - quarterWidth &&
+    if (spreadY != 1.f) {
+      // Meshes reaching both outer quarters of the authored height (the helmet's bars) stretch so
+      // they land on the top and bottom edges.
+      float quarterHeight = 0.5f * camera.GetSpreadHalfHeight();
+      if (camera.IsPerspective()) {
+        quarterHeight *= eyeBounds.GetMaxPoint().GetY();
+      }
+      const float centerZ = camera.GetSpreadCenterZ();
+      stretchY = quarterHeight > 0.f && eyeBounds.GetMinPoint().GetZ() < centerZ - quarterHeight &&
+                 eyeBounds.GetMaxPoint().GetZ() > centerZ + quarterHeight &&
+                 (!camera.IsPerspective() || eyeMinDepth > 0.f);
+    }
+    stretch = spread != 1.f && quarterWidth > 0.f &&
+              eyeBounds.GetMinPoint().GetX() < centerX - quarterWidth &&
               eyeBounds.GetMaxPoint().GetX() > centerX + quarterWidth;
   }
   if (stretch && (!camera.IsPerspective() || eyeMinDepth > 0.f) &&
@@ -205,7 +220,11 @@ static void PortDrawSpread(const CGuiFrame* frame, const CGuiCamera& camera,
     return;
   }
   CTransform4f moved = world;
-  if (stretch) {
+  if (stretchY) {
+    moved = view * CTransform4f::Translate(0.f, 0.f, camera.GetSpreadCenterZ()) *
+            CTransform4f::Scale(1.f, 1.f, spreadY) *
+            CTransform4f::Translate(0.f, 0.f, -camera.GetSpreadCenterZ()) * invView * world;
+  } else if (stretch) {
     moved = view * CTransform4f::Translate(camera.GetSpreadCenterX(), 0.f, 0.f) *
             CTransform4f::Scale(spread, 1.f, 1.f) *
             CTransform4f::Translate(-camera.GetSpreadCenterX(), 0.f, 0.f) * invView * world;
