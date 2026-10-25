@@ -7,6 +7,8 @@
 // (PortWarp, PortOverlay) plus the world/player state a state manager gives for free. Adding one is a
 // row in `kCommands`.
 
+#include "MetroidPrime/CMain.hpp"
+#include <SDL3/SDL.h>
 #include "port_harness.h"
 #include "port_console.h"
 #include "port_mouse.h"
@@ -517,109 +519,57 @@ const SBeamChoice* ParseBeam(std::string_view text) {
   return (index >= 0 && index < kBeamCount) ? &kBeamOrder[index] : nullptr;
 }
 
-void CmdHelp(CStateManager&, const Args&, std::string& out) {
-  out +=
-      "status                      world, area, player position, health, visor, beam, morph state\n"
-      "areas                       the current world's area slots (index, MREA id, name if loaded)\n"
-      "warp <slot|id|name>         load an area of the current world (what MP2_TELEPORT takes)\n"
-      "nextarea | prevarea         the next or previous existing area of this world\n"
-      "door | dock | station       stand in front of the nearest door / doorway / save station\n"
-      "heal | kill [id]            refill energy; kill the player (a respawn test) or an actor\n"
-      "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
-      "                            cannonball, dark, light, annihilator, powerbomb, bomb,\n"
-      "                            boostball, screwattack, darkburst,\n"
-      "                            sunburst, sonicboom, supermissile; kb = knockback power)\n"
-      "layer <n>                   activate a layer of the current area\n"
-      "god <0|1>                   god mode (the F1 cheat)\n"
-      "mpforce <0|1>               IsMultiplayer reports true (multiplayer-only arms)\n"
-      "overlay <page>[/<sub>]|off  open the F1 window on a page (name prefixes: `overlay video/qual`)\n"
-      "gpuselftest                 run the GPU self-test next frame; PASS/FAIL lines go to the log\n"
-      "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"
-      "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
-      "gunoffset [<r> <f> <u>]     arm cannon offset in metres (+-1), as the F1 Render row does\n"
-      "msaa <1|4> | aniso <1..16>  anti-aliasing and anisotropic filtering (applied next frame)\n"
-      "hudscale <50..100>          HUD scale in percent, as the F1 HUD row does\n"
-      "crosshair [<25..100>]       aim crosshair size, `style classic|remastered`, opacity,\n"
-      "                            color <r> <g> <b>|clear, aim <0|1> (F1 HUD)\n"
-      "uiscale <50..200>           the F1 window's size in percent, as the Render row does\n"
-      "vsync <0|1>                 vertical sync, as the F1 Render row does\n"
-      "interp [0|1]                smooth frames: the camera between ticks with the cap off\n"
-      "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"
-      "boost                       boost-ball release on the morphed player\n"
-      "noise <type> [x y z]        InformListeners at the player (6 = safe-zone noise)\n"
-      "gameevent <ev> [src] [tgt] [value] [as <proxyType>]  deliver a game event to every\n"
-      "                            CScriptPlayerProxy listener (ev: score kill generic scan\n"
-      "                            damage stop spawn; value: float for damage, state for generic)\n"
-      "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"
-      "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
-      "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"
-      "sticky <0|1>                sticky charge: a long A hold keeps charging after the release\n"
-      "pointeraim [on|off|<x> <y>] pointer aim (the F1 row), or place its pointer (-1..1)\n"
-      "save [info] [<file>]        the card's save slots, or one .gci on disk: world, items, time\n"
-      "save export [<path>]        write the card's save file out (default: save-backups/)\n"
-      "save import <path|latest>   put a .gci back on the card; the file it replaces is kept\n"
-      "save backup | backups       copy the card now, or list the copies in save-backups\n"
-      "cardbackup <0|1>            back the card up before each write (the F1 Saves row)\n"
-      "settings [<key> <value>|self-test]  settings.cfg's entries; set one (and save), or check every key round-trips\n"
-      "logfile <0|1>               stdout and stderr also go to metroid_prime2_port.log (next launch)\n"
-      "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
-      "obj <id>                    one object (an id as `objs` prints it: u046e, or e<editor id>): health, fsm, messages\n"
-      "send <id> <msg> [from <id>] deliver a script message to an object (name or number), from a sender\n"
-      "covdump                     coverage build: write the gcov counters now (and zero them)\n"
-      "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
-      "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
-      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2\n"
-      "                              sub-machines too; an unknown name lists the valid ones)\n"
-      "bodystate <id> <n>          set a patterned actor's body state (the pas::EAnimationState index)\n"
-      "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
-      "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
-      "pathfail <id> on|off        the actor's path search fails (Search, FindClosestReachablePoint)\n"
-      "setarea <id> <area>         set an entity's current area id (put it back after; obj shows it; loaded areas only)\n"
-      "var <id> <name> [value]     a module field a port registered (dghd.attack, dghd.flags, dghd.sweeptime); var player spawnmorph [n]\n"
-      "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
-      "orbit [id]                  lock-on state; with id: orbit position, ValidateOrbitTargetId\n"
-      "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
-      "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
-      "spawn <fourcc> [n] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [model <id>|u<id>] [inactive] [prop <pid> <v>]  create script objects via their loader\n"
-      "                            [rules <id>] knockback RULE (patterned default 393ca543; ffffffff = none)\n"
-      "                            [conn <state> <msg> <id>] add a script connection (names as obj prints them)\n"
-      "                            [wpsc <id>] projectile WPSC (CHOG's two; else prop ef485db9; CHOG default 681f3907)\n"
-      "touch <mover id> <other id>  call the mover's CollidedWith with the other actor's material\n"
-      "                           list, the way the collision code does (no real collision needed)\n"
-      "pirateattach <pirate> <id>|-  AttachActorToPirate(id) (- : DetachActorFromPirate) through the\n"
-      "                           module's table, as a Metroid latching on does (coverage)\n"
-      "material <id> [+|-]<m> ...  show or add/remove an actor's materials (name w/o kMT_, or bit; -solid)\n"
-      "                           with x y z the yaw (and pitch, roll) in degrees may follow\n"
-      "shoot <id> [charged|missile] [d] [dir x y z]  fire the beam in hand (or a real player\n"
-      "                            missile) at an actor from d (3) units; travelling along dir\n"
-      "                            (default from the player): a real projectile\n"
-      "struggle <0..1>|off         hold the player's attached-actor struggle (1 wakes a grabber's\n"
-      "                            dizzy gore; the game only grows it from held turn/jump buttons)\n"
-      "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
-      "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
-      "tp <x> <y> <z>              teleport the player, keeping its facing\n"
-      "ray <x> <y> <z> [len] [dx dy dz]  static and render surfaces (beam stops/passes) and the world hit along the ray (default: down)\n"
-      "face <yaw deg>              turn the player where it stands (0 = +y, 90 = +x)\n"
-      "aim <yaw> <pitch>          point the view outright, in degrees; negative pitch looks down\n"
-      "items                       power-up amounts and capacities\n"
-      "world <world> [area]        load another world (the MP1 console's `warp <world>`)\n"
-      "worlds                      the memory card's world ids, areas and name tables\n"
-      "strg <id|name> [index]      a string table as the game loads it\n"
-      "give <item> [n] | take      add an item (capacity and amount), or remove capacity\n"
-      "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"
-      "grapple <id> [d]            wake a grapple point, stand d (8) units from it facing it, hold L\n"
-      "scan <id> [d] [updates]     scan an actor: d (40) units away, orbit locked, L held (alone: progress)\n"
-      "stick <x> <y> [updates]     hold the main stick, -127..127\n"
-      "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
-      "screenshot                  the F12 capture; the log names the file it wrote\n"
-      "at <update> <command>       run one command on that game update (`frame`), not on arrival,\n"
-      "                            so runs at different speeds act on the same tick\n"
-      "gallery [mask]              the slideshow gallery unlock mask (0..63): print, or set via PercentScans/mode flags\n"
-      "help                        this list\n"
-      "a; b; c                     run several commands in the same game tick (one reply each)\n";
+void CmdHelp(CStateManager&, const Args&, std::string& out);
+
+// `status --json`: one line for scripts.
+void CmdStatusJson(CStateManager& mgr, std::string& out) {
+  CWorld* world = mgr.World();
+  const CPlayer* player = mgr.GetPlayer(0);
+  const CPlayerState* state = mgr.GetPlayerState(0);
+  static const char* const morph[] = {"unmorphed", "morphed", "morphing", "unmorphing"};
+  const auto flag = [](bool value) { return value ? "true" : "false"; };
+  char line[512];
+  uint32_t mlvl = 0;
+  uint32_t mrea = 0;
+  int areaIdx = -1;
+  if (world != nullptr) {
+    const TAreaId area = world->GetCurrentAreaId();
+    const CGameArea* loaded = world->Area(area);
+    areaIdx = area.Value();
+    mlvl = static_cast< uint32_t >(world->IGetWorldAssetId());
+    mrea = loaded != nullptr ? static_cast< uint32_t >(loaded->GetAreaAssetId()) : 0u;
+  }
+  std::snprintf(line, sizeof(line), "{\"frame\":%u,\"world\":\"%08X\",\"area\":%d,\"mrea\":\"%08X\"",
+                static_cast< unsigned >(PortHarness::GameUpdates()), mlvl, areaIdx, mrea);
+  out += line;
+  if (player != nullptr) {
+    const CVector3f p = player->GetTranslation();
+    const CVector3f fwd = player->GetTransform().GetForward();
+    const int m = static_cast< int >(player->GetMorphballTransitionState());
+    std::snprintf(line, sizeof(line),
+                  ",\"pos\":[%.3f,%.3f,%.3f],\"yaw\":%.2f,\"speed\":%.3f,\"morph\":\"%s\"", p.GetX(),
+                  p.GetY(), p.GetZ(), std::atan2(-fwd.GetX(), fwd.GetY()) * 57.29578f,
+                  player->GetVelocityWR().Magnitude(), m >= 0 && m < 4 ? morph[m] : "?");
+    out += line;
+  }
+  if (state != nullptr) {
+    std::snprintf(line, sizeof(line), ",\"hp\":%.1f,\"hp_max\":%.1f,\"visor\":\"%s\",\"beam\":%d",
+                  state->GetHealthInfo().GetHP(), state->GetHealthInfo().GetInitialHP(),
+                  VisorName(state->GetActiveVisor(mgr)), static_cast< int >(state->GetCurrentBeam()));
+    out += line;
+  }
+  const PortFreeCam::Pose pose = PortFreeCam::GetPose();
+  std::snprintf(line, sizeof(line),
+                ",\"freecam\":{\"on\":%s,\"pos\":[%.3f,%.3f,%.3f],\"yaw\":%.2f,\"pitch\":%.2f}}\n",
+                flag(PortFreeCam::Active()), pose.x, pose.y, pose.z, pose.yaw, pose.pitch);
+  out += line;
 }
 
-void CmdStatus(CStateManager& mgr, const Args&, std::string& out) {
+void CmdStatus(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() > 1 && args[1] == "--json") {
+    CmdStatusJson(mgr, out);
+    return;
+  }
   CWorld* world = mgr.World();
   CPlayer* player = mgr.GetPlayer(0);
   const CPlayerState* state = mgr.GetPlayerState(0);
@@ -4047,103 +3997,261 @@ void CmdGpuSelfTest(CStateManager&, const Args&, std::string& out) {
   out += "gpu self-test requested (results in the log)\n";
 }
 
-struct SCommand {
+void CmdTitle(CStateManager& mgr, const Args&, std::string& out) {
+  if (gpMain == nullptr) {
+    Fail("not running");
+    return;
+  }
+  // The pause menu's Quit: the restart mode stays kRM_Default, so CMainFlow goes back to the front end.
+  gpMain->SetRestartMode(CMain::kRM_Default);
+  mgr.QuitGame();
+  out += "quitting to the title\n";
+}
+
+void CmdWindow(CStateManager&, const Args& args, std::string& out) {
+  int count = 0;
+  SDL_Window** windows = SDL_GetWindows(&count);
+  SDL_Window* window = windows != nullptr && count > 0 ? windows[0] : nullptr;
+  SDL_free(windows);
+  if (window == nullptr) {
+    Fail("no window");
+    return;
+  }
+  if (args.size() > 2) {
+    const int w = ArgToInt(args[1], 0);
+    const int h = ArgToInt(args[2], 0);
+    if (w < 64 || h < 64) {
+      Fail("usage: window [<width> <height>]");
+      return;
+    }
+    SDL_SetWindowFullscreen(window, false);
+    SDL_SetWindowSize(window, w, h);
+    SDL_SyncWindow(window);
+  }
+  int w = 0;
+  int h = 0;
+  SDL_GetWindowSizeInPixels(window, &w, &h);
+  out += "window " + std::to_string(w) + "x" + std::to_string(h) + "\n";
+}
+
+struct CommandSpec {
   std::string_view name;
   void (*run)(CStateManager&, const Args&, std::string&);
-  bool needsGame; // false: runs on the frame the game is not updating? (all of these need the world)
+  const char* help; // the `help` text for this row ("" = covered by an earlier row)
 };
 
-constexpr SCommand kCommands[] = {
-    {"help", CmdHelp, true},
-    {"status", CmdStatus, true},
-    {"areas", CmdAreas, true},
-    {"warp", CmdWarp, true},
-    {"nextarea", CmdNextArea, true},
-    {"prevarea", CmdPrevArea, true},
-    {"door", CmdDoor, true},
-    {"dock", CmdDock, true},
-    {"station", CmdStation, true},
-    {"heal", CmdHeal, true},
-    {"kill", CmdKill, true},
-    {"damage", CmdDamage, true},
-    {"layer", CmdLayer, true},
-    {"god", CmdGod, true},
-    {"mpforce", CmdMpForce, true},
-    {"freecam", CmdFreeCam, true},
-    {"photo", CmdPhoto, true},
-    {"skipcine", CmdSkipCine, true},
-    {"fastmorph", CmdFastMorph, true},
-    {"boost", CmdBoost, true},
-    {"noise", CmdNoise, true},
-    {"gameevent", CmdGameEvent, true},
-    {"springball", CmdSpringBall, true},
-    {"lockon", CmdLockOn, true},
-    {"sticky", CmdSticky, true},
-    {"pointeraim", CmdPointerAim, true},
-    {"cardbackup", CmdCardBackup, true},
-    {"logfile", CmdLogFile, true},
-    {"livesplit", CmdLiveSplit, true},
-    {"gallery", CmdGallery, true},
-    {"settings", CmdSettings, true},
-    {"gunoffset", CmdGunOffset, true},
-    {"msaa", CmdMsaaAniso, true},
-    {"aniso", CmdMsaaAniso, true},
-    {"hudscale", CmdHudScale, true},
-    {"crosshair", CmdCrosshair, true},
-    {"uiscale", CmdUiScale, true},
-    {"vsync", CmdVsync, true},
-    {"interp", CmdInterp, true},
-    {"aspect", CmdAspect, true},
-    {"objs", CmdObjs, true},
-    {"scaninfo", CmdScanInfo, true},
-    {"orbit", CmdOrbit, true},
-    {"obj", CmdObj, true},
-    {"send", CmdSend, true},
-    {"hurt", CmdHurt, true},
-    {"fsm", CmdFsm, true},
-    {"touch", CmdTouch, true},
-    {"touchact", CmdTouchAct, true},
-    {"pirateattach", CmdPirateAttach, true},
-    {"bodystate", CmdBodyState, true},
-    {"statecall", CmdStateCall, true},
-    {"trigcall", CmdTrigCall, true},
-    {"codecall", CmdCodeCall, true},
-    {"pathfail", CmdPathFail, true},
-    {"setarea", CmdSetArea, true},
-    {"var", CmdVar, true},
-    {"hint", CmdHint, true},
-    {"uevent", CmdUEvent, true},
-    {"frame", CmdFrame, true},
-    {"place", CmdPlace, true},
-    {"spawn", CmdSpawn, true},
-    {"material", CmdMaterial, true},
-    {"shoot", CmdShoot, true},
-    {"struggle", CmdStruggle, true},
-    {"visor", CmdVisor, true},
-    {"beam", CmdBeam, true},
-    {"tp", CmdTp, true},
-    {"ray", CmdRay, true},
-    {"items", CmdItems, true},
-    {"world", CmdWorld, true},
-    {"worlds", CmdWorlds, true},
-    {"strg", CmdStrg, true},
-    {"face", CmdFace, true},
-    {"aim", CmdAim, true},
-    {"give", CmdGiveAdd, true},
-    {"take", CmdGiveTake, true},
-    {"press", CmdPress, true},
-    {"grapple", CmdGrapple, true},
-    {"scan", CmdScan, true},
-    {"covdump", CmdCovdump, true},
-    {"stick", CmdStick, true},
-    {"cstick", CmdCstick, true},
-    {"save", CmdSave, true},
-    {"screenshot", CmdScreenshot, true},
-    {"overlay", CmdOverlay, true},
-    {"state", CmdState, true},
-    {"at", CmdAt, true},
-    {"gpuselftest", CmdGpuSelfTest, true},
+// Every command, with its `help` lines: one table feeds the dispatch and `help`, and
+// tests/port_console_docs.py checks it against docs/CONSOLE.md. A command's first row carries the
+// handler; a row with an empty name is help text only.
+const CommandSpec kCommands[] = {
+    {"status", CmdStatus,
+      "status [--json]            world, area, player position, health, visor, beam, morph state; --json: one line for scripts\n"},
+    {"areas", CmdAreas,
+      "areas                       the current world's area slots (index, MREA id, name if loaded)\n"},
+    {"warp", CmdWarp,
+      "warp <slot|id|name>         load an area of the current world (what MP2_TELEPORT takes)\n"},
+    {"nextarea", CmdNextArea,
+      "nextarea | prevarea         the next or previous existing area of this world\n"},
+    {"prevarea", CmdPrevArea, ""},
+    {"door", CmdDoor,
+      "door | dock | station       stand in front of the nearest door / doorway / save station\n"},
+    {"dock", CmdDock, ""},
+    {"station", CmdStation, ""},
+    {"heal", CmdHeal,
+      "heal | kill [id]            refill energy; kill the player (a respawn test) or an actor\n"},
+    {"kill", CmdKill, ""},
+    {"damage", CmdDamage,
+      "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
+      "                            cannonball, dark, light, annihilator, powerbomb, bomb,\n"
+      "                            boostball, screwattack, darkburst,\n"
+      "                            sunburst, sonicboom, supermissile; kb = knockback power)\n"},
+    {"layer", CmdLayer,
+      "layer <n>                   activate a layer of the current area\n"},
+    {"god", CmdGod,
+      "god <0|1>                   god mode (the F1 cheat)\n"},
+    {"mpforce", CmdMpForce,
+      "mpforce <0|1>               IsMultiplayer reports true (multiplayer-only arms)\n"},
+    {"overlay", CmdOverlay,
+      "overlay <page>[/<sub>]|off  open the F1 window on a page (name prefixes: `overlay video/qual`)\n"},
+    {"gpuselftest", CmdGpuSelfTest,
+      "gpuselftest                 run the GPU self-test next frame; PASS/FAIL lines go to the log\n"},
+    {"state", CmdState,
+      "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"},
+    {"skipcine", CmdSkipCine,
+      "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"},
+    {"gunoffset", CmdGunOffset,
+      "gunoffset [<r> <f> <u>]     arm cannon offset in metres (+-1), as the F1 Render row does\n"},
+    {"msaa", CmdMsaaAniso,
+      "msaa <1|4> | aniso <1..16>  anti-aliasing and anisotropic filtering (applied next frame)\n"},
+    {"aniso", CmdMsaaAniso, ""},
+    {"hudscale", CmdHudScale,
+      "hudscale <50..100>          HUD scale in percent, as the F1 HUD row does\n"},
+    {"crosshair", CmdCrosshair,
+      "crosshair [<25..100>]       aim crosshair size, `style classic|remastered`, opacity,\n"
+      "                            color <r> <g> <b>|clear, aim <0|1> (F1 HUD)\n"},
+    {"uiscale", CmdUiScale,
+      "uiscale <50..200>           the F1 window's size in percent, as the Render row does\n"},
+    {"vsync", CmdVsync,
+      "vsync <0|1>                 vertical sync, as the F1 Render row does\n"},
+    {"interp", CmdInterp,
+      "interp [0|1]                smooth frames: the camera between ticks with the cap off\n"},
+    {"aspect", CmdAspect,
+      "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"},
+    {"boost", CmdBoost,
+      "boost                       boost-ball release on the morphed player\n"},
+    {"noise", CmdNoise,
+      "noise <type> [x y z]        InformListeners at the player (6 = safe-zone noise)\n"},
+    {"gameevent", CmdGameEvent,
+      "gameevent <ev> [src] [tgt] [value] [as <proxyType>]  deliver a game event to every\n"
+      "                            CScriptPlayerProxy listener (ev: score kill generic scan\n"
+      "                            damage stop spawn; value: float for damage, state for generic)\n"},
+    {"fastmorph", CmdFastMorph,
+      "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"},
+    {"springball", CmdSpringBall,
+      "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"},
+    {"lockon", CmdLockOn,
+      "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"},
+    {"sticky", CmdSticky,
+      "sticky <0|1>                sticky charge: a long A hold keeps charging after the release\n"},
+    {"pointeraim", CmdPointerAim,
+      "pointeraim [on|off|<x> <y>] pointer aim (the F1 row), or place its pointer (-1..1)\n"},
+    {"save", CmdSave,
+      "save [info] [<file>]        the card's save slots, or one .gci on disk: world, items, time\n"},
+    {"cardbackup", CmdCardBackup,
+      "cardbackup <0|1>            back the card up before each write (the F1 Saves row)\n"},
+    {"settings", CmdSettings,
+      "settings [<key> <value>|self-test]  settings.cfg's entries; set one (and save), or check every key round-trips\n"},
+    {"logfile", CmdLogFile,
+      "logfile <0|1>               stdout and stderr also go to metroid_prime2_port.log (next launch)\n"},
+    {"objs", CmdObjs,
+      "objs [filter]               objects of the world: uid, editor id, class, area, position\n"},
+    {"obj", CmdObj,
+      "obj <id>                    one object (an id as `objs` prints it: u046e, or e<editor id>): health, fsm, messages\n"},
+    {"send", CmdSend,
+      "send <id> <msg> [from <id>] deliver a script message to an object (name or number), from a sender\n"},
+    {"covdump", CmdCovdump,
+      "covdump                     coverage build: write the gcov counters now (and zero them)\n"},
+    {"hurt", CmdHurt,
+      "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"},
+    {"frame", CmdFrame,
+      "frame                       the game updates run so far (what MP2_FRAMES counts)\n"},
+    {"fsm", CmdFsm,
+      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2\n"
+      "                              sub-machines too; an unknown name lists the valid ones)\n"},
+    {"bodystate", CmdBodyState,
+      "bodystate <id> <n>          set a patterned actor's body state (the pas::EAnimationState index)\n"},
+    {"statecall", CmdStateCall,
+      "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"},
+    {"codecall", CmdCodeCall,
+      "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"},
+    {"pathfail", CmdPathFail,
+      "pathfail <id> on|off        the actor's path search fails (Search, FindClosestReachablePoint)\n"},
+    {"setarea", CmdSetArea,
+      "setarea <id> <area>         set an entity's current area id (put it back after; obj shows it; loaded areas only)\n"},
+    {"var", CmdVar,
+      "var <id> <name> [value]     a module field a port registered (dghd.attack, dghd.flags, dghd.sweeptime); var player spawnmorph [n]\n"},
+    {"scaninfo", CmdScanInfo,
+      "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"},
+    {"orbit", CmdOrbit,
+      "orbit [id]                  lock-on state; with id: orbit position, ValidateOrbitTargetId\n"},
+    {"hint", CmdHint,
+      "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"},
+    {"place", CmdPlace,
+      "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"},
+    {"spawn", CmdSpawn,
+      "spawn <fourcc> [n] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [model <id>|u<id>] [inactive] [prop <pid> <v>]  create script objects via their loader\n"
+      "                            [rules <id>] knockback RULE (patterned default 393ca543; ffffffff = none)\n"
+      "                            [conn <state> <msg> <id>] add a script connection (names as obj prints them)\n"
+      "                            [wpsc <id>] projectile WPSC (CHOG's two; else prop ef485db9; CHOG default 681f3907)\n"},
+    {"touch", CmdTouch,
+      "touch <mover id> <other id>  call the mover's CollidedWith with the other actor's material\n"
+      "                           list, the way the collision code does (no real collision needed)\n"},
+    {"pirateattach", CmdPirateAttach,
+      "pirateattach <pirate> <id>|-  AttachActorToPirate(id) (- : DetachActorFromPirate) through the\n"
+      "                           module's table, as a Metroid latching on does (coverage)\n"},
+    {"material", CmdMaterial,
+      "material <id> [+|-]<m> ...  show or add/remove an actor's materials (name w/o kMT_, or bit; -solid)\n"
+      "                           with x y z the yaw (and pitch, roll) in degrees may follow\n"},
+    {"shoot", CmdShoot,
+      "shoot <id> [charged|missile] [d] [dir x y z]  fire the beam in hand (or a real player\n"
+      "                            missile) at an actor from d (3) units; travelling along dir\n"
+      "                            (default from the player): a real projectile\n"},
+    {"struggle", CmdStruggle,
+      "struggle <0..1>|off         hold the player's attached-actor struggle (1 wakes a grabber's\n"
+      "                            dizzy gore; the game only grows it from held turn/jump buttons)\n"},
+    {"visor", CmdVisor,
+      "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"},
+    {"beam", CmdBeam,
+      "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"},
+    {"tp", CmdTp,
+      "tp <x> <y> <z>              teleport the player, keeping its facing\n"},
+    {"ray", CmdRay,
+      "ray <x> <y> <z> [len] [dx dy dz]  static and render surfaces (beam stops/passes) and the world hit along the ray (default: down)\n"},
+    {"face", CmdFace,
+      "face <yaw deg>              turn the player where it stands (0 = +y, 90 = +x)\n"},
+    {"aim", CmdAim,
+      "aim <yaw> <pitch>          point the view outright, in degrees; negative pitch looks down\n"},
+    {"items", CmdItems,
+      "items                       power-up amounts and capacities\n"},
+    {"world", CmdWorld,
+      "world <world> [area]        load another world (the MP1 console's `warp <world>`)\n"},
+    {"worlds", CmdWorlds,
+      "worlds                      the memory card's world ids, areas and name tables\n"},
+    {"strg", CmdStrg,
+      "strg <id|name> [index]      a string table as the game loads it\n"},
+    {"give", CmdGiveAdd,
+      "give <item> [n] | take      add an item (capacity and amount), or remove capacity\n"},
+    {"take", CmdGiveTake, ""},
+    {"press", CmdPress,
+      "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"},
+    {"grapple", CmdGrapple,
+      "grapple <id> [d]            wake a grapple point, stand d (8) units from it facing it, hold L\n"},
+    {"scan", CmdScan,
+      "scan <id> [d] [updates]     scan an actor: d (40) units away, orbit locked, L held (alone: progress)\n"},
+    {"stick", CmdStick,
+      "stick <x> <y> [updates]     hold the main stick, -127..127\n"},
+    {"cstick", CmdCstick,
+      "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"},
+    {"screenshot", CmdScreenshot,
+      "screenshot                  the F12 capture; the log names the file it wrote\n"},
+    {"at", CmdAt,
+      "at <update> <command>       run one command on that game update (`frame`), not on arrival,\n"
+      "                            so runs at different speeds act on the same tick\n"},
+    {"gallery", CmdGallery,
+      "gallery [mask]              the slideshow gallery unlock mask (0..63): print, or set via PercentScans/mode flags\n"},
+    {"help", CmdHelp,
+      "help                        this list\n"},
+    {"freecam", CmdFreeCam,
+      "freecam [0|1]              free camera (photo mode); no argument toggles it\n"},
+    {"photo", CmdPhoto,
+      "photo [1|2|4]              save a PNG from the free camera, supersampled by the factor\n"},
+    {"livesplit", CmdLiveSplit,
+      "livesplit [0|1|addr <host:port>|send <line>]  the LiveSplit link (the F1 setting); no argument: status\n"},
+    {"touchact", CmdTouchAct,
+      "touchact <actor id> <other id>  run an actor's touch handler for the other actor (coverage)\n"},
+    {"trigcall", CmdTrigCall,
+      "trigcall <id> <trigger name> [arg]  run one named trigger function of an actor once\n"},
+    {"uevent", CmdUEvent,
+      "uevent <id> <type> [dt]     call an actor's user-event handler with an event type (coverage)\n"},
+    {"title", CmdTitle,
+      "title                      quit to the title: the game restarts as after the pause menu's Quit\n"},
+    {"window", CmdWindow,
+      "window [<width> <height>]  the window size in pixels; with two numbers, leave fullscreen and resize\n"},
+    {"", nullptr,
+      "save export [<path>]        write the card's save file out (default: save-backups/)\n"},
+    {"", nullptr,
+      "save import <path|latest>   put a .gci back on the card; the file it replaces is kept\n"},
+    {"", nullptr,
+      "save backup | backups       copy the card now, or list the copies in save-backups\n"},
+    {"", nullptr,
+      "a; b; c                     run several commands in the same game tick (one reply each)\n"},
 };
+
+void CmdHelp(CStateManager&, const Args&, std::string& out) {
+  for (const CommandSpec& command : kCommands) {
+    out += command.help;
+  }
+}
 
 void Execute(CStateManager& mgr, const std::string& line, std::string& out) {
   const Args args = Split(line);
@@ -4151,8 +4259,8 @@ void Execute(CStateManager& mgr, const std::string& line, std::string& out) {
     out += "=> err: empty command (try `help`)\n";
     return;
   }
-  for (const SCommand& command : kCommands) {
-    if (command.name.size() != args[0].size() ||
+  for (const CommandSpec& command : kCommands) {
+    if (command.run == nullptr || command.name.size() != args[0].size() ||
         std::memcmp(command.name.data(), args[0].data(), args[0].size()) != 0) {
       continue;
     }
