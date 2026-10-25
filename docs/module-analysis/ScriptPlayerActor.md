@@ -97,3 +97,17 @@ Per-call cycling forcers (this/mgr captured at entry; no register restore). Runs
 | C30 PreRender | 18/21, unmarked | 530:4/9, 535:3 not reached; `loc:530` writes land after the test (crash at 535 with a null shadow) |
 | 2630 Think | 63/67, unmarked | 200:3, 221:8/10, 227:4 not reached |
 | 2E3C dtor | 29 deletes, unmarked | all but the `mBackupModelData` live arm ran; that arm needs a delete within 2 PreRenders of `SetupOfflineModelData` (`.cpp:369`, countdown at 522-526); 368:1 is itself untaken |
+
+## 8. spa3 slice 2 (2026-10-25): the five open rows closed
+
+Merged evidence: frozen cov binary sha256 `c40ad8cb…6fbaf`; gcda, logs and merged report under `/tmp/opencode/spa3-ev/` (runs f3, f5..f12 plus natural a..j). Spec `tools/cov/specs/spa3_force.py`; drivers `spa3_templedark.con`, `spa3_backup_delete.con` (`spa3_hive_shadow.con` is a failed attempt: no shadow plus live grapple; kept for the record).
+
+| fn | merged result | how the last arms closed |
+|---|---|---|
+| 970 SetIntoStateManager | 22/22, 18/18, marked | `sia_not_player`: clears `mIsPlayerActor` on another chain actor at the `actor->mIsPlayerActor` read (580:2) |
+| AB8 SetupEnvFx | 12/12, 17/17, marked | rain arm: producer forced; no-shadow via mFlags 0x20 |
+| C30 PreRender | 13/13, 21/21, marked | 535:3 `HasGrappleModelData() ? 3 : 2`: no run loads a grapple model (the ctor builds CStaticRes beam/grapple data), so `grapple_alias` at `f7cddd` makes the load return the beam pointer and `alias_count` sets the count register. A forced alias, not a natural state |
+| 2630 Think | 45/45, 67/67, marked | per-call forcers at the model-loaded tests (219/224/225), cinematic camera, loading blocks |
+| 2E3C dtor | 100% blocks, marked | `mBackupModelData` live arm: `SPA3_ONLY=offl` forces `SetupOfflineModelData`'s IsMaxSpeed test (`*SetupOfflineModelData+0xbe`, `je f7a0b8`) false and holds the countdown (`movl $2,0x4c8` at f7a10e) ; `spa3_backup_delete.con` deletes the actor. `SPA3_MAXSPEED=1` run covers the skip arm |
+
+`single_ptr<CProjectedShadow>` (dtor 2E3C): retail asm (`ScriptPlayerActor/asm/.../CScriptPlayerActor.s:3414`) calls `__dt__16CProjectedShadowFv(*0x3f4, r4=1)` with no caller null check; host `~single_ptr(){delete mPtr;}` (`rstl/single_ptr.hpp:15`) is a null-safe deleting dtor. Equivalent. The optional at 0x3e4 guarded by byte 0x3f0 is `mBackupModelData`; tokens at 0x3e0/0x3dc/0x3d8 follow. No source change.

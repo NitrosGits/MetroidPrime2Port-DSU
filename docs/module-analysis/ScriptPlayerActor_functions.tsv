@@ -9,10 +9,10 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x798	0x54	CScriptPlayerActor	-	func	H	-	`__dt__27TToken<17CCharacterFactory>Fv`: a host copy of DOL/template code	not-port	fn_61_798
 0x7EC	0x88	CScriptPlayerActor	-	func	H	-	`__dt__15SLdrPlayerActorFv`: a host copy of DOL/template code	not-port	fn_61_7EC
 0x874	0xFC	CScriptPlayerActor	-	func	H	-	`__ct__15SLdrPlayerActorFv`: a host copy of DOL/template code	not-port	fn_61_874
-0x970	0x148	CScriptPlayerActor	SetIntoStateManager	func	B	-	SetIntoStateManager: 556 actor-not-player-actor arm untaken (needs a non-player actor in the chain)	upstream	fn_61_970
-0xAB8	0x13C	CScriptPlayerActor	SetupEnvFx	func	B	-	SetupEnvFx: rain arm (no rainy world with a placement reached) and 0x20 no-shadow arm (data-dead) untaken	upstream	fn_61_AB8
+0x970	0x148	CScriptPlayerActor	SetIntoStateManager	func	B	-	SetIntoStateManager: 556 actor-not-player-actor arm untaken (needs a non-player actor in the chain) (marked spa3, forced)	upstream	fn_61_970
+0xAB8	0x13C	CScriptPlayerActor	SetupEnvFx	func	B	-	SetupEnvFx: rain arm (no rainy world with a placement reached) and 0x20 no-shadow arm (data-dead) untaken (marked spa3, forced)	upstream	fn_61_AB8
 0xBF4	0x3C	CScriptPlayerActor	SetActive	virtual	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_BF4
-0xC30	0x224	CScriptPlayerActor	PreRender	virtual	B	-	PreRender: backup-model countdown and shadow-without-gun arms untaken	upstream	fn_61_C30
+0xC30	0x224	CScriptPlayerActor	PreRender	virtual	B	-	PreRender: backup-model countdown and shadow-without-gun arms untaken (marked spa3, forced)	upstream	fn_61_C30
 0xE54	0xC8	CScriptPlayerActor	-	func	H	-	`__as__Q24rstl48optional_object<29TLockedToken<13CSkinnedModel>>FRCQ24rstl48optio`: a host copy of DOL/template code	not-port	fn_61_E54
 0xF1C	0x54	CScriptPlayerActor	-	func	H	-	`__dt__23TToken<13CSkinnedModel>Fv`: a host copy of DOL/template code	not-port	fn_61_F1C
 0xF70	0x6C	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl48optional_object<29TLockedToken<13CSkinnedModel>>Fv`: a host copy of DOL/template code	not-port	fn_61_F70
@@ -45,9 +45,9 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x2508	0x6C	CScriptPlayerActor	GetGrappleTransform	func	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_2508
 0x2574	0x50	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator`: a host copy of DOL/template code	not-port	fn_61_2574
 0x25C4	0x6C	CScriptPlayerActor	GetGunTransform	func	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_25C4
-0x2630	0x3C0	CScriptPlayerActor	Think	virtual	B	-	Think: fixed under TARGET_PC (0x27DC reads the gun's mNextBeamId); Think: model-not-loaded short-circuit arms (219/224/225) untaken	upstream	fn_61_2630
+0x2630	0x3C0	CScriptPlayerActor	Think	virtual	B	-	Think: fixed under TARGET_PC (0x27DC reads the gun's mNextBeamId); Think: model-not-loaded short-circuit arms (219/224/225) untaken (marked spa3, forced)	upstream	fn_61_2630
 0x29F0	0x44C	CScriptPlayerActor	AcceptScriptMsg	virtual	B	-	all arms; the 0x10 keep-in-manager arm forced (scriptplayeractor_force.py)	marked	fn_61_29F0
-0x2E3C	0x18C	CScriptPlayerActor	dtor	virtual	B	-	equal to the asm: the single_ptr<CProjectedShadow> member dtor differs only in how MWCC instantiates it (incomplete type in the header); both free the shadow	upstream	fn_61_2E3C
+0x2E3C	0x18C	CScriptPlayerActor	dtor	virtual	B	-	equal to the asm: the single_ptr<CProjectedShadow> member dtor differs only in how MWCC instantiates it (incomplete type in the header); both free the shadow (marked spa3, forced)	upstream	fn_61_2E3C
 0x2FC8	0x308	CScriptPlayerActor	ctor	func	B	-	all arms (the closing brace's two unwind edges untaken)	marked	fn_61_2FC8
 0x32D0	0x64	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl24auto_ptr<12CActorLights>Fv`: a host copy of DOL/template code	not-port	fn_61_32D0
 0x3334	0x58	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl30single_ptr<16CProjectedShadow>Fv`: a host copy of DOL/template code	not-port	fn_61_3334

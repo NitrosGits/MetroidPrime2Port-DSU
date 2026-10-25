@@ -28,6 +28,7 @@ public:
                      CPlayerState::EBeamId beam, bool usePlayerBeamModel);
 
   // CEntity
+  // @ fn_61_2E3C forced (SPA3_ONLY=offl tools/cov/force.sh tools/cov/specs/spa3_force.py spa3_backup_delete.con; SPA3_MAXSPEED=1 run for the skip arm)
   ~CScriptPlayerActor() override {}
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
