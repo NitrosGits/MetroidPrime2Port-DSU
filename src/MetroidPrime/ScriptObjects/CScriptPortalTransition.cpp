@@ -375,8 +375,13 @@ void CPortalTransition::Draw() const {
   const float zfar = CCameraManager::GetDefaultFirstPersonFarClipDistance();
 #ifdef TARGET_PC
   // Port: the authored 4:3 aspect stretched the warp on a wider framebuffer; widen it (Hor+,
-  // like the game camera) so the vertical framing stays retail's.
-  gpRender->SetPerspective(fov * 0.7f, 1.42f * PortOverlay::AspectWiden(), znear, zfar);
+  // like the game camera) so the vertical framing stays retail's; below 4:3 keep its width (Vert+).
+  const CViewport& viewport = CGraphics::GetViewport();
+  const float viewportAspect = viewport.mHeight > 0 ? static_cast< float >(viewport.mWidth) /
+                                                         static_cast< float >(viewport.mHeight)
+                                                   : 0.f;
+  gpRender->SetPerspective(PortOverlay::VertPlusFov(fov * 0.7f, viewportAspect),
+                           1.42f * PortOverlay::AspectWiden(), znear, zfar);
 #else
   gpRender->SetPerspective(fov * 0.7f, 1.42f, znear, zfar);
 #endif

@@ -538,12 +538,23 @@ void CWorldTransManager::DrawAllModels() const {
   }
 }
 
+#ifdef TARGET_PC
+static float PortViewportAspect() {
+  const CViewport& viewport = CGraphics::GetViewport();
+  return viewport.mHeight > 0
+             ? static_cast< float >(viewport.mWidth) / static_cast< float >(viewport.mHeight)
+             : 0.f;
+}
+#endif
+
 void CWorldTransManager::DrawFirstPass() const {
   const float fov = GetCameraFov(0);
   const float nearClip = CCameraManager::GetDefaultFirstPersonNearClipDistance();
 #ifdef TARGET_PC
-  // Port: widen the authored 4:3 aspect on a wider framebuffer (Hor+), or the transition stretches.
-  gpRender->SetPerspective(0.7f * fov, 1.42f * PortOverlay::AspectWiden(), nearClip,
+  // Port (MP1 7a7aadd8c): widen the authored 4:3 aspect on a wider framebuffer (Hor+), or the
+  // transition stretches; below 4:3 keep its width (Vert+).
+  gpRender->SetPerspective(PortOverlay::VertPlusFov(0.7f * fov, PortViewportAspect()),
+                           1.42f * PortOverlay::AspectWiden(), nearClip,
                            CCameraManager::GetDefaultFirstPersonFarClipDistance());
 #else
   gpRender->SetPerspective(0.7f * fov, 1.42f, nearClip,
@@ -557,8 +568,10 @@ void CWorldTransManager::DrawSecondPass() const {
   const float fov = GetCameraFov(1);
   const float nearClip = CCameraManager::GetDefaultFirstPersonNearClipDistance();
 #ifdef TARGET_PC
-  // Port: widen the authored 4:3 aspect on a wider framebuffer (Hor+), or the transition stretches.
-  gpRender->SetPerspective(0.7f * fov, 1.42f * PortOverlay::AspectWiden(), nearClip,
+  // Port (MP1 7a7aadd8c): widen the authored 4:3 aspect on a wider framebuffer (Hor+), or the
+  // transition stretches; below 4:3 keep its width (Vert+).
+  gpRender->SetPerspective(PortOverlay::VertPlusFov(0.7f * fov, PortViewportAspect()),
+                           1.42f * PortOverlay::AspectWiden(), nearClip,
                            CCameraManager::GetDefaultFirstPersonFarClipDistance());
 #else
   gpRender->SetPerspective(0.7f * fov, 1.42f, nearClip,
