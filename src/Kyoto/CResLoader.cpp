@@ -196,8 +196,8 @@ void CResLoader::PortReopenPaks(void (*between)()) {
   }
   mCurPak = mPakLoadedList.end();
 }
-#endif
 
+#endif
 void CResLoader::ClearCache() {
   mCurPak = mPakLoadedList.end();
   mCachedResId = kInvalidAssetId;
