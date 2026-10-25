@@ -46,6 +46,8 @@ bool TakeClickOn(const CGuiWidget* widget);
 bool TakeClick();
 // The pending left click or tap in EFB pixels, taken; count is 2 for a double.
 bool TakeClickPoint(float& gx, float& gy, int& count);
+// The pending left click in EFB pixels, left for whoever hits with it.
+bool PeekClickPoint(float& gx, float& gy);
 // A right click (or scripted back), taken.
 bool TakeBack();
 

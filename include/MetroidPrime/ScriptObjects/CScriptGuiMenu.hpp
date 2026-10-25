@@ -18,6 +18,9 @@ public:
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
 
   // Guessed names.
+#ifdef TARGET_PC
+  void PortPointerInput(CStateManager& mgr);
+#endif
   bool ProcessMenuInput(const CFinalInput& input, CStateManager& mgr);
   bool IsItemLocked(int idx, CStateManager& mgr) const;
   void UpdateItemStates(CStateManager& mgr, EScriptObjectMessage msg);
