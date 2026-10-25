@@ -9,10 +9,30 @@
 namespace port {
 namespace entry {
 
-bool IsSupportedDisc(const DVDDiskID& id) {
-  return std::memcmp(id.gameName, "G2ME", 4) == 0 && std::memcmp(id.company, "01", 2) == 0 &&
-         id.diskNumber == 0 && id.gameVersion == 0;
+DiscVersion IdentifyDisc(const DVDDiskID& id) {
+  if (std::memcmp(id.company, "01", 2) != 0 || id.diskNumber != 0 || id.gameVersion != 0) {
+    return DiscVersion::Unknown;
+  }
+  if (std::memcmp(id.gameName, "G2ME", 4) == 0) {
+    return DiscVersion::Usa100;
+  }
+  if (std::memcmp(id.gameName, "G2MP", 4) == 0) {
+    return DiscVersion::Pal;
+  }
+  return DiscVersion::Unknown;
 }
+
+bool IsSupportedDisc(const DVDDiskID& id) { return IdentifyDisc(id) != DiscVersion::Unknown; }
+
+const char* DiscVersionName(DiscVersion version) {
+  switch (version) {
+  case DiscVersion::Usa100: return "USA 1.00";
+  case DiscVersion::Pal: return "PAL";
+  default: return "unknown";
+  }
+}
+
+const char* DiscGameCode(DiscVersion version) { return version == DiscVersion::Pal ? "G2MP" : "G2ME"; }
 
 bool IsDiscImageName(const std::string& name) {
   std::string lower = name;

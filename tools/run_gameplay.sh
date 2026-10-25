@@ -47,7 +47,7 @@ if [ -z "$USERDIR" ] || [ ! -d "$USERDIR" ]; then
   echo "[tools] USERDIR must name a directory that holds the memory card (see platform/README.md)" >&2
   exit 2
 fi
-[ -d "$USERDIR/USA" ] || echo "[tools] warning: $USERDIR has no USA/ - the run may fall back to the front end" >&2
+[ -d "$USERDIR/USA" ] || [ -d "$USERDIR/EUR" ] || [ -n "${MP2_NEW_GAME:-}" ] || echo "[tools] warning: $USERDIR has no USA/ or EUR/ card (and MP2_NEW_GAME is unset) - the run may fall back to the front end" >&2
 [ -f "$DISC" ] || echo "[tools] warning: the disc image $DISC does not exist (set MP2_DISC)" >&2
 if [ -n "$INPUT_FILE" ] && [ ! -f "$INPUT_FILE" ]; then
   echo "[tools] INPUT_FILE=$INPUT_FILE does not exist" >&2

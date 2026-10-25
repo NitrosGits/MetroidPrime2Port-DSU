@@ -1,5 +1,6 @@
 // Port-only: the front-end skip. `MP2_SKIP_FRONTEND=1` boots straight into the memory card's save
-// instead of playing the front end's menu, `MP2_SLOT=<0|1|2>` picks the slot (default 0).
+// instead of playing the front end's menu, `MP2_SLOT=<0|1|2>` picks the slot (default 0), and
+// `MP2_NEW_GAME=1` starts a new game when that slot (or the whole card) is empty.
 //
 // **Why the card has to be driven by hand.** The world tables the game needs at boot come from the
 // *disc* - the port's `CMemoryCard` is built from the resource factory's MLVL list, which is why
@@ -60,6 +61,9 @@ enum EPhase {
 bool sReadEnv = false;
 bool sArmed = false;
 bool sSlotGiven = false;
+// MP2_NEW_GAME=1: an empty slot, or a card with no save file at all, starts a new game in that slot
+// instead of giving up - what the file select's new file does, minus its write to the card.
+bool sNewGame = false;
 // The splash dismissal: every window it has removed, and how many calls since the last one found
 // any. The chain is done once it has been quiet for kSplashQuietCalls calls after a removal.
 int sSplashRemoved = 0;
@@ -102,6 +106,8 @@ void ReadEnvOnce() {
       sSlotGiven = true;
     }
   }
+  const char* newGame = std::getenv("MP2_NEW_GAME");
+  sNewGame = newGame != nullptr && newGame[0] != '\0' && newGame[0] != '0';
   fprintf(stderr, "[skip] MP2_SKIP_FRONTEND=%s: the front end is skipped, save slot %d (%.1f s)\n",
           value, sSlot, PortHarness::Seconds());
 }
@@ -213,7 +219,10 @@ void TakeSlot() {
   }
 
   const CGameState::GameFileStateInfo* info = sDriver->GetGameFileStateInfo(sSlot);
-  if (info == nullptr) {
+  if (info == nullptr && sNewGame) {
+    fprintf(stderr, "[skip] slot %d is empty: starting a new game (MP2_NEW_GAME; nothing is written to "
+                    "the card)\n", sSlot);
+  } else if (info == nullptr) {
     char why[96];
     snprintf(why, sizeof why, "slot %d is empty, so there is no save to boot", sSlot);
     GiveUp(why); // releases the driver, so every failure path releases it exactly once
@@ -275,6 +284,17 @@ bool Pump() {
     // The file is read, its signature checked and its slots parsed (ReadFinished). TakeSlot fills
     // gpGameState from the slot and releases the driver, so nothing below may touch sDriver again.
     TakeSlot();
+    break;
+  case kS_FileBad:
+    // No save file on the card: with MP2_NEW_GAME the slots are all empty and the driver's system
+    // data holds its defaults, which is exactly the state a new file starts from.
+    if (sNewGame && sDriver->GetError() == CMemoryCardDriver::kE_FileMissing) {
+      TakeSlot();
+    } else {
+      char why[96];
+      snprintf(why, sizeof why, "the card's save file is unusable (error %d)", int(sDriver->GetError()));
+      GiveUp(why);
+    }
     break;
   case kS_CardProbe:
   case kS_CardMount:

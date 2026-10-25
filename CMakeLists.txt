@@ -323,6 +323,7 @@ endfunction()
 # platform/README.md.
 add_library(mp_platform OBJECT
     platform/entry.cpp
+    platform/port_disc_version.cpp
     platform/compiled_modules.cpp
     platform/rel.cpp
     platform/shims.cpp

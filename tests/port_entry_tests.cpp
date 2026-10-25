@@ -11,6 +11,9 @@
 #include <vector>
 
 namespace {
+using port::entry::DiscGameCode;
+using port::entry::DiscVersion;
+using port::entry::IdentifyDisc;
 using port::entry::IsDiscImageName;
 using port::entry::IsSupportedDisc;
 using port::entry::ResolveDiscPath;
@@ -48,7 +51,12 @@ void TestSupportedDisc() {
   Check(!IsSupportedDisc(MakeDiscId("G2ME", "01", 0, 1)), "a later revision is rejected");
   Check(!IsSupportedDisc(MakeDiscId("G2ME", "01", 1, 0)), "disc 2 is rejected");
   Check(!IsSupportedDisc(MakeDiscId("G2MJ", "01", 0, 0)), "the Japanese disc is rejected");
-  Check(!IsSupportedDisc(MakeDiscId("G2MP", "01", 0, 0)), "the PAL disc is rejected");
+  Check(IsSupportedDisc(MakeDiscId("G2MP", "01", 0, 0)), "the PAL disc is supported");
+  Check(!IsSupportedDisc(MakeDiscId("G2MP", "01", 0, 1)), "a later PAL revision is rejected");
+  Check(IdentifyDisc(MakeDiscId("G2ME", "01", 0, 0)) == DiscVersion::Usa100, "G2ME01 is USA 1.00");
+  Check(IdentifyDisc(MakeDiscId("G2MP", "01", 0, 0)) == DiscVersion::Pal, "G2MP01 is PAL");
+  Check(std::string(DiscGameCode(DiscVersion::Pal)) == "G2MP", "PAL saves under G2MP");
+  Check(std::string(DiscGameCode(DiscVersion::Unknown)) == "G2ME", "unknown saves under G2ME");
   Check(!IsSupportedDisc(MakeDiscId("G2ME", "08", 0, 0)), "a third-party publisher is rejected");
   Check(!IsSupportedDisc(MakeDiscId("R3ME", "01", 0, 0)), "the Trilogy disc is rejected");
 }

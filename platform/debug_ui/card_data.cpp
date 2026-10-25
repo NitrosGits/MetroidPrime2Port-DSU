@@ -1,10 +1,11 @@
 // F1 overlay: System > Memory card import/export and System > Data folder. The Prime 1 port's
 // debug_ui/file_dialogs.cpp card section and data folder panel, on MP2's own card tools
-// (PortSave: one 01-G2ME-*.gci per card, no region conversion) and without MP1's Wii Trilogy
+// (PortSave: one 01-G2ME-*.gci, or 01-G2MP-*.gci on PAL, per card, no region conversion) and without MP1's Wii Trilogy
 // save.bin and raw-image Dolphin cards, which MP2 has no counterpart for. The file dialogs answer
 // on another thread, so a pick waits in sPicks until the next frame.
 #include "debug_ui_internal.h"
 
+#include "port_entry.h"
 #include "port_save.h"
 
 #include <SDL3/SDL.h>
@@ -56,8 +57,14 @@ void OpenDialog(Pick pick) {
   }
 }
 
-// Dolphin's (or PrimeHack's) GCI-folder card A for the USA release, where this machine has one.
-// The roots are the usual user folders; the card folder is <root>/GC/USA/Card A.
+// Dolphin's region folder for the mounted disc's card, as Aurora picks its own.
+const char* DolphinRegion() {
+  return port::entry::CurrentDiscVersion() == port::entry::DiscVersion::Pal ? "EUR" : "USA";
+}
+
+// Dolphin's (or PrimeHack's) GCI-folder card A for the mounted disc's release, where this machine
+// has one. The roots are the usual user folders; the card folder is <root>/GC/USA/Card A (G2ME) or
+// <root>/GC/EUR/Card A (G2MP).
 fs::path DolphinCardFolder() {
   std::vector< fs::path > roots;
   const char* home = std::getenv("HOME");
@@ -78,7 +85,7 @@ fs::path DolphinCardFolder() {
   }
   for (const fs::path& root : roots) {
     std::error_code ec;
-    const fs::path card = root / "GC" / "USA" / "Card A";
+    const fs::path card = root / "GC" / DolphinRegion() / "Card A";
     if (fs::is_directory(card, ec)) {
       return card;
     }
@@ -86,13 +93,14 @@ fs::path DolphinCardFolder() {
   return {};
 }
 
-// Dolphin's card files for this game, newest last: 01-G2ME-*.gci.
+// Dolphin's card files for the mounted release, newest last: 01-G2ME-*.gci (01-G2MP-*.gci on PAL).
 std::vector< fs::path > DolphinSaves(const fs::path& card) {
   std::vector< fs::path > out;
+  const std::string prefix = std::string("01-") + port::entry::CurrentGameCode() + "-";
   std::error_code ec;
   for (const fs::directory_entry& entry : fs::directory_iterator(card, ec)) {
     const std::string name = entry.path().filename().string();
-    if (entry.is_regular_file(ec) && name.rfind("01-G2ME-", 0) == 0 && entry.path().extension() == ".gci") {
+    if (entry.is_regular_file(ec) && name.rfind(prefix, 0) == 0 && entry.path().extension() == ".gci") {
       out.push_back(entry.path());
     }
   }
@@ -166,8 +174,10 @@ void DrawCardTransfer() {
     }
   }
   ImGui::EndDisabled();
-  ItemHelp(dolphin.empty() ? "No Dolphin card folder (GC/USA/Card A) was found in the usual user folders."
-                           : "Imports the newest save in Dolphin's USA card folder.");
+  ItemHelp(dolphin.empty() ? (std::string("No Dolphin card folder (GC/") + DolphinRegion() +
+                            "/Card A) was found in the usual user folders.").c_str()
+                         : (std::string("Imports the newest save in Dolphin's ") + DolphinRegion() +
+                            " card folder.").c_str());
   ImGui::EndDisabled();
   ImGui::BeginDisabled(sDialogOpen || saves == 0);
   if (ImGui::Button("Export to folder...")) {

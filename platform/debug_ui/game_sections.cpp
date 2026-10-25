@@ -552,7 +552,7 @@ void DrawDiscImageSection() {
     break;
   case State::Done:
     if (r.Ok()) {
-      ImGui::TextWrapped("This disc image is complete and unaltered (G2ME01, %s).",
+      ImGui::TextWrapped("This disc image is complete and unaltered (%s).",
                          r.revision.c_str());
       ImGui::TextDisabled("SHA-1 %s", r.sha1.c_str());
     } else if (!r.known) {

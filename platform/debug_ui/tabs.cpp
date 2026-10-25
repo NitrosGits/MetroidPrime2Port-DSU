@@ -77,7 +77,7 @@ void DrawSystemTab() {
   DrawDiscordSection();
   DrawLogSection();
   ImGui::SeparatorText("About");
-  ImGui::TextDisabled("Metroid Prime 2: Echoes native port (G2ME01)");
+  ImGui::TextDisabled("Metroid Prime 2: Echoes native port (USA 1.00 code; G2ME01, PAL G2MP01)");
   ImGui::TextDisabled("Aurora (SDL3 / WebGPU), Dear ImGui");
 }
 

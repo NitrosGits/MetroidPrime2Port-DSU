@@ -11,9 +11,20 @@
 namespace port {
 namespace entry {
 
-// The disc this port is built for: Metroid Prime 2: Echoes, USA v1.00
-// (`G2ME01`), disc 0, revision 0 - the version the decompilation targets.
+// The discs the port runs: Metroid Prime 2: Echoes, disc 0, revision 0, either USA v1.00
+// (`G2ME01`, the version the decompilation targets) or PAL (`G2MP01`, experimental). The code
+// is always 1.00's; a PAL disc only supplies its own data (docs/PAL.md).
+enum class DiscVersion { Unknown, Usa100, Pal };
+DiscVersion IdentifyDisc(const DVDDiskID& id);
 bool IsSupportedDisc(const DVDDiskID& id);
+// "USA 1.00", "PAL" or "unknown".
+const char* DiscVersionName(DiscVersion version);
+// The disc's four-letter game code, which also names its memory card ("G2ME" -> USA, "G2MP" -> EUR).
+const char* DiscGameCode(DiscVersion version);
+
+// The mounted disc's version (Unknown before a disc is mounted) and its game code (G2ME when unknown).
+DiscVersion CurrentDiscVersion();
+const char* CurrentGameCode();
 
 // Disc-image file names the port will pick up beside the executable.
 bool IsDiscImageName(const std::string& name);

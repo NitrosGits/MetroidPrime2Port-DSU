@@ -84,7 +84,7 @@ if [ -z "$USERDIR" ] || [ ! -d "$USERDIR" ]; then
   echo "[sweep] USERDIR must name a directory that holds the memory card" >&2
   exit 2
 fi
-[ -d "$USERDIR/USA" ] || echo "[sweep] warning: $USERDIR has no USA/ - a run would fall back to the front end" >&2
+[ -d "$USERDIR/USA" ] || [ -d "$USERDIR/EUR" ] || [ -n "${MP2_NEW_GAME:-}" ] || echo "[sweep] warning: $USERDIR has no USA/ or EUR/ card (and MP2_NEW_GAME is unset) - a run would fall back to the front end" >&2
 command -v python3 >/dev/null || { echo "[sweep] python3 is needed for the slice arithmetic" >&2; exit 2; }
 mkdir -p "$LOGDIR"
 # A fresh full sweep starts a fresh manifest; a single shard must not wipe its siblings' lines.

@@ -4,7 +4,7 @@
 // known dump of its revision, a MiB at a time, so a damaged copy (zeros in the middle of a PAK,
 // an interrupted download) is found, named by the files over the bad MiB, and reported in the
 // log. The revision table (platform/port_disc_verify_table.inc) is built by
-// tools/disc_chunk_table.py from an owned G2ME01 image.
+// tools/disc_chunk_table.py from owned G2ME01 and G2MP01 images.
 //
 // This port reads plain images (.iso/.gcm) only: the mount accepts a container, but a container
 // hides the disc behind a compressed stream, so the check says so instead of guessing.

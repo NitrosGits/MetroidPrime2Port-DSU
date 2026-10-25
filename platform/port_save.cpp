@@ -1,5 +1,6 @@
 #include "port_save.h"
 
+#include "port_entry.h"
 #include "port_overlay.h"
 
 #include "Kyoto/CCrc32.hpp"
@@ -18,11 +19,11 @@ namespace PortSave {
 
 namespace {
 
-// The card the port mounts: CMemoryCardSys::Initialize calls CARDInit("G2ME", "01"), and Aurora
-// resolves that to `<user>/USA/Card A` (GCI folder) or its raw image. A PAL disc's save is G2MP;
-// this tree builds one card for the code it was compiled with, so the lookup stays G2ME - a card of
-// the other release is refused by name in Inspect rather than read with the wrong world layout.
-constexpr const char* kGameCode = "G2ME";
+// The card the port mounts: CMemoryCardSys::Initialize calls CARDInit(<disc game code>, "01"), and
+// Aurora resolves that to `<user>/USA/Card A` for G2ME or `<user>/EUR/Card A` for a PAL disc's G2MP
+// (GCI folder or raw image). The releases' saves carry different SAVW layouts, so each keeps its own
+// card, and a save of the other release is refused by name rather than read with the wrong layout.
+const char* GameCode() { return port::entry::CurrentGameCode(); }
 // CMemoryCardDriver's own file name (skSaveFileName, src/MetroidPrime/CMemoryCardDriver.cpp), and
 // the name Aurora writes it under in a GCI folder.
 constexpr const char* kSaveFileName = "MetroidPrime2";
@@ -140,13 +141,13 @@ std::string Unique(const std::string& path) {
 }
 
 std::string CardPathOf(AuroraCardType type) {
-  const size_t needed = aurora_card_get_path(kGameCode, type, 0, nullptr, 0);
+  const size_t needed = aurora_card_get_path(GameCode(), type, 0, nullptr, 0);
   if (needed == 0 || needed > 4096) {
     return std::string();
   }
   std::vector<char> buffer(needed + 1, '\0');
   const size_t written =
-      aurora_card_get_path(kGameCode, type, 0, buffer.data(), buffer.size());
+      aurora_card_get_path(GameCode(), type, 0, buffer.data(), buffer.size());
   if (written == 0 || written > buffer.size()) {
     return std::string();
   }
@@ -466,10 +467,10 @@ bool Import(const std::string& source, std::string& message) {
     message = error;
     return false;
   }
-  if (info.game != kGameCode) {
+  if (info.game != GameCode()) {
     // The card is mounted for one game code (CARDInit's), and MP2's save carries the world table's
     // SAVW hashes and area data of its own release: a converted save is not something to guess at.
-    message = path + " is a " + info.game + " save; this card is " + kGameCode +
+    message = path + " is a " + info.game + " save; this card is " + GameCode() +
               ", and region conversion is not supported";
     return false;
   }

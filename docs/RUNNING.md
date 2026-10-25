@@ -11,7 +11,7 @@ Commands; all runs need `Xvfb :86 -screen 0 1280x720x24 -ac` (check with `pgrep 
       timeout -k 5 120 gdb -q -batch -ex run -ex bt ./metroid_prime2_port > /tmp/mp2boot.log 2>&1
     grep -n 'reach-stub\|signal\|^#[0-9]\|exited\|ssert\|fatal' /tmp/mp2boot.log
 
-A disc that won't open, isn't G2ME01 or is cut short (last 8 files unreadable) is refused at mount;
+A disc that won't open, isn't G2ME01 or G2MP01 (PAL, experimental: docs/PAL.md) revision 0, or is cut short (last 8 files unreadable) is refused at mount;
 with a window and no `MP2_FRAMES`/`MP2_HEADLESS`/`MP2_NO_DISC_DIALOG=1` a message box then asks for
 another image (blocks a scripted run until killed), otherwise the run exits 1.
 
@@ -23,7 +23,8 @@ Sample a running boot: `gdb ... -x tools/gdb_interrupt.py -ex run -ex 'thread ap
 
 ## Straight into gameplay
 
-Needs a save in `<user>/USA/Card A` (a copy of `/tmp/opencode/u_a10`). Same env as above plus
+Needs a save in `<user>/USA/Card A` (a copy of `/tmp/opencode/u_a10`). A PAL disc reads `<user>/EUR/Card A`. `MP2_NEW_GAME=1` starts a new game
+when the slot (or the whole card) is empty, writing nothing, so any empty `MP2_USER_PATH` works. Same env as above plus
 `MP2_USER_PATH=<copy> MP2_SKIP_FRONTEND=1 MP2_SKIP_CINEMATICS=1 MP2_SKIP_INTRO=1 MP2_TELEPORT=<area>`
 -> `[harness] gameplay reached at 39.1 s` for area 5 (36.0 s without `MP2_TELEPORT`; first update
 34.0 s; desktop 2026-10-17). Phone: the same four as `env.MP2_...` lines in `files/port_paths.txt`.

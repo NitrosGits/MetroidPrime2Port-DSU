@@ -52,7 +52,7 @@ struct Slot {
 // before the game most recently wrote, and a damaged write leaves the other intact.
 struct File {
   std::string path;
-  std::string game;  // the GCI directory entry's game code, G2ME on a USA disc
+  std::string game;  // the GCI directory entry's game code: G2ME (USA) or G2MP (PAL)
   std::string maker; // and its maker code, 01
   int copies = 0;
   int copy = -1;

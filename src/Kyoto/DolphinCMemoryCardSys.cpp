@@ -8,6 +8,7 @@
 
 #include "Kyoto/MemoryCopy.hpp"
 #ifdef TARGET_PC
+#include "port_entry.h"
 #include "port_save.h"
 #endif
 
@@ -383,8 +384,9 @@ void CMemoryCardSys::Initialize() {
   if (!mIsInitialized) {
 #ifdef TARGET_PC
     // Aurora's CARDInit takes the game id and maker code; the card lives under
-    // Aurora's user path (MP2_USER_PATH).
-    CARDInit("G2ME", "01");
+    // Aurora's user path (MP2_USER_PATH), in the region folder of the mounted disc's game code
+    // (G2ME -> USA, G2MP -> EUR), so PAL and USA saves never share a card.
+    CARDInit(port::entry::CurrentGameCode(), "01");
 #else
     CARDInit();
 #endif
