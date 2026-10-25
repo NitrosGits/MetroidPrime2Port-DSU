@@ -24,6 +24,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptCamera.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptActorRotate.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCounter.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptDock.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptStreamedMusic.hpp"
@@ -106,6 +107,7 @@ enum : uint32_t {
   kTagCinematic = 9, // f32 seconds into the shot: the CScriptCamera driving the cinematic camera
   kTagPlatform = 10, // f32 time, f32 move delay, u32 flags, 12 f32 pose: a CScriptPlatform
   kTagRotate = 11,   // f32 time, u32 playing, u32 n, n x (u32 editor id, 12 f32 base, 12 f32 now)
+  kTagDock = 12,     // u8 reference count, u8 refs, refs x u8 load-other: a CScriptDock's Dock
 };
 
 // Per-object lines a restore logs, at most; the summary line always follows.
@@ -114,6 +116,7 @@ constexpr uint32_t kMaxCount = 1u << 20; // sanity bound for decoded counts
 
 struct BlockWriter {
   std::string bytes;
+  void U8(uint8_t v) { bytes.push_back(static_cast< char >(v)); }
   void U32(uint32_t v) {
     for (int i = 0; i < 4; ++i) {
       bytes.push_back(static_cast< char >(v >> (8 * i)));
@@ -140,6 +143,13 @@ struct BlockReader {
   size_t at = 0;
   bool ok = true;
   explicit BlockReader(const std::string& s) : in(s) {}
+  uint32_t U8() {
+    if (!ok || at + 1 > in.size()) {
+      ok = false;
+      return 0;
+    }
+    return static_cast< uint8_t >(in[at++]);
+  }
   uint32_t U32() {
     if (!ok || at + 4 > in.size()) {
       ok = false;
@@ -321,6 +331,24 @@ void CaptureObject(CStateManager& mgr, CEntity& ent, RoomObject& obj) {
     w.U32(static_cast< uint32_t >(PortRoomState::DoorLock(*door)));
     obj.blocks.push_back({kTagDoor, w.bytes});
   }
+  // Dock: which neighbour the dock points at (its reference count) and which neighbours it
+  // keeps loaded, held by the area's Dock record rather than by the script object.
+  if (CScriptDock* dock = TCastToPtr< CScriptDock >(&ent)) {
+    const CWorld* world = mgr.GetWorld();
+    const int area = dock->GetAreaId().Value();
+    if (area >= 0 && area < world->GetNumAreas() &&
+        dock->GetDockId() < world->GetAreaAlways(TAreaId(area)).GetDockCount()) {
+      const IGameArea::Dock& d = world->GetAreaAlways(TAreaId(area)).GetDock(dock->GetDockId());
+      const int refs = static_cast< int >(d.GetDockRefs().size());
+      BlockWriter w;
+      w.U8(static_cast< uint8_t >(d.GetReferenceCount()));
+      w.U8(static_cast< uint8_t >(refs));
+      for (int i = 0; i < refs; ++i) {
+        w.U8(d.GetShouldLoadOther(i) ? 1 : 0);
+      }
+      obj.blocks.push_back({kTagDock, w.bytes});
+    }
+  }
   // Music: only whether it plays; a load rebuilds the world, which stops everything.
   // (CScriptMidi has no type id to cast by, so it is not covered.)
   if (const CScriptStreamedMusic* music = TCastToConstPtr< CScriptStreamedMusic >(&ent)) {
@@ -493,6 +521,39 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
           mgr.SendScriptMsg(door, kInvalidUniqueId, wantLocked ? kSM_Lock : kSM_Unlock);
           log.Note(obj.editorId, wantLocked ? "door locked" : "door unlocked");
           changed = true;
+        }
+      }
+    }
+  }
+  if (CScriptDock* dock = TCastToPtr< CScriptDock >(&ent)) {
+    if (const RoomBlock* b = FindBlock(obj, kTagDock)) {
+      const int area = dock->GetAreaId().Value();
+      CWorld* world = mgr.World();
+      if (area >= 0 && area < world->GetNumAreas() &&
+          dock->GetDockId() < world->Area(TAreaId(area))->GetDockCount()) {
+        IGameArea::Dock& d = world->Area(TAreaId(area))->DockNC(dock->GetDockId());
+        BlockReader r(b->data);
+        const int ref = r.U8();
+        const int refs = r.U8();
+        if (r.ok && refs == static_cast< int >(d.GetDockRefs().size()) && ref <= refs) {
+          std::vector< bool > load(refs);
+          for (int i = 0; i < refs; ++i) {
+            load[i] = r.U8() != 0;
+          }
+          if (r.ok) {
+            if (ref != d.GetReferenceCount()) {
+              d.SetReferenceCount(ref);
+              log.Note(obj.editorId, "dock reference restored");
+              changed = true;
+            }
+            for (int i = 0; i < refs; ++i) {
+              if (load[i] != d.GetShouldLoadOther(i)) {
+                d.SetShouldLoadOther(i, load[i]);
+                log.Note(obj.editorId, "dock load-other restored");
+                changed = true;
+              }
+            }
+          }
         }
       }
     }
