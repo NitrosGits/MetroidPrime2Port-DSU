@@ -301,6 +301,165 @@ static void PortDropSpreadAnchors(const CGuiFrame* frame) {
   sPortSpreadAnchorCount = kept;
 }
 
+// The pause screen's layout (SetSpreadPanel). One window and a side panel per frame; the table is
+// kept here for the same reason as the anchors above.
+struct SPortSpreadPanel {
+  const CGuiFrame* frame;
+  float windowLeft;
+  float windowRight;
+  const CGuiWidget* bandModel;
+  float bandLeft;
+  float bandRight;
+};
+static SPortSpreadPanel sPortSpreadPanels[4];
+static int sPortSpreadPanelCount = 0;
+struct SPortSpreadPanelSide {
+  const CGuiFrame* frame;
+  const CGuiWidget* member;
+  float side;
+};
+static SPortSpreadPanelSide sPortSpreadPanelSides[32];
+static int sPortSpreadPanelSideCount = 0;
+
+void CGuiFrame::SetSpreadPanel(float windowLeft, float windowRight, const CGuiWidget* bandModel,
+                               float bandLeft, float bandRight) {
+  int slot = -1;
+  for (int i = 0; i < sPortSpreadPanelCount; ++i) {
+    if (sPortSpreadPanels[i].frame == this) {
+      slot = i;
+    }
+  }
+  if (slot < 0 && sPortSpreadPanelCount < 4) {
+    slot = sPortSpreadPanelCount++;
+  }
+  if (slot >= 0) {
+    sPortSpreadPanels[slot] = {this, windowLeft, windowRight, bandModel, bandLeft, bandRight};
+  }
+}
+
+void CGuiFrame::SetSpreadPanelSide(const CGuiWidget* member, float side) {
+  for (int i = 0; i < sPortSpreadPanelSideCount; ++i) {
+    if (sPortSpreadPanelSides[i].frame == this && sPortSpreadPanelSides[i].member == member) {
+      sPortSpreadPanelSides[i].side = side;
+      return;
+    }
+  }
+  if (sPortSpreadPanelSideCount < 32) {
+    sPortSpreadPanelSides[sPortSpreadPanelSideCount++] = {this, member, side};
+  }
+}
+
+static void PortDropSpreadPanels(const CGuiFrame* frame) {
+  int kept = 0;
+  for (int i = 0; i < sPortSpreadPanelCount; ++i) {
+    if (sPortSpreadPanels[i].frame != frame) {
+      sPortSpreadPanels[kept++] = sPortSpreadPanels[i];
+    }
+  }
+  sPortSpreadPanelCount = kept;
+  kept = 0;
+  for (int i = 0; i < sPortSpreadPanelSideCount; ++i) {
+    if (sPortSpreadPanelSides[i].frame != frame) {
+      sPortSpreadPanelSides[kept++] = sPortSpreadPanelSides[i];
+    }
+  }
+  sPortSpreadPanelSideCount = kept;
+}
+
+// Draws `widget` for a SetSpreadPanel frame; false = not handled (no layout, or behind the eye).
+// Fractions are of the authored half-width, i.e. view tangents over camera.GetSpreadHalfWidth().
+static bool PortDrawPanel(const CGuiFrame* frame, const CGuiCamera& camera, const CGuiWidget* widget,
+                          const CGuiWidgetDrawParms& parms, const CTransform4f& view,
+                          const CTransform4f& invView, const CTransform4f& world) {
+  const SPortSpreadPanel* panel = nullptr;
+  for (int i = 0; i < sPortSpreadPanelCount; ++i) {
+    if (sPortSpreadPanels[i].frame == frame) {
+      panel = &sPortSpreadPanels[i];
+    }
+  }
+  const float hw = camera.GetSpreadHalfWidth();
+  if (panel == nullptr || !camera.IsPerspective() || hw <= 0.f ||
+      camera.GetSpreadScreenHalfWidth() <= 0.f) {
+    return false;
+  }
+  // How far the screen edge moved, in fractions: the window's edges follow it, the panel slides.
+  const float moved = camera.GetSpreadSliceOffset(2.f * camera.GetSpreadScreenHalfWidth()) / hw;
+  const float center = 0.5f * (panel->windowLeft + panel->windowRight);
+  const float halfWindow = 0.5f * (panel->windowRight - panel->windowLeft);
+  float side = 2.f;
+  for (int i = 0; i < sPortSpreadPanelSideCount; ++i) {
+    if (sPortSpreadPanelSides[i].frame == frame && sPortSpreadPanelSides[i].member == widget) {
+      side = sPortSpreadPanelSides[i].side;
+    }
+  }
+  // Where a point at `u` goes: the window's own points spread evenly, the panel moves rigidly.
+  const auto shiftFor = [&](float u) {
+    if (side <= 1.f) {
+      return side * moved;
+    }
+    const float t = (u - center) / halfWindow;
+    return moved * (t < -1.f ? -1.f : t > 1.f ? 1.f : t);
+  };
+  const CTransform4f fromView = invView * world;
+  float depth = 0.f;
+  float shift = 0.f;
+  CAABox bounds(CVector3f(0.f, 0.f, 0.f), CVector3f(0.f, 0.f, 0.f));
+  if (widget->GetWidgetTypeID() == 'MODL' &&
+      static_cast< const CGuiModel* >(widget)->PortGetBounds(bounds)) {
+    const CAABox eyeBounds = bounds.GetTransformedAABox(fromView);
+    depth = eyeBounds.GetCenterPoint().GetY();
+    if (eyeBounds.GetMinPoint().GetY() <= 0.f) {
+      return false;
+    }
+    const float left = eyeBounds.GetMinPoint().GetX() / depth / hw;
+    const float right = eyeBounds.GetMaxPoint().GetX() / depth / hw;
+    if (right - left > 0.45f) {
+      // Backgrounds and the border: stretched between rigid ends.
+      u32 scissor[4];
+      GXGetScissor(&scissor[0], &scissor[1], &scissor[2], &scissor[3]);
+      const float edge = 2.f * camera.GetSpreadScreenHalfWidth() / hw;
+      const auto piece = [&](float from, float to, float fromWarped, float toWarped) {
+        PortDrawSlicedPiece(camera, widget, parms, view, fromView, scissor, from * hw, to * hw,
+                            fromWarped * hw, toWarped * hw);
+      };
+      if (widget == panel->bandModel) {
+        piece(-edge, panel->bandLeft, -edge - moved, panel->bandLeft - moved);
+        piece(panel->bandLeft, panel->bandRight, panel->bandLeft - moved,
+              panel->bandRight + moved);
+        piece(panel->bandRight, edge, panel->bandRight + moved, edge + moved);
+      } else {
+        const float margin = 0.08f;
+        const float shiftLeft = shiftFor(left);
+        const float shiftRight = shiftFor(right);
+        piece(-edge, left + margin, -edge + shiftLeft, left + margin + shiftLeft);
+        piece(left + margin, right - margin, left + margin + shiftLeft,
+              right - margin + shiftRight);
+        piece(right - margin, edge, right - margin + shiftRight, edge + shiftRight);
+      }
+      GXSetScissor(scissor[0], scissor[1], scissor[2], scissor[3]);
+      return true;
+    }
+    shift = shiftFor(0.5f * (left + right));
+  } else {
+    const CVector3f eye = invView * world.GetTranslation();
+    if (eye.GetY() <= 0.f) {
+      return false;
+    }
+    depth = eye.GetY();
+    shift = shiftFor(eye.GetX() / depth / hw);
+  }
+  CTransform4f savedXf = CTransform4f::Identity();
+  bool savedValid = false;
+  const CTransform4f moveXf = view * CTransform4f::Translate(shift * hw * depth, 0.f, 0.f) * fromView;
+  if (widget->PortSetWorldTransform(moveXf, savedXf, savedValid)) {
+    widget->Draw(parms);
+    widget->PortRestoreWorldTransform(savedXf, savedValid);
+  } else {
+    widget->Draw(parms);
+  }
+  return true;
+}
+
 static void PortDrawSpread(const CGuiFrame* frame, const CGuiCamera& camera,
                            const CGuiWidget* widget, const CGuiWidgetDrawParms& parms) {
   const float spread = camera.GetAspectSpread();
@@ -314,6 +473,10 @@ static void PortDrawSpread(const CGuiFrame* frame, const CGuiCamera& camera,
   const CTransform4f view = camera.GetSpreadView();
   const CTransform4f invView = view.GetInverse();
   const CTransform4f world = widget->GetWorldTransform();
+  if (spread != 1.f && sPortSpreadPanelCount > 0 &&
+      PortDrawPanel(frame, camera, widget, parms, view, invView, world)) {
+    return;
+  }
   CVector3f anchor = world.GetTranslation();
   bool stretch = false;
   bool stretchY = false;
@@ -429,6 +592,7 @@ CGuiFrame::~CGuiFrame() {
   PortDropSpreadAnchors(this);
   PortDropSpreadWeights(this);
   PortDropSpreadSplits(this);
+  PortDropSpreadPanels(this);
   delete mRootWidget;
 }
 #else

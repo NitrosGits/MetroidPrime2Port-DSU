@@ -4,6 +4,9 @@
 #include <cstdio>
 #endif
 
+#ifdef TARGET_PC
+#include "GuiSys/CGuiCamera.hpp"
+#endif
 #include "GuiSys/CGuiFrame.hpp"
 #include "GuiSys/CGuiTextPane.hpp"
 #include "GuiSys/CGuiWidgetDrawParms.hpp"
@@ -1829,6 +1832,18 @@ void CAutoMapper::Update(float dt, CStateManager& mgr) {
       model->SetColor(gpTweakAutoMapper->GetBlackColor());
     }
 
+#ifdef TARGET_PC
+    mFrmeInitialized->GetFrameCamera()->SetSpreadable(true);
+    mFrmeInitialized->SetSpreadPanel(-0.83f, 0.83f, nullptr, 0.f, 0.f);
+    mFrmeInitialized->SetSpreadPanelSide(mFrmeInitialized->FindWidget("model_lable"), -1.f);
+    mFrmeInitialized->SetSpreadPanelSide(mFrmeInitialized->FindWidget("textpane_label"), -1.f);
+    mFrmeInitialized->SetSpreadPanelSide(mFrmeInitialized->FindWidget("textpane_right"), 1.f);
+    mFrmeInitialized->SetSpreadPanelSide(mFrmeInitialized->FindWidget("textpane_right1"), 1.f);
+    mFrmeInitialized->SetSpreadPanelSide(mFrmeInitialized->FindWidget("textpane_right3"), 1.f);
+    mFrmeInitialized->SetSpreadPanelSide(mFrmeInitialized->FindWidget("textpane_yicon"), 1.f);
+    mFrmeInitialized->SetSpreadPanelSide(mFrmeInitialized->FindWidget("textpane_xicon"), 1.f);
+    mFrmeInitialized->SetSpreadPanelSide(mFrmeInitialized->FindWidget("textpane_xicon1"), 1.f);
+#endif
     gpGameState->SystemOptions().EnvVars().FindEnvironmentVariable("AutoMapperPaneMode")->Set(1);
     mLeftPanePos = 1.f;
     if (mMapMode == kMM_Teleport) {
@@ -2474,6 +2489,21 @@ static int MapReferenceWidth() {
   const float widen = PortOverlay::AspectWiden();
   return widen > 0.f ? static_cast< int >(static_cast< float >(width) / widen + 0.5f) : width;
 }
+
+// The map screen's frame is spread over the widened framebuffer (CGuiCamera, capped by
+// HudSpreadCap), so its plane takes that width's aspect instead of the authored one.
+static int MapScreenWidth() {
+  const int width = CGraphics::GetViewport().mWidth;
+  const float widen = PortOverlay::AspectWiden();
+  if (widen <= 0.f) {
+    return width;
+  }
+  float spread = 1.f;
+  if (PortOverlay::HudWide() && widen > 1.f) {
+    spread = widen < PortOverlay::HudSpreadCap() ? widen : PortOverlay::HudSpreadCap();
+  }
+  return static_cast< int >(static_cast< float >(width) / widen * spread + 0.5f);
+}
 #endif
 
 CVector2i CAutoMapper::GetMiniMapViewportSize() {
@@ -2490,7 +2520,7 @@ CVector2i CAutoMapper::GetMiniMapViewportSize() {
 
 CVector2i CAutoMapper::GetMapScreenViewportSize() {
 #ifdef TARGET_PC
-  return CVector2i(MapReferenceWidth(), CGraphics::GetViewport().mHeight);
+  return CVector2i(MapScreenWidth(), CGraphics::GetViewport().mHeight);
 #else
   return CVector2i(CGraphics::GetViewport().mWidth, CGraphics::GetViewport().mHeight);
 #endif

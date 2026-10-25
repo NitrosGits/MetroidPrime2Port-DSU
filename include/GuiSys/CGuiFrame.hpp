@@ -49,6 +49,16 @@ public:
   // middle stays, everything outside slides whole with the screen edge, nothing stretches. A null
   // `member` splits every model of the frame that spans the view.
   void SetSpreadSplit(const CGuiWidget* member, float cut);
+  // Port: a frame made of a main window and a side panel (the pause screen): under the spread the
+  // window [windowLeft, windowRight] (fractions of the authored half-width) grows to the screen's
+  // left edge and the panel's divider, the panel slides to the right edge. Backgrounds stretch,
+  // everything else keeps its shape and moves with its place in the window; `bandModel`'s middle
+  // [bandLeft, bandRight] is the only part of the border frame that stretches.
+  void SetSpreadPanel(float windowLeft, float windowRight, const CGuiWidget* bandModel,
+                      float bandLeft, float bandRight);
+  // Port: `member` moves by `side` (-1 left edge .. +1 right edge) of the panel spread, for widgets
+  // that hug a corner of the window.
+  void SetSpreadPanelSide(const CGuiWidget* member, float side);
 #endif
 
 private:
