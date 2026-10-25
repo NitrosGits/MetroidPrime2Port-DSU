@@ -624,7 +624,8 @@ bool CPlayer::CheckOrbitDisableSourceList(const CStateManager& mgr) {
 // scan window follows the pointer (CPlayerVisor::DrawScanEffect), the scan zone moves with it and
 // candidates rank by their distance from it. The pointer is in [-1, 1] of the half view, +y down;
 // returns it in [-1, 1] screen space, +y up. A lock re-centres the pointer, so a held scan lock
-// is unaffected.
+// is unaffected; a point orbit holds it still, so an analog L's click picks through it
+// (CPlayer::UpdateMouseAim).
 static bool PortScanPointerNdc(CPlayer::EPlayerZoneInfo zone, float& x, float& y) {
   if (zone != CPlayer::kZI_Scan || !PortMouse::PointerAimPosition(x, y)) {
     return false;
