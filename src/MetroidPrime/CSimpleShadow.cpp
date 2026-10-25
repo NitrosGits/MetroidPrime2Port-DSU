@@ -10,6 +10,10 @@
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/CCameraManager.hpp"
+#endif
 
 CSimpleShadow::CSimpleShadow(float scale, float userAlpha, float maxObjHeight, float displacement)
 : mXf(CTransform4f::Identity())
@@ -72,7 +76,21 @@ void CSimpleShadow::Render(const CTexture* tex) const {
     return;
 
   CGraphics::DisableAllLights();
+#ifdef TARGET_PC
+  // Calculate places the blob once per tick from the sim transform; between ticks draw it at
+  // the blend, as its actor is.
+  CTransform4f xf = mXf;
+  const float t = CCameraManager::GetPresentationInterpolation();
+  if (mPortXf.Note(mXf, CActor::PortTickGeneration()) && t >= 0.f && t < 1.f) {
+    CTransform4f blend = CTransform4f::Identity();
+    CTransform4f cur = CTransform4f::Identity();
+    if (CActor::PortBlendRigid(mPortXf.prev, mXf, t, blend, cur))
+      xf = blend * cur.GetQuickInverse() * mXf;
+  }
+  gpRender->SetModelMatrix(xf);
+#else
   gpRender->SetModelMatrix(mXf);
+#endif
   tex->Load(GX_TEXMAP0, CTexture::kCM_Repeat);
   CGraphics::SetTevOp(kTS_Stage0, CGraphics::kEnvModulate);
   CGraphics::SetTevOp(kTS_Stage1, CGraphics::kEnvPassthru);
