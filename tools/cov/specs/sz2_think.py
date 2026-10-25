@@ -415,9 +415,11 @@ class Window(gdb.FinishBreakpoint):
             want = 0 if any(x[0] == 'emitter_off' for x in calls) else 1
             if bit != want:
                 problems.append('emitter bit %d expected %d' % (bit, want))
-        if self.calls != calls:
+        # emitter_off is the inline SetActive(false) write, not a call the mocks can see: the bit above judges it
+        visible = [x for x in calls if x[0] != 'emitter_off']
+        if self.calls != visible:
             # the matrix floats and the dt/act values compare exactly; show both sequences
-            problems.append('calls got %r expected %r' % (self.calls, calls))
+            problems.append('calls got %r expected %r' % (self.calls, visible))
         return got, calls, problems
 
     @traced('finish')
