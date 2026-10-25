@@ -599,6 +599,13 @@ CTransform4f CAIMannedTurret::GetMuzzleTransform(CStateManager& mgr) const {
   return xf;
 }
 
+// Every arm ran or was forced (tools/cov amt3, 06_sand_alamofront, 2026-10-25): the loaded
+// path with anim data ran natural (29 calls); not-loaded (retail 0xD38 cmplwi; host Fire+82 ZF) and
+// no-anim-data (retail 0xEC0 cmplwi; host Fire+480 ZF) forced twice each (amt3_force.py, frame-owned,
+// eflags readback, restored at return). The null-projectile arm (retail 0xE48 cmplwi r28) runs
+// only on allocation failure; the host's throwing new lets gcc fold it. Unrun arcs are landing
+// pads only (callees don't throw).
+// @ fn_1_CF0
 void CAIMannedTurret::Fire(CStateManager& mgr) {
   const CTransform4f xf = GetMuzzleTransform(mgr);
   if (mWeaponToken.IsLoaded()) {
