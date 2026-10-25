@@ -12,7 +12,8 @@ for _f in ('flyingpirate_fp3.py', 'flyingpirate_fp4.py'):
 CLASS = 'CFlyingPirate'
 TH = '$this->Think(0.016f, *$mgr)'
 BF = '$this->mBurstFire'
-BURST = [('$this->mAlive', '1'), ('$this->mBurstTimer', '-1.0'), ('%s.mBurstType' % BF, '0'),
+# timer 5.0: Start() (which would replace mCurBursts) is not reached
+BURST = [('$this->mAlive', '1'), ('$this->mBurstTimer', '5.0'), ('%s.mBurstType' % BF, '0'),
          ('$this->mAimAtTarget', '1')]
 NEW = [('%s.mCurBursts' % BF, '(SBurst*)calloc(1, 44)'), ('%s.mAngleIdx' % BF, '-1'),
        ('%s.mTimeToNextShot' % BF, '-1.0'), ('((SBurst*)%s.mCurBursts)->mShotAngles[0]' % BF, '1')]
