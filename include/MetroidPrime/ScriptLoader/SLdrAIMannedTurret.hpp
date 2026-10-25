@@ -166,6 +166,13 @@ inline SLdrAIMannedTurret::SLdrAIMannedTurret()
   editorProperties.active = false;
 }
 
+// @ fn_1_5B0
+// Retail body (0x5B0-0x62B; symbol and body agree, __dt__18SLdrAIMannedTurretFv, only caller
+// LoadAIMannedTurret at 0x3DC): between the `this != null` / `flags > 0 -> Free` guards it only runs
+// the member destructors in reverse declaration order: CMayaSpline at +0x234 (patrolVerticalSpline),
+// CMayaSpline at +0x1F0 (patrolHorizSpline), SLdrAIMannedTurretData at +0x3C, SLdrEditorProperties
+// at +0x0. No store, no data-dependent arm: the host's implicit member destruction is the same
+// sequence (the spline destructors free their knot storage).
 inline SLdrAIMannedTurret::~SLdrAIMannedTurret() {}
 
 #endif
