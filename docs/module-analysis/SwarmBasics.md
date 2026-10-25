@@ -788,3 +788,30 @@ Evidence frozen before the marker went in, and untouched by this correction:
 `/tmp/opencode/reports/swb15-evidence/` (gcno, gcda, raw gcov JSON, the module's asm, binary/source
 hashes, the raw fixture log, the run log, mock tests); the mechanical reconciliation and the hardened
 fixture's mock suite are in `/tmp/opencode/swb15-reconcile/`.
+
+## swb17: Render 53/53 lines, 56/56 branches; HardwareLight 8/8, 5/5; PreRenderBoid 8/8, 8/8 - all three marked
+
+Base `298119d8b`, branch `decomp/swb17`. Fixture `tools/cov/specs/swb17_render.py` (selftest
+`swb17_render_selftest.py`), drivers `tools/drivers/swb17.con` (Torvus `3dfd2249,0g_swamp_hall` layer 3,
+CPlantScarabSwarm) and `swb17_sand.con` (Agon `42b935e4,01_sand_entrance` layer 2, CFlyerSwarm). Merged
+gcda of runs 3 + 6 + 9 (`gcov_report.py build-port-cov <run3> <run6> <run9> --module SwarmBasics`).
+
+- **Render windows** (every 2nd Render call, first active in-frustum boid = outlier head, retained frame,
+  `_Finish` armed before the writes, LIFO restore with readback): phases A-G force
+  `mEnableLighting`/`mUseSoftwareLight`/`mThinkCounter`/head `mInFrustum`/`mActive`, F clears the head's
+  `mActive` when SoftwareLight returns (the 1227 arm); H forces GetRenderAlphaBufferAlpha to 0; LA/LD/LB set
+  `CGraphics::mLightActive=1` after DisableAllLights returns (the 1178-1180 light-combo arm; Render reads
+  `GetLightMask` after it and it is otherwise always 0); N nulls `mDisplayList.mPtr` (1175 false arm).
+  The oracle counts Hardware/SoftwareLight hits per window by caller-frame ownership and compares with
+  the closed form from the partition cells and the outlier chain: 0 count failures, 0 restore failures.
+- **N only on a CFlyerSwarm** (`SWB17_DL0=1`): only the base `RenderBoid` has the TARGET_PC null guard;
+  CPlantScarab/Metaree/Bacteria/IngBlob/SnakeWeed/LightSwarm overrides draw through the list (run4 crashed
+  in `CSwarmDisplayList::Draw this=0`). Run 6: all 12 phases OK, 6 N windows.
+- **PreRenderBoid 1072 (idx<32)**: `tools/scan_swarm_anims.py` - all 42 shipped swarm placements (34 FSWM,
+  4 IBSM, 1 MSWM, 3 PSSM) have a valid ANCS, so the model list is non-empty and `idx <= 3`: the false side is
+  a host-only guard for PPC `slw >= 32 -> 0`. Not reachable by shipped content; forced anyway: the `empty`
+  window writes `mModelDatas.mCount=0` and `mIndex=40` on the argument boid (read back, restored at return):
+  279 windows in run 9, no CachePose call, no fault. The `freeze` arm (68+ natural hits) is the other edge.
+- asmcheck: HardwareLight and PreRenderBoid clean. Render reports 3 benign findings: two `BIT 0x3D2C` are
+  `clrlwi r0,r0,30` of `x170` = `mThinkCounter & 3` (misread as x173 bits), `XCALL RenderBoid` is the
+  `bctrl vcall(this)+0xa8`; the two NOPOS lines are the bitfield `mEnableLighting`/`mUseSoftwareLight`.

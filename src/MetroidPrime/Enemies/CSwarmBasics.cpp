@@ -978,6 +978,7 @@ CAABox CSwarmBasics::BoxForPosition(int x, int y, int z, float margin) const {
                           (z + 1) * size.GetZ() + bounds.GetMinPoint().GetZ() + margin));
 }
 
+// @ fn_80_4538
 void CSwarmBasics::HardwareLight(const CStateManager& mgr, const CAABox& bounds) const {
   CActorLights lights(8, CVector3f::Zero(), 4, 4);
   lights.SetNeedsRelight(true);
@@ -1066,6 +1067,7 @@ void CSwarmBasics::CachePose(CModelData& modelData,
   state.StateToArrays();
 }
 
+// @ fn_80_4194
 void CSwarmBasics::PreRenderBoid(CBoid* boid, uint* drawMask) {
   if (!(boid->mFreezeTimer > 0.f)) {
     int idx = boid->mIndex & (mModelDatas.size() - 1);
@@ -1161,6 +1163,7 @@ void CSwarmBasics::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_80_3B34
 void CSwarmBasics::Render(const CStateManager& mgr) const {
   const int alpha = GetRenderAlphaBufferAlpha(mgr);
   if (alpha != -1) {
