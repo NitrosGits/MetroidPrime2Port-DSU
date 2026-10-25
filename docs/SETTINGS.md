@@ -69,6 +69,21 @@ Controls > Remap:
   GameCube, Remastered, Modern or Southpaw to all controllers, replacing your own bindings
   there; a selected kind or model keeps its own on top. Reset... removes a device's own
   bindings (after a confirmation), bringing back the Classic and GameCube layouts.
+- Morph Ball rows (issue #167: Bomb, Power Bomb, Boost Ball, Spider Ball, Unmorph;
+  `ball_bomb`, `ball_power_bomb`, `ball_boost`, `ball_spider`, `ball_unmorph` in
+  controls.toml) press A, Y, B, R and X only in Morph Ball, so the ball's controls are
+  separate from gameplay's; the stick, Start, Z (map) and the C-stick are shared. On
+  keyboard & mouse and controller they start unbound, and an unbound row follows gameplay:
+  the game button's inputs do it in the ball. Once a row is set in one of those kinds, it
+  replaces that button in the ball for that kind only (setting Bomb on the controller stops
+  the pad's A bombing; the keyboard's A key still does). An input bound to a row does only
+  that in the ball, held layers included (the same mouse button under any of its codes, an
+  axis at any threshold); outside the ball its other bindings work as before, and the
+  prompts in the ball follow it. A combo on a row replaces the same combo; its buttons alone
+  keep what they do. A row given layers in controls.toml works in the ball while one is held
+  and adds to the game button; without the layer its input does what it did. Touch can't
+  take them (the overlay keeps its own morph ball buttons). A touch: binding on a control
+  counts as taking it over only where it applies.
 - `menu_standard_buttons`: Separate menu buttons (menus and the map read the "Menus and map"
   rows; ignored while the touch controls are on); env `MP2_MENU_STANDARD_BUTTONS`.
 
