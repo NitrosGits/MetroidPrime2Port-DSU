@@ -20,6 +20,10 @@
 #include "Kyoto/Graphics/CModelFlags.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
+
 static const char* const skFaceAssetIdName = "ACS_SamusFace";
 static const CTransform4f skFaceModelViewAdjust =
     CTransform4f::Scale(0.3f) * CTransform4f::Translate(CVector3f(0.f, 0.5f, 0.f));
@@ -158,8 +162,19 @@ void CSamusFaceReflection::Draw(const CStateManager& mgr) const {
                              skFaceModelViewAdjust;
 
       CGraphics::SetViewPointMatrix(fpCam->GetTransform());
+#ifdef TARGET_PC
+      // Port (MP1 f5796fc2e): the ortho spans the whole viewport, so widen it with the viewport to
+      // keep the face's shape in widescreen. 1 at 4:3.
+      const CViewport& faceVp = CGraphics::GetViewport();
+      const float faceWide = static_cast< float >(faceVp.mWidth) /
+                             static_cast< float >(PortOverlay::FourThreeWidth(faceVp.mWidth,
+                                                                              faceVp.mHeight));
+      CGraphics::SetOrtho(faceWide * aspect * -orthoWidth, faceWide * aspect * orthoWidth,
+                          orthoHeight, -orthoHeight, -10.f, 10.f);
+#else
       CGraphics::SetOrtho(aspect * -orthoWidth, aspect * orthoWidth, orthoHeight, -orthoHeight,
                           -10.f, 10.f);
+#endif
 
       CActorLights* lights = x2c_ == 1 ? nullptr : mLights.get();
       if (x2c_ == 3) {

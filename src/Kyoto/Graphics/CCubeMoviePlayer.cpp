@@ -27,6 +27,8 @@
 #ifdef TARGET_PC
 #include <mutex>
 
+#include "port_overlay.h"
+
 // Port: Aurora keeps a file's open handle in `cb.userData`, so the player that owns a pending
 // frame read is tracked here instead of being stored there.
 namespace {
@@ -407,8 +409,17 @@ CMoviePlayer::~CMoviePlayer() {
 }
 
 void CMoviePlayer::InitializeTextures() {
+#ifdef TARGET_PC
+  // Port (MP1 6b7384a85): the decoder writes whole 8x4 texture tiles, which a size the disc never
+  // uses (900 lines: 450 of chroma) does not divide into.
+  const uint chromaWidth = (mVideoInfo.mXSize + 1) / 2;
+  const uint chromaHeight = (mVideoInfo.mYSize + 1) / 2;
+  const uint ySize = ((mVideoInfo.mXSize + 7) & ~7) * ((mVideoInfo.mYSize + 3) & ~3);
+  const uint uvSize = ((chromaWidth + 7) & ~7) * ((chromaHeight + 3) & ~3);
+#else
   const uint ySize = OSRoundUp32B(mVideoInfo.mXSize * mVideoInfo.mYSize);
   const uint uvSize = OSRoundUp32B(mVideoInfo.mXSize * mVideoInfo.mYSize / 4);
+#endif
   const uint audioSize = mHeader.mAudioMaxSamples * 4;
   for (int i = 0; i < mTextures.capacity(); ++i) {
     void* y = CMemory::Alloc(ySize, IAllocator::kHI_RoundUpLen);
@@ -819,6 +830,41 @@ void CMoviePlayer::VerifyCallbackStatus() {
 uint CMoviePlayer::GetWidth() const { return mVideoInfo.mXSize; }
 
 uint CMoviePlayer::GetHeight() const { return mVideoInfo.mYSize; }
+
+#ifdef TARGET_PC
+void CMoviePlayer::PortGetMargins(int vpWidth, int vpHeight, int& xMargin, int& yMargin) const {
+  const int width = static_cast< int >(mVideoInfo.mXSize);
+  const int height = static_cast< int >(mVideoInfo.mYSize);
+  if ((width == 640 && height == 480) || width <= 0 || height <= 0 || vpWidth <= 0 ||
+      vpHeight <= 0) {
+    xMargin = (width - vpWidth) / 2;
+    yMargin = (height - vpHeight) / 2;
+    // Port (MP1 10d237a43): narrower than the movie's own 4:3 (a 640x480 viewport is 4:3), draw
+    // it at the viewport's width, centred, rather than at 640 wide, which crops it.
+    if (width > 0 && height > 0 && vpWidth > 0 && vpHeight > 0 &&
+        vpWidth * height < vpHeight * width) {
+      const int drawnHeight = vpWidth * height / width;
+      xMargin = 0;
+      yMargin = (drawnHeight - vpHeight) / 2;
+    }
+    return;
+  }
+  // The 4:3 mode shows its 640x448 at 4:3; the wider ones have square pixels.
+  const float view = PortOverlay::AspectMode() == PortOverlay::kAspect_4_3
+                         ? 4.f / 3.f
+                         : static_cast< float >(vpWidth) / static_cast< float >(vpHeight);
+  const float movie = static_cast< float >(width) / static_cast< float >(height);
+  int drawnWidth = vpWidth;
+  int drawnHeight = vpHeight;
+  if (movie > view) {
+    drawnHeight = static_cast< int >(static_cast< float >(vpHeight) * view / movie + 0.5f);
+  } else {
+    drawnWidth = static_cast< int >(static_cast< float >(vpWidth) * movie / view + 0.5f);
+  }
+  xMargin = (drawnWidth - vpWidth) / 2;
+  yMargin = (drawnHeight - vpHeight) / 2;
+}
+#endif
 
 void CMoviePlayer::SetAudioEnabled(bool enabled) { sAudioEnabled = enabled; }
 

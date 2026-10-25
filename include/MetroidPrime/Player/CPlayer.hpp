@@ -401,6 +401,11 @@ public:
   void SetAimTarget(TUniqueId target);
   void UpdateAssistedAiming(const CTransform4f& transform, CStateManager& mgr);
   void UpdateGunTransform(const CVector3f& position, CStateManager& mgr);
+#ifdef TARGET_PC
+  // The gun position moved down so the arm cannon stays on the screen's 4:3 bottom edge when the
+  // view is Vert+ widened (MP1 af5e42ade); the position unchanged at 4:3 and wider.
+  CVector3f PortAnchorGunDown(const CVector3f& pos) const;
+#endif
   void UpdateArmAndGunTransforms(float dt, CStateManager& mgr);
   void ForceGunOrientation(const CTransform4f& transform, CStateManager& mgr);
   void UpdateGunAlpha(const CStateManager& mgr);

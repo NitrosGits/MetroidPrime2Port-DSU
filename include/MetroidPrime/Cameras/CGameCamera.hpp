@@ -48,6 +48,8 @@ public:
   // Port: the vertical field of view to render with. Below 4:3 the world gains height instead of
   // losing width (PortOverlay::VertPlusFov); fitted cameras (cinematics) keep their authored fov.
   float GetRenderFov() const;
+  // FOV before the Vert+ widening, for blending into cameras that get widened (MP1 227c7fdaa).
+  float GetUnwidenedFov() const;
   void SetFovFitted(bool fitted) { mFovFitted = fitted; }
 #endif
   void SetFov(float fov);

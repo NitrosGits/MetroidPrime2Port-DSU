@@ -652,7 +652,15 @@ void CCameraManager::CinematicCut(CStateManager& mgr) {
   if (IsInCinematicCamera()) {
     mBallCamera->TeleportCamera(mCinematicCamera->GetTransform(), mgr);
     const CCinematicCamera* cine = mCinematicCamera;
+#ifdef TARGET_PC
+    // Port (MP1 227c7fdaa): the cinematic's FOV is already fitted to the live aspect
+    // (CCinematicCamera::PortCinematicFovy), so the cut back to the ball camera interpolated from
+    // a widened value that the ball camera then Vert+ widens a second time below 4:3. Blend from
+    // the fov that widens to it instead. Identity at 4:3 and wider.
+    mBallCamera->InterpolateFOV(cine->GetUnwidenedFov(), 1.f, 0.f, mBallCamera->GetUniqueId(), mgr);
+#else
     mBallCamera->InterpolateFOV(cine->GetFov(), 1.f, 0.f, mBallCamera->GetUniqueId(), mgr);
+#endif
     StopCinematics(mgr);
   }
 }

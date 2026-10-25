@@ -328,6 +328,18 @@ void CPlayerVisor::DrawEchoEffect(const CStateManager& mgr) const {}
 
 static const float skViewportLayoutScale[3] = {1.f, 0.8f, 0.6f};
 
+#ifdef TARGET_PC
+// Port (MP1 629170f37): the scan window is authored in pixels of a 448-high 4:3 view. Below 4:3
+// the view is narrower than that, so the window shrinks to keep its share of the width (and its
+// proportions) instead of growing with the height and overrunning the width. 1 elsewhere.
+static float ScanWindowFit(int vpWidth, int vpHeight) {
+  if (vpHeight > 0 && vpWidth * 3 < vpHeight * 4) {
+    return static_cast< float >(vpWidth) * 3.f / (static_cast< float >(vpHeight) * 4.f);
+  }
+  return 1.f;
+}
+#endif
+
 void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
                                   const CTargetingManager* const tgtMgr) const {
   const CViewport& viewport = CGraphics::GetViewport();
@@ -351,8 +363,14 @@ void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
   const float layoutScale = skViewportLayoutScale[mgr.GetViewportLayoutIndex()];
   const float windowX = mInterpWindowDims.GetX();
   const float windowY = mInterpWindowDims.GetY();
+#ifdef TARGET_PC
+  const float fit = ScanWindowFit(vpWidth, vpHeight);
+  const float vpW = 139.35576f * fit * windowX;
+  const float vpH = 125.36f * fit * windowY;
+#else
   const float vpW = 139.35576f * windowX;
   const float vpH = 125.36f * windowY;
+#endif
   const int width = CMath::Clamp(skPixelsPerTileDimension16Bit,
                                  round_up_to_tile(layoutScale * (vpW / divisor)), vpWidth);
   const int height = CMath::Clamp(skPixelsPerTileDimension16Bit,
@@ -400,8 +418,14 @@ void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
     CGraphics::SetViewPointMatrix(CTransform4f::Translate(-portShiftX, 0.f, portShiftY));
 #endif
   const CTransform4f windowScale = CTransform4f::Scale(windowX, 1.f, windowY);
+#ifdef TARGET_PC
+  // Port (MP1 629170f37): the frame and the pane's clip shield scale with the window.
+  const CTransform4f seventeenScale =
+      CTransform4f::Scale(14.f * layoutScale * fit, 1.f, 14.f * layoutScale * fit);
+#else
   const CTransform4f seventeenScale =
       CTransform4f::Scale(14.f * layoutScale, 1.f, 14.f * layoutScale);
+#endif
   const CTransform4f mm = seventeenScale * windowScale;
   const CTransform4f verticalFlip = CTransform4f::Scale(1.f, 1.f, -1.f);
   const CTransform4f horizontalFlip = CTransform4f::Scale(-1.f, 1.f, 1.f);
