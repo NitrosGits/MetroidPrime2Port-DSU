@@ -32,6 +32,19 @@
 #include "rstl/StringExtras.hpp"
 #include "rstl/math.hpp"
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+
+// Port (MP1 cfa8e060b): the credits background is a 4:3 movie, drawn pillarboxed at its 4:3 width,
+// and the text is laid out for it, so wrap and centre the text in that width rather than the
+// viewport's. 4:3 is unchanged; the cinema bars here are a fixed height, not sized from the width.
+static int PortCreditsWidth() {
+  const CViewport& vp = CGraphics::GetViewport();
+  const int fourThree = PortOverlay::FourThreeWidth(vp.mWidth, vp.mHeight);
+  return fourThree < vp.mWidth ? fourThree : vp.mWidth;
+}
+#endif
+
 static const char* const skJapaneseBodyFont = "FONT_DFSoGei-W5_18";
 static rstl::string skMovieDirectory = rstl::string_l("Video/");
 static rstl::string skMovieExtension = rstl::string_l(".thp");
@@ -570,7 +583,11 @@ CIOWin::EMessageReturn CCredits::Update(float dt, CArchitectureQueue& queue) {
       return kMR_Exit;
     }
     int height = CGraphics::GetViewport().mHeight;
+#ifdef TARGET_PC
+    int width = PortCreditsWidth() - 64;
+#else
     int width = CGraphics::GetViewport().mWidth - 64;
+#endif
     if (mText.empty()) {
       const CStringTable& table = **mCreditsTable;
       for (int i = 0; i < table.GetStringCount(); ++i) {
@@ -695,7 +712,13 @@ void CCredits::DrawText() const {
       gpRender->SetViewportOrtho(false, -4096.f, 4096.f);
   const float top = mScrollPosition;
   const float bottom = top - (region.second.GetY() - region.first.GetY());
+#ifdef TARGET_PC
+  // Port (MP1 cfa8e060b): centre the text in the movie's 4:3 band, not the whole viewport.
+  const float width = rstl::min_val(region.second.GetX(),
+                                    static_cast< float >(PortCreditsWidth()));
+#else
   const float width = region.second.GetX();
+#endif
   for (TextList::const_iterator it = mText.begin(); it != mText.end(); ++it) {
     const int offset = it->second.GetX();
     const int height = it->second.GetY();
