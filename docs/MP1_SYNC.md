@@ -53,9 +53,36 @@ the work list.
    suit colours, mods/texture-pack loader, update check, Android touch layout editor additions,
    quick resume.
 
+### MP1 after 174975c2c (to `3dde164eb`, 2026-10-25, 172 commits)
+
+About 120 are Remastered/HDR, Dread Samus import or third-person camera (not portable). The rest:
+
+9. **Follow-ups to merged packages** (small, low risk): dynamic resolution UI rework and review
+   fixes (`5cf4ac1f4`, `429fdb7bf`, `278f7923c`, issue #186); Remap Presets button (`ffaa3d4ab`,
+   #196); Morph Ball binding rows split from gameplay, touch bindings only where they work
+   (`7d8840bb4`, `7beb75226`, `3d1f7cbf6`, `9c2baa5e4`, `4b04a4a61`, #167) and the Android Morph
+   Ball touch page (`2034083d7`); lock-on free aim with and without pointer aim (`83ff2ecba`,
+   `1881b35d4`, `1b414b923`, #188; extends inp1's empty-lock path).
+10. **Aurora/pipelines**: failed pipeline reads as unavailable (`8e81db43e`); lazy pipelines kept
+    until memory runs short (`c401d338d`); per-context pipeline use recorded and an area's pipelines
+    prefetched as it streams (`98438c0c6`, `02145b77b`; MP2's CGameArea/CStateManager hooks in
+    TARGET_PC blocks); Compatibility devices under validation (`e452fc3a1`, only the non-HDR parts).
+11. **Game-side fixes, adapted to MP2 code**: fog volumes copy depth, not alpha (`184b9965e`,
+    CCubeRenderer, #191); HUD billboard effects spread past 4:3 instead of stretching (`a7edba309`,
+    `239f95483`, `91b5c12f5`, `c1106efab`; particle headers); scan window follows pointer aim
+    (`312b693c7`, `588b0577e`, `3dc11112f`; MP2's scan visor differs, check first).
+12. **Save states / audio** (merges into 7): restore the playing music (`bf86ab937`, `26d51db53`);
+    a save mid-cinematic resumes it (`7478ebbbd`).
+13. **Game options**: walk speed 50-200% (`62d94159f`); hint delay and Show current hint
+    (`319685eed`; only if MP2's hint system has the same hook).
+
+Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
+fixes (wait for package 8), decomp matches.
+
 Not portable: Remastered import/PBR/HDR, MP1 boss/enemy fixes, MP1 savestate schema (MP2's object
 set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
 - 2026-10-23: F1a merged (13f9548dc; omitted MP1 rows: /tmp/opencode/reports/f1a.md); Aurora re-vendored from MP1 174975c2c (38e3b7dea; /tmp/opencode/reports/aur1.md). f1b merged (fd244995f; omissions: /tmp/opencode/reports/f1b.md). inp1 merged (88b066a4d; skips and the unexercised empty-lock OrbitPoint path: /tmp/opencode/reports/inp1.md). rob1 package 4 merged (aff7f7825: crash report, hang watchdog, startup log, disc refuse loop, stacked toasts; /tmp/opencode/reports/rob1.md). Sync paused here per user (2026-10-23); packages 5-8 not started. Reports /tmp/opencode/reports/<lane>.md. User: once these three finish (review, merge), start nothing else.
+- 2026-10-25: inventory of MP1 through 3dde164eb added (packages 9-13). Running (Sonnet, claude-code/claude-sonnet-5-5): fu1 pkg 9 (../wt-mp2-fu1 sync/fu1, ses_e8fa4ff59ffe7yYX95SwZ3FoOL), cfg1 pkgs 5+6 (../wt-mp2-cfg1 sync/cfg1, ses_e8fa4ff57ffeN3F4J7XkaKoF9O), sav1 pkgs 12+7 (../wt-mp2-sav1 sync/sav1, ses_e8fa4ff53ffeTcwAXFvByLAvFE). Reports /tmp/opencode/reports/<lane>.md. Not started: 8, 10, 11, 13.
