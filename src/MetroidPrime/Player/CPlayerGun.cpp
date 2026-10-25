@@ -69,6 +69,7 @@
 #include "dolphin/types.h"
 #include <math.h>
 #ifdef TARGET_PC
+#include "MetroidPrime/PortEfbCopy.hpp"
 #include "port_overlay.h"
 #include "port_power_charge_release.h"
 #endif
@@ -3162,8 +3163,22 @@ void CPlayerGun::DrawScreenTex(float depth) {
   gpRender->SetModelMatrix(CTransform4f::Identity());
   gpRender->SetBlendMode_AlphaBlended();
   CGraphics::SetDepthWriteMode(true, kE_GEqual, true);
+#ifdef TARGET_PC
+  // Port: the wipe covers the lower-right quarter of the actual viewport (see CopyScreenTex), so on a
+  // widened framebuffer that is half the viewport's width and height rather than 320x224 taken out of
+  // the middle. That copy is larger than the game's shared spare buffer (0x46000 holds a 320x224
+  // RGBA8 copy), so it has its own destination, as the scan window's copy does. Identical to the
+  // console at 4:3, where half of 640x448 is 320x224.
+  const int copyWidth = viewport.mWidth / 2;
+  const int copyHeight = viewport.mHeight / 2;
+  void* const copyBuffer =
+      PortEfbCopy::Destination(CGraphics::GetDolphinSpareBuffer(), copyWidth, copyHeight, 4);
+  CGraphics::LoadDolphinSpareTexture(copyWidth, copyHeight, GX_TF_RGBA8, copyBuffer,
+                                     CGraphics::kSpareBufferTexMapID);
+#else
   CGraphics::LoadDolphinSpareTexture(320, 224, GX_TF_RGBA8, nullptr,
                                      CGraphics::kSpareBufferTexMapID);
+#endif
 
   const GXVtxDescList vertexDesc[] = {
       {GX_VA_POS, GX_DIRECT}, {GX_VA_TEX0, GX_DIRECT}, {GX_VA_NULL, GX_NONE}};
@@ -3175,6 +3190,21 @@ void CPlayerGun::DrawScreenTex(float depth) {
   CGX::SetChanCtrl(CGX::Channel0, false, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE,
                    GX_AF_NONE);
   CGX::Begin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
+#ifdef TARGET_PC
+  // Port: the same quarter of the viewport the copy took (was 320..640 x 0..224 of a 640x448 frame).
+  GXPosition3f32(static_cast< float >(viewport.mLeft + copyWidth), depth,
+                 static_cast< float >(viewport.mTop));
+  GXTexCoord2f32(0.f, 1.f);
+  GXPosition3f32(static_cast< float >(viewport.mLeft + viewport.mWidth), depth,
+                 static_cast< float >(viewport.mTop));
+  GXTexCoord2f32(1.f, 1.f);
+  GXPosition3f32(static_cast< float >(viewport.mLeft + copyWidth), depth,
+                 static_cast< float >(viewport.mTop + copyHeight));
+  GXTexCoord2f32(0.f, 0.f);
+  GXPosition3f32(static_cast< float >(viewport.mLeft + viewport.mWidth), depth,
+                 static_cast< float >(viewport.mTop + copyHeight));
+  GXTexCoord2f32(1.f, 0.f);
+#else
   GXPosition3f32(320.f, depth, 0.f);
   GXTexCoord2f32(0.f, 1.f);
   GXPosition3f32(640.f, depth, 0.f);
@@ -3183,6 +3213,7 @@ void CPlayerGun::DrawScreenTex(float depth) {
   GXTexCoord2f32(0.f, 0.f);
   GXPosition3f32(640.f, depth, 224.f);
   GXTexCoord2f32(1.f, 0.f);
+#endif
   CGX::End();
 
   CGraphics::SetDepthWriteMode(true, kE_LEqual, true);
@@ -3191,9 +3222,27 @@ void CPlayerGun::DrawScreenTex(float depth) {
 }
 
 void CPlayerGun::CopyScreenTex() {
+#ifdef TARGET_PC
+  // Port: copy the lower-right quarter of the actual viewport rather than of a 640x448 one, so the
+  // beam-change hologram wipe covers the same quarter of a widened framebuffer instead of sitting in
+  // the middle of it. Half of a widened viewport is bigger than the game's shared spare buffer
+  // (0x46000 holds a 320x224 RGBA8 copy), so this copy takes its own destination, as the scan
+  // window's does; Aurora keys the resolved copy texture by it and the port's read-back lands there.
+  // Identical to the console at 4:3.
+  const CViewport& viewport = CGraphics::GetViewport();
+  const int copyWidth = viewport.mWidth / 2;
+  const int copyHeight = viewport.mHeight / 2;
+  GXSetTexCopySrc(viewport.mLeft + copyWidth, viewport.mTop + copyHeight, copyWidth, copyHeight);
+  GXSetTexCopyDst(copyWidth, copyHeight, GX_TF_RGBA8, false);
+  void* const copyBuffer =
+      PortEfbCopy::Destination(CGraphics::GetDolphinSpareBuffer(), copyWidth, copyHeight, 4);
+  PortEfbCopy::Request(copyBuffer, copyWidth, copyHeight, 4);
+  GXCopyTex(copyBuffer, false);
+#else
   GXSetTexCopySrc(320, 224, 320, 224);
   GXSetTexCopyDst(320, 224, GX_TF_RGBA8, false);
   GXCopyTex(CGraphics::GetDolphinSpareBuffer(), false);
+#endif
   GXPixModeSync();
 }
 
