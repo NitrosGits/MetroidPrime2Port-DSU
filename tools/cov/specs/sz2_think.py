@@ -22,6 +22,9 @@ import os
 import struct
 import threading
 import time
+
+if os.environ.get('SZ2_DEBUG_INFRUN'):
+    gdb.execute('set debug infrun 1')  # diagnosis only: gdb's own resume/stop decisions go to its log
 from fractions import Fraction
 
 CLASS = 'CScriptSafeZone'
@@ -530,7 +533,12 @@ class Entry(gdb.Breakpoint):
                 log('ELIGIBLE', n=state['eligible'], this=this, ctx=ctx, index=state['index'])
             if state['eligible'] % SPACING != 1:
                 return False
-            make_scratch()
+            if not state['scratch']:
+                # an inferior call made inside a breakpoint's stop() leaves every other thread stopped (gdb
+                # resumes only the event thread afterwards: the Aurora FIFO worker starves, sz2e); the mmap
+                # runs in the stop observer instead, which resumes the game
+                state['want_scratch'] = True
+                return True
             ztype = gdb.lookup_type('CScriptSafeZone')
             mtype = gdb.lookup_type('CStateManager')
             etype = gdb.lookup_type('CEchoEmitter')
@@ -740,6 +748,18 @@ FIFO_STATE = ['aurora::gx::fifo::detail::sInDisplayList',
               'aurora::gx::fifo::(anonymous namespace)::sWorkerWake']
 
 
+def scratch_stop(event):
+    """stop observer: the one mmap inferior call, outside any stop(), then the game continues"""
+    if not state.get('want_scratch'):
+        return
+    state['want_scratch'] = False
+    try:
+        make_scratch()
+    except Exception as error:
+        log('SCRATCH_FAILED', error=str(error))
+    gdb.post_event(lambda: gdb.execute('continue'))
+
+
 def stall_dump(event):
     """gdb-side stall report: runs in the stop handler after the watchdog's `interrupt`"""
     if not stall['want']:
@@ -858,6 +878,7 @@ def install():
         Mock(symbol(prefix), kind)
     count_lines(think)
     gdb.events.exited.connect(summary)
+    gdb.events.stop.connect(scratch_stop)
     gdb.events.stop.connect(stall_dump)
     threading.Thread(target=stall_watch, daemon=True).start()
 
