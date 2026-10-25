@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <string>
 
+#include "port_graphics_backend.h"
+
 // The F1 debug overlay: a small ImGui window with the port's live settings and the warp
 // buttons, so the knobs do not need environment variables and the game can be driven around
 // without walking. Aurora creates the ImGui context and feeds it the SDL events; the overlay
@@ -421,6 +423,9 @@ bool PerPixelLighting();
 // storage clamp (-1 auto; Aurora reads `MP2_STORAGE_CLAMP` itself), the Dawn driver workarounds
 // (`MP2_DRIVER_WORKAROUNDS`) and the low-power adapter (Aurora reads `MP2_GPU_POWER=low`).
 bool OpenGles();
+// The Windows renderer choice (`graphics_backend`, `MP2_GRAPHICS_BACKEND` overrides it for one run;
+// see port_graphics_backend.h). Stored on every platform, used only on Windows.
+PortGraphicsBackend::EGraphicsBackend GraphicsBackend();
 int StorageClamp();
 unsigned DriverWorkarounds();
 bool LowPowerGpu();

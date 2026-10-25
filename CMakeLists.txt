@@ -602,6 +602,11 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_dynamic_res_tests PRIVATE platform/include)
     add_test(NAME port_dynamic_res_tests COMMAND port_dynamic_res_tests)
     set_tests_properties(port_dynamic_res_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # The Windows renderer picker's pure logic (platform/include/port_graphics_backend.h).
+    add_executable(port_graphics_backend_tests tests/port_graphics_backend.cpp)
+    target_include_directories(port_graphics_backend_tests PRIVATE platform/include extern/aurora/include)
+    add_test(NAME port_graphics_backend_tests COMMAND port_graphics_backend_tests)
+    set_tests_properties(port_graphics_backend_tests PROPERTIES TIMEOUT 30 LABELS port)
     # The input engine (platform/input/port_input_engine.cpp): bindings, chords, contexts and
     # device profiles resolve to the right pad state. Engine-independent: no SDL, Aurora or game.
     add_executable(port_input_engine_tests tests/port_input_engine.cpp

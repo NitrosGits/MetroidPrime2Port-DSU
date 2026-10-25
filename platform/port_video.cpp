@@ -165,6 +165,22 @@ void BeginGpuStart(const std::string& userFolder, AuroraConfig& config) {
   sStorageClampAtStart = sStorageClamp;
   sLowPowerGpuAtStart = sLowPowerGpu;
 
+#if defined(_WIN32)
+  // The Windows renderer choice: Aurora tries it first and falls back to its own order. Read here,
+  // so a change applies after a restart. MP2_GRAPHICS_BACKEND overrides the setting for one run.
+  sGraphicsBackendAtStart = sGraphicsBackend;
+  {
+    const char* const env = PortGraphicsBackend::EnvRequest();
+    const PortGraphicsBackend::Request request = PortGraphicsBackend::Resolve(sGraphicsBackend, env);
+    if (request.rejected) {
+      std::fprintf(stderr,
+                   "[video] MP2_GRAPHICS_BACKEND=%s is not auto, d3d12, vulkan or d3d11; using graphics_backend=%s\n",
+                   env, PortGraphicsBackend::GraphicsBackendConfigName(request.backend));
+    }
+    config.desiredBackend = PortGraphicsBackend::ToAurora(request.backend);
+  }
+#endif
+
   // A driver can crash outright while Dawn starts on OpenGL ES (Mesa does), and the setting would
   // then crash every launch with no way back to the F1 menu. The marker outlives such a crash, so
   // the next start turns the setting off and uses the default backend.
