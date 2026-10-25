@@ -936,6 +936,16 @@ int main(int argc, char** argv) {
       .mem1Size = MEM1_DEFAULT_SIZE,
       .mem2Size = ARAM_DEFAULT_SIZE,
   };
+#if !defined(__ANDROID__)
+  // The window icon, for a bare binary that no desktop entry describes. Android takes its icon
+  // from the APK.
+  static uint8_t windowIcon[] = {
+#include "port_window_icon.inc"
+  };
+  config.iconRGBA8 = windowIcon;
+  config.iconWidth = 64;
+  config.iconHeight = 64;
+#endif
   // MP2_PIPELINE_LAZY=1: build pipelines on first use and prefetch an area's recorded ones as it
   // streams in (MP1 sync package 10); off by default, as on desktop MP1.
   config.pipelineCacheLazy = port::EnvFlag("MP2_PIPELINE_LAZY");

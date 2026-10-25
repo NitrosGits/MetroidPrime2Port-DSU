@@ -645,6 +645,10 @@ if(ANDROID)
 else()
     add_executable(metroid_prime2_port)
 endif()
+if(WIN32)
+    # The icon Explorer and the window show.
+    target_sources(metroid_prime2_port PRIVATE packaging/metroid_prime2_port.rc)
+endif()
 set_source_files_properties(${MP_SCOPED_MODULE_OBJECTS} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
 target_sources(metroid_prime2_port PRIVATE
     ${MP_SCOPED_MODULE_OBJECTS}

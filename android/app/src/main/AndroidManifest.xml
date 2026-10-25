@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Milestone M1 of docs/ANDROID.md: the smallest app that launches this port on a phone.
-     No storage permissions, no file picker, no icon: the disc, the user data and the cache
+     No storage permissions, no file picker: the disc, the user data and the cache
      all live in the app's private files directory for now, which needs no permission, and
      the picker that fills in port_paths.txt is M2. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -13,6 +13,7 @@
     <application
         android:allowBackup="false"
         android:appCategory="game"
+        android:icon="@mipmap/ic_launcher"
         android:isGame="true"
         android:label="@string/app_name"
         android:theme="@style/AppTheme">
