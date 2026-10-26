@@ -30,6 +30,21 @@
 
 #include <tracy/Tracy.hpp>
 
+namespace {
+// Port: formats whose texels are indices or masks (see the scaled-copy filter below).
+inline bool is_index_copy_format(u32 fmt) {
+  switch (fmt) {
+  case GX_CTF_A8:
+  case GX_CTF_R8:
+  case GX_CTF_G8:
+  case GX_CTF_B8:
+    return true;
+  default:
+    return false;
+  }
+}
+} // namespace
+
 namespace aurora::gfx {
 using namespace detail;
 using webgpu::g_device;
@@ -295,7 +310,11 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
         .srcView = isDepth ? passInfo.copySourceDepthView : passInfo.copySourceView,
         .uniformRange = passInfo.resolveUniformRange,
         .dst = passInfo.resolveTarget,
-        .sampleFilter = needsScaling ? tex_copy_conv::SampleFilter::Linear : tex_copy_conv::SampleFilter::Nearest,
+        // Port: 8-bit index/mask copies (A8/R8/G8/B8; scan visor ids, C8 lookups) hold values that
+        // must not be averaged: a scaled copy takes the nearest texel, never an in-between index.
+        .sampleFilter = (needsScaling && !is_index_copy_format(passInfo.resolveFormat))
+                            ? tex_copy_conv::SampleFilter::Linear
+                            : tex_copy_conv::SampleFilter::Nearest,
         .domain = domain,
         .toneRange = passInfo.resolveToneRange,
         .srcSamples = isDepth ? passInfo.msaaSamples : 1u,
