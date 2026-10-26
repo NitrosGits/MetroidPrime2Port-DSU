@@ -137,6 +137,8 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
+- 2026-10-27: native Trilogy touch radials merged (`fed3cf1eb`, auto-hide ownership fix `b1c91d227`); origin-relative Android gestures, thread-safe owner mailbox, release-once selection and source-scoped cancellation. Combined link and radial CTest 4/4 pass; fresh real-nod release APK built from port, not installed. Android device behavior/PAL remain unverified; docs/TRILOGY.md describes controls.
+
 - 2026-10-26: native desktop Trilogy radials merged (`809673eea`, pending-retry cancellation fix `68524dba0`); opt-in, authored RS5 positions, mouse/pad capture and release selection. Combined link and radial CTest 3/3 pass; lane tested actual Trilogy keyboard/mouse and simulated pad with 4:3/16:9/21:9 captures. Touch slice in progress separately. No device install. See docs/TRILOGY.md for controls and limits.
 
 - 2026-10-26: Trilogy mod PAK filtering (`15d4dc314`) merged: exclude retained root `fe`/`MP1`/`MP3` siblings only, retain nested names and original entry numbers. Actual USA DVD enumeration 71→22; merged link and mods CTest 2/2 pass. Movie 16:9 rule deferred (seven examined assets identical to GC); Wii save conversion not implemented. Native radial selectors in progress separately.
