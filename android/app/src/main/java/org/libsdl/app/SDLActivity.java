@@ -2122,6 +2122,9 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         Intent intent = new Intent(forWrite ? Intent.ACTION_CREATE_DOCUMENT : Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultiple);
+        // Lists the phone's own storage root, which the picker otherwise hides
+        // behind its shortcuts (Downloads, Recent, ...).
+        intent.putExtra("android.content.extra.SHOW_ADVANCED", true);
         switch (mimes.size()) {
             case 0:
                 intent.setType("*/*");

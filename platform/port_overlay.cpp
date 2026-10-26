@@ -6,6 +6,7 @@
 // Built by `mp_port_audio` (it needs ImGui, which Aurora brings in with SDL).
 
 #include "port_overlay.h"
+#include "port_discord.h"
 
 #include "port_gyro_motion.h"
 #include "port_photo.h"
@@ -373,19 +374,10 @@ void StoreGunOffset(const float offset[3]) {
 // The card's world names are a STRG table that the game's own text parser draws, so an entry
 // carries its markup (`&line-spacing=75;Temple Grounds`); the overlay shows the text alone.
 std::string PlainWorldName(const wchar_t* text) {
-  std::string out;
-  bool inMarkup = false;
-  for (const wchar_t* p = text; p != nullptr && *p != 0; ++p) {
-    if (*p == L'&') {
-      inMarkup = true;
-    } else if (inMarkup) {
-      inMarkup = *p != L';';
-    } else if (*p == L'\n' || *p == L'\r' || *p == L'\t') {
-      // The entries break lines by hand (that is what the line-spacing markup above is for);
-      // a one-row label wants a space instead.
-      out.push_back(' ');
-    } else {
-      out.push_back(*p < 0x80 ? static_cast< char >(*p) : '?');
+  std::string out = PortDiscord::GameTextToUtf8(text);
+  for (char& c : out) {
+    if (c == '\t') {
+      c = ' ';
     }
   }
   const size_t first = out.find_first_not_of(' ');

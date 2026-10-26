@@ -114,6 +114,8 @@ public final class MetroidPrime2Activity extends SDLActivity {
     }
 
     private static final int REQUEST_TEXTURE_PACK = 0x7e57;
+    // Ask the system picker to list the phone's storage root alongside its shortcuts.
+    private static final String SHOW_ADVANCED = "android.content.extra.SHOW_ADVANCED";
     // A disc picked after Android destroyed the activity behind the picker reaches a new
     // launch, which drops it: SDL's dialog state died with the old process. The picker's
     // request code is kept here, and such a pick is left in PENDING_DISC_FILE for the
@@ -139,7 +141,9 @@ public final class MetroidPrime2Activity extends SDLActivity {
             }
             texturePackFolder = folder;
             try {
-                startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), REQUEST_TEXTURE_PACK);
+                startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+                                           .putExtra(SHOW_ADVANCED, true),
+                                       REQUEST_TEXTURE_PACK);
             } catch (android.content.ActivityNotFoundException e) {
                 nativeTexturePackStatus("This device has no folder picker.");
             }

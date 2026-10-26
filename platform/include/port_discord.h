@@ -119,8 +119,8 @@ std::string GameTextToUtf8(const Char* text) {
     if (c >= 0xd800 && c <= 0xdbff && p[1] >= 0xdc00 && p[1] <= 0xdfff) {
       c = 0x10000 + ((c - 0xd800) << 10) + (static_cast< uint32_t >(p[1]) - 0xdc00);
       ++p;
-    } else if (c >= 0xd800 && c <= 0xdfff) {
-      continue; // lone surrogate
+    } else if ((c >= 0xd800 && c <= 0xdfff) || c > 0x10ffff) {
+      continue; // lone surrogate or invalid Unicode scalar
     }
     if (c < 0x80) {
       out += static_cast< char >(c);
