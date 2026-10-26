@@ -3,6 +3,33 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-26 (port orchestrator): widescreen gaps, ball glow, suit colours, FOV, scan copies
+
+Widescreen, MP1's way. `82b768ae8` (fix/wide2) closes the 4:3 gaps MP1 had already fixed: splash
+logos keep their 4:3 shape and the face reflection's ortho widens with the view (`4f84326e0`, MP1
+`f5796fc2e`); movies fit the view with their shape kept (`b0bdb0627`, MP1 `10d237a43 6b7384a85`);
+credits text is laid out in the movie's 4:3 width (`511ba7bfe`, MP1 `cfa8e060b`); the scan window
+keeps its share of the width below 4:3 (`cdeb6495b`, MP1 `629170f37`); a cinematic cut blends from
+its unwidened FOV (`0a01d41a7`, MP1 `227c7fdaa`); the arm cannon is drawn at retail FOV, anchored to
+the 4:3 bottom below 4:3 (`7ebd852b8`, MP1 `5fb236a91 1a83a296d af5e42ade`). `7b82b73c9` widens the
+portal warp/world transition and keeps retail's cinematic framing instead of cropping it; `fcd80eb77`
+keeps that width below 4:3 (Vert+). `a3dbfec15` (fix/wide) makes the pause and map frames fill a wide
+window (`CGuiFrame::SetSpreadPanel`: the window grows, the side panel slides, text keeps its shape,
+`MapScreenWidth` follows the spread).
+
+Game-side fixes. `66ca362a3`: the FOV option's Retail entry restores the game's 55 immediately
+instead of waiting for a slider move. `4cc49dc49` (merge `68d3a77a4`): the morph ball's model shadow
+passes the actor-light array slot, so the ball is shaded again instead of flat bright (GOTCHAS, "A
+model shadow's light mask"). `a5d3587f6` (fix/suit1): suit colours apply live while paused — Apply
+now/reloadmods are serviced in the pause loop and the pause Inventory's Varia model is recoloured and
+refreshed — plus the Light Suit main slot, kVersion 4, cannon textures reverted (`689a5fe4e`).
+`c1dfbb37b` (fix/scanbands): scaled A8/R8/G8/B8 EFB copies sample Nearest, so the scan visor's index
+map is no longer averaged into wrong colours; I8 copies stay filtered, being luminance images not
+indices (`cba2b0837`).
+
+Phone verification pending: none of the above has been run on Android (touch layouts at 16:9/21:9, the
+pause Inventory recolor and the ball shadow there).
+
 ## 2026-10-25 (port orchestrator): batch34, last behaviour rows
 
 Integration `integ/batch34` (`../wt-mp2-batch34`, from port 92bcb4775) merged kral2/kral2b, oct3, spa3/spa3b/spa3c,

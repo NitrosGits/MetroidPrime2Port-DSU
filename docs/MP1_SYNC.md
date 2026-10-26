@@ -116,6 +116,19 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
     and MP1 platform/ fixes before 2026-09-29, classified against MP2 (reports
     /tmp/opencode/reports/aud1_src.md, aud2_platform.md); APPLIES rows become fix packages.
 
+26. **wide1 MP1 widescreen gaps** (hud1's leftovers, 2026-10-26): the 4:3 assumptions outside the
+    HUD: splash logos keep their shape, the face reflection's ortho widens with the view, movies fit
+    the view with their shape kept, credits text keeps the movie's 4:3 width, a cinematic cut blends
+    from its unwidened FOV, the arm cannon is drawn at retail FOV and anchored to the 4:3 bottom
+    below 4:3, the scan window keeps its share of the width below 4:3. MP1: `f5796fc2e 10d237a43
+    6b7384a85 227c7fdaa 5fb236a91 1a83a296d af5e42ade 629170f37 cfa8e060b`; `7a7aadd8c` (listed
+    under 23) is the warp/cinematic half.
+    DONE (2026-10-26, merged as `82b768ae8`): `4f84326e0` splash/face reflection, `b0bdb0627`
+    movies, `511ba7bfe` credits, `0a01d41a7` cinematic FOV, `cdeb6495b` scan window, `7ebd852b8`
+    arm cannon. Warp/cinematic widescreen `7b82b73c9` + `fcd80eb77` (MP1 `7a7aadd8c`); the pause
+    and map frames filling a wide window are our own (`a3dbfec15`, `CGuiFrame::SetSpreadPanel`), not
+    an MP1 port. Phone verification pending for all of it.
+
 Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
 fixes (wait for package 8), decomp matches.
 
@@ -160,3 +173,4 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 - 2026-10-25: misc1 merged (pkg 20): throughput readout (F1 Frame rate), save-state hotkeys switch (`savestate_hotkeys`), Keep room objects (`savestate_room_state`), pipeline memory-pressure trim (Linux, `MP2_PIPELINE_LAZY`). Not portable: simulation rate (fixed 60 Hz tick), console `fx` (no backend). Gates PASS (ctest 11/46 NOT_BUILT only, settings 205/118, upstream, boot). Live: throughput readout, F1 rows. Unrun: F5/F9 suppression, room-state round trip, trim trigger. Running: mod2.
 - 2026-10-25: mod2 merged (pkg 21): reload mods without a restart (`reloadmods` console + Mods page button; PortSaveState::RequestModReload restarts the world from the undo slot, CResLoader::PortReopenPaks reopens all PAKs over the rescanned mods), combined Mods page with texture pack, Open mods folder (SDL_OpenURL), Android texture-pack folder picker (Java/JNI, unbuilt). Orchestrator fixup: blank line in CResLoader.cpp. Gates PASS (cbfd964b5): build-port-link links, ctest 11/46 NOT_BUILT only, settings index 205/118, gen_files_cmake --check, 87 files OK, boot reaches gameplay. Unrun live: on-screen asset change after reload (log only), reload from the title screen, Android picker. Lane used a pattern `pkill -f` on its own timeout once (no damage seen). All MP1 sync packages (14–23) merged.
 - 2026-10-25: tail1 merged (item 24): Aurora MSAA depth copies, no-pipeline copy skip, MP_GX_CHECK_ARRAYS, cheat sliders, scan-point pointer hold, Controls page pointer speed under lock-on free aim; 5aba2cad4/067f64bcd/595279daf N/A, mpsoak not ported then (now `tools/mpsoak.py`, ported from MP1 a7127992e on `tools/run_gameplay.sh` instead of `mprig`: console `world`/`warp` tour, `msaa`, `shot.sh`). Audits (item 25) became fix1-3: fix2 (RotateToOR NaN, BoxLineTest axis, swoosh/light/PATH guards; CScriptTimer row already in retail), fix1 (no CMDL ARAM round trip, delayed MRAM free in CARAMToken, size_t pool checks, loader cache cleared before world paks), fix3 (x11 video hint, beam-change wipe follows the viewport, AI DMA silence, ImGui NoMouseCursorChange; smoke.cpp N/A). Orchestrator fixup: CWorldTransManager non-PC text. aud1 deep-read ~45 commits, rest triaged by subject. Gates PASS (ea7b9c01f): link 0/0, ctest 11/46 NOT_BUILT only, 87 files OK, boot to gameplay 4.2 s. Unrun live: beam-change wipe at 16:9, cursor, x11 on Wayland, THP audio.
+- 2026-10-26: wide1 (new package 26) merged: MP1's widescreen gaps outside the HUD — splash/face reflection (`4f84326e0`), movies (`b0bdb0627`), credits (`511ba7bfe`), cinematic FOV blend (`0a01d41a7`), scan window below 4:3 (`cdeb6495b`), arm cannon at retail FOV (`7ebd852b8`), warp/cinematic widescreen (`7b82b73c9`, `fcd80eb77`); merge `82b768ae8`. Not MP1: pause/map spread panels (`a3dbfec15`). Phone verification pending.

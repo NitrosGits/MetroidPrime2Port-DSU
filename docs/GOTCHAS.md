@@ -169,6 +169,14 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   the read-back buffers *after* releasing `g_mutex`: freeing one with a map pending runs its
   callback at once, which takes the same lock and deadlocks the exit (`932feb7c4`). Keep both on a
   re-vendor. Its depth words come back byte-swapped (big-endian in memory), like the GX Z16 copy.
+- **A model shadow's light mask is built from the actor-light array slot, not the area-light index.**
+  `CWorldShadow::EnableModelProjectedShadow` does `const uchar lightMask = 1 << lightIndex` and hands
+  it to `CCubeModel::EnableShadowMaps`, so the index must be the slot in the actor's light array
+  (`CActorLights::GetShadowLightArrayIndex`, `mShadowLightArrIdx`), which is what `CPlayerGun` passes.
+  The morph ball passed `GetShadowLightIndex` (`mShadowLightIdx`, the area-light index), a different
+  number: the mask came out 0 or named an unrelated light, so channel 1 stayed unlit/white and the
+  ball rendered flat bright wherever a shadow light existed (`4cc49dc49`, `CMorphBall::Render`).
+  `GetShadowLightIndex` is still the right one for `BuildLightShadowTexture`'s light lookup.
 
 ## Exit 13 and the log copier
 
