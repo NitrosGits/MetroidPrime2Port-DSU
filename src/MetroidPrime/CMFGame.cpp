@@ -292,6 +292,7 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         const bool canSkip = (cineCam->GetFlags() & 0x800) ||
                              ((cineCam->GetFlags() & 8) && cineCam->CanSkip(*mStateManager));
 #ifdef TARGET_PC
+        bool portSkipActive = false;
         // Port: the debug setting skips cinematics the player has not seen as well, which is
         // what makes a test run reach gameplay in seconds instead of minutes. Stopping the
         // cinematics is what SpecialSkipCinematic does on its way out, and the flow state has
@@ -299,6 +300,7 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         // MP2_SKIP_INTRO's request takes the same path (sHarnessCinematicSkip): a test run wants the
         // intro over with, and "over with" means the scene ended, not only the camera.
         if (PortOverlay::SkipCinematics() || sHarnessCinematicSkip || sPortUserCinematicSkip) {
+          portSkipActive = true;
           // The retail skip first: SpecialSkipCinematic also fires the scene's skip connections
           // (CScriptSpecialFunction::SkipCinematic), which jump the sequence to its end, and it is
           // what the `canSkip` branch below counts as the skip having happened (result 1). Result 0
@@ -327,9 +329,11 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
           static bool sSkipReported = false;
           const unsigned kMaxSkipAttempts = 8;
           // How long the flow stays here waiting for a sequence with no skip function to play itself
-          // out at max speed (see below). Generous: nothing is drawn while it runs, and the cap only
-          // exists so that a scene which never ends cannot hold a run.
-          const float kFastForwardCap = 30.f;
+          // out at max speed (see below), in game time. Generous: nothing is drawn while it runs, so
+          // a sequence runs at ~200x (the Emperor Ing chain's 29 s took 0.13 s), and a long one that
+          // hit a short cap would fall back to stopping the camera alone, the glitch this avoids. The
+          // cap only exists so that a scene which never ends cannot hold a run.
+          const float kFastForwardCap = 600.f;
           const unsigned portCamId = cineCam->GetScriptCameraId().Value();
           if (sSkipCamera != portCamId) {
             sSkipCamera = portCamId;
@@ -393,6 +397,14 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         if (canSkip && mFlowTime >= 1.f && mStateManager->SpecialSkipCinematic() == 1) {
           finished = true;
         }
+#endif
+#ifdef TARGET_PC
+        // Port: a skip that is fast-forwarding a sequence (no skip function, above) must not end at
+        // the first chained camera that has flag 0x10 and another id than the skipped one: retail
+        // gets there only after the scene's skip jumped it to its end, but here the sequence is
+        // still running, and ending the flow hands control back with the next camera playing in
+        // front of the first-person view and the HUD. The camera leaving the cinematic ends it.
+        if (!portSkipActive)
 #endif
         if ((cineCam->GetFlags() & 0x10) && mSkippedCineCam != cineCam->GetScriptCameraId()) {
           finished = true;
