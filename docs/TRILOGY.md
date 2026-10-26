@@ -162,6 +162,10 @@ With the setting enabled and `MP2_CONSOLE=<port>`:
 * `radial` reports capture, active kind (0 beam / 1 visor / -1 none), vector and fade fractions.
 * `radial beam <x> <y>` / `radial visor <x> <y>` holds a normalized selection (X right / Y up).
 * `radial release` releases that hold; `radial cancel` tears it down without selection.
+  Cancel also invalidates released-but-unaccepted radial retries and queued gameplay requests;
+  it never rolls back a selection the game already applied. Disabling the setting invalidates
+  these requests immediately, even when re-enabled before the next input poll. Ordinary touch,
+  direct and cycle selection requests are not withdrawn by radial cancellation.
 * `radial mouse <dx> <dy>` injects relative travel through the existing captured mouse path.
 * `radial pad beam <x> <y>` / `radial pad visor <x> <y>` simulates raw right-stick vector plus
   right/left stick click **through the input engine**. Requires the example pad bindings above.

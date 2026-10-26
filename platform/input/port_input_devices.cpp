@@ -586,11 +586,7 @@ uint16_t GameContexts() {
 }
 
 // A next/previous pick the game hasn't taken yet.
-struct CyclePending {
-  int target = -1;
-  uint64_t untilNs = 0;
-  bool radial = false;
-};
+using CyclePending = PortRadial::Retry;
 CyclePending sCyclePending[2]; // [0] visor, [1] beam
 
 // The beam or visor the game is on or switching to; -1 out of a game.
@@ -622,7 +618,8 @@ int CycleTarget(bool beam, int dir) {
   if (state == nullptr || dest < 0) return -1;
   const int* order = beam ? kBeamOrder : kVisorOrder;
   // Count from a pick the game hasn't taken yet, so quick notches keep stepping.
-  const int current = sCyclePending[beam].target >= 0 ? sCyclePending[beam].target : dest;
+  const int pending = sCyclePending[beam].PendingTarget();
+  const int current = pending >= 0 ? pending : dest;
   int pos = 0;
   while (pos < 4 && order[pos] != current) ++pos;
   if (pos == 4) pos = 0;
@@ -640,30 +637,24 @@ void PushCyclePick(bool beam, int target, bool radial = false) {
   CyclePending& p = sCyclePending[beam];
   const uint64_t now = SDL_GetTicksNS();
   if (target >= 0) {
-    p.target = target;
-    p.radial = radial;
-    p.untilNs = now + 1'500'000'000ull;
+    p.Start(target, radial, now);
   }
   if (p.target < 0) return;
-  if (p.radial && (!PortRadial::Transport().Available() ||
-                   !PortOverlay::TrilogyRadialSelectors() || PortOverlay::PointerBlocked() ||
-                   !PlayerInPlay() || !OwnsPick(*PlayerInPlay(), beam, p.target))) {
-    p.target = -1;
-    return;
-  }
+  const bool eligible = !p.radial || (PortRadial::Transport().Available() &&
+      PortOverlay::TrilogyRadialSelectors() && !PortOverlay::PointerBlocked() &&
+      PlayerInPlay() && OwnsPick(*PlayerInPlay(), beam, p.target));
   // The player state's requested beam can equal the target before an in-flight gun animation
   // accepts it, then be overwritten by that older animation. Radial retries acknowledge the
   // actual gun/current visor published by the HUD, not that transient request field.
   const int applied = p.radial ? PortRadial::Applied(beam ? PortRadial::kBeam : PortRadial::kVisor) :
                                 CurrentPick(beam);
-  if (now > p.untilNs || applied == p.target) {
-    p.target = -1;
-    return;
-  }
+  const int ordinary = PortRadial::DispatchRetry(p, beam ? PortRadial::kBeam : PortRadial::kVisor,
+                                                now, eligible, applied);
+  if (ordinary < 0) return;
   if (beam) {
-    PortTouch::RequestBeam(p.target);
+    PortTouch::RequestBeam(ordinary);
   } else {
-    PortTouch::RequestVisor(p.target);
+    PortTouch::RequestVisor(ordinary);
   }
 }
 
@@ -691,7 +682,8 @@ void RouteDirectActions(const PortInput::Output& out) {
   const int radialBeam = PortRadial::Transport().TakePick(PortRadial::kBeam);
   const int radialVisor = PortRadial::Transport().TakePick(PortRadial::kVisor);
   if (radialBeam >= 0) {
-    std::fprintf(stderr, "[radial] release beam %d\n", radialBeam);
+    std::fprintf(stderr, "[radial] release beam %d (applied=%d)\n", radialBeam,
+                 PortRadial::Applied(PortRadial::kBeam));
     PushCyclePick(true, radialBeam, true);
   }
   if (radialVisor >= 0) {

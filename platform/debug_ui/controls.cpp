@@ -58,7 +58,11 @@ void DrawControlsOptions() {
 
   ImGui::SeparatorText("Aiming");
   if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
-    Changed(ImGui::Checkbox("Native Trilogy radial selectors", &sTrilogyRadialSelectors));
+    bool radial = sTrilogyRadialSelectors;
+    if (ImGui::Checkbox("Native Trilogy radial selectors", &radial)) {
+      PortOverlay::SetTrilogyRadialSelectors(radial);
+      Changed(true);
+    }
     ItemHelp("Opt-in, single-player only. Bind Beam menu / Visor menu below. Hold, move mouse or "
              "right stick, release to select. Center selects Power / Combat; pause or morph cancels.");
   }

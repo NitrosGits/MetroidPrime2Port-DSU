@@ -11,9 +11,12 @@ Point sForceVector;
 int sPad = -1;
 Point sPadVector;
 int sApplied[2] = {-1, -1};
+struct QueuedRequest { int target = -1; uint64_t epoch = 0; };
+QueuedRequest sRequests[2];
 }
 
 void State::Cancel() {
+  ++mCancellationEpoch; // survives mailbox consumption and availability off/on transitions
   mActive = mPick = -1;
   mReleased = mResolved = mConsumed = false;
   mVector = {};
@@ -115,6 +118,32 @@ void State::Animate(float dt) {
 State& Transport() { return sState; }
 void SetApplied(int beam, int visor) { sApplied[kBeam] = beam; sApplied[kVisor] = visor; }
 int Applied(Kind kind) { return sApplied[kind]; }
+void Retry::Start(int pick, bool fromRadial, uint64_t nowNs) {
+  target = pick;
+  radial = fromRadial;
+  epoch = sState.CancellationEpoch();
+  untilNs = nowNs + 1'500'000'000ull;
+}
+int Retry::PendingTarget() const {
+  return radial && epoch != sState.CancellationEpoch() ? -1 : target;
+}
+int DispatchRetry(Retry& retry, Kind kind, uint64_t nowNs, bool radialEligible, int applied) {
+  if (retry.target < 0) return -1;
+  if ((retry.radial && (!radialEligible || retry.PendingTarget() < 0)) ||
+      nowNs > retry.untilNs || applied == retry.target) {
+    retry.target = -1;
+    return -1;
+  }
+  if (!retry.radial) return retry.target;
+  sRequests[kind] = {retry.target, retry.epoch};
+  return -1;
+}
+int TakeRequest(Kind kind, int ordinary) {
+  const QueuedRequest request = sRequests[kind];
+  sRequests[kind].target = -1;
+  if (ordinary >= 0) return ordinary;
+  return sState.Available() && request.epoch == sState.CancellationEpoch() ? request.target : -1;
+}
 void SimulatePad(int kind, float x, float y) {
   if (kind == 2) { sPad = 2; return; } // release click, retain the current stick vector
   sPad = kind >= 0 && kind < 2 ? kind : -1;

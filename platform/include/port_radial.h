@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 
 // Game-thread owned desktop transport. Normalized X right / Y up is also the future touch seam;
 // this slice does not route either existing touch wheel through it.
@@ -24,6 +25,7 @@ public:
   int Active() const { return mActive; }
   Point Vector() const { return mVector; }
   float Open(Kind kind) const { return mOpen[kind]; }
+  uint64_t CancellationEpoch() const { return mCancellationEpoch; }
 private:
   bool mAvailable = false, mPrevious[2] = {}, mReleased = false;
   bool mResolved = false, mConsumed = false;
@@ -31,6 +33,7 @@ private:
   int mActive = -1, mPick = -1;
   Point mVector;
   float mOpen[2] = {};
+  uint64_t mCancellationEpoch = 0;
 };
 
 State& Transport();
@@ -45,6 +48,22 @@ void SimulatePad(int kind, float x = 0.f, float y = 0.f);
 int SimulatedPad(Point& vector);
 void SetApplied(int beam, int visor);
 int Applied(Kind kind);
+
+// Shared input-retry / gameplay-request boundary. Radial requests remain epoch-tagged until
+// PortTouch's ApplyRequests consumes them; ordinary touch/direct/cycle requests stay independent.
+struct Retry {
+  int target = -1;
+  uint64_t untilNs = 0;
+  bool radial = false;
+  uint64_t epoch = 0;
+  void Start(int pick, bool fromRadial, uint64_t nowNs);
+  int PendingTarget() const;
+};
+// Queues radial requests; returns an ordinary request for the existing PortTouch mailbox, or -1.
+int DispatchRetry(Retry& retry, Kind kind, uint64_t nowNs, bool radialEligible, int applied);
+// Consumes the queued radial request once, only in its original uncancelled epoch. An ordinary
+// request wins if both sources wrote this frame; cancellation never withdraws that other source.
+int TakeRequest(Kind kind, int ordinary = -1);
 
 }
 

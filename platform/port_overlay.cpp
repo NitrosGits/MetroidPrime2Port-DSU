@@ -15,6 +15,7 @@
 #include "port_overlay_internal.h"
 #include "port_logfile.h"
 #include "port_mouse.h"
+#include "port_radial.h"
 #include "debug_ui/debug_ui_internal.h"
 
 #include "Kyoto/CSimplePool.hpp"
@@ -989,6 +990,14 @@ bool PointerAim() {
 bool TrilogyRadialSelectors() {
   ReadEnv();
   return EnvBool("MP2_TRILOGY_RADIAL_SELECTORS", sTrilogyRadialSelectors);
+}
+
+void SetTrilogyRadialSelectors(bool enabled) {
+  sTrilogyRadialSelectors = enabled;
+  if (!enabled) {
+    PortRadial::Transport().SetAvailable(false);
+    PortRadial::Cancel();
+  }
 }
 
 void SetPointerAim(bool enabled) {

@@ -15,6 +15,7 @@
 
 #include "port_harness.h"
 #include "port_mouse.h"
+#include "port_radial.h"
 #include "port_overlay.h"
 #include "port_prompts.h"
 #include "touch_pad.h"
@@ -377,8 +378,10 @@ CPlayerState::EItemType BeamItemOf(int item) {
 // the CStateManager, which nothing outside src/ holds, and CPlayerGun skips drawing in the scan
 // visor regardless.
 void ApplyRequests(CPlayerState* state) {
-  const int visor = sPendingVisor.exchange(-1, std::memory_order_acq_rel);
-  const int beam = sPendingBeam.exchange(-1, std::memory_order_acq_rel);
+  const int visor = PortRadial::TakeRequest(PortRadial::kVisor,
+      sPendingVisor.exchange(-1, std::memory_order_acq_rel));
+  const int beam = PortRadial::TakeRequest(PortRadial::kBeam,
+      sPendingBeam.exchange(-1, std::memory_order_acq_rel));
   if (state == nullptr) {
     return;
   }

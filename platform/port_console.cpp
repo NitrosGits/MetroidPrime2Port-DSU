@@ -3674,10 +3674,11 @@ void CmdRadial(CStateManager& mgr, const Args& args, std::string& out) {
   if (args.size() == 1) {
     char line[160];
     const PortRadial::Point p = PortRadial::Transport().Vector();
-    std::snprintf(line, sizeof(line), "radial active=%d capture=%d vector=%.3f,%.3f open=%.3f,%.3f\n",
+    std::snprintf(line, sizeof(line), "radial active=%d capture=%d vector=%.3f,%.3f open=%.3f,%.3f applied=%d,%d\n",
                   PortRadial::Transport().Active(), PortRadial::Capturing(), p.x, p.y,
                   PortRadial::Transport().Open(PortRadial::kBeam),
-                  PortRadial::Transport().Open(PortRadial::kVisor));
+                  PortRadial::Transport().Open(PortRadial::kVisor),
+                  PortRadial::Applied(PortRadial::kBeam), PortRadial::Applied(PortRadial::kVisor));
     out += line;
     return;
   }
