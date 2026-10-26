@@ -58,14 +58,24 @@ void TestSupportedDisc() {
   Check(std::string(DiscGameCode(DiscVersion::Pal)) == "G2MP", "PAL saves under G2MP");
   Check(std::string(DiscGameCode(DiscVersion::Unknown)) == "G2ME", "unknown saves under G2ME");
   Check(!IsSupportedDisc(MakeDiscId("G2ME", "08", 0, 0)), "a third-party publisher is rejected");
-  Check(!IsSupportedDisc(MakeDiscId("R3ME", "01", 0, 0)), "the Trilogy disc is rejected");
+  Check(IsSupportedDisc(MakeDiscId("R3ME", "01", 0, 0)), "the USA Trilogy disc is supported");
+  Check(IsSupportedDisc(MakeDiscId("R3MP", "01", 0, 0)), "the PAL Trilogy disc is supported");
+  Check(!IsSupportedDisc(MakeDiscId("R3ME", "01", 0, 1)), "a later Trilogy revision is rejected");
+  Check(!IsSupportedDisc(MakeDiscId("R3MJ", "01", 0, 0)), "the Japanese Trilogy is rejected");
+  Check(IdentifyDisc(MakeDiscId("R3ME", "01", 0, 0)) == DiscVersion::TrilogyUsa, "R3ME01 is the USA Trilogy");
+  Check(IdentifyDisc(MakeDiscId("R3MP", "01", 0, 0)) == DiscVersion::TrilogyPal, "R3MP01 is the PAL Trilogy");
+  Check(std::string(DiscGameCode(DiscVersion::TrilogyUsa)) == "R3ME", "USA Trilogy saves under R3ME");
+  Check(std::string(DiscGameCode(DiscVersion::TrilogyPal)) == "R3MP", "PAL Trilogy saves under R3MP");
+  Check(port::entry::IsPalRegion(DiscVersion::TrilogyPal) && !port::entry::IsPalRegion(DiscVersion::TrilogyUsa),
+        "the PAL Trilogy keeps its memory card in EUR");
 }
 
 void TestDiscImageNames() {
   Check(IsDiscImageName("Metroid Prime 2 (USA) (v1.00).iso"), "an .iso name is accepted");
   Check(IsDiscImageName("GAME.ISO"), "the extension check is case-insensitive");
   Check(IsDiscImageName("disc.gcm"), "a .gcm name is accepted");
-  Check(!IsDiscImageName("disc.rvz"), "a compressed image is not accepted");
+  Check(IsDiscImageName("Metroid Prime Trilogy (USA).rvz"), "an .rvz name is accepted");
+  Check(!IsDiscImageName("disc.zip"), "an archive is not accepted");
   Check(!IsDiscImageName("iso"), "a name without an extension is not accepted");
   Check(!IsDiscImageName(".iso"), "a bare extension is not accepted");
 }

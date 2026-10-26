@@ -404,7 +404,8 @@ PortPaths ResolveAndroidPaths() {
 // rather than the container formats MP1's loader also reads.
 bool SupportedHeader(const char* header, size_t size) {
   const std::string id(header, size >= 6 ? 6 : 0);
-  return size >= 8 && (id == "G2ME01" || id == "G2MP01") && header[6] == 0 && header[7] == 0;
+  return size >= 8 && (id == "G2ME01" || id == "G2MP01" || id == "R3ME01" || id == "R3MP01") && header[6] == 0 &&
+         header[7] == 0;
 }
 
 bool DiscImageIsUsable(const std::string& path) {
@@ -493,7 +494,7 @@ std::string CopyDiscImage(const std::string& uri, const std::string& target) {
   const bool headerRead = SDL_ReadIO(in, header, sizeof(header)) == sizeof(header);
   if (headerRead && !SupportedHeader(header, sizeof(header))) {
     std::fprintf(stderr, "metroid_prime2_port: not copying the picked image: it is not a "
-                         "Metroid Prime 2: Echoes disc (expected G2ME01 or G2MP01, revision 0)\n");
+                         "Metroid Prime 2: Echoes disc (expected G2ME01, G2MP01, R3ME01 or R3MP01, revision 0)\n");
     SDL_CloseIO(in);
     return {};
   }
@@ -699,7 +700,7 @@ std::string FindUnreadableDiscFile() {
   return {};
 }
 
-constexpr const char* kSupportedDisc = "Metroid Prime 2: Echoes for the GameCube is supported:\nUSA 1.00 (G2ME01), and PAL (G2MP01) as experimental.";
+constexpr const char* kSupportedDisc = "Metroid Prime 2: Echoes for the GameCube is supported:\nUSA 1.00 (G2ME01); PAL (G2MP01) and Metroid Prime Trilogy (R3ME01, R3MP01) are experimental.";
 
 // No box and no picker when nothing can answer them: MP2_NO_DISC_DIALOG, a headless run, a bounded
 // scripted run (MP2_FRAMES), or no window. A refused disc then ends the run, as it always did.
@@ -1095,8 +1096,15 @@ int main(int argc, char** argv) {
                discId == nullptr || !port::entry::IsSupportedDisc(*discId)) {
       std::fprintf(stderr,
                    "metroid_prime2_port: unsupported disc; expected Metroid Prime 2: Echoes "
-                   "USA 1.00 (G2ME01) or PAL (G2MP01), revision 0.\n");
-      problem = "This disc image is not Metroid Prime 2: Echoes (USA 1.00 or PAL).";
+                   "USA 1.00 (G2ME01), PAL (G2MP01) or Metroid Prime Trilogy (R3ME01, R3MP01), revision 0.\n");
+      problem = "This disc image is not Metroid Prime 2: Echoes (USA 1.00, PAL or Metroid Prime Trilogy).";
+      aurora_dvd_close();
+    } else if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion()) &&
+               !aurora_dvd_set_root(port::entry::kTrilogyRootDir, port::entry::kTrilogyDol)) {
+      // The Trilogy disc keeps Echoes' paks in MP2/ and its DOL as rs5mp2_p.dol; the game opens
+      // paks by bare name, so MP2/ becomes the root (docs/TRILOGY.md).
+      std::fprintf(stderr, "metroid_prime2_port: the Trilogy disc has no MP2 directory or rs5mp2_p.dol\n");
+      problem = "This Metroid Prime Trilogy image has no Echoes (MP2) data.";
       aurora_dvd_close();
     } else if (const std::string unreadable = FindUnreadableDiscFile(); !unreadable.empty()) {
       std::fprintf(stderr, "metroid_prime2_port: disc image is incomplete: %s can't be read\n", unreadable.c_str());
@@ -1108,7 +1116,8 @@ int main(int argc, char** argv) {
       const port::entry::DiscVersion version = port::entry::CurrentDiscVersion();
       std::fprintf(stderr, "metroid_prime2_port: disc: Metroid Prime 2: Echoes %s (%s01)%s\n",
                    port::entry::DiscVersionName(version), port::entry::DiscGameCode(version),
-                   version == port::entry::DiscVersion::Pal ? ", experimental: USA 1.00 code on PAL data" : "");
+                   version == port::entry::DiscVersion::Pal ? ", experimental: USA 1.00 code on PAL data"
+                   : port::entry::IsTrilogy(version) ? ", experimental: USA 1.00 code on Trilogy data" : "");
       break;
     }
 #if defined(__ANDROID__)

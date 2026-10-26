@@ -59,7 +59,7 @@ void OpenDialog(Pick pick) {
 
 // Dolphin's region folder for the mounted disc's card, as Aurora picks its own.
 const char* DolphinRegion() {
-  return port::entry::CurrentDiscVersion() == port::entry::DiscVersion::Pal ? "EUR" : "USA";
+  return port::entry::IsPalRegion(port::entry::CurrentDiscVersion()) ? "EUR" : "USA";
 }
 
 // Dolphin's (or PrimeHack's) GCI-folder card A for the mounted disc's release, where this machine

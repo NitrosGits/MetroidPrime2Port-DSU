@@ -283,8 +283,8 @@ bool Inspect(const std::string& path, File& out, std::string& error) {
     error = path + ": maker code '" + out.maker + "', not 01";
     return false;
   }
-  if (out.game != "G2ME" && out.game != "G2MP") {
-    error = path + ": game code '" + out.game + "', not this game's save (G2ME or G2MP)";
+  if (out.game != "G2ME" && out.game != "G2MP" && out.game != "R3ME" && out.game != "R3MP") {
+    error = path + ": game code '" + out.game + "', not this game's save (G2ME, G2MP, R3ME or R3MP)";
     return false;
   }
   const size_t body = bytes.size() - kDirEntry;
@@ -373,7 +373,8 @@ std::vector<std::string> Files() {
     if (!in.read(head, sizeof head)) {
       continue;
     }
-    const bool game = std::memcmp(head, "G2ME", 4) == 0 || std::memcmp(head, "G2MP", 4) == 0;
+    const bool game = std::memcmp(head, "G2ME", 4) == 0 || std::memcmp(head, "G2MP", 4) == 0 ||
+                      std::memcmp(head, "R3ME", 4) == 0 || std::memcmp(head, "R3MP", 4) == 0;
     if (game && head[4] == '0' && head[5] == '1') {
       out.push_back(path);
     }
