@@ -398,14 +398,11 @@ PortPaths ResolveAndroidPaths() {
 // app can be killed during a multi-minute copy) must not leave a truncated disc.iso, which the
 // next launch would then prefer over asking again.
 
-// The three fields `port::entry::IsSupportedDisc` checks after mounting, read from the head of
-// the image instead: "G2ME" or "G2MP", "01", version 0, disc 0. Only a plain image (iso, gcm) carries
-// them - a container hides them, which is why the picker offers those two and "All files"
-// rather than the container formats MP1's loader also reads.
+// The picked file's head must name a supported disc (plain iso/gcm: "G2ME", "G2MP", "R3ME" or
+// "R3MP", "01", version 0, disc 0) or carry a container magic nod reads (rvz, wia, gcz, ciso,
+// wbfs): a container hides the disc ID, so the mount-time `IsSupportedDisc` check verifies it.
 bool SupportedHeader(const char* header, size_t size) {
-  const std::string id(header, size >= 6 ? 6 : 0);
-  return size >= 8 && (id == "G2ME01" || id == "G2MP01" || id == "R3ME01" || id == "R3MP01") && header[6] == 0 &&
-         header[7] == 0;
+  return port::entry::IsPickableDiscHeader(header, size);
 }
 
 bool DiscImageIsUsable(const std::string& path) {
@@ -434,7 +431,7 @@ std::string AskForDiscImage() {
   chosen.clear();
   // Static: SDL reads the filters until the dialog closes, which can outlive this call.
   static const SDL_DialogFileFilter filters[] = {
-      {"Metroid Prime 2: Echoes disc image (iso, gcm)", "iso;gcm"},
+      {"Metroid Prime 2: Echoes / Trilogy disc image", "iso;gcm;rvz;wia;gcz;ciso;wbfs"},
       {"All files", "*"},
   };
   std::fprintf(stderr, "metroid_prime2_port: asking for a disc image\n");
@@ -494,7 +491,7 @@ std::string CopyDiscImage(const std::string& uri, const std::string& target) {
   const bool headerRead = SDL_ReadIO(in, header, sizeof(header)) == sizeof(header);
   if (headerRead && !SupportedHeader(header, sizeof(header))) {
     std::fprintf(stderr, "metroid_prime2_port: not copying the picked image: it is not a "
-                         "Metroid Prime 2: Echoes disc (expected G2ME01, G2MP01, R3ME01 or R3MP01, revision 0)\n");
+                         "Metroid Prime 2: Echoes disc (expected G2ME01, G2MP01, R3ME01 or R3MP01, revision 0, or an rvz/wia/gcz/ciso/wbfs image)\n");
     SDL_CloseIO(in);
     return {};
   }

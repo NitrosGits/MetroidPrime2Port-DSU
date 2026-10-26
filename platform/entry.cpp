@@ -66,6 +66,24 @@ bool IsDiscImageName(const std::string& name) {
                          lower.ends_with(".wbfs"));
 }
 
+bool IsPlainDiscHeader(const char* header, size_t size) {
+  if (header == nullptr || size < 8) {
+    return false;
+  }
+  const std::string id(header, 6);
+  return (id == "G2ME01" || id == "G2MP01" || id == "R3ME01" || id == "R3MP01") && header[6] == 0 &&
+         header[7] == 0;
+}
+
+bool IsDiscContainerMagic(const char* header, size_t size) {
+  if (header == nullptr || size < 4) {
+    return false;
+  }
+  const std::string magic(header, 4);
+  return magic == std::string("RVZ\x01", 4) || magic == std::string("WIA\x01", 4) ||
+         magic == "CISO" || magic == "WBFS" || magic == std::string("\x01\xC0\x0B\xB1", 4);
+}
+
 std::string ResolveDiscPath(int argc, char** argv, const char* envDiscPath,
                             const std::string& executableDir) {
   for (int i = 1; i < argc; i++) {

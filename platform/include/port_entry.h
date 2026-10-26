@@ -36,6 +36,15 @@ const char* CurrentGameCode();
 // Disc-image file names the port will pick up beside the executable.
 bool IsDiscImageName(const std::string& name);
 
+// The first bytes of a picked file (at least 8): a plain image whose header names a supported disc
+// (G2ME01, G2MP01, R3ME01, R3MP01, version 0, disc 0), or a container nod reads (RVZ, WIA, GCZ,
+// CISO, WBFS), whose disc ID is only visible after nod opens it, so the mount verifies it.
+bool IsPlainDiscHeader(const char* header, size_t size);
+bool IsDiscContainerMagic(const char* header, size_t size);
+inline bool IsPickableDiscHeader(const char* header, size_t size) {
+  return IsPlainDiscHeader(header, size) || IsDiscContainerMagic(header, size);
+}
+
 // Disc image path, in order: an explicit non-flag argument, `envDiscPath`, then
 // the first disc image in `executableDir`. `envDiscPath` may be null. Returns an
 // empty string when nothing is found. The caller supplies the environment and

@@ -12,7 +12,7 @@ DEFAULT_ISO = "/run/media/odran/Leo/Portable/roms/gc/Metroid Prime 2 - Echoes.is
 
 
 def find_iso():
-    p = os.environ.get("MP2_DISC")
+    p = os.environ.get("MP2_LIST_DISC") or os.environ.get("MP2_DISC")  # LIST: a plain ISO when MP2_DISC is an rvz
     if p and os.path.exists(p):
         return p
     return DEFAULT_ISO if os.path.exists(DEFAULT_ISO) else None
