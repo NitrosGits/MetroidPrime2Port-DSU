@@ -11,7 +11,7 @@ namespace PortRadial {
 class TouchMailbox {
 public:
   struct Sample {
-    uint64_t token = 0, epoch = 0, cancellation = 0;
+    uint64_t token = 0, epoch = 0, cancellation = 0, lifecycleCancellation = 0;
     int64_t owner = 0;
     int kind = 0;
     float x = 0.f, y = 0.f;
@@ -59,8 +59,9 @@ public:
     if (!Matches(token, owner)) return;
     Invalidate();
   }
-  void CancelAll() {
+  void CancelAll(bool lifecycle = false) {
     std::lock_guard lock(mMutex);
+    if (lifecycle) ++mSample.lifecycleCancellation;
     Invalidate();
   }
   Sample Read() const { std::lock_guard lock(mMutex); return mSample; }

@@ -592,6 +592,7 @@ final class TouchControlsView extends View {
     private static native void nativeRadialEnd(long token, int owner, float x, float y);
     private static native void nativeRadialCancel(long token, int owner);
     private static native void nativeRadialCancelAll();
+    private static native void nativeRadialCancelLifecycle();
     private static native boolean nativeTouchMapTapEnabled();
     // The minimap's screen rect into out5: x0, y0, x1, y1 as fractions of the view, then 1
     // when the minimap is drawn there (0: draw a map button instead). False when no rect.
@@ -1487,7 +1488,7 @@ final class TouchControlsView extends View {
     }
 
     void releaseAll() {
-        nativeRadialCancelAll();
+        nativeRadialCancelAll(); // touch-only, including a released touch retry with no target
         for (Map.Entry<Integer, TouchTarget> entry : targets.entrySet()) {
             if (entry.getValue().radialToken != 0) cancelledRadialPointers.add(entry.getKey());
         }
@@ -1611,7 +1612,10 @@ final class TouchControlsView extends View {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (!hasFocus) releaseAll();
+        if (!hasFocus) {
+            nativeRadialCancelLifecycle();
+            releaseAll();
+        }
     }
 
     @Override

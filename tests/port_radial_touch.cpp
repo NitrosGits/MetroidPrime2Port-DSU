@@ -11,6 +11,7 @@ const Point beam[] = {{0,.6f}, {-3.961959f,-2.037475f}, {3.961959f,-2.037475f}, 
 const Point visor[] = {{0,.6f}, {3.961959f,-2.037475f}, {0,5.088521f}, {-3.961959f,-2.037475f}};
 
 void Reset() {
+  Cancel(); // fixture isolation is global; the View's ordinary releaseAll is touch-scoped
   CancelAllTouches();
   ServiceTouchCancellation();
   SetTouchContext(true);
@@ -28,6 +29,63 @@ void Finish(Kind kind, const Point* geometry, int expected, unsigned owned = 15)
   REQUIRE(!Capturing());
 }
 int main() {
+  // Actual Java releaseAll/auto-hide API: no touch owner may cancel a held keyboard wheel.
+  Reset();
+  Poll(true, false, 0, 1);
+  REQUIRE(Capturing() && !TouchOwnsSelection());
+  const auto keyboardEpoch = Transport().CancellationEpoch();
+  CancelAllTouches();
+  Poll(true, false, 0, 1);
+  REQUIRE(Capturing() && Transport().Held(kBeam));
+  REQUIRE(Transport().CancellationEpoch() == keyboardEpoch);
+  Poll(false, false, 0, 1);
+  Transport().Resolve(beam, 15, 0);
+  REQUIRE(Transport().TakePick(kBeam) == 3);
+  Retry keyboardRetry;
+  keyboardRetry.Start(3, true, 100);
+  REQUIRE(!keyboardRetry.touch);
+  DispatchRetry(keyboardRetry, kBeam, 101, true, 0);
+  CancelAllTouches(); // zero Java targets, but a released keyboard retry/request is pending
+  ServiceTouchCancellation();
+  REQUIRE(keyboardRetry.PendingTarget() == 3);
+  REQUIRE(TakeRequest(kBeam) == 3);
+  REQUIRE(DispatchRetry(keyboardRetry, kBeam, 102, true, 0) == -1);
+  REQUIRE(TakeRequest(kBeam) == 3);
+  Reset();
+  // No Java target/active touch remains, but its released retry still needs cancellation.
+  const auto released = BeginTouch(kVisor, 70);
+  REQUIRE(released > 0 && EndTouch(released, 70, 0, 1));
+  Poll(false, false, 0, 0);
+  Transport().Resolve(visor, 15, 0);
+  const int touchPick = Transport().TakePick(kVisor);
+  REQUIRE(touchPick == 2);
+  Retry releasedTouchRetry;
+  releasedTouchRetry.Start(touchPick, true, 200);
+  REQUIRE(releasedTouchRetry.touch);
+  DispatchRetry(releasedTouchRetry, kVisor, 201, true, 0);
+  Poll(false, false, 0, 0); // acknowledge release: no mailbox owner or Java target now
+  REQUIRE(!TouchOwnsSelection() && !Capturing());
+  Poll(true, false, 0, 1); // an unrelated keyboard owner opens while touch retry is pending
+  Retry concurrentKeyboardRetry;
+  concurrentKeyboardRetry.Start(1, true, 200);
+  REQUIRE(!concurrentKeyboardRetry.touch);
+  DispatchRetry(concurrentKeyboardRetry, kBeam, 201, true, 0);
+  const auto mixedEpoch = Transport().CancellationEpoch();
+  CancelAllTouches(); // exact auto-hide-equivalent API, not a test-only transport reset
+  ServiceTouchCancellation();
+  REQUIRE(Capturing() && Transport().Held(kBeam));
+  REQUIRE(Transport().CancellationEpoch() == mixedEpoch);
+  REQUIRE(releasedTouchRetry.PendingTarget() == -1);
+  REQUIRE(DispatchRetry(releasedTouchRetry, kVisor, 202, true, 0) == -1);
+  REQUIRE(TakeRequest(kVisor) == -1); // already queued touch request is also withdrawn
+  REQUIRE(concurrentKeyboardRetry.PendingTarget() == 1);
+  REQUIRE(TakeRequest(kBeam) == 1);
+  DispatchRetry(concurrentKeyboardRetry, kBeam, 202, true, 0);
+  CancelTouchLifecycle(); // actual background/focus path MUST still cancel keyboard and retry
+  ServiceTouchCancellation();
+  REQUIRE(!Capturing() && concurrentKeyboardRetry.PendingTarget() == -1);
+  REQUIRE(TakeRequest(kBeam) == -1);
+  Reset();
   for (int k = 0; k < 2; ++k) for (int i = 0; i < 4; ++i) {
     Reset();
     const auto kind = Kind(k);
@@ -163,7 +221,7 @@ int main() {
     }
   });
   std::thread cancellation([&] {
-    for (int i = 0; i < 3000; ++i) mailbox.CancelAll();
+    for (int i = 0; i < 3000; ++i) mailbox.CancelAll(i % 2 == 0);
   });
   for (uint64_t epoch = 5; epoch < 3005; ++epoch) {
     const auto sample = mailbox.Read();

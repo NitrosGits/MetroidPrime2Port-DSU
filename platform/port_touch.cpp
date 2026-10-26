@@ -446,7 +446,7 @@ bool SDLCALL RadialLifecycleWatch(void*, SDL_Event* event) {
       event->type == SDL_EVENT_DID_ENTER_BACKGROUND ||
       event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {
     sRadialTouchForeground.store(false, std::memory_order_release);
-    PortRadial::CancelAllTouches();
+    PortRadial::CancelTouchLifecycle();
   } else if (event->type == SDL_EVENT_DID_ENTER_FOREGROUND ||
              event->type == SDL_EVENT_WINDOW_FOCUS_GAINED) {
     sRadialTouchForeground.store(true, std::memory_order_release);

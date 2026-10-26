@@ -184,6 +184,10 @@ JNIEXPORT void JNICALL
 Java_org_metroidprime2_port_TouchControlsView_nativeRadialCancelAll(JNIEnv*, jclass) {
   PortRadial::CancelAllTouches();
 }
+JNIEXPORT void JNICALL
+Java_org_metroidprime2_port_TouchControlsView_nativeRadialCancelLifecycle(JNIEnv*, jclass) {
+  PortRadial::CancelTouchLifecycle();
+}
 
 JNIEXPORT jint JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeWheelOwned(JNIEnv*,
                                                                                       jclass) {

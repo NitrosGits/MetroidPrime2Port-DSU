@@ -200,9 +200,12 @@ All PortRadial state, ownership, selection, release and retry consumption remain
 Short down/move/up gestures between polls retain their final point and release exactly once.
 Late/duplicate/wrong-owner moves or lifts are ignored, including pointer-id reuse.
 
-ACTION_CANCEL, focus/background loss, F1/pause, layout/editor/size/controls changes, disabled
-setting and lost gameplay/assets invalidate native ownership and pending requests through the
-same cancellation epoch. A held/revoked finger cannot commit or reopen on re-enable; it stays
+Ordinary View teardown (including physical-input auto-hide), ACTION_CANCEL and touch layout/
+editor/size/controls changes cancel touch-owned capture and released-but-pending touch requests
+only; they do not cancel a keyboard/pad menu or retry when there are no fingers down. Request
+provenance survives removal of the Java target. True focus/background loss, F1/pause, disabling
+the radial setting and lost gameplay/assets still invalidate all radial sources through the
+global cancellation epoch. A held/revoked finger cannot commit or reopen on re-enable; it stays
 consumed until lifted, and a fresh down is needed. Cancelled native fingers released by the Java
 view are not forwarded to SDL as a new look/map gesture. Already-applied selections are not undone.
 
