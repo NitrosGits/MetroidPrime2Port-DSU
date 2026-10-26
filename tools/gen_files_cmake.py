@@ -24,6 +24,7 @@ SKIP_LIBS = {"musyx", "MetroTRK", "Runtime.PPCEABI.H"}
 SKIP_LIB_PREFIXES = ("MSL_C",)
 
 PORT_ONLY = [
+    "src/MetroidPrime/HUD/PortRadialHud.cpp",
     "src/Kyoto/Alloc/PortMwccNew.cpp",
     "src/Kyoto/CARAMManagerPort.cpp",
     "src/Kyoto/CFactoryFunctionsPort.cpp",

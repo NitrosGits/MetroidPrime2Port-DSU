@@ -41,6 +41,7 @@ extern bool sStickyCharge;
 extern bool sRapidCharge;
 extern bool sAutoAim;
 extern bool sPointerAim;
+extern bool sTrilogyRadialSelectors;
 extern int sPointerAimBox;
 extern int sPointerAimTurn;
 extern bool sGyroAim;

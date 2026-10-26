@@ -462,6 +462,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_crash.cpp platform/port_watchdog.cpp platform/port_pipeline_trim.cpp platform/port_storage_report.cpp
         platform/port_pointer.cpp platform/port_pointer_menu.cpp
         platform/port_events.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp
+        platform/port_radial.cpp
         platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp
         platform/port_gyro_motion.cpp
         platform/port_dynamic_res.cpp platform/port_video.cpp
@@ -550,6 +551,14 @@ if(AURORA_SDL3_TARGET)
     set_tests_properties(port_settings_roundtrip PROPERTIES TIMEOUT 30 LABELS port
         ENVIRONMENT "MP2_USER_PATH=${CMAKE_CURRENT_BINARY_DIR}/settings-selftest/")
     # F1 > System > Settings > Reset configuration (platform/include/port_config_reset.h). Header-only.
+    add_executable(port_radial_tests tests/port_radial.cpp platform/port_radial.cpp)
+    target_include_directories(port_radial_tests PRIVATE platform/include)
+    add_test(NAME port_radial_tests COMMAND port_radial_tests)
+    add_executable(port_radial_mouse_tests tests/port_mouse.cpp platform/port_mouse.cpp platform/port_radial.cpp)
+    target_include_directories(port_radial_mouse_tests PRIVATE platform/include extern/aurora/include)
+    target_link_libraries(port_radial_mouse_tests PRIVATE ${AURORA_SDL3_TARGET})
+    add_test(NAME port_radial_mouse_tests COMMAND port_radial_mouse_tests)
+    set_tests_properties(port_radial_tests port_radial_mouse_tests PROPERTIES TIMEOUT 30 LABELS port)
     add_executable(port_mods_tests tests/port_mods.cpp platform/port_mods_pak.cpp)
     target_include_directories(port_mods_tests PRIVATE platform/include)
     add_test(NAME port_mods_tests COMMAND port_mods_tests)

@@ -13,6 +13,7 @@
 #include "port_console.h"
 #include "port_discord.h"
 #include "port_mouse.h"
+#include "port_radial.h"
 #include "port_freecam.h"
 #include "port_livesplit.h"
 #include "port_photo.h"
@@ -3669,6 +3670,41 @@ void CmdVisor(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+void CmdRadial(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() == 1) {
+    char line[160];
+    const PortRadial::Point p = PortRadial::Transport().Vector();
+    std::snprintf(line, sizeof(line), "radial active=%d capture=%d vector=%.3f,%.3f open=%.3f,%.3f\n",
+                  PortRadial::Transport().Active(), PortRadial::Capturing(), p.x, p.y,
+                  PortRadial::Transport().Open(PortRadial::kBeam),
+                  PortRadial::Transport().Open(PortRadial::kVisor));
+    out += line;
+    return;
+  }
+  if (args[1] == "release") { PortRadial::Force(-1); return; }
+  if (args[1] == "cancel") { PortRadial::Cancel(); return; }
+  if (args[1] == "padoff") { PortRadial::SimulatePad(-1); return; }
+  if (args[1] == "padrelease") { PortRadial::SimulatePad(2); return; }
+  if (!PortRadial::GameplayAllowed(mgr)) { Fail("radial unavailable outside enabled Trilogy gameplay"); return; }
+  float x = 0.f, y = 0.f;
+  if (args[1] == "pad") {
+    if (args.size() != 5 || !ParseFloat(args[3], x) || !ParseFloat(args[4], y) ||
+        (args[2] != "beam" && args[2] != "visor")) {
+      Fail("radial pad beam|visor x y; bind pad:rightstick / pad:leftstick to held menus first"); return;
+    }
+    PortRadial::SimulatePad(args[2] == "beam" ? PortRadial::kBeam : PortRadial::kVisor, x, y);
+    return;
+  }
+  if (args.size() != 4 || !ParseFloat(args[2], x) || !ParseFloat(args[3], y)) {
+    Fail("radial beam|visor <x right> <y up> | mouse <dx> <dy> | release | cancel"); return;
+  }
+  if (args[1] == "mouse") { PortMouse::AddMotion(x, y); return; }
+  const int kind = args[1] == "beam" ? PortRadial::kBeam :
+                   args[1] == "visor" ? PortRadial::kVisor : -1;
+  if (kind < 0) { Fail("unknown radial kind"); return; }
+  PortRadial::Force(kind, x, y);
+}
+
 void CmdBeam(CStateManager& mgr, const Args& args, std::string& out) {
   CPlayerState* state = mgr.PlayerState(0);
   if (state == nullptr) {
@@ -4556,6 +4592,9 @@ const CommandSpec kCommands[] = {
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"},
     {"beam", CmdBeam,
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"},
+    {"radial", CmdRadial,
+      "radial [beam|visor x y|mouse dx dy|release|cancel|pad beam|visor x y|padrelease|padoff]\n"
+      "                           desktop native selector harness (Trilogy opt-in)\n"},
     {"tp", CmdTp,
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"},
     {"ray", CmdRay,

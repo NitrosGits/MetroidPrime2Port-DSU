@@ -1,5 +1,13 @@
 # Controls and settings
 
+Native Trilogy radial menus: `trilogy_radial_selectors` (default `0`), F1 > Controls > Options >
+Aiming, Trilogy discs only. Bind the new `beam_menu` / `visor_menu` held actions in Controls >
+Remap (keyboard or gamepad; unbound by default, existing bindings preserved). Hold, point with
+relative mouse or mapped right stick, release: center selects Power/Combat, upper selects
+Annihilator/Scan, lower left Dark/Dark, lower right Light/Echo. Current/unowned picks do nothing;
+pause/F1/morph and other gameplay interruptions cancel. See [TRILOGY.md](TRILOGY.md#native-desktop-beam--visor-selectors-opt-in)
+for binding examples, lifecycle rules, harness commands and desktop-only limitations.
+
 - F1: the settings overlay (the Prime 1 port's `platform/debug_ui/` layout). Pages: Game,
   Controls (Options, Mouse settings, Controller settings, Touch & gyro, Remap), Video (Display,
   Quality, Frame rate), Randomizer, Cheats, Save states, System, Debug.

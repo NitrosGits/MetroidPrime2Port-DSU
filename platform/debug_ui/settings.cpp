@@ -324,6 +324,7 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sCardBackup >("card_backup"),
     BoolKey< &sLogFile >("log_file"),
     BoolKey< &sHideHelmet >("no_helmet"),
+    BoolKey< &sTrilogyRadialSelectors >("trilogy_radial_selectors"),
     BoolKey< &sHideVisorEffects >("no_visor_fx"),
     BoolKey< &sCinemaBars >("cinema_bars"),
     BoolKey< &sSecondaryCrosshairs >("secondary_crosshairs"),

@@ -239,6 +239,7 @@ extern "C" void AIPortPoll(void);
 
 #include "MetroidPrime/CCameraManager.hpp"
 #include "port_mouse.h"
+#include "port_entry.h"
 #include "port_overlay.h"
 
 #include "MetroidPrime/PortSkipFrontEnd.hpp"
@@ -513,6 +514,11 @@ void CGameGlobalObjects::AddPaksAndFactories(COsContext& context) {
   factory.GetResLoader().AddPakFileAsync(rstl::string_l("aram:TestAnim"), true, false);
   factory.GetResLoader().AddPakFileAsync(rstl::string_l("aram:MidiData"), false, false);
   factory.GetResLoader().AddPakFileAsync(rstl::string_l("aram:GGuiSys"), false, false);
+#ifdef TARGET_PC
+  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion()) && CDvdFile::FileExists("RS5.PAK")) {
+    factory.GetResLoader().AddPakFileAsync(rstl::string_l("RS5"), false, false);
+  }
+#endif
   if (CDvdFile::FileExists("FrontEnd.pak")) {
     factory.GetResLoader().AddPakFileAsync(rstl::string_l("FrontEnd"), false, true);
   }

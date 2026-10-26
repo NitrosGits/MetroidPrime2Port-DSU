@@ -81,6 +81,7 @@ bool sLockOnToggle = false;
 bool sStickyCharge = false;
 bool sAutoAim = true;
 bool sPointerAim = false;
+bool sTrilogyRadialSelectors = false;
 int sPointerAimBox = PortOverlay::kPointerAimBoxDefault;
 int sPointerAimTurn = PortOverlay::kPointerAimTurnDefault;
 bool sGyroAim = false;
@@ -983,6 +984,11 @@ void SetAutoAim(bool enabled) {
 bool PointerAim() {
   ReadEnv();
   return EnvBool("MP2_POINTER_AIM", sPointerAim);
+}
+
+bool TrilogyRadialSelectors() {
+  ReadEnv();
+  return EnvBool("MP2_TRILOGY_RADIAL_SELECTORS", sTrilogyRadialSelectors);
 }
 
 void SetPointerAim(bool enabled) {

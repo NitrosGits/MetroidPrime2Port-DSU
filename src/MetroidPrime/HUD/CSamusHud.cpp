@@ -40,6 +40,7 @@
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #ifdef TARGET_PC
 #include "port_overlay.h"
+#include "port_radial.h"
 #endif
 #include "MetroidPrime/SFX/UI.h"
 #include "MetroidPrime/SFX/UI2.h"
@@ -800,6 +801,9 @@ void CSamusHud::UpdateEnergyLow(float dt, const CStateManager& mgr) {
 }
 
 CSamusHud::~CSamusHud() {
+#ifdef TARGET_PC
+  PortRadial::DestroyHud(mPlayerIndex);
+#endif
   if (mDamageSound) {
     CSfxManager::SfxStop(mDamageSound);
   }
@@ -2222,6 +2226,9 @@ void CSamusHud::UpdateHudMemo(float dt, const CStateManager& mgr) {
 
 void CSamusHud::Update(float dt, const CStateManager& mgr, uint helmetVisibility, bool hudVisible,
                        bool targetingVisible) {
+#ifdef TARGET_PC
+  PortRadial::UpdateHud(dt, mgr, mPlayerIndex);
+#endif
   UpdateStateTransition(dt, mgr);
   if (mLoadedHudFrame == nullptr) {
     return;
@@ -2487,6 +2494,10 @@ void CSamusHud::Draw(const CStateManager& mgr, float alpha, uint helmetVisibilit
   // Port: HUD scale (`MP2_HUD_SCALE`, F1 > HUD). CGuiCamera::Draw scales the projection while this
   // is set, so it covers the HUD frame, the scan interface and the radar - all drawn from here - and
   // nothing else (the helmet, the memo screens and the pause menu keep their size).
+  struct CPortRadialDrawScope {
+    int player;
+    ~CPortRadialDrawScope() { PortRadial::DrawHud(player); }
+  } portRadialDrawScope = {mPlayerIndex};
   struct CPortHudScaleScope {
     CPortHudScaleScope() {
       PortOverlay::SetHudScalingActive(PortOverlay::HudScale() != PortOverlay::kHudScaleMax);
