@@ -11,6 +11,9 @@ using namespace aurora::gx::dl;
 namespace aurora::gfx {
 extern gx::DrawData g_testLastDraw;
 extern uint32_t g_testDrawCount;
+extern bool g_testMergeDraws;
+extern std::vector<uint8_t> g_testVertices;
+extern std::vector<uint8_t> g_testIndices;
 } // namespace aurora::gfx
 
 namespace {
@@ -336,6 +339,107 @@ TEST_F(GXFifoTest, BeginIndexed_RoundTripsThroughProcessor) {
   EXPECT_EQ(aurora::gfx::g_testDrawCount, 1u);
   EXPECT_EQ(aurora::gfx::g_testLastDraw.vtxCount, 4u);
   EXPECT_EQ(aurora::gfx::g_testLastDraw.indexCount, 6u);
+}
+
+TEST_F(GXFifoTest, IncompleteTriangleDraws_ConsumePayloadWithoutDrawing) {
+  for (GXPrimitive prim : {GX_TRIANGLESTRIP, GX_TRIANGLEFAN, GX_TRIANGLES, GX_QUADS}) {
+    const u16 minimum = prim == GX_QUADS ? 4 : 3;
+    for (u16 count = 0; count < minimum; ++count) {
+      SCOPED_TRACE(::testing::Message() << "primitive " << prim << ", vertices " << count);
+      reset_gx_state();
+      GXClearVtxDesc();
+      GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+      GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_U8, 0);
+      const auto state = flush_and_capture();
+      GXBegin(prim, GX_VTXFMT0, count);
+      for (u16 v = 0; v < count; ++v) {
+        GXPosition3u8(0, 1, 2);
+      }
+      GXEnd();
+      GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
+      for (u16 v = 0; v < 4; ++v) {
+        GXPosition3u8(v, v, v);
+      }
+      GXEnd();
+      const auto draws = capture_fifo();
+
+      reset_gx_state();
+      decode_fifo(state);
+      aurora::gfx::g_testDrawCount = 0;
+      decode_fifo(draws);
+      EXPECT_EQ(aurora::gfx::g_testDrawCount, 1u);
+      EXPECT_EQ(aurora::gfx::g_testLastDraw.vtxCount, 4u);
+      EXPECT_EQ(aurora::gfx::g_testLastDraw.indexCount, 6u);
+    }
+  }
+}
+
+TEST_F(GXFifoTest, PartialTriangleLists_KeepOnlyWholePrimitives) {
+  for (GXPrimitive prim : {GX_TRIANGLES, GX_QUADS}) {
+    const u16 minimum = prim == GX_QUADS ? 4 : 3;
+    for (u16 tail = 1; tail < minimum; ++tail) {
+      SCOPED_TRACE(::testing::Message() << "primitive " << prim << ", trailing vertices " << tail);
+      reset_gx_state();
+      GXClearVtxDesc();
+      GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+      GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_U8, 0);
+      const auto state = flush_and_capture();
+      GXBegin(prim, GX_VTXFMT0, minimum + tail);
+      for (u16 v = 0; v < minimum + tail; ++v) {
+        GXPosition3u8(v, v, v);
+      }
+      GXEnd();
+      const auto draws = capture_fifo();
+      reset_gx_state();
+      decode_fifo(state);
+      aurora::gfx::g_testDrawCount = 0;
+      decode_fifo(draws);
+      EXPECT_EQ(aurora::gfx::g_testDrawCount, 1u);
+      EXPECT_EQ(aurora::gfx::g_testLastDraw.vtxCount, minimum);
+      EXPECT_EQ(aurora::gfx::g_testLastDraw.indexCount, prim == GX_QUADS ? 6u : 0u);
+    }
+  }
+}
+
+TEST_F(GXFifoTest, IncompleteTriangleDraws_DoNotCorruptMergedIndices) {
+  using namespace aurora::gfx;
+  GXClearVtxDesc();
+  GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+  GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_U8, 0);
+  const auto state = flush_and_capture();
+  const auto emit = [](GXPrimitive prim, u16 count) {
+    GXBegin(prim, GX_VTXFMT0, count);
+    for (u16 v = 0; v < count; ++v) {
+      GXPosition3u8(v, v, v);
+    }
+    GXEnd();
+  };
+  emit(GX_TRIANGLES, 4); // one whole triangle, one ignored vertex
+  emit(GX_TRIANGLES, 5); // still only one triangle, not a cross-draw triangle
+  emit(GX_TRIANGLESTRIP, 2);
+  emit(GX_TRIANGLEFAN, 2);
+  emit(GX_QUADS, 5); // one whole quad, converted to two triangles
+  emit(GX_TRIANGLESTRIP, 4);
+  const auto draws = capture_fifo();
+  reset_gx_state();
+  decode_fifo(state);
+  g_testDrawCount = 0;
+  g_testVertices.clear();
+  g_testIndices.clear();
+  struct MergeGuard {
+    MergeGuard() { g_testMergeDraws = true; }
+    ~MergeGuard() { g_testMergeDraws = false; }
+  } guard;
+  decode_fifo(draws);
+  EXPECT_EQ(g_testDrawCount, 1u);
+  EXPECT_EQ(g_testLastDraw.vtxCount, 14u);
+  EXPECT_EQ(g_testLastDraw.indexCount, 18u);
+  EXPECT_EQ(g_testLastDraw.vertRange.size, 42u);
+  const u16 expected[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 9, 6, 10, 11, 12, 12, 11, 13};
+  ASSERT_EQ(g_testIndices.size(), sizeof(expected));
+  for (size_t i = 0; i < sizeof(expected) / sizeof(expected[0]); ++i) {
+    EXPECT_EQ(host_u16(g_testIndices.data() + i * sizeof(u16)), expected[i]) << "index " << i;
+  }
 }
 
 TEST_F(GXFifoTest, BeginIndexed_RecordsDisplayList) {

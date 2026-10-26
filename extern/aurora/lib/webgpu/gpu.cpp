@@ -848,6 +848,11 @@ const TextureWithSampler& resample_present_source(const wgpu::CommandEncoder& en
   const auto& source = present_source();
   const uint32_t width = viewport_extent(viewport.width);
   const uint32_t height = viewport_extent(viewport.height);
+  // At 1:1 both resamplers preserve texels, and sharpening only applies to upscales.
+  // Keep the source's format/view and sampler for the existing final present blit.
+  if (source.size.width == width && source.size.height == height) {
+    return source;
+  }
   if (!g_resampledFrameBuffer.view || g_resampledFrameBuffer.size.width != width ||
       g_resampledFrameBuffer.size.height != height || g_resampledFrameBuffer.format != source.format) {
     g_resampledFrameBuffer = create_render_texture(width, height, false);

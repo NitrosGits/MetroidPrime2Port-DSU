@@ -16,6 +16,7 @@
 
 #include <SDL3/SDL.h>
 #include <aurora/aurora.h>
+#include <aurora/gfx.h>
 #include <dolphin/gx.h>
 #include <dolphin/gx/GXExtra.h>
 
@@ -104,6 +105,9 @@ void UpdateDynamicRes(double fps, unsigned frames) {
   sample.fps = fps;
   sample.frames = frames;
   sample.targetFps = DynamicResTargetFps();
+  AuroraPipelineStats pipelines{};
+  aurora_get_pipeline_stats(&pipelines);
+  sample.compiling = pipelines.pending > 0;
   sample.top = top;
   sample.bottom = bottom;
   if (gpuTimes) {

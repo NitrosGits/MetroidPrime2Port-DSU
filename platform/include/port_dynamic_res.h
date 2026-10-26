@@ -28,6 +28,8 @@ struct Sample {
   // passes; when those are most of it, the span is not the GPU's busy time.
   double gpuPassMs = -1.0;
   double targetFps = 60.0;
+  // Compile stalls say nothing about pixel cost when following frame rate without GPU times.
+  bool compiling = false;
   float top = 1.f;        // the configured scale: the most it draws at
   float bottom = 1.f;     // the lowest scale allowed
 };
@@ -45,6 +47,7 @@ enum class Reason {
   RaiseFailed,  // a raise turned out too slow and was undone
   NoGain,       // a lowering gained nothing and was undone
   NoGpuTimes,   // GPU times never arrived, or proved wrong: following the frame rate
+  Compiling,    // following the frame rate while pipelines compile: held
 };
 const char* ReasonText(Reason reason);
 
