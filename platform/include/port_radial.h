@@ -1,8 +1,8 @@
 #pragma once
 #include <cstdint>
 
-// Game-thread owned desktop transport. Normalized X right / Y up is also the future touch seam;
-// this slice does not route either existing touch wheel through it.
+// Game-thread owned selector state; only the explicit UI mailbox producers below are any-thread.
+// Normalized X right / Y up is shared by desktop input and eligible touch menu gestures.
 namespace PortRadial {
 enum Kind { kBeam = 0, kVisor = 1 };
 struct Point { float x = 0.f, y = 0.f; };
@@ -27,6 +27,8 @@ public:
   float Open(Kind kind) const { return mOpen[kind]; }
   uint64_t CancellationEpoch() const { return mCancellationEpoch; }
 private:
+  friend void ServiceTouchCancellation();
+  void ClearCapture(); // source-scoped reset; global Cancel also invalidates the global epoch
   bool mAvailable = false, mPrevious[2] = {}, mReleased = false;
   bool mResolved = false, mConsumed = false;
   bool mStick = false;
@@ -56,6 +58,8 @@ struct Retry {
   uint64_t untilNs = 0;
   bool radial = false;
   uint64_t epoch = 0;
+  bool touch = false;
+  uint64_t touchEpoch = 0;
   void Start(int pick, bool fromRadial, uint64_t nowNs);
   int PendingTarget() const;
 };
@@ -64,6 +68,19 @@ int DispatchRetry(Retry& retry, Kind kind, uint64_t nowNs, bool radialEligible, 
 // Consumes the queued radial request once, only in its original uncancelled epoch. An ordinary
 // request wins if both sources wrote this frame; cancellation never withdraws that other source.
 int TakeRequest(Kind kind, int ordinary = -1);
+
+// Any-thread UI entry points. Return 0 to use the legacy wheel, -1 for a busy native menu,
+// or a positive session token. Coordinates are drag-from-down / 72 dp, X right / Y up.
+int64_t BeginTouch(Kind kind, int64_t owner);
+bool MoveTouch(uint64_t token, int64_t owner, float x, float y);
+bool EndTouch(uint64_t token, int64_t owner, float x, float y);
+void CancelTouch(uint64_t token, int64_t owner);
+void CancelAllTouches(); // View teardown / auto-hide: touch-owned capture and retries ONLY
+void CancelTouchLifecycle(); // any thread: real focus/background interruption cancels all sources
+// Game thread only: process UI cancellation before the gameplay request-consumption boundary.
+void ServiceTouchCancellation();
+bool TouchOwnsSelection();
+void SetTouchContext(bool allowed); // game thread: touch controls / pause / overlay boundary
 
 }
 

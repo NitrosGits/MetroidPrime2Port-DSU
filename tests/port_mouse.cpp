@@ -171,5 +171,24 @@ int main() {
   AddMotion(10, 0);
   Apply();
   REQUIRE(!Near(Yaw(), beforeYaw)); // ordinary simulation/input resumes
+  // A different aiming finger or mouse must not change the selector owner's vector.
+  Start(.0035f);
+  PortRadial::CancelAllTouches();
+  PortRadial::ServiceTouchCancellation();
+  PortRadial::SetTouchContext(true);
+  radial.SetAvailable(true);
+  PortRadial::Poll(false, false, 0, 0);
+  const auto touch = PortRadial::BeginTouch(PortRadial::kBeam, 17);
+  REQUIRE(touch > 0);
+  PortRadial::MoveTouch(touch, 17, -.8f, -.5f);
+  PortRadial::Poll(false, false, 0, 0);
+  REQUIRE(PortRadial::TouchOwnsSelection());
+  AddMotion(200, 200);
+  AddTouchAim(200, 200);
+  Apply();
+  REQUIRE(Near(radial.Vector().x, -.8f) && Near(radial.Vector().y, -.5f));
+  PortRadial::CancelAllTouches();
+  PortRadial::ServiceTouchCancellation();
+  REQUIRE(!PortRadial::Capturing());
   std::puts("port_mouse: scaling, gyro, lock-on, radial tick/pointer/edge-turn/interpolation passed");
 }

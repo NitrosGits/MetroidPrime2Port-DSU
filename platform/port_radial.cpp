@@ -1,4 +1,5 @@
 #include "port_radial.h"
+#include "port_radial_touch.h"
 
 #include <algorithm>
 #include <cmath>
@@ -11,23 +12,46 @@ Point sForceVector;
 int sPad = -1;
 Point sPadVector;
 int sApplied[2] = {-1, -1};
-struct QueuedRequest { int target = -1; uint64_t epoch = 0; };
+struct QueuedRequest {
+  int target = -1;
+  uint64_t epoch = 0;
+  bool touch = false;
+  uint64_t touchEpoch = 0;
+};
 QueuedRequest sRequests[2];
+uint64_t sTouchSession = 0, sTouchCancellation = 0;
+uint64_t sTouchLifecycleCancellation = 0;
+bool sTouchBlockedButtons[2] = {};
+bool sTouchContext = true;
+TouchMailbox& Touches() { static TouchMailbox mailbox; return mailbox; }
+void PublishTouchState() {
+  Touches().Publish(sState.Available() && sTouchContext, sState.CancellationEpoch(),
+                    sState.Capturing() && !sTouchSession, sTouchCancellation);
+}
 }
 
 void State::Cancel() {
   ++mCancellationEpoch; // survives mailbox consumption and availability off/on transitions
+  ClearCapture();
+}
+
+void State::ClearCapture() {
   mActive = mPick = -1;
   mReleased = mResolved = mConsumed = false;
   mVector = {};
   mStick = false;
   mOpen[0] = mOpen[1] = 0.f;
+  if (this == &sState) {
+    sTouchSession = 0;
+    PublishTouchState();
+  }
   // Keep previous holds: cancellation cannot reopen the same held button on resume.
 }
 
 void State::SetAvailable(bool available) {
   mAvailable = available;
   if (!available) Cancel();
+  else if (this == &sState) PublishTouchState();
 }
 
 void State::Tick(bool beam, bool visor, float x, float y) {
@@ -122,10 +146,13 @@ void Retry::Start(int pick, bool fromRadial, uint64_t nowNs) {
   target = pick;
   radial = fromRadial;
   epoch = sState.CancellationEpoch();
+  touch = fromRadial && TouchOwnsSelection();
+  touchEpoch = sTouchCancellation;
   untilNs = nowNs + 1'500'000'000ull;
 }
 int Retry::PendingTarget() const {
-  return radial && epoch != sState.CancellationEpoch() ? -1 : target;
+  return radial && (epoch != sState.CancellationEpoch() ||
+                    (touch && touchEpoch != Touches().Read().cancellation)) ? -1 : target;
 }
 int DispatchRetry(Retry& retry, Kind kind, uint64_t nowNs, bool radialEligible, int applied) {
   if (retry.target < 0) return -1;
@@ -135,14 +162,18 @@ int DispatchRetry(Retry& retry, Kind kind, uint64_t nowNs, bool radialEligible, 
     return -1;
   }
   if (!retry.radial) return retry.target;
-  sRequests[kind] = {retry.target, retry.epoch};
+  sRequests[kind] = {retry.target, retry.epoch, retry.touch, retry.touchEpoch};
   return -1;
 }
 int TakeRequest(Kind kind, int ordinary) {
+  ServiceTouchCancellation();
   const QueuedRequest request = sRequests[kind];
   sRequests[kind].target = -1;
   if (ordinary >= 0) return ordinary;
-  return sState.Available() && request.epoch == sState.CancellationEpoch() ? request.target : -1;
+  const auto cancellation = Touches().Read();
+  return sState.Available() && request.epoch == sState.CancellationEpoch() &&
+                 cancellation.lifecycleCancellation == sTouchLifecycleCancellation &&
+                 (!request.touch || request.touchEpoch == cancellation.cancellation) ? request.target : -1;
 }
 void SimulatePad(int kind, float x, float y) {
   if (kind == 2) { sPad = 2; return; } // release click, retain the current stick vector
@@ -153,12 +184,78 @@ void SimulatePad(int kind, float x, float y) {
 int SimulatedPad(Point& vector) { vector = sPadVector; return sPad; }
 bool Capturing() { return sState.Capturing(); }
 void Cancel() { sState.Cancel(); sForced = -1; }
+int64_t BeginTouch(Kind kind, int64_t owner) { return Touches().Begin(kind, owner); }
+bool MoveTouch(uint64_t token, int64_t owner, float x, float y) {
+  return Touches().Move(token, owner, x, y);
+}
+bool EndTouch(uint64_t token, int64_t owner, float x, float y) {
+  return Touches().End(token, owner, x, y);
+}
+void CancelTouch(uint64_t token, int64_t owner) { Touches().Cancel(token, owner); }
+void CancelAllTouches() { Touches().CancelAll(); }
+void CancelTouchLifecycle() { Touches().CancelAll(true); }
+void ServiceTouchCancellation() {
+  const auto sample = Touches().Read();
+  if (sample.cancellation != sTouchCancellation) {
+    sTouchCancellation = sample.cancellation;
+    const bool lifecycle = sample.lifecycleCancellation != sTouchLifecycleCancellation;
+    sTouchLifecycleCancellation = sample.lifecycleCancellation;
+    if (lifecycle) {
+      Cancel(); // focus/background affects keyboard, pad and touch, including pending retries
+    } else if (sTouchSession) {
+      sState.ClearCapture(); // ordinary View teardown must not invalidate other sources' epoch
+    } else {
+      PublishTouchState(); // acknowledge producer barrier, preserving unrelated desktop owner
+    }
+  }
+}
+bool TouchOwnsSelection() { return sTouchSession && sState.Capturing(); }
+void SetTouchContext(bool allowed) {
+  if (sTouchContext && !allowed) CancelAllTouches();
+  sTouchContext = allowed;
+  PublishTouchState();
+}
 void Force(int kind, float x, float y) {
   sForced = kind >= 0 && kind < 2 ? kind : -1;
   sForceVector = {x, y};
 }
 void Poll(bool beam, bool visor, float x, float y) {
+  ServiceTouchCancellation();
+  const bool physical[2] = {beam, visor};
+  for (int i = 0; i < 2; ++i) if (!physical[i]) sTouchBlockedButtons[i] = false;
+  const auto touch = Touches().Read();
+  if (touch.valid && touch.epoch == sState.CancellationEpoch() && sState.Available()) {
+    if (touch.token != sTouchSession && sState.Capturing()) {
+      Touches().Reject(touch.token); // an already captured keyboard/pad wheel wins
+    } else {
+      sForced = -1; // a competing console hold must not open late after the owner lifts
+      for (int i = 0; i < 2; ++i) if (physical[i]) sTouchBlockedButtons[i] = true;
+      if (touch.token != sTouchSession) {
+        sState.Tick(false, false, 0.f, 0.f);
+        sTouchSession = touch.token;
+        // Preserve an entire down/move/up between two polls, including its final vector.
+        sState.Tick(touch.kind == kBeam, touch.kind == kVisor, 0.f, 0.f);
+      }
+      sState.SetSelection(touch.x, touch.y);
+      sState.Tick(touch.held && touch.kind == kBeam, touch.held && touch.kind == kVisor, 0.f, 0.f);
+      if (!touch.held && !sState.Capturing()) {
+        Touches().Acknowledge(touch.token);
+        sTouchSession = 0;
+      }
+      PublishTouchState();
+      return;
+    }
+  }
+  if (!touch.valid) {
+    sTouchSession = 0;
+    // A release may have arrived before lifecycle invalidation. There is no UI target left
+    // to send another lift, so retire that revoked released session here (held ones stay blocked).
+    if (touch.token && !touch.held) Touches().Acknowledge(touch.token);
+  }
+  beam = beam && !sTouchBlockedButtons[kBeam];
+  visor = visor && !sTouchBlockedButtons[kVisor];
   sState.Tick(beam || sForced == kBeam, visor || sForced == kVisor, x, y);
   if (sForced >= 0) sState.SetSelection(sForceVector.x, sForceVector.y);
+  PublishTouchState();
 }
 }

@@ -176,5 +176,47 @@ Use `at <frame> <command>` / `tools/drivers/con.py` for deterministic sequences;
 updates after release for the game's ordinary switch transition. `give` can grant test inventory.
 Do not combine forced normalized selection with physical holds when testing arbitration.
 
-Desktop only in this slice. The normalized transport is exposed for later touch integration;
-existing Java/C++ touch wheels and touch controls are unchanged. No new cursor model is drawn.
+No new cursor model is drawn.
+
+## Native touch selectors (opt-in, device visuals unverified)
+
+With the same `trilogy_radial_selectors` setting on, Trilogy gameplay/assets eligible, the Android
+overlay's **existing Beam and Visor wheel buttons** now hold the native selector. Existing added
+`beam_menu` / `visor_menu` buttons use the same path. No bindings, saved layouts, button positions,
+touch options or defaults are changed. With the setting off or native assets/gameplay unavailable
+on finger-down, stock buttons keep their old wheels (including their old center-cancel/Scan-tap
+behavior). An in-progress gesture never changes implementation midway.
+
+Slide from **that finger's down position**: 72 dp is one full radius, X right / Y up, independent
+of window aspect and button placement/scale. Native center selects Power/Combat, the three outer
+directions follow the table above, and unowned/current choices do nothing. The selector finger
+does not also press an engine binding, fire, aim, pan the map or finish a legacy wheel. The old
+four-sector overlay is hidden for a native gesture; only the real RS5 frame draws. Movement on
+another finger remains independent. A second menu finger cannot steal an existing owner; a busy
+menu-button hit consumes only that button gesture, never unrelated touches.
+
+Java/JNI only writes a coherent mutex-protected mailbox with session token + pointer identity.
+All PortRadial state, ownership, selection, release and retry consumption remain game-thread-only.
+Short down/move/up gestures between polls retain their final point and release exactly once.
+Late/duplicate/wrong-owner moves or lifts are ignored, including pointer-id reuse.
+
+Ordinary View teardown (including physical-input auto-hide), ACTION_CANCEL and touch layout/
+editor/size/controls changes cancel touch-owned capture and released-but-pending touch requests
+only; they do not cancel a keyboard/pad menu or retry when there are no fingers down. Request
+provenance survives removal of the Java target. True focus/background loss, F1/pause, disabling
+the radial setting and lost gameplay/assets still invalidate all radial sources through the
+global cancellation epoch. A held/revoked finger cannot commit or reopen on re-enable; it stays
+consumed until lifted, and a fresh down is needed. Cancelled native fingers released by the Java
+view are not forwarded to SDL as a new look/map gesture. Already-applied selections are not undone.
+
+The current MP2 checkout has **no desktop C++ touch-overlay/wheel renderer** (the donor has one).
+This slice exposes the same C++ mailbox entry points for a future mirror and tests them with the
+desktop console, rather than importing a new UI or inventing layouts:
+
+* `radial touch begin beam|visor <owner>` returns a session token (0 = legacy fallback, -1 = busy).
+* `radial touch move|end <owner> <x> <y>` uses that synthetic session and normalized drag vector.
+* `radial touch cancel <owner>` / `radial touch cancelall` exercise producer cancellation.
+
+Synthetic desktop tests exercise the native resources/input/request pipeline, not Android
+MotionEvent dispatch, density, layout hit-testing or on-device visuals. A real-nod **release APK
+was built without installation**; Android end-to-end touch/device behavior remains unverified.

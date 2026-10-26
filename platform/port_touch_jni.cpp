@@ -12,6 +12,7 @@
 #include "port_pointer.h"
 #include "port_textures.h"
 #include "port_touch.h"
+#include "port_radial.h"
 
 #include <jni.h>
 
@@ -160,6 +161,33 @@ Java_org_metroidprime2_port_TouchControlsView_nativeTakePhysicalInput(JNIEnv*, j
 }
 
 // --- Wheels and the game state ---
+
+JNIEXPORT jlong JNICALL
+Java_org_metroidprime2_port_TouchControlsView_nativeRadialBegin(JNIEnv*, jclass, jint kind, jint owner) {
+  return PortRadial::BeginTouch(static_cast<PortRadial::Kind>(kind), owner);
+}
+JNIEXPORT void JNICALL
+Java_org_metroidprime2_port_TouchControlsView_nativeRadialMove(JNIEnv*, jclass, jlong token,
+                                                             jint owner, jfloat x, jfloat y) {
+  PortRadial::MoveTouch(token, owner, x, y);
+}
+JNIEXPORT void JNICALL
+Java_org_metroidprime2_port_TouchControlsView_nativeRadialEnd(JNIEnv*, jclass, jlong token,
+                                                            jint owner, jfloat x, jfloat y) {
+  PortRadial::EndTouch(token, owner, x, y);
+}
+JNIEXPORT void JNICALL
+Java_org_metroidprime2_port_TouchControlsView_nativeRadialCancel(JNIEnv*, jclass, jlong token, jint owner) {
+  PortRadial::CancelTouch(token, owner);
+}
+JNIEXPORT void JNICALL
+Java_org_metroidprime2_port_TouchControlsView_nativeRadialCancelAll(JNIEnv*, jclass) {
+  PortRadial::CancelAllTouches();
+}
+JNIEXPORT void JNICALL
+Java_org_metroidprime2_port_TouchControlsView_nativeRadialCancelLifecycle(JNIEnv*, jclass) {
+  PortRadial::CancelTouchLifecycle();
+}
 
 JNIEXPORT jint JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeWheelOwned(JNIEnv*,
                                                                                       jclass) {
