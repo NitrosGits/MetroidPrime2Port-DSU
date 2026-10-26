@@ -673,7 +673,14 @@ void CMoviePlayer::DrawFrame(const CVector3f& v1, const CVector3f& v2, const CVe
   OSRestoreInterrupts(interrupts);
   CTHPTextureSet& texture = mTextures[mDrawTexSlot];
   const bool field = CGraphics::GetDolphinLastFrameAbove();
+#ifdef TARGET_PC
+  // Port: the host is progressive, so the interlace-pattern path (every other line, field chosen by
+  // the last frame's parity, which never alternates here) leaves a 30 fps movie half its lines.
+  // USA's openPartOne is 59.94 fps and never took it; PAL's is 29.97 and showed scanline stripes.
+  MyTHPGXYuv2RgbSetup(field, true);
+#else
   MyTHPGXYuv2RgbSetup(field, mDeinterlace || mIs60Hz);
+#endif
   MyTHPYuv2RgbTextureSetup(texture.Y(), texture.U(), texture.V(), mVideoInfo.mXSize,
                            mVideoInfo.mYSize);
   CGX::Begin(GX_TRIANGLEFAN, GX_VTXFMT7, 4);
