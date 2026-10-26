@@ -100,7 +100,7 @@ play reaches in a short run is reached that way.
 Lanes mark only bodies a run exercised fully (not just an early return), unless their brief says the
 orchestrator marks that module. A marker needs a run that exercised the function and a pass of
 the asm-vs-C++ structure check, `tools/asmcheck.py check <Module> <cpp> [fn...]` with all tags (calls,
-compares, conditional branches, stores, bits; the orchestrator reads only what it flags; tags and
+compares, conditional branches, stores, bits, float constants (`FCONST`); the orchestrator reads only what it flags; tags and
 tolerances in its docstring). `tools/review_decomp_diff.sh` runs its correctness tags on every
 changed `Port*.cpp` (`ASM` lines); any hit means an Opus audit before merge. Bit/compare reading
 for a brief: `asmcheck.py annotate <Module> fn_<id>_<off> [--header H --class C]`. Changing the

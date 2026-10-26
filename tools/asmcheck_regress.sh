@@ -181,6 +181,14 @@ rlwimi r0, r4, 6, 25, 25
 stb r0, 0x34(r3)
 blr
 .endfn fn_99_B00
+.fn fn_99_F00, global
+lis r3, lbl_99_rodata_0@ha
+lfs f1, lbl_99_rodata_0@l(r3)
+lis r4, lbl_99_rodata_4@ha
+addi r4, r4, lbl_99_rodata_4@l
+lfs f2, 0x0(r4)
+blr
+.endfn fn_99_F00
 .fn fn_99_C00, global
 lbz r0, 0x44(r3)
 ori r0, r0, 0x1
@@ -203,6 +211,14 @@ bl __ct__4CTokFi
 blr
 .endfn fn_99_E00
 ASM
+cat >$FX/Fx/asm/rodata.s <<'ROD'
+.obj lbl_99_rodata_0, global
+	.float 2.75
+.endobj lbl_99_rodata_0
+.obj lbl_99_rodata_4, global
+	.float 37
+.endobj lbl_99_rodata_4
+ROD
 cat >$FX/good/include/Fx.hpp <<'HPP'
 struct SSub {
   int mA;   // 0x0
@@ -315,6 +331,9 @@ void CFx::SetFlagC() { mFlagC = true; }
 
 // @ fn_99_D00
 bool CFx::BBig(const float& t) const { return mSub.mB > t; }
+
+// @ fn_99_F00
+float CFx::Scale(float x) { return x * 2.75f + 37.0f; }
 CPP
 cat >$FX/slip/src/PortFx.cpp <<'CPP'
 #include "Fx.hpp"
@@ -375,6 +394,9 @@ bool CFx::BBig(const float& t) const { return mSub.mA > t; }
 
 // @ fn_99_E00
 void CFx::CopyTok2() { mTok = gTok; }
+
+// @ fn_99_F00
+float CFx::Scale(float x) { return x * 2.5f + 37.0f; }
 CPP
 fx() { # name want pattern variant [check args...]
   local name=$1 want=$2 pat=$3 v=$4; shift 4
@@ -417,6 +439,11 @@ fx pos-slip    hit  '^MASK fn_99_B00 .*x34_80' slip
 fx pos-module  hit  '^XBIT fn_99_B00 .*x40'    good --module Ing
 fx nopos       hit  '^NOPOS fn_99_C00 .*mFlagC' good
 fx nopos-quiet none '^(MASK|XBIT) fn_99_C00 '  good
+
+# 12. rodata float loads vs C++ literals (both the lbl@l and the lis/addi + 0x0(rX) forms)
+fx fconst-good none '^FCONST fn_99_F00 ' good
+fx fconst-slip hit  '^FCONST fn_99_F00 .*2\.75' slip
+fx fconst-cpp  hit  '^FCONST fn_99_F00 .*C\+\+ literal 2\.5 ' slip
 
 [ $fail = 0 ] && echo "asmcheck_regress: all PASS" || echo "asmcheck_regress: FAIL"
 exit $fail
