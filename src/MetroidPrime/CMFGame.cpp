@@ -329,9 +329,11 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
           static bool sSkipReported = false;
           const unsigned kMaxSkipAttempts = 8;
           // How long the flow stays here waiting for a sequence with no skip function to play itself
-          // out at max speed (see below). Generous: nothing is drawn while it runs, and the cap only
-          // exists so that a scene which never ends cannot hold a run.
-          const float kFastForwardCap = 30.f;
+          // out at max speed (see below), in game time. Generous: nothing is drawn while it runs, so
+          // a sequence runs at ~200x (the Emperor Ing chain's 29 s took 0.13 s), and a long one that
+          // hit a short cap would fall back to stopping the camera alone, the glitch this avoids. The
+          // cap only exists so that a scene which never ends cannot hold a run.
+          const float kFastForwardCap = 600.f;
           const unsigned portCamId = cineCam->GetScriptCameraId().Value();
           if (sSkipCamera != portCamId) {
             sSkipCamera = portCamId;
