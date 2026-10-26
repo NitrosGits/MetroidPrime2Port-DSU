@@ -547,6 +547,43 @@ void CScriptGuiFrontEndScreen::StartMultiplayerGame(CStateManager& mgr) {
   }
 
   CFrontEndGameMode& frontEnd = static_cast< CFrontEndGameMode& >(gameMode);
+#ifdef TARGET_PC
+  // Trilogy's FrontEnd.pak lacks some multiplayer widgets: a missing one is null here.
+  uint type = CFrontEndGameMode::kSGM_SinglePlayer;
+  if (mDeathMatchSwitch != nullptr && mDeathMatchSwitch->IsOpened()) {
+    type = CFrontEndGameMode::kSGM_DeathMatch;
+  } else if (mCoinSwitch != nullptr && mCoinSwitch->IsOpened()) {
+    type = CFrontEndGameMode::kSGM_Coin;
+  }
+  frontEnd.SetNextGameType4CC(type);
+
+  if (type == CFrontEndGameMode::kSGM_DeathMatch) {
+    frontEnd.SetNextGameFragLimit(
+        gpTweakGame->GetDeathMatchFragLimit(mFragLimitMenu != nullptr ? mFragLimitMenu->GetSelection() : 0));
+    frontEnd.SetNextGameTimeLimit(
+        60.f * gpTweakGame->GetDeathMatchTimeLimit(
+                   mDeathMatchTimeMenu != nullptr ? mDeathMatchTimeMenu->GetSelection() : 0));
+    frontEnd.SetNextGameMusicIndex(
+        mDeathMatchMusicMenu != nullptr ? mDeathMatchMusicMenu->GetSelection() : 0);
+  } else {
+    const int coinLimit = mCoinLimitMenu != nullptr ? mCoinLimitMenu->GetSelection() : 0;
+    frontEnd.SetNextGameCoinLimit(coinLimit != 0 ? gpTweakGame->GetCoinGameCoinLimit(coinLimit)
+                                                 : -1);
+    frontEnd.SetNextGameTimeLimit(
+        60.f * gpTweakGame->GetCoinGameTimeLimit(mCoinTimeMenu != nullptr ? mCoinTimeMenu->GetSelection() : 0));
+    frontEnd.SetNextGameMusicIndex(mCoinMusicMenu != nullptr ? mCoinMusicMenu->GetSelection() : 0);
+  }
+
+  rstl::reserved_vector< CFrontEndPlayerData, 4 > players;
+  for (int i = 0; i < 4; ++i) {
+    const SPlayerSetup& setup = mPlayerSetups[i];
+    if (setup.mJoinedSwitch != nullptr && setup.mJoinedSwitch->IsOpened()) {
+      const bool rumble = setup.mRumbleMenu != nullptr && setup.mRumbleMenu->GetSelection() == 1;
+      const bool invert = setup.mInvertMenu != nullptr && setup.mInvertMenu->GetSelection() == 1;
+      players.push_back(CFrontEndPlayerData(i, CPlayerOptions(rumble, invert)));
+    }
+  }
+#else
   uint type = CFrontEndGameMode::kSGM_SinglePlayer;
   if (mDeathMatchSwitch->IsOpened()) {
     type = CFrontEndGameMode::kSGM_DeathMatch;
@@ -574,32 +611,51 @@ void CScriptGuiFrontEndScreen::StartMultiplayerGame(CStateManager& mgr) {
   for (int i = 0; i < 4; ++i) {
     const SPlayerSetup& setup = mPlayerSetups[i];
     if (setup.mJoinedSwitch->IsOpened()) {
-#ifdef TARGET_PC
-      // Trilogy's FrontEnd.pak has no per-player invert menus.
-      const bool rumble = setup.mRumbleMenu != nullptr && setup.mRumbleMenu->GetSelection() == 1;
-      const bool invert = setup.mInvertMenu != nullptr && setup.mInvertMenu->GetSelection() == 1;
-#else
       const bool rumble = setup.mRumbleMenu->GetSelection() == 1;
       const bool invert = setup.mInvertMenu->GetSelection() == 1;
-#endif
       players.push_back(CFrontEndPlayerData(i, CPlayerOptions(rumble, invert)));
     }
   }
+#endif
 
   CAssetId worldId = kInvalidAssetId;
   CAssetId areaId = kInvalidAssetId;
   if (players.size() == 0) {
+#ifdef TARGET_PC
+    if (mDefaultTeleporter != nullptr) {
+      worldId = mDefaultTeleporter->GetWorldId();
+      areaId = mDefaultTeleporter->GetAreaId();
+    }
+#else
     worldId = mDefaultTeleporter->GetWorldId();
     areaId = mDefaultTeleporter->GetAreaId();
+#endif
   } else {
     for (rstl::vector< CScriptWorldTeleporter* >::iterator it = mTeleporters.begin();
          it != mTeleporters.end(); ++it) {
+#ifdef TARGET_PC
+      if (*it != nullptr && (*it)->GetActive()) {
+#else
       if ((*it)->GetActive()) {
+#endif
         worldId = (*it)->GetWorldId();
         areaId = (*it)->GetAreaId();
         break;
       }
     }
+#ifdef TARGET_PC
+    // No arena teleporter active (Trilogy's trimmed FrontEnd.pak): fall back to the first one.
+    if (worldId == kInvalidAssetId) {
+      CScriptWorldTeleporter* arena = mTeleporters.empty() ? mDefaultTeleporter : mTeleporters[0];
+      if (arena != nullptr) {
+        worldId = arena->GetWorldId();
+        areaId = arena->GetAreaId();
+      }
+    }
+    fprintf(stderr, "[mp] start: players=%d teleporters=%d default=%d world=%08x area=%08x\n",
+            (int)players.size(), (int)mTeleporters.size(), mDefaultTeleporter != nullptr,
+            (unsigned)worldId, (unsigned)areaId);
+#endif
     frontEnd.SetPlayerData(players);
   }
 
@@ -737,6 +793,11 @@ void CScriptGuiFrontEndScreen::UpdateUnlocks(CStateManager& mgr) {
     } else {
       musicMenu = mDeathMatchMusicMenu;
     }
+#ifdef TARGET_PC
+    if (musicMenu == nullptr) {
+      continue;
+    }
+#endif
     musicMenu->BuildItemList(mgr);
     for (int i = 1; i < musicMenu->GetItems().size(); ++i) {
       CScriptGuiWidget* item =

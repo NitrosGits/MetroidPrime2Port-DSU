@@ -95,6 +95,12 @@ void CWorldLayerState::InitializeWorldLayers(
 }
 
 int CWorldLayerState::GetLayerCount(TAreaId area) const {
+#ifdef TARGET_PC
+  // A world the memory card has no SAVW for (Trilogy's cut multiplayer arenas) has no layer table.
+  if (area.Value() < 0 || area.Value() >= mAreaLayers.size()) {
+    return 0;
+  }
+#endif
   return mAreaLayers[area.Value()].mLayerCount;
 }
 

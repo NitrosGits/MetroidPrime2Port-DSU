@@ -54,8 +54,7 @@ TARGET_PC fix in `CScriptGuiScreen.cpp`: `PortIdAt` turns a missing list entry i
 widget), and the slot-pane `SetText`s plus the multiplayer invert/rumble users null-check. The non-PC path is
 byte-identical (strip-diff clean). Result: health warning -> main menu (Single Player / Options / Multiplayer) ->
 file select -> new game -> opening cinematic -> first room, no `MP2_SKIP_FRONTEND`
-(`MP2_INPUT=A@1300+3,A@2900+3,A@3400+3,A@3900+3,START@4300+3,...`, ~30 updates/s). Multiplayer is only
-shown, not tested. Unverified: the slot's world-name/play-time panes on a *used* slot (saves not tried here).
+(`MP2_INPUT=A@1300+3,A@2900+3,A@3400+3,A@3900+3,START@4300+3,...`, ~30 updates/s). Multiplayer and used slots: see "Multiplayer and used save slot" below.
 Screenshots from the run: `/tmp/opencode/trilogy/shots/`. GC USA still reaches title and gameplay.
 
 ## Disc picker (Android)
@@ -69,3 +68,23 @@ filter lists iso/gcm/rvz/wia/gcz/ciso/wbfs. Unit tests: `tests/port_entry_tests.
 `MP2_DISC=<rvz> MP2_LIST_DISC=<GC USA iso>` (`tools/world_areas.py` cannot read an rvz; `MP2_LIST_DISC` points
 the slot lister at a plain ISO), `MP2_NEW_GAME=1`, `SHARDS=1 COUNT=6`, WORLD = each campaign world.
 Result: 30/30 slots OK (Temple Grounds, Agon, Torvus, Sanctuary, Great Temple, slots 0..5), no crash, no stubs.
+
+## Multiplayer and used save slot (2026-10-26)
+
+Multiplayer (Trilogy USA, desktop, one pad only so only one player can join): main menu, two held
+`SDOWN@f+40` steps select Multiplayer, join screen shows. Trilogy's trimmed FrontEnd never activates an arena
+and a single player cannot trigger the match start from the pad, so the test needed two workarounds:
+console `send <id> SetToZero` to start, and `StartMultiplayerGame` falls back to `mTeleporters[0]` (arena
+`a50a80cc`) when no world was chosen. Arena gameplay is stable. Six one-area arena worlds exist on the disc
+(233e42be, 406add7f, 7e19ed26, a50a80cc, ae171602, e3b0c703); the SamGunFxMulti pak is absent.
+TARGET_PC guards: `CScriptGuiScreen.cpp` `StartMultiplayerGame`/`UpdateUnlocks` (null switches/menus/teleporters,
+`[mp] start:` stderr debug line), `CWorldLayerState::GetLayerCount` (arena worlds have no SAVW layer table).
+Not tested: 2+ players (needs more pads), the natural arena-pick flow.
+
+Used slot: save via `MP2_SKIP_FRONTEND=1 MP2_NEW_GAME=1` + `STATION@300,A@500+3` (card:
+`USA/Card A/01-R3ME-MetroidPrime2.gci`, region follows the 4th game-code char). Trilogy's file select then shows
+all three panes: "Samus 1" (title), "00:00 elapsed" (play time), "Temple Grounds 00%" (world + completion).
+Nothing seen missing; the other six GC panes do not exist in Trilogy's pak. Loading it reaches Temple Grounds
+gameplay (world 3bfa3eff, area 0, 6500 frames). The GC USA side-by-side was not done (the GC ISO uses G2ME and
+rejects the R3ME gci). Shots: `/tmp/opencode/trilogy/shots/mp_*.png`, `slot_*.png`.
+Gotcha: launch under Xvfb with `WAYLAND_DISPLAY=` empty, else it hangs at "[aurora::gpu] Requesting adapter".
