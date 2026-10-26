@@ -558,8 +558,8 @@ void CScriptGuiFrontEndScreen::StartMultiplayerGame(CStateManager& mgr) {
   frontEnd.SetNextGameType4CC(type);
 
   if (type == CFrontEndGameMode::kSGM_DeathMatch) {
-    frontEnd.SetNextGameFragLimit(
-        gpTweakGame->GetDeathMatchFragLimit(mFragLimitMenu != nullptr ? mFragLimitMenu->GetSelection() : 0));
+    const int fragLimit = mFragLimitMenu != nullptr ? mFragLimitMenu->GetSelection() : 0;
+    frontEnd.SetNextGameFragLimit(gpTweakGame->GetDeathMatchFragLimit(fragLimit));
     frontEnd.SetNextGameTimeLimit(
         60.f * gpTweakGame->GetDeathMatchTimeLimit(
                    mDeathMatchTimeMenu != nullptr ? mDeathMatchTimeMenu->GetSelection() : 0));
@@ -569,8 +569,8 @@ void CScriptGuiFrontEndScreen::StartMultiplayerGame(CStateManager& mgr) {
     const int coinLimit = mCoinLimitMenu != nullptr ? mCoinLimitMenu->GetSelection() : 0;
     frontEnd.SetNextGameCoinLimit(coinLimit != 0 ? gpTweakGame->GetCoinGameCoinLimit(coinLimit)
                                                  : -1);
-    frontEnd.SetNextGameTimeLimit(
-        60.f * gpTweakGame->GetCoinGameTimeLimit(mCoinTimeMenu != nullptr ? mCoinTimeMenu->GetSelection() : 0));
+    const int coinTime = mCoinTimeMenu != nullptr ? mCoinTimeMenu->GetSelection() : 0;
+    frontEnd.SetNextGameTimeLimit(60.f * gpTweakGame->GetCoinGameTimeLimit(coinTime));
     frontEnd.SetNextGameMusicIndex(mCoinMusicMenu != nullptr ? mCoinMusicMenu->GetSelection() : 0);
   }
 
@@ -652,9 +652,6 @@ void CScriptGuiFrontEndScreen::StartMultiplayerGame(CStateManager& mgr) {
         areaId = arena->GetAreaId();
       }
     }
-    fprintf(stderr, "[mp] start: players=%d teleporters=%d default=%d world=%08x area=%08x\n",
-            (int)players.size(), (int)mTeleporters.size(), mDefaultTeleporter != nullptr,
-            (unsigned)worldId, (unsigned)areaId);
 #endif
     frontEnd.SetPlayerData(players);
   }
