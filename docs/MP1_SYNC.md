@@ -137,6 +137,8 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
+- 2026-10-26: native desktop Trilogy radials merged (`809673eea`, pending-retry cancellation fix `68524dba0`); opt-in, authored RS5 positions, mouse/pad capture and release selection. Combined link and radial CTest 3/3 pass; lane tested actual Trilogy keyboard/mouse and simulated pad with 4:3/16:9/21:9 captures. Touch slice in progress separately. No device install. See docs/TRILOGY.md for controls and limits.
+
 - 2026-10-26: Trilogy mod PAK filtering (`15d4dc314`) merged: exclude retained root `fe`/`MP1`/`MP3` siblings only, retain nested names and original entry numbers. Actual USA DVD enumeration 71→22; merged link and mods CTest 2/2 pass. Movie 16:9 rule deferred (seven examined assets identical to GC); Wii save conversion not implemented. Native radial selectors in progress separately.
 
 - 2026-10-26 combined follow-up: `build-port-link/metroid_prime2_port` rebuilt and linked after all three sync merges; CTest `port_pointer_tests`, `port_game_text_tests`, `port_dynamic_res_tests` passed (3/3). UTF-8 regression is now registered with CTest. Supersedes the pending combined verification below; no device testing.
