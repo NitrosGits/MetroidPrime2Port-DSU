@@ -184,8 +184,27 @@ void aurora_get_pipeline_stats(AuroraPipelineStats* out) { *out = {}; }
 
 // --- Buffer push stubs ---
 namespace aurora::gfx {
-Range push_verts(const uint8_t* data, size_t length, size_t alignment) { return {}; }
-Range push_indices(const uint8_t* data, size_t length, size_t alignment) { return {}; }
+// Opt-in staging/merging for tests that inspect the processor's merged triangle stream.
+bool g_testMergeDraws = false;
+std::vector<uint8_t> g_testVertices;
+std::vector<uint8_t> g_testIndices;
+static Range test_stage(std::vector<uint8_t>& buffer, const uint8_t* data, size_t length, size_t alignment) {
+  if (!g_testMergeDraws) {
+    return {};
+  }
+  if (alignment > 1) {
+    buffer.resize(AURORA_ALIGN(buffer.size(), alignment));
+  }
+  const auto offset = static_cast<uint32_t>(buffer.size());
+  buffer.insert(buffer.end(), data, data + length);
+  return {.offset = offset, .size = static_cast<uint32_t>(length)};
+}
+Range push_verts(const uint8_t* data, size_t length, size_t alignment) {
+  return test_stage(g_testVertices, data, length, alignment);
+}
+Range push_indices(const uint8_t* data, size_t length, size_t alignment) {
+  return test_stage(g_testIndices, data, length, alignment);
+}
 Range push_uniform(const uint8_t* data, size_t length) { return {}; }
 // Tests set it to see draws dropped for want of storage room.
 bool g_testStorageFull = false;
@@ -275,7 +294,7 @@ void push_draw_command<gx::DrawData>(gx::DrawData data) {
 }
 template <>
 gx::DrawData* get_last_draw_command() {
-  return nullptr;
+  return g_testMergeDraws && g_testDrawCount != 0 ? &g_testLastDraw : nullptr;
 }
 } // namespace aurora::gfx
 

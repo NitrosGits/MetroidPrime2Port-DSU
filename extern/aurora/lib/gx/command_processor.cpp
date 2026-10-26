@@ -106,14 +106,15 @@ static void dump_last_draw_state() noexcept {
 
 
 u16 prepare_idx_buffer(ByteBuffer& buf, GXPrimitive prim, u16 vtxStart, u16 vtxCount) noexcept {
+  // Whole triangles only: a partial triangle would shift all following merged triangles.
   // Sized once and written directly: this runs for nearly every draw.
   u32 numIndices = 0;
   if (prim == GX_QUADS) {
-    numIndices = (u32(vtxCount) + 3) / 4 * 6;
+    numIndices = u32(vtxCount) / 4 * 6;
   } else if (prim == GX_TRIANGLES) {
-    numIndices = vtxCount;
+    numIndices = u32(vtxCount) / 3 * 3;
   } else if (prim == GX_TRIANGLEFAN || prim == GX_TRIANGLESTRIP) {
-    numIndices = vtxCount <= 3 ? vtxCount : 3 + (u32(vtxCount) - 3) * 3;
+    numIndices = vtxCount < 3 ? 0 : (u32(vtxCount) - 2) * 3;
   } else if (prim == GX_LINES || prim == GX_LINESTRIP || prim == GX_POINTS) {
     numIndices = 6;
   } else {
@@ -122,7 +123,7 @@ u16 prepare_idx_buffer(ByteBuffer& buf, GXPrimitive prim, u16 vtxStart, u16 vtxC
   }
   u16* out = reinterpret_cast<u16*>(buf.append_uninit(numIndices * sizeof(u16)));
   if (prim == GX_QUADS) {
-    for (u32 v = 0; v < vtxCount; v += 4) {
+    for (u32 v = 0; v + 4 <= vtxCount; v += 4) {
       const u16 idx0 = vtxStart + v;
       *out++ = idx0;
       *out++ = idx0 + 1;
@@ -132,9 +133,11 @@ u16 prepare_idx_buffer(ByteBuffer& buf, GXPrimitive prim, u16 vtxStart, u16 vtxC
       *out++ = idx0;
     }
   } else if (prim == GX_TRIANGLES) {
-    for (u32 v = 0; v < vtxCount; ++v) {
+    for (u32 v = 0; v < numIndices; ++v) {
       *out++ = vtxStart + v;
     }
+  } else if (numIndices == 0) {
+    // A strip or fan under three vertices makes no triangle.
   } else if (prim == GX_TRIANGLEFAN) {
     for (u32 v = 0; v < vtxCount; ++v) {
       const u16 idx = vtxStart + v;
@@ -1015,6 +1018,19 @@ static void draw_prim(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, ByteReader& 
     return;
   }
 
+  // Consume the complete FIFO payload, but stage only whole independent triangles/quads.
+  // Otherwise trailing vertices of two non-indexed lists could merge into a new triangle.
+  if (prim == GX_TRIANGLES) {
+    vtxCount -= vtxCount % 3;
+  } else if (prim == GX_QUADS) {
+    vtxCount -= vtxCount % 4;
+  }
+  const bool trianglePrim = prim != GX_LINES && prim != GX_LINESTRIP && prim != GX_POINTS;
+  if (trianglePrim && vtxCount < (prim == GX_QUADS ? 4 : 3)) UNLIKELY {
+    reader.skip(totalVtxBytes);
+    return;
+  }
+
   // A draw whose indices read past its arrays reads garbage, or crashes where nothing bounds the
   // read (807013b1e): dropped instead. Checked before a merge, whose vertices it would otherwise add.
   if (check_indexed_arrays(reader.data() + reader.offset(), fmt, prim, vtxCount, vtxSize)) UNLIKELY {
@@ -1030,7 +1046,7 @@ static void draw_prim(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, ByteReader& 
 
   // Push raw vertex data to buffer. Merged draws must remain contiguous with the previous range.
   const auto vertexData = reader.take(totalVtxBytes);
-  gfx::Range vertRange = gfx::push_verts(vertexData.data(), vertexData.size(), canMerge ? 0 : 4);
+  gfx::Range vertRange = gfx::push_verts(vertexData.data(), vtxCount * vtxSize, canMerge ? 0 : 4);
   if (drop_overflowed_draw(vertRange, "vertex")) {
     return;
   }
