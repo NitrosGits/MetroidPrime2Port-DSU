@@ -11,6 +11,7 @@
 #include <SDL3/SDL.h>
 #include "port_harness.h"
 #include "port_console.h"
+#include "port_discord.h"
 #include "port_mouse.h"
 #include "port_freecam.h"
 #include "port_livesplit.h"
@@ -874,17 +875,9 @@ void CmdWorlds(CStateManager& mgr, const Args&, std::string& out) {
   }
 }
 
-// One wchar_t string as a console line. The tables are English ASCII; anything above that is a '?'
-// rather than a byte soup, because the reply goes out as UTF-8 over the socket.
+// One game string as a plain UTF-8 console line, including translated STRG tables.
 std::string Narrow(const wchar_t* text) {
-  std::string out;
-  if (text == nullptr) {
-    return out;
-  }
-  for (const wchar_t* it = text; *it != 0; ++it) {
-    out += *it < 0x80 ? static_cast< char >(*it) : '?';
-  }
-  return out;
+  return PortDiscord::GameTextToUtf8(text);
 }
 
 // The string table `strg` is reading (see there).
@@ -937,17 +930,20 @@ void CmdStrg(CStateManager&, const Args& args, std::string& out) {
       Fail("no string '" + Str(args[2]) + "' in STRG " + std::to_string(id));
       return;
     }
-    std::snprintf(line, sizeof(line), "STRG %u [%d]: %s\n", id, index,
-                  Narrow(table->GetString(index)).c_str());
+    std::snprintf(line, sizeof(line), "STRG %u [%d]: ", id, index);
     out += line;
+    out += Narrow(table->GetString(index));
+    out += '\n';
     return;
   }
   std::snprintf(line, sizeof(line), "STRG %u: %d strings\n", id, count);
   out += line;
   // Enough to see what a table is without flooding the socket.
   for (int i = 0; i < count && i < 40; ++i) {
-    std::snprintf(line, sizeof(line), "  [%2d] %s\n", i, Narrow(table->GetString(i)).c_str());
+    std::snprintf(line, sizeof(line), "  [%2d] ", i);
     out += line;
+    out += Narrow(table->GetString(i));
+    out += '\n';
   }
   if (count > 40) {
     out += "  ...\n";
