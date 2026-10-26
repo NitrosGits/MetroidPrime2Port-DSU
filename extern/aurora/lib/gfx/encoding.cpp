@@ -38,7 +38,6 @@ inline bool is_index_copy_format(u32 fmt) {
   case GX_CTF_R8:
   case GX_CTF_G8:
   case GX_CTF_B8:
-  case GX_TF_I8:
     return true;
   default:
     return false;
@@ -311,7 +310,7 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
         .srcView = isDepth ? passInfo.copySourceDepthView : passInfo.copySourceView,
         .uniformRange = passInfo.resolveUniformRange,
         .dst = passInfo.resolveTarget,
-        // Port: 8-bit index/mask copies (A8/R8/G8/B8/I8; scan visor ids, C8 lookups) hold values that
+        // Port: 8-bit index/mask copies (A8/R8/G8/B8; scan visor ids, C8 lookups) hold values that
         // must not be averaged: a scaled copy takes the nearest texel, never an in-between index.
         .sampleFilter = (needsScaling && !is_index_copy_format(passInfo.resolveFormat))
                             ? tex_copy_conv::SampleFilter::Linear
