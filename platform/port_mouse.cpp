@@ -8,6 +8,7 @@
 // turning, so it stays opt-in until it has had more play time.
 
 #include "port_mouse.h"
+#include "port_radial.h"
 
 #include "port_overlay_internal.h"
 
@@ -387,6 +388,7 @@ void SetTouchAimSpeedY(float pixelsPerDp) {
 void SetUiActive(bool active) {
   sUiActive = active;
   if (active) {
+    PortRadial::Cancel();
     sAiming = false;
     SetCapture(false);
   }
@@ -501,9 +503,18 @@ void BeginTick() {
 }
 
 bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bool pointerLock,
-               bool pointerHold) {
+                bool pointerHold) {
   ReadEnv();
   sAppliedLastTick = false;
+  if (PortRadial::Capturing()) {
+    PortRadial::Transport().AddTravel(sFrameX - sStickFrameX, sFrameY - sStickFrameY);
+    sFrameX = sFrameY = sStickFrameX = sStickFrameY = 0.f;
+    sCameraFrameX = sCameraFrameY = 0.f;
+    sAiming = false;
+    SetCapture(active && sEnabled);
+    // Freeze both pointer and edge-turn; retain initialized yaw/pitch (no presentation snap).
+    return sAim.Update(active, locked, x, y, z, 0.f, 0.f, sSensitivity, sInvertX, sInvertY);
+  }
   if (std::isfinite(dt) && dt > 0.f) {
     sLastTickDt = dt;
   }
@@ -615,6 +626,7 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
 
 bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch) {
   dyaw = dpitch = 0.f;
+  if (PortRadial::Capturing()) return false;
   if (!sAppliedLastTick || !sAiming || !sAim.initialized || !std::isfinite(fraction) ||
       fraction < 0.f) {
     return false;

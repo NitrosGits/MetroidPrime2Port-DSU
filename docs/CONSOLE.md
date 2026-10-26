@@ -86,6 +86,10 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `struggle <0..1>|off` — hold the player's attached-actor struggle (1 wakes a grabber's dizzy gore; the game only grows it from held turn/jump buttons)
 - `visor [name|0-3]` — show or switch the visor (combat, echo, scan, dark)
 - `beam [name|0-3]` — show or switch the beam (power, dark, light, annihilator)
+- `radial [beam|visor x y|mouse dx dy|release|cancel|pad beam|visor x y|padrelease|padoff]` —
+  native Trilogy selector harness (opt-in). Normalized X right/Y up; release commits, cancel drops.
+  `pad` simulates raw right-stick plus stick-click through custom menu bindings; `padrelease`
+  retains the vector while releasing the click, `padoff` returns to neutral. See `docs/TRILOGY.md`.
 - `tp <x> <y> <z>` — teleport the player, keeping its facing
 - `ray <x> <y> <z> [len] [dx dy dz]` — static and render surfaces (beam stops/passes) and the world hit along the ray (default: down)
 - `face <yaw deg>` — turn the player where it stands (0 = +y, 90 = +x)

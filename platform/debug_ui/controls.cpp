@@ -9,6 +9,7 @@
 #include "port_mouse.h"
 #include "port_overlay.h"
 #include "port_touch.h"
+#include "port_entry.h"
 
 #include "MetroidPrime/Player/CGameOptions.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
@@ -56,6 +57,15 @@ void DrawControlsOptions() {
   ImGui::EndDisabled();
 
   ImGui::SeparatorText("Aiming");
+  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    bool radial = sTrilogyRadialSelectors;
+    if (ImGui::Checkbox("Native Trilogy radial selectors", &radial)) {
+      PortOverlay::SetTrilogyRadialSelectors(radial);
+      Changed(true);
+    }
+    ItemHelp("Opt-in, single-player only. Bind Beam menu / Visor menu below. Hold, move mouse or "
+             "right stick, release to select. Center selects Power / Combat; pause or morph cancels.");
+  }
   ImGui::BeginDisabled(locked);
   Changed(ImGui::Checkbox("Auto-aim", &sAutoAim));
   ItemHelp("On, as the original: without Lock-On, shots home in on the enemy nearest the screen "

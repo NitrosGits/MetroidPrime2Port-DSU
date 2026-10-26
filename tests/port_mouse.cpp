@@ -1,6 +1,7 @@
 // Standalone integration test: compile with platform/port_mouse.cpp and SDL's include path.
 // SDL capture/window stubs keep this test deterministic and device-free; no SDL library needed.
 #include "port_mouse.h"
+#include "port_radial.h"
 #include "port_test.h"
 #include <SDL3/SDL.h>
 
@@ -135,5 +136,40 @@ int main() {
     REQUIRE(Near(yaw, -5.f * kAimPixelRadians - 3.f * sensitivity));
     REQUIRE(Near(pitch, 2.5f * kAimPixelRadians + 4.f * sensitivity));
   }
-  std::puts("port_mouse: source scaling, mixed input, gyro routing and lock-on regressions passed");
+  // A captured wheel consumes tick travel and freezes an off-center pointer's edge turn,
+  // pending mouse/stick/gyro interpolation, and the release-consumption tick.
+  Start(.0035f);
+  SetPointerAim(true, .2f, 3.f);
+  SetPointerAimPosition(.9f, .7f);
+  float px, py;
+  REQUIRE(PointerAimPosition(px, py));
+  const float beforeYaw = Yaw(), beforePitch = Pitch();
+  auto& radial = PortRadial::Transport();
+  radial.SetAvailable(true);
+  radial.Tick(true, false, 0, 0);
+  AddMotion(100, -40);
+  AddStickAim(1, 1, dt);
+  AddGyroCamera(1, 1, dt, 2, 2);
+  Apply();
+  REQUIRE(Near(Yaw(), beforeYaw) && Near(Pitch(), beforePitch));
+  CheckPointer(px, py);
+  REQUIRE(radial.Vector().x > .4f && radial.Vector().y > .3f);
+  AddMotion(20, 30);
+  float dyaw = 99, dpitch = 99;
+  REQUIRE(!PresentedAimDelta(.5f, dyaw, dpitch));
+  REQUIRE(dyaw == 0 && dpitch == 0);
+  radial.Tick(false, false, 0, 0);
+  const PortRadial::Point geometry[] = {{0,0},{-1,-1},{1,-1},{0,1}};
+  radial.Resolve(geometry, 15, 0);
+  radial.TakePick(PortRadial::kBeam);
+  REQUIRE(PortRadial::Capturing());
+  REQUIRE(!PresentedAimDelta(.5f, dyaw, dpitch));
+  Apply();
+  REQUIRE(Near(Yaw(), beforeYaw) && Near(Pitch(), beforePitch));
+  radial.Tick(false, false, 0, 0);
+  REQUIRE(!PortRadial::Capturing());
+  AddMotion(10, 0);
+  Apply();
+  REQUIRE(!Near(Yaw(), beforeYaw)); // ordinary simulation/input resumes
+  std::puts("port_mouse: scaling, gyro, lock-on, radial tick/pointer/edge-turn/interpolation passed");
 }

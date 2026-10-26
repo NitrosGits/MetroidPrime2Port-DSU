@@ -91,3 +91,90 @@ Nothing seen missing; the other six GC panes do not exist in Trilogy's pak. Load
 gameplay (world 3bfa3eff, area 0, 6500 frames). The GC USA side-by-side was not done (the GC ISO uses G2ME and
 rejects the R3ME gci). Shots: `/tmp/opencode/trilogy/shots/mp_*.png`, `slot_*.png`.
 Gotcha: launch under Xvfb with `WAYLAND_DISPLAY=` empty, else it hangs at "[aurora::gpu] Requesting adapter".
+
+## Native desktop beam / visor selectors (opt-in)
+
+`trilogy_radial_selectors=1` in `settings.cfg` (or `MP2_TRILOGY_RADIAL_SELECTORS=1`) enables
+the native Echoes RS5 selector frames. Default **off**. F1 > Controls > Options > Aiming exposes
+**Native Trilogy radial selectors** only with a Trilogy disc. RS5 is registered only on Trilogy;
+the existing combat/helmet/passive HUD is not replaced. Missing frames, declared textures,
+required widgets or incomplete loading disable capture and log `[radial] ... unavailable`.
+
+Bind **Beam menu (hold)** and **Visor menu (hold)** in F1 > Controls > Remap, under Beams/Visors,
+for keyboard or gamepad. They are deliberately unbound by default: no custom binding is replaced.
+Use the normal Press (while-held) trigger, not Tap/Toggle. Choose an unused key/button, or explicitly
+remove its conflicting gameplay binding yourself. Example additive `controls.toml` profile:
+
+```toml
+[[profile]]
+name = "Radial menus"
+match = ""
+[[profile.bind]]
+action = "beam_menu"
+inputs = ["key:F6"]
+contexts = ["gameplay"]
+[[profile.bind]]
+action = "visor_menu"
+inputs = ["key:F7"]
+contexts = ["gameplay"]
+[[profile.bind]]
+action = "beam_menu"
+inputs = ["pad:rightstick"]
+contexts = ["gameplay"]
+[[profile.bind]]
+action = "visor_menu"
+inputs = ["pad:leftstick"]
+contexts = ["gameplay"]
+```
+
+Add the binding entries to your existing base profile rather than adding a second empty-match
+profile if you already have one. Mouse aim must be enabled to provide captured relative motion;
+the mapped C-stick/right-stick vector works with or without twin-stick aim. Hold a menu, point,
+then release to request the owned item through the existing retryable beam/visor path. Returning
+the selection stick to neutral selects the center. After release a still-deflected stick is drained
+until neutral, so it cannot also trigger a GC beam change or turn the view.
+
+| Position | Beam | Visor |
+|---|---|---|
+| Center | Power | Combat |
+| Upper | Annihilator | Scan |
+| Lower left | Dark | Dark |
+| Lower right | Light | Echo |
+
+These are the actual FRME icon positions, not Prime 1's item order. Center **selects**, it does
+not cancel. Releasing on the current item is a no-op; unowned icons/highlights are hidden and their
+regions cannot commit. An already-open wheel wins conflicts; Beam wins simultaneous first presses.
+Relative mouse travel is normalized at 200 counts/radius, center radius 0.35. Fade/highlight timings
+are donor-inspired port choices, not proven Echoes retail timing/colors. GUI proportions use the
+existing MP2 camera projection policy without horizontal text/icon scaling.
+
+Only player 0 in single-player, alive, unmorphed first-person running gameplay can capture
+(not in a turret or photo mode).
+Pause/map, F1, cinematic, death, morph, world teardown, disabling the setting and unavailable assets
+cancel without committing. Cancellation requires a fresh menu press before reopening. Normal
+simulation continues; no global pause is added. Mouse tick movement, pointer edge-turn, pending
+view interpolation, normal C-stick and direct/cycle item actions are suppressed during capture.
+
+### Deterministic console harness
+
+With the setting enabled and `MP2_CONSOLE=<port>`:
+
+* `radial` reports capture, active kind (0 beam / 1 visor / -1 none), vector and fade fractions.
+* `radial beam <x> <y>` / `radial visor <x> <y>` holds a normalized selection (X right / Y up).
+* `radial release` releases that hold; `radial cancel` tears it down without selection.
+  Cancel also invalidates released-but-unaccepted radial retries and queued gameplay requests;
+  it never rolls back a selection the game already applied. Disabling the setting invalidates
+  these requests immediately, even when re-enabled before the next input poll. Ordinary touch,
+  direct and cycle selection requests are not withdrawn by radial cancellation.
+* `radial mouse <dx> <dy>` injects relative travel through the existing captured mouse path.
+* `radial pad beam <x> <y>` / `radial pad visor <x> <y>` simulates raw right-stick vector plus
+  right/left stick click **through the input engine**. Requires the example pad bindings above.
+  `radial padrelease` releases the click but keeps the stick vector; `radial padoff` then returns
+  the simulated pad to neutral. This is an explicit test override, not a physical device install.
+
+Use `at <frame> <command>` / `tools/drivers/con.py` for deterministic sequences; leave several
+updates after release for the game's ordinary switch transition. `give` can grant test inventory.
+Do not combine forced normalized selection with physical holds when testing arbitration.
+
+Desktop only in this slice. The normalized transport is exposed for later touch integration;
+existing Java/C++ touch wheels and touch controls are unchanged. No new cursor model is drawn.

@@ -9,6 +9,7 @@
 #include "port_harness.h"
 #include "port_input_map.h"
 #include "port_mouse.h"
+#include "port_radial.h"
 #include "port_overlay.h"
 #include "port_photo.h"
 #include "port_pointer.h"
@@ -481,6 +482,16 @@ void FillRawState(PortInput::RawState& raw, unsigned mouseHeld, bool focused) {
     }
   }
 
+  // Explicit console harness only. Real/default/custom bindings still arbitrate the raw pad.
+  PortRadial::Point simulated;
+  const int radialPad = PortRadial::SimulatedPad(simulated);
+  if (radialPad >= 0) {
+    if (radialPad < 2)
+      raw.padButtons |= 1u << (radialPad == PortRadial::kBeam ? SDL_GAMEPAD_BUTTON_RIGHT_STICK :
+                                                              SDL_GAMEPAD_BUTTON_LEFT_STICK);
+    raw.padAxes[SDL_GAMEPAD_AXIS_RIGHTX] = simulated.x;
+    raw.padAxes[SDL_GAMEPAD_AXIS_RIGHTY] = -simulated.y;
+  }
   uint32_t mouse = 0;
   // Plain "mouse:left" bindings read SDL's buttons as they are, so a click on F1 or any other
   // ImGui window must be masked here or it also fires the beam. The remap capture reads its own.
@@ -575,10 +586,7 @@ uint16_t GameContexts() {
 }
 
 // A next/previous pick the game hasn't taken yet.
-struct CyclePending {
-  int target = -1;
-  uint64_t untilNs = 0;
-};
+using CyclePending = PortRadial::Retry;
 CyclePending sCyclePending[2]; // [0] visor, [1] beam
 
 // The beam or visor the game is on or switching to; -1 out of a game.
@@ -610,7 +618,8 @@ int CycleTarget(bool beam, int dir) {
   if (state == nullptr || dest < 0) return -1;
   const int* order = beam ? kBeamOrder : kVisorOrder;
   // Count from a pick the game hasn't taken yet, so quick notches keep stepping.
-  const int current = sCyclePending[beam].target >= 0 ? sCyclePending[beam].target : dest;
+  const int pending = sCyclePending[beam].PendingTarget();
+  const int current = pending >= 0 ? pending : dest;
   int pos = 0;
   while (pos < 4 && order[pos] != current) ++pos;
   if (pos == 4) pos = 0;
@@ -624,27 +633,63 @@ int CycleTarget(bool beam, int dir) {
 // Starts a cycle pick, or re-sends the pending one each poll until the game has
 // taken it (a request the visor or gun ignores while still switching is dropped).
 // `beam` picks which; `target` -1 just keeps the pending one alive.
-void PushCyclePick(bool beam, int target) {
+void PushCyclePick(bool beam, int target, bool radial = false) {
   CyclePending& p = sCyclePending[beam];
   const uint64_t now = SDL_GetTicksNS();
   if (target >= 0) {
-    p.target = target;
-    p.untilNs = now + 1'500'000'000ull;
+    p.Start(target, radial, now);
   }
   if (p.target < 0) return;
-  if (now > p.untilNs || CurrentPick(beam) == p.target) {
-    p.target = -1;
-    return;
-  }
+  const bool eligible = !p.radial || (PortRadial::Transport().Available() &&
+      PortOverlay::TrilogyRadialSelectors() && !PortOverlay::PointerBlocked() &&
+      PlayerInPlay() && OwnsPick(*PlayerInPlay(), beam, p.target));
+  // The player state's requested beam can equal the target before an in-flight gun animation
+  // accepts it, then be overwritten by that older animation. Radial retries acknowledge the
+  // actual gun/current visor published by the HUD, not that transient request field.
+  const int applied = p.radial ? PortRadial::Applied(beam ? PortRadial::kBeam : PortRadial::kVisor) :
+                                CurrentPick(beam);
+  const int ordinary = PortRadial::DispatchRetry(p, beam ? PortRadial::kBeam : PortRadial::kVisor,
+                                                now, eligible, applied);
+  if (ordinary < 0) return;
   if (beam) {
-    PortTouch::RequestBeam(p.target);
+    PortTouch::RequestBeam(ordinary);
   } else {
-    PortTouch::RequestVisor(p.target);
+    PortTouch::RequestVisor(ordinary);
   }
 }
 
 // The actions that aren't pad inputs go straight to the code that does them.
+bool sConsumeRadialPoll = false;
 void RouteDirectActions(const PortInput::Output& out) {
+  const bool wasCapturing = PortRadial::Capturing();
+  if (!PortOverlay::TrilogyRadialSelectors() || PortOverlay::PointerBlocked() ||
+      PlayerInPlay() == nullptr || PortTouch::PauseScreenOpen()) {
+    PortRadial::Transport().SetAvailable(false);
+    PortRadial::Cancel();
+  }
+  // Start/map/morph are interruptions, never a simultaneous release-commit.
+  if (out.Pressed(Action::PadStart) || out.Pressed(Action::PadZ) || out.Pressed(Action::PadX) ||
+      out.Pressed(Action::BallUnmorph)) {
+    PortRadial::Transport().SetAvailable(false);
+    PortRadial::Cancel();
+  }
+  PortRadial::Poll(out.Held(Action::BeamMenu), out.Held(Action::VisorMenu),
+                   out.Value(Action::CRight) - out.Value(Action::CLeft),
+                   out.Value(Action::CUp) - out.Value(Action::CDown));
+  const bool capture = PortRadial::Capturing();
+  sConsumeRadialPoll = wasCapturing || capture; // also consume the lifecycle-cancellation poll
+  if (capture && !wasCapturing) sCyclePending[0].target = sCyclePending[1].target = -1;
+  const int radialBeam = PortRadial::Transport().TakePick(PortRadial::kBeam);
+  const int radialVisor = PortRadial::Transport().TakePick(PortRadial::kVisor);
+  if (radialBeam >= 0) {
+    std::fprintf(stderr, "[radial] release beam %d (applied=%d)\n", radialBeam,
+                 PortRadial::Applied(PortRadial::kBeam));
+    PushCyclePick(true, radialBeam, true);
+  }
+  if (radialVisor >= 0) {
+    std::fprintf(stderr, "[radial] release visor %d\n", radialVisor);
+    PushCyclePick(false, radialVisor, true);
+  }
   // EBeamId and EPlayerVisor order, as RequestBeam/RequestVisor take them. The engine's
   // action names are MP1's; each stands for the MP2 beam or visor in its slot (Ice is
   // Dark, Wave Light, Plasma Annihilator; X-ray is Echo, Thermal Dark).
@@ -653,18 +698,18 @@ void RouteDirectActions(const PortInput::Output& out) {
                                        Action::VisorThermal};
   for (int i = 0; i < 4; ++i) {
     // A direct pick replaces a pending cycle pick.
-    if (out.Pressed(kBeams[i])) {
+    if (!sConsumeRadialPoll && out.Pressed(kBeams[i])) {
       sCyclePending[1].target = -1;
       PortTouch::RequestBeam(i);
     }
-    if (out.Pressed(kVisors[i])) {
+    if (!sConsumeRadialPoll && out.Pressed(kVisors[i])) {
       sCyclePending[0].target = -1;
       PortTouch::RequestVisor(i);
     }
   }
-  const int beamDir = out.Pressed(Action::BeamNext) ? 1 : out.Pressed(Action::BeamPrev) ? -1 : 0;
+  const int beamDir = sConsumeRadialPoll ? 0 : out.Pressed(Action::BeamNext) ? 1 : out.Pressed(Action::BeamPrev) ? -1 : 0;
   PushCyclePick(true, beamDir != 0 ? CycleTarget(true, beamDir) : -1);
-  const int visorDir = out.Pressed(Action::VisorNext) ? 1 : out.Pressed(Action::VisorPrev) ? -1 : 0;
+  const int visorDir = sConsumeRadialPoll ? 0 : out.Pressed(Action::VisorNext) ? 1 : out.Pressed(Action::VisorPrev) ? -1 : 0;
   PushCyclePick(false, visorDir != 0 ? CycleTarget(false, visorDir) : -1);
   if (out.Pressed(Action::SpringBall)) PortTouch::RequestSpringBall();
 }
@@ -1182,6 +1227,7 @@ PADStatus Synthesize(const PortInput::Output& out) {
   s.stickY = StickY(out.Value(Action::MainDown), out.Value(Action::MainUp));
   s.substickX = StickX(out.Value(Action::CRight), out.Value(Action::CLeft));
   s.substickY = StickY(out.Value(Action::CDown), out.Value(Action::CUp));
+  if (PortRadial::Capturing() || sConsumeRadialPoll) s.substickX = s.substickY = 0;
   s.triggerLeft = Trigger(std::max(out.Value(Action::LAnalog), out.Value(Action::MenuLAnalog)),
                           (s.button & PAD_TRIGGER_L) != 0);
   s.triggerRight = Trigger(std::max(out.Value(Action::RAnalog), out.Value(Action::MenuRAnalog)),
@@ -1217,6 +1263,7 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
   const PortInput::Output& out =
       sRuntime.Poll(raw, contexts, nowMs, QuietContexts(sRuntime.ActiveContexts(), contexts));
   SPoll r;
+  sConsumeRadialPoll = false;
   if (PortInputRemap::Capturing()) {
     // The F1 Controls page is recording an input: it reaches no direct action (a bound
     // PortMenu would close the page mid-capture). The pad still reads it, as before the engine.

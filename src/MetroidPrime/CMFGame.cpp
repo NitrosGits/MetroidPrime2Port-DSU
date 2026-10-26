@@ -6,6 +6,7 @@
 #include "port_console.h"
 #include "port_freecam.h"
 #include "port_harness.h"
+#include "port_radial.h"
 #include "port_overlay.h"
 #include "port_photo.h"
 #include "port_savestate.h"
@@ -126,6 +127,7 @@ void CMFGame::SetFlowState(EFlowState state) {
 #ifdef TARGET_PC
   // MP2_SKIP_INTRO counts gameplay only in kFS_InGame (see platform/include/port_harness.h).
   PortHarness::GameFlowState(int(state), state == kFS_InGame);
+  if (state != kFS_InGame) PortRadial::Cancel();
 #endif
   switch (state) {
   case kFS_CinematicSkip:

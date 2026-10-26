@@ -214,6 +214,8 @@ const int kPointerAimTurnMin = 30;
 const int kPointerAimTurnMax = 720;
 const int kPointerAimTurnDefault = 180;
 bool PointerAim();
+bool TrilogyRadialSelectors();
+void SetTrilogyRadialSelectors(bool enabled);
 void SetPointerAim(bool enabled);
 int PointerAimBox();
 int PointerAimTurn();

@@ -15,6 +15,7 @@
 #include "port_overlay_internal.h"
 #include "port_logfile.h"
 #include "port_mouse.h"
+#include "port_radial.h"
 #include "debug_ui/debug_ui_internal.h"
 
 #include "Kyoto/CSimplePool.hpp"
@@ -81,6 +82,7 @@ bool sLockOnToggle = false;
 bool sStickyCharge = false;
 bool sAutoAim = true;
 bool sPointerAim = false;
+bool sTrilogyRadialSelectors = false;
 int sPointerAimBox = PortOverlay::kPointerAimBoxDefault;
 int sPointerAimTurn = PortOverlay::kPointerAimTurnDefault;
 bool sGyroAim = false;
@@ -983,6 +985,19 @@ void SetAutoAim(bool enabled) {
 bool PointerAim() {
   ReadEnv();
   return EnvBool("MP2_POINTER_AIM", sPointerAim);
+}
+
+bool TrilogyRadialSelectors() {
+  ReadEnv();
+  return EnvBool("MP2_TRILOGY_RADIAL_SELECTORS", sTrilogyRadialSelectors);
+}
+
+void SetTrilogyRadialSelectors(bool enabled) {
+  sTrilogyRadialSelectors = enabled;
+  if (!enabled) {
+    PortRadial::Transport().SetAvailable(false);
+    PortRadial::Cancel();
+  }
 }
 
 void SetPointerAim(bool enabled) {
