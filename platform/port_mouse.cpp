@@ -392,6 +392,8 @@ void SetUiActive(bool active) {
 
 bool UiActive() { return sUiActive; }
 
+bool Captured() { return sCaptured; }
+
 void AddMotion(float dx, float dy) {
   if (!sCaptured || !std::isfinite(dx) || !std::isfinite(dy)) {
     return;

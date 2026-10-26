@@ -241,6 +241,9 @@ void SetTouchAimSpeedY(float pixelsPerDp);
 // The debug overlay owns the cursor while it is open: no capture, no aim applied.
 void SetUiActive(bool active);
 bool UiActive();
+// Mouse aim holds the pointer (cursor hidden, motion turns the view). Our own state, not
+// SDL's relative mode, which Android can report off while its pointer capture is on.
+bool Captured();
 // Relative motion as it arrives from SDL's event queue, and the once-per-loop latch that
 // turns the pending deltas into this tick's deltas.
 void AddMotion(float dx, float dy);

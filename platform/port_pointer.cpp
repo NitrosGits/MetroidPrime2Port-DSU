@@ -5,6 +5,7 @@
 #include "Kyoto/Math/CTransform4f.hpp"
 #include "Kyoto/Math/CVector3f.hpp"
 
+#include "port_mouse.h"
 #include "port_overlay.h"
 
 #include <SDL3/SDL.h>
@@ -145,6 +146,12 @@ void HandleEvent(const SDL_Event& e) {
   case SDL_EVENT_FINGER_DOWN:
   case SDL_EVENT_FINGER_MOTION:
   case SDL_EVENT_FINGER_UP: {
+    // SDL's mobile default (SDL_HINT_MOUSE_TOUCH_EVENTS) echoes every mouse press as a touch;
+    // the mouse events above already carry it, and as a touch it would pass for a finger tap
+    // (a captured-mouse fire click opening the map from the minimap).
+    if (e.tfinger.touchID == SDL_MOUSE_TOUCHID) {
+      break;
+    }
     NoteWindow(e.tfinger.windowID);
     float x = 0.f, y = 0.f;
     WindowPoint(e.tfinger.windowID, e.tfinger.x, e.tfinger.y, x, y);
@@ -533,7 +540,8 @@ bool TakeTap() {
   // A mouse captured by mouse aim has a hidden cursor that look motion drags around, so its
   // fire clicks would land on the minimap wherever that cursor drifted; only touch taps it then.
   SDL_Window* window = PortPointer::Window();
-  const bool captured = window != nullptr && SDL_GetWindowRelativeMouseMode(window);
+  const bool captured = PortMouse::Captured() ||
+                        (window != nullptr && SDL_GetWindowRelativeMouseMode(window));
   if (!g.PeekClick(click) || click.button != PortPointer::kButtonLeft ||
       (captured && click.device == PortPointer::Device::Mouse) ||
       !PortPointer::WindowToGui(click.x, click.y, gx, gy) || gx < sRect[0] || gx > sRect[2] ||
