@@ -1526,8 +1526,20 @@ float VertPlusGunDrop(float fovDegrees, float aspect) {
   return tanf(0.5f * fovDegrees * 3.14159265f / 180.f) * (authored / aspect - 1.f);
 }
 
+// The text language follows the setting (file, env, F1 page, console) while the game runs:
+// CStringTable keeps every section and picks one per GetString.
+void ApplyLanguage() {
+  static int applied = -1;
+  const int language = Language();
+  if (language != applied) {
+    applied = language;
+    CStringTable::SetLanguage(language);
+  }
+}
+
 void Draw() {
   TickFps();
+  ApplyLanguage();
   if (const int milli = sPendingWheelMilli.exchange(0, std::memory_order_relaxed); milli != 0) {
     ImGui::GetIO().AddMouseWheelEvent(0.f, static_cast< float >(milli) / 1000.f);
   }

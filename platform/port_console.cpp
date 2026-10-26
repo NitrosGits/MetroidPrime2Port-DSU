@@ -1065,7 +1065,7 @@ void CmdScanSpeed(CStateManager&, const Args& args, std::string& out) {
   out += "scanspeed " + std::to_string(PortOverlay::ScanSpeed()) + "\n";
 }
 
-// language [0..6]: the text language (language), read at the next launch; no argument prints it.
+// language [0..6]: the text language (language), applied while the game runs; no argument prints it.
 void CmdLanguage(CStateManager&, const Args& args, std::string& out) {
   if (args.size() > 1) {
     const int value = ArgToInt(args[1], -1);
@@ -4467,7 +4467,7 @@ const CommandSpec kCommands[] = {
     {"scanspeed", CmdScanSpeed,
       "scanspeed [50..400]         scan speed in percent (scan_speed); no argument prints it\n"},
     {"language", CmdLanguage,
-      "language [0..6]             text language, from the next launch (language); no argument prints it\n"},
+      "language [0..6]             text language, applied live (language); no argument prints it\n"},
     {"elevator", CmdElevator,
       "elevator [original|fast|skip] the ride between worlds (elevator_ride); no argument prints it\n"},
     {"original", CmdOriginal,
