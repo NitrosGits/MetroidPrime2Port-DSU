@@ -47,6 +47,11 @@ tags come from the body alone. Output: `<TAG> <fn> 0x<asm off>: text [file:line]
   XCMP   C++ compares a (non-bit) field the asm never compares or tests (for-loop headers
          excluded: counted loops become bdnz)
   XSTORE C++ assigns a field the asm never stores to nor passes by address to a call
+  FCONST a float/double the asm loads from rodata (`lfs/lfd`, `lbl@l` or `lis/addi` + `0x0(rX)`) with
+         no C++ literal of the body/merged helpers within 1e-6 relative (or equal as float32), and
+         a C++ float literal no asm load matches. Negations match by |x|; 0, 1, 0.5, the int->float
+         conversion magics, FLT_MAX/EPSILON, 255/256 and their reciprocals, degree<->radian factors,
+         literal squares and same-line products/quotients/sums are not reported
   OFFS   a cited asm offset (`0xCE2C`: >= 4 hex digits or after `asm`/`at`, 4-aligned, inside
          the function) whose quoted instruction or same-line bit mask does not match the asm
   completeness tags, reported only for `// @`-marked functions (or with --all); unmarked ones get
@@ -95,6 +100,7 @@ to a shared helper flags); when several unmarked defs cite one fn first, the las
 """
 import argparse
 import os
+import math
 import re
 import struct
 import sys
@@ -2169,8 +2175,92 @@ def cpp_facts(f, members, getters=None):
 
 INCL = {'<': '<=', '>': '>=', '<=': '<', '>=': '>'}
 COMPLETENESS = {'BIT', 'CMP', 'STORE', 'CALL', 'XCALL', 'BRANCH', 'CALLS'}
-CORRECTNESS = {'MASK', 'XBIT', 'CROP', 'XCMP', 'XSTORE', 'OFFS'}
+CORRECTNESS = {'MASK', 'XBIT', 'CROP', 'XCMP', 'XSTORE', 'OFFS', 'FCONST'}
 INFO = {'NOPOS'}
+
+
+# ---- FCONST: float constants the asm loads from rodata vs the float literals of the C++ body
+FC_IGNORE = (0.0, 1.0, 0.5)
+# MWCC int->float conversion constants, FLT_MAX / FLT_EPSILON (named in C++), byte<->unit colour scales
+FC_MAGIC = (4503601774854144.0, 4503599627370496.0, 3.4028234663852886e+38, 1.1920928955078125e-07,
+            255.0, 1 / 255.0, 256.0, 1 / 256.0)
+FC_DEG = (math.pi / 180.0, 180.0 / math.pi)              # degree <-> radian factors
+FLOAT_LIT_RE = re.compile(r'^(\d+\.\d*(?:[eE][-+]?\d+)?[fF]?|\.\d+(?:[eE][-+]?\d+)?[fF]?|\d+(?:[eE][-+]?\d+)[fF]?|\d+[fF])$')
+FC_LABEL_RE = re.compile(r'"?([^"@+]+)"?(?:\+(0x[0-9a-fA-F]+|\d+))?@(?:l|sda21|sda2|ha)')
+
+
+def f32(v):
+    try:
+        return struct.unpack('>f', struct.pack('>f', v))[0]
+    except (OverflowError, struct.error):
+        return v
+
+
+def fc_close(a, b):
+    if a == b or f32(a) == f32(b):
+        return True
+    return abs(a - b) <= 1e-6 * max(abs(a), abs(b))
+
+
+def fc_ignored(v):
+    return v != v or abs(v) in FC_IGNORE or any(fc_close(abs(v), m) for m in FC_MAGIC) or abs(v) == float('inf')
+
+
+def asm_float_loads(mod, af):
+    """[(off, |value|)] first load of each distinct rodata float/double constant of an asm function.
+    Both `lfs f, lbl@l(r)` and `addi rX, rY, lbl@l` + `lfs f, off(rX)` (linear scan, any write kills rX)."""
+    out, seen = [], []
+    addr = {}       # gpr -> (label, delta) from `addi rX, rY, lbl[+d]@l`
+    for i in af.ins:
+        a = i.args
+        base = i.op.rstrip('.')
+        if base == 'addi' and len(a) == 3:
+            lab = FC_LABEL_RE.fullmatch(a[2])
+            if lab and a[2].endswith('@l'):
+                addr[a[0]] = (lab.group(1), int(lab.group(2) or '0', 0))
+            else:
+                addr.pop(a[0], None)
+            continue
+        if base in ('lfs', 'lfd', 'lfsu', 'lfdu'):
+            m = re.fullmatch(r'(.*)\((r\d+)\)', a[1]) if len(a) > 1 else None
+            if not m:
+                continue
+            lab = FC_LABEL_RE.fullmatch(m.group(1))
+            if lab:
+                ref = (lab.group(1), int(lab.group(2) or '0', 0))
+            else:
+                d = num(m.group(1))
+                ref = (addr[m.group(2)][0], addr[m.group(2)][1] + d) if d is not None and m.group(2) in addr else None
+            if not ref:
+                continue
+            v = rod_value(mod, ref[0], ref[1], 'f' if base.startswith('lfs') else 'd')
+            if not isinstance(v, float) or fc_ignored(v):
+                continue
+            v = abs(v)
+            if not any(fc_close(v, x) for x in seen):
+                seen.append(v)
+                out.append((i.off, v))
+            continue
+        if a and re.fullmatch(r'r\d+', a[0]) and not base.startswith(('st', 'cmp', 'b', 'mt')):
+            addr.pop(a[0], None)
+    return out
+
+
+def cpp_float_lits(f):
+    """[(|value|, line, is_float_syntax)] numeric literals in the body (comments/strings already blank)."""
+    toks = drop_templates(lex(f.code, f.code_line0))
+    if getattr(f, 'foreign', None) or getattr(f, 'debug_lines', None):
+        toks = [t for t in toks if t[1] not in f.foreign and t[1] not in f.debug_lines]
+    toks = drop_debug_blocks(toks)
+    out = []
+    for k, (t, ln) in enumerate(toks):
+        if not t or not (t[0].isdigit() or t[0] == '.') or t.lower().startswith('0x'):
+            continue
+        v = num_literal(t)
+        if v is None:
+            continue
+        out.append((abs(float(v)), ln, bool(FLOAT_LIT_RE.match(t))))
+    return out
 
 
 def is_copy_ctor(target):
@@ -2805,6 +2895,9 @@ class Checker:
             s.emit('BRANCH', fn, af.start, 'C++ has %d conditions, asm %d (extra logic?)' % (F.conds, asm_conds),
                    None, mark)
 
+        # ---------------- float constants
+        s.fconst(f, af, F, mark, loc)
+
         # ---------------- cited offsets
         at = {i.off: i for i in af.ins}
         masks_at = defaultdict(set)
@@ -2848,6 +2941,58 @@ class Checker:
                         s.emit('OFFS', fn, v, 'line cites mask %s at 0x%X; that op uses %s' % (
                             '/'.join('0x%x' % x for x in sorted(lm)), v, '/'.join('0x%x' % x for x in sorted(masks_at[v]))),
                             loc(ln), mark)
+
+    def fconst(s, f, af, F, mark, loc):
+        loads = asm_float_loads(s.mod, af)
+        body = cpp_float_lits(f)
+        every = list(body)
+        for g in s.funcs:       # other defs citing the same fn (split / helper defs) share its asm
+            if g is not f and any(s.mod.find(x) is af for x in g.ids):
+                every += cpp_float_lits(g)
+        for name in F.calls:
+            for h in s.helpers.get(name, []):
+                every += cpp_float_lits(h)
+        deg = any(fc_close(v, d) for _, v in loads for d in FC_DEG)
+        loads = [(o, v) for o, v in loads if not any(fc_close(v, d) for d in FC_DEG)]
+        folds = set()       # values a same-line pair of literals folds to (`a * b`, `a / b`, `a + b`)
+        for i, (a, la, _) in enumerate(every):
+            for b, lb, _ in every[i + 1:]:
+                if la == lb:
+                    folds.update((a * b, a / b if b else 0.0, b / a if a else 0.0, a + b, abs(a - b)))
+            folds.add(a * a)
+            folds.update((a * math.pi / 180, a * 180 / math.pi))    # degrees <-> radians
+
+        def explained(v):
+            return any(fc_close(v, c) for c, _, _ in every) or any(fc_close(v, x) for x in folds)
+
+        def angle(c):
+            return deg and (c in (180.0, 360.0, 90.0, 45.0) or any(
+                fc_close(c, k * math.pi / 8) for k in range(1, 17)))
+
+        for off, v in loads:
+            # a body with no float literal at all (loader defaults in the generated reader, a
+            # stub, a call into code with the constants) has nothing to compare against
+            if any(isf for _, _, isf in every) and not explained(v):
+                s.emit('FCONST', af.name, off, 'asm loads %s, no C++ literal within tolerance' % fmt_float(v)[:-1],
+                       None, mark)
+        code_lines = f.code.split('\n')
+
+        def src_of(ln):
+            k = ln - f.code_line0
+            return code_lines[k] if 0 <= k < len(code_lines) else ''
+        color_lines = {ln for _, ln, _ in body if re.search(r'\bCColor\w*\s*\(|\bmGuest\w+\s*\(', src_of(ln))}
+        seen = []
+        for c, ln, isf in body:
+            if not isf or fc_ignored(c) or angle(c) or ln in color_lines or any(fc_close(c, d) for d in FC_DEG) or any(fc_close(c, x) for x in seen):
+                continue
+            seen.append(c)
+            same = [d for d, l2, _ in every if l2 == ln and d != c]
+            if any(fc_close(c, v) or fc_close(c * c, v) or fc_close(c * math.pi / 180, v) or any(
+                    fc_close(c * d, v) or (d and (fc_close(c / d, v) or fc_close(d / c, v))) or fc_close(c + d, v)
+                    for d in same) for _, v in loads):
+                continue
+            s.emit('FCONST', af.name, af.start, 'C++ literal %s not loaded by the asm' % fmt_float(c)[:-1],
+                   loc(ln), mark)
 
     def report(s, quiet, show_all, only):
         shown = 0

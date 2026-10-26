@@ -54,7 +54,7 @@ for f in $(git diff --name-only "$base" "$head" -- 'src/*Port*.cpp'); do
   mod=$(awk -F'\t' -v id="$id" '$2==id{print $1}' "$here/../docs/modules.tsv")
   [ -n "$mod" ] || continue
   if [ "$head" = HEAD ]; then src=$f; else mkdir -p "$tmp/$(dirname "$f")"; git show "$head:$f" >"$tmp/$f"; src=$tmp/$f; fi
-  out=$(python3 "$here/asmcheck.py" check "$mod" "$src" --root "$(git rev-parse --show-toplevel)" --only MASK,XBIT,CROP,XCMP,XSTORE,OFFS 2>&1)
+  out=$(python3 "$here/asmcheck.py" check "$mod" "$src" --root "$(git rev-parse --show-toplevel)" --only MASK,XBIT,CROP,XCMP,XSTORE,OFFS,FCONST 2>&1)
   rc=$?
   [ $rc -eq 0 ] && continue
   printf '%s\n' "$out" | sed "s|^|ASM $f ($mod): |"
