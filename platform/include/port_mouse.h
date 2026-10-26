@@ -13,6 +13,15 @@ inline float SourceFromRadians(float radiansPerCount) {
   return float(radiansPerCount / kSourceRadiansPerUnit);
 }
 inline float RadiansFromSource(float source) { return float(source * kSourceRadiansPerUnit); }
+// Fixed stick travel scale (the existing mouse default), independent of the mouse slider.
+// MP1 22b2c9255 / cbb69b962: convert before mixing with mouse/touch/gyro counts.
+constexpr float kAimPixelRadians = 0.0035f;
+inline float AimPixelsAsCounts(float pixels, float mouseSensitivity) {
+  return pixels * kAimPixelRadians / mouseSensitivity;
+}
+inline float PointerUnitsPerCount(float extentPixels, float mouseSensitivity) {
+  return 2.f / extentPixels * (mouseSensitivity / kAimPixelRadians);
+}
 // Hand travel for a full turn at a mouse's counts per inch.
 inline float CentimetresPer360(float radiansPerCount, float dpi) {
   if (!(radiansPerCount > 0.f) || !(dpi > 0.f)) return 0.f;

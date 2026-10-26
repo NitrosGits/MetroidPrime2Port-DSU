@@ -219,7 +219,6 @@ void SetCapture(bool captured) {
 // MP1's PointerAimScale: aim travel (pixels at the reference sensitivity) to the pointer's
 // -1..1 range, so a mouse crosses the screen in one window's width of travel.
 void PointerAimScale(float& sx, float& sy) {
-  constexpr float kReferenceSensitivity = 0.0035f;
   int width = 0, height = 0;
   SDL_Window* window = GameWindow();
   if (window == nullptr || !SDL_GetWindowSize(window, &width, &height) || width <= 0 ||
@@ -227,9 +226,8 @@ void PointerAimScale(float& sx, float& sy) {
     width = 640;
     height = 480;
   }
-  const float speed = sSensitivity / kReferenceSensitivity;
-  sx = 2.f / static_cast< float >(width) * speed;
-  sy = 2.f / static_cast< float >(height) * speed;
+  sx = PortMouse::PointerUnitsPerCount(static_cast< float >(width), sSensitivity);
+  sy = PortMouse::PointerUnitsPerCount(static_cast< float >(height), sSensitivity);
 }
 
 } // namespace
@@ -303,9 +301,13 @@ void AddStickAim(float x, float y, float dt) {
   if (x * x + y * y < 0.04f) {
     return; // inside the dead zone; a resting stick must not creep the view
   }
-  const float dx = x * sStickAimRate * dt;
+  // Keep the stick's own pixels/second tuning independent of mouse sensitivity. Store
+  // mouse-equivalent counts so pointer, gyro-camera routing and presentation can still
+  // aggregate sources without rescaling the mouse, touch or gyro contributions.
+  const float dx = AimPixelsAsCounts(x * sStickAimRate * dt, sSensitivity);
   // The aim's dy is screen-down positive, the stick's y is up positive.
-  const float dy = -y * (sStickAimSplit ? sStickAimRateY : sStickAimRate) * dt;
+  const float dy = AimPixelsAsCounts(-y * (sStickAimSplit ? sStickAimRateY : sStickAimRate) * dt,
+                                    sSensitivity);
   // Same thread as the latch (see sPendingMutex), but PresentedAimDelta reads both under the lock.
   std::lock_guard< std::mutex > lock(sPendingMutex);
   sPendingX += dx;
