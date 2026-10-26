@@ -1025,6 +1025,14 @@ void CmdSkipCine(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "skip cutscenes on\n" : "skip cutscenes off\n";
 }
 
+// credits [1|2]: end the game into the credits (CGMSinglePlayer::EndGame's kRM_Credits1/2 route).
+void CmdCredits(CStateManager& mgr, const Args& args, std::string& out) {
+  const int which = args.size() < 2 ? 1 : ArgToInt(args[1], 1);
+  gpMain->SetRestartMode(which == 2 ? CMain::kRM_Credits2 : CMain::kRM_Credits1);
+  mgr.QuitGame();
+  out += "credits requested\n";
+}
+
 // The gameplay tweaks: the same shape as `god` and `skipcine`, an optional 0/1 and a print of the
 // state it ends in, because the F1 row and the env var set the same thing.
 void CmdFastMorph(CStateManager&, const Args& args, std::string& out) {
@@ -4412,6 +4420,8 @@ const CommandSpec kCommands[] = {
       "reloadmods                  read the mods folder again and rebuild the room (F1 Mods)\n"},
     {"resume", CmdResume,
       "resume [status|save|load|clear] quick resume (savestates/resume.mp2ss): show, snapshot now, load, delete\n"},
+    {"credits", CmdCredits,
+      "credits [1|2]               end the game into the credits (<75% / <100% route)\n"},
     {"skipcine", CmdSkipCine,
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"},
     {"gunoffset", CmdGunOffset,

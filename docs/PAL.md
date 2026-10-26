@@ -22,7 +22,15 @@ Prime 1 port's approach to its later revisions.
 ## Verified (2026-10-25, desktop)
 
 - New game on an empty card (`MP2_NEW_GAME=1`) reaches gameplay in 2.2 s; front-end boot with intro
-  (5000 frames) runs without a crash. The screen (fonts, intro text) was not checked.
+  (5000 frames) runs without a crash.
+- Front end by eye, PAL vs USA (Xvfb, `/tmp/opencode/palfe/`, cmp*.png, t_pal*.png): warning screen, intro
+  logo, title (PAL "TM", USA "(R)"), radial main menu, file select and the new-game intro text
+  ("Mission File", "Contract Agreement", "Data Confirmation") all render the same glyphs, sizes and
+  layout; button prompt icons (A) match. The ~25 re-id'd FONTs load fine. Credits (`credits 1` console
+  command) match USA line for line, including accents ("Chauviere").
+- One PAL-only defect, fixed: the new-game intro movie (`openPartOne.thp`) is 29.97 fps on PAL (USA's is
+  59.94), so `CMoviePlayer` took the interlace-pattern path and drew every other line (scanline stripes).
+  `CCubeMoviePlayer.cpp` (TARGET_PC) now always draws the movie progressive; USA 60 fps movies unchanged.
 - `WORLD=all` area sweep on PAL with `MP2_NEW_GAME=1`: 341 of 352 slots played, all OK except one POOL
   (Sanctuary 16); the 11 missing are the Temple Grounds slots after the crash below. The Temple Grounds long shard crashes entering slot 53
   (`CCollisionCacheWriter::BeginGeometry`, null), and **USA crashes the same way on the same route**,
@@ -39,6 +47,6 @@ USA with `MP2_LANGUAGE=2` boots and plays unchanged.
 
 ## Not verified
 
-PAL's 50 Hz / 60 Hz prompt (not in the USA code the port runs),
+The Options screen (radial cursor would not leave Single Player under scripted input), PAL's 50 Hz / 60 Hz prompt (not in the USA code the port runs),
 the SPFN->SWTC rooms on foot, Agon `0a_sand_hall_dark` (new MNNG 000d0016) beyond the sweep's visit,
 Android.
