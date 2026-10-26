@@ -544,6 +544,7 @@ final class TouchControlsView extends View {
     private final int[] touchHeld = new int[ALL_CONTROLS];
     // Fingers passed on to SDL; see forwardToSdl.
     private final Set<Integer> forwarded = new HashSet<>();
+    private final Set<Integer> cancelledRadialPointers = new HashSet<>();
     private final RectF hideBounds = new RectF();
     private final RectF editBounds = new RectF();
     private final RectF layerRect = new RectF();
@@ -586,6 +587,11 @@ final class TouchControlsView extends View {
     private static native int[] nativeWheelIcon(int wheel, int item);
     private static native void nativeRequestVisor(int visor);
     private static native void nativeRequestBeam(int beam);
+    private static native long nativeRadialBegin(int kind, int owner);
+    private static native void nativeRadialMove(long token, int owner, float x, float y);
+    private static native void nativeRadialEnd(long token, int owner, float x, float y);
+    private static native void nativeRadialCancel(long token, int owner);
+    private static native void nativeRadialCancelAll();
     private static native boolean nativeTouchMapTapEnabled();
     // The minimap's screen rect into out5: x0, y0, x1, y1 as fractions of the view, then 1
     // when the minimap is drawn there (0: draw a map button instead). False when no rect.
@@ -1195,6 +1201,14 @@ final class TouchControlsView extends View {
         }
         int action = event.getActionMasked();
         int actionIndex = event.getActionIndex();
+        final int eventOwner = event.getPointerId(actionIndex);
+        if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
+            cancelledRadialPointers.remove(eventOwner); // fresh down, not a late move/up
+        } else if ((action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) &&
+                   cancelledRadialPointers.remove(eventOwner)) {
+            forwarded.remove(eventOwner);
+            return true;
+        }
 
         // While the debug overlay is open the game is paused and the touches
         // are for it, so decline them and let the SDL surface below have them.
@@ -1291,7 +1305,9 @@ final class TouchControlsView extends View {
                 if (target == null) {
                     continue;
                 }
-                if (target.type == LEFT_STICK || target.type == RIGHT_STICK) {
+                if (target.radialToken != 0) {
+                    updateRadial(target, event.getX(i), event.getY(i));
+                } else if (target.type == LEFT_STICK || target.type == RIGHT_STICK) {
                     updateStick(target, event.getX(i), event.getY(i));
                 } else if (target.type == AIM || target.aiming) {
                     updateAim(target, event, i);
@@ -1314,6 +1330,10 @@ final class TouchControlsView extends View {
                 updatePinch(event);
             }
         } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
+            TouchTarget target = targets.get(event.getPointerId(actionIndex));
+            if (target != null && target.radialToken != 0) {
+                updateRadial(target, event.getX(actionIndex), event.getY(actionIndex));
+            }
             releasePointer(event.getPointerId(actionIndex));
         } else if (action == MotionEvent.ACTION_CANCEL) {
             releaseAll();
@@ -1467,6 +1487,10 @@ final class TouchControlsView extends View {
     }
 
     void releaseAll() {
+        nativeRadialCancelAll();
+        for (Map.Entry<Integer, TouchTarget> entry : targets.entrySet()) {
+            if (entry.getValue().radialToken != 0) cancelledRadialPointers.add(entry.getKey());
+        }
         for (TouchTarget target : targets.values()) {
             releaseTarget(target);
         }
@@ -1548,6 +1572,7 @@ final class TouchControlsView extends View {
     }
 
     private void sendToSdl(MotionEvent event, int index, int action) {
+        if (cancelledRadialPointers.contains(event.getPointerId(index))) return;
         // SDL wants the position normalised to its surface, which fills this
         // view's parent; this view does not while it is shrunk to SHOW.
         View parent = (View) getParent();
@@ -1566,6 +1591,35 @@ final class TouchControlsView extends View {
     // the HUD minimap, the left stick, then the open map's pan (nothing else
     // applies while the map is open), the classic C-stick zone, and the free
     // area aims.
+    private boolean beginRadial(TouchTarget target, int kind, int pointerId) {
+        target.radialToken = nativeRadialBegin(kind, pointerId);
+        target.radialOwner = pointerId;
+        return target.radialToken != 0;
+    }
+
+    private void updateRadial(TouchTarget target, float x, float y) {
+        target.x = x;
+        target.y = y;
+        if (target.radialToken > 0) {
+            // Donor's 72 dp reach, from THIS finger's down point. Never viewport fractions.
+            final float reach = dp(72f);
+            nativeRadialMove(target.radialToken, target.radialOwner,
+                             (x - target.startX) / reach, (target.startY - y) / reach);
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (!hasFocus) releaseAll();
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (oldw > 0 && oldh > 0 && (w != oldw || h != oldh)) nativeRadialCancelAll();
+    }
+
     private void assignPointer(int pointerId, float x, float y) {
         float width = getWidth();
         float height = getHeight();
@@ -1596,6 +1650,11 @@ final class TouchControlsView extends View {
             if (dx * dx + dy * dy <= faceGeo[2] * faceGeo[2]) {
                 final TouchTarget target = TouchTarget.begin(BUTTON, CUSTOM_BUTTON, x, y);
                 targets.put(pointerId, target);
+                final String action = customAction[control - C_CUSTOM];
+                final int kind = "beam_menu".equals(action) ? 0 : "visor_menu".equals(action) ? 1 : -1;
+                if (kind >= 0 && beginRadial(target, kind, pointerId)) {
+                    return; // no legacy binding, button/fire or look source from this finger
+                }
                 pressTarget(target, control, true);
                 return;
             }
@@ -1643,6 +1702,7 @@ final class TouchControlsView extends View {
                                                        wheelButtonY(wheel, height)));
                     wheelPointer = pointerId;
                     targets.put(pointerId, target);
+                    beginRadial(target, wheel == 1 ? 0 : 1, pointerId);
                 }
                 return;
             }
@@ -1984,6 +2044,16 @@ final class TouchControlsView extends View {
         if (target == null) {
             return;
         }
+        if (target.radialToken != 0) {
+            if (target.radialToken > 0) {
+                final float reach = dp(72f);
+                nativeRadialEnd(target.radialToken, target.radialOwner,
+                                (target.x - target.startX) / reach,
+                                (target.startY - target.y) / reach);
+            }
+            if (target.type == WHEEL) wheelPointer = -1;
+            return; // never also finishWheel / Scan-tap / release a synthetic fire binding
+        }
         if (target.type == HIDE) {
             setHidden(true);
             performClick();
@@ -2042,6 +2112,11 @@ final class TouchControlsView extends View {
     }
 
     private void releaseTarget(TouchTarget target) {
+        if (target.radialToken != 0) {
+            if (target.radialToken > 0) nativeRadialCancel(target.radialToken, target.radialOwner);
+            if (target.type == WHEEL) wheelPointer = -1;
+            return;
+        }
         // Nothing to zero for a hide tap, an aim drag (a distance) or a map tap
         // (fired on release only; a cancelled touch is no tap).
         if (target.type == AIM) {
@@ -3127,7 +3202,7 @@ final class TouchControlsView extends View {
     // The wheel opens over everything: four sectors, the one under the finger lit.
     private void drawWheel(Canvas canvas) {
         final TouchTarget target = wheelTarget();
-        if (target == null) {
+        if (target == null || target.radialToken != 0) {
             return;
         }
         final int mask = nativeWheelOwned();
@@ -3202,6 +3277,7 @@ final class TouchControlsView extends View {
     private void syncLayout() {
         final String text = nativeTouchLayout();
         if (text != null && !text.equals(layoutText)) {
+            nativeRadialCancelAll();
             layoutText = text;
             loadLayout(text);
         }
@@ -4143,6 +4219,8 @@ final class TouchControlsView extends View {
         float startX;
         float startY;
         long startMs;
+        long radialToken; // 0 legacy, -1 native busy, >0 native session; never switch mid-gesture
+        int radialOwner;
         // A held A button that also aims; see startButtonAim.
         boolean aiming;
         // The pill or face button a BUTTON target pressed. Twin sends one GC button

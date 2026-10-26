@@ -65,6 +65,18 @@ int DispatchRetry(Retry& retry, Kind kind, uint64_t nowNs, bool radialEligible, 
 // request wins if both sources wrote this frame; cancellation never withdraws that other source.
 int TakeRequest(Kind kind, int ordinary = -1);
 
+// Any-thread UI entry points. Return 0 to use the legacy wheel, -1 for a busy native menu,
+// or a positive session token. Coordinates are drag-from-down / 72 dp, X right / Y up.
+int64_t BeginTouch(Kind kind, int64_t owner);
+bool MoveTouch(uint64_t token, int64_t owner, float x, float y);
+bool EndTouch(uint64_t token, int64_t owner, float x, float y);
+void CancelTouch(uint64_t token, int64_t owner);
+void CancelAllTouches();
+// Game thread only: process UI cancellation before the gameplay request-consumption boundary.
+void ServiceTouchCancellation();
+bool TouchOwnsSelection();
+void SetTouchContext(bool allowed); // game thread: touch controls / pause / overlay boundary
+
 }
 
 class CStateManager;

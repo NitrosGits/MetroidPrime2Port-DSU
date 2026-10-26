@@ -87,6 +87,7 @@ std::atomic< bool > sDeviceXbox{false};
 
 // What the UI thread asks of the game; BeginFrame applies it on the game thread.
 std::atomic< int > sWheelState{0};
+std::atomic<bool> sRadialTouchForeground{true};
 std::atomic< int > sPendingVisor{-1};
 std::atomic< int > sPendingBeam{-1};
 std::atomic< bool > sBeamShift{false};
@@ -440,6 +441,19 @@ void UpdateTurbo(bool enabled) {
   }
 }
 
+bool SDLCALL RadialLifecycleWatch(void*, SDL_Event* event) {
+  if (event->type == SDL_EVENT_WILL_ENTER_BACKGROUND ||
+      event->type == SDL_EVENT_DID_ENTER_BACKGROUND ||
+      event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {
+    sRadialTouchForeground.store(false, std::memory_order_release);
+    PortRadial::CancelAllTouches();
+  } else if (event->type == SDL_EVENT_DID_ENTER_FOREGROUND ||
+             event->type == SDL_EVENT_WINDOW_FOCUS_GAINED) {
+    sRadialTouchForeground.store(true, std::memory_order_release);
+  }
+  return true;
+}
+
 } // namespace
 
 namespace PortTouch {
@@ -455,6 +469,8 @@ void Initialize(const std::string& userDirectory) {
 }
 
 void BeginFrame() {
+  static const bool watching = SDL_AddEventWatch(RadialLifecycleWatch, nullptr);
+  (void)watching;
   ReadEnvironment();
   LoadConfig();
 
@@ -499,6 +515,8 @@ void BeginFrame() {
   PortMouse::SetTouchAimSpeedY(AimSplit() ? AimSpeedY() : AimSpeed());
 
   CPlayerState* const player = PlayerInPlay();
+  PortRadial::SetTouchContext(player && ControlsEnabled() && !OverlayVisible() && !PortMouse::UiActive() &&
+                             sRadialTouchForeground.load(std::memory_order_acquire));
   ApplyRequests(player);
   sWheelState.store(BuildWheelState(player), std::memory_order_release);
   UpdateTurbo(Turbo());
@@ -603,6 +621,7 @@ void SetLayout(const std::string& layout) {
     return;
   }
   sSettings.layout = layout;
+  PortRadial::CancelAllTouches();
   sDirty = true;
   // Under the same lock the mutation took: never a half-updated Settings in the file.
   SaveConfigLocked();
@@ -616,6 +635,8 @@ void SetSetting(bool Settings::* field, bool value) {
     return;
   }
   sSettings.*field = value;
+  if (field == &Settings::controls || field == &Settings::wheels ||
+      field == &Settings::classic || field == &Settings::twin) PortRadial::CancelAllTouches();
   sDirty = true;
   SaveConfigLocked();
 }
@@ -654,11 +675,15 @@ void SetOpacity(float percent) { SetNumber(&Settings::opacity, percent, 10.f, 10
 void SetAimSpeed(float pxPerDp) { SetNumber(&Settings::aimSpeed, pxPerDp, 0.5f, 6.f); }
 void SetAimSpeedY(float pxPerDp) { SetNumber(&Settings::aimSpeedY, pxPerDp, 0.5f, 6.f); }
 
-void RequestEdit() { sEditRequested.store(true, std::memory_order_release); }
+void RequestEdit() {
+  PortRadial::CancelAllTouches();
+  sEditRequested.store(true, std::memory_order_release);
+}
 
 bool TakeEditRequested() { return sEditRequested.exchange(false, std::memory_order_acq_rel); }
 
 void CycleLayout() {
+  PortRadial::CancelAllTouches();
   LoadConfig();
   std::lock_guard< std::mutex > lock(sMutex);
   Settings& s = sSettings;

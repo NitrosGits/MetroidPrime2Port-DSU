@@ -507,7 +507,8 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
   ReadEnv();
   sAppliedLastTick = false;
   if (PortRadial::Capturing()) {
-    PortRadial::Transport().AddTravel(sFrameX - sStickFrameX, sFrameY - sStickFrameY);
+    if (!PortRadial::TouchOwnsSelection())
+      PortRadial::Transport().AddTravel(sFrameX - sStickFrameX, sFrameY - sStickFrameY);
     sFrameX = sFrameY = sStickFrameX = sStickFrameY = 0.f;
     sCameraFrameX = sCameraFrameY = 0.f;
     sAiming = false;

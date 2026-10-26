@@ -3686,6 +3686,35 @@ void CmdRadial(CStateManager& mgr, const Args& args, std::string& out) {
   if (args[1] == "cancel") { PortRadial::Cancel(); return; }
   if (args[1] == "padoff") { PortRadial::SimulatePad(-1); return; }
   if (args[1] == "padrelease") { PortRadial::SimulatePad(2); return; }
+  if (args[1] == "touch") {
+    static uint64_t token = 0; // desktop synthetic UI, using the same any-thread mailbox as JNI
+    if (args.size() == 3 && args[2] == "cancelall") {
+      PortRadial::CancelAllTouches(); return;
+    }
+    if (args.size() == 5 && args[2] == "begin") {
+      const int kind = args[3] == "beam" ? PortRadial::kBeam :
+                       args[3] == "visor" ? PortRadial::kVisor : -1;
+      if (kind < 0) { Fail("touch begin beam|visor <owner>"); return; }
+      const int64_t result = PortRadial::BeginTouch(PortRadial::Kind(kind), ArgToInt(args[4], -1));
+      if (result > 0) token = result;
+      out += "native touch token=" + std::to_string(result) + " (0 legacy, -1 busy)\n";
+      return;
+    }
+    if (args.size() == 4 && args[2] == "cancel") {
+      PortRadial::CancelTouch(token, ArgToInt(args[3], -1)); return;
+    }
+    float x = 0.f, y = 0.f;
+    if (args.size() == 6 && (args[2] == "move" || args[2] == "end") &&
+        ParseFloat(args[4], x) && ParseFloat(args[5], y)) {
+      const int owner = ArgToInt(args[3], -1);
+      const bool accepted = args[2] == "move" ? PortRadial::MoveTouch(token, owner, x, y) :
+                                               PortRadial::EndTouch(token, owner, x, y);
+      out += accepted ? "native touch accepted\n" : "native touch ignored (owner/session revoked)\n";
+      return;
+    }
+    Fail("radial touch begin beam|visor owner | move|end owner x y | cancel owner | cancelall");
+    return;
+  }
   if (!PortRadial::GameplayAllowed(mgr)) { Fail("radial unavailable outside enabled Trilogy gameplay"); return; }
   float x = 0.f, y = 0.f;
   if (args[1] == "pad") {
@@ -4595,7 +4624,8 @@ const CommandSpec kCommands[] = {
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"},
     {"radial", CmdRadial,
       "radial [beam|visor x y|mouse dx dy|release|cancel|pad beam|visor x y|padrelease|padoff]\n"
-      "                           desktop native selector harness (Trilogy opt-in)\n"},
+      "                           native selector harness (Trilogy opt-in)\n"
+      "radial touch begin beam|visor owner | move|end owner x y | cancel owner | cancelall\n"},
     {"tp", CmdTp,
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"},
     {"ray", CmdRay,
