@@ -1326,15 +1326,16 @@ void CEmperorIngStage1::LookAtPlayer(CStateManager& mgr) {
 }
 
 // fn_16_2DDC (0x2DDC..0x2E1C, 0x40): the cross product of two vectors. The X is
-// a.y * b.z - b.y * a.z (the fmsubs at 0x2DFC), the Y is b.z * a.x - a.z * b.x (0x2E04) and the Z
-// is b.x * a.y - a.x * b.y (0x2E0C). The REL's own copy of the DOL's
+// a.y * b.z - b.y * a.z (the fmsubs at 0x2DFC), the Y is a.z * b.x - b.z * a.x (the fmsubs at
+// 0x2E04: f5 * f6 - f1, a.z * b.x - (b.z * a.x)) and the Z is a.x * b.y - b.x * a.y (the fmsubs at
+// 0x2E0C: f3 * f7 - f0). The REL's own copy of the DOL's
 // Cross__9CVector3fFRC9CVector3fRC9CVector3f (0x8001994C, 0x40 bytes - the same body, branch
 // free), so it is the host's function and is not marked; the host's CVector3f::Cross is the
 // same code.
 static CVector3f CrossProduct(const CVector3f& a, const CVector3f& b) {
   return CVector3f(a.GetY() * b.GetZ() - b.GetY() * a.GetZ(),
-                   b.GetZ() * a.GetX() - a.GetZ() * b.GetX(),
-                   b.GetX() * a.GetY() - a.GetX() * b.GetY());
+                   a.GetZ() * b.GetX() - b.GetZ() * a.GetX(),
+                   a.GetX() * b.GetY() - b.GetX() * a.GetY());
 }
 
 // fn_16_2C9C (0x2C9C..0x2DDC): the angle (guest 0xA2C) between the 'PLAY' actor's facing and the
