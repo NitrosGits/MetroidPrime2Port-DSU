@@ -137,6 +137,8 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
+- 2026-10-26: Trilogy mod PAK filtering (`15d4dc314`) merged: exclude retained root `fe`/`MP1`/`MP3` siblings only, retain nested names and original entry numbers. Actual USA DVD enumeration 71→22; merged link and mods CTest 2/2 pass. Movie 16:9 rule deferred (seven examined assets identical to GC); Wii save conversion not implemented. Native radial selectors in progress separately.
+
 - 2026-10-26 combined follow-up: `build-port-link/metroid_prime2_port` rebuilt and linked after all three sync merges; CTest `port_pointer_tests`, `port_game_text_tests`, `port_dynamic_res_tests` passed (3/3). UTF-8 regression is now registered with CTest. Supersedes the pending combined verification below; no device testing.
 
 - 2026-10-26: incremental review through MP1 `61cedbed5` (156 commits after `8451b25ae`): merged whole-triangle FIFO handling, native-resolution present bypass and compilation-aware dynamic resolution (`c0d6814b0`); stick sensitivity isolation (`ff46ed387`, existing mouse/touch/gyro settings retained); UTF-8 names and Android picker storage hint (`846578a24`, `b575c405d`, test correction `5a8f24e02`). Lane gates: 253 FIFO tests, focused input/dynres tests, link clean, Vulkan smoke; no device validation or native-present pixel comparison. Combined verification pending. Trilogy movie/mod-filter/save applicability and native selector gaps under investigation; reports `/tmp/opencode/reports/trilogy-*-check.md`. No push or install.
