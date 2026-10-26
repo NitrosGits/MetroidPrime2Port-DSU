@@ -45,3 +45,27 @@ Missing paks read as empty bytes (guarded), so the absent ones don't fail the mo
 
 GC USA and PAL `MP2_SKIP_FRONTEND=1 MP2_NEW_GAME=1` boots (1500 frames) are unchanged: gameplay at frame 121,
 exit 0, no caught signals. `python3 tools/gen_files_cmake.py --check` clean; no upstream `src/` file touched.
+
+## Front end on Trilogy data (2026-10-26)
+
+Trilogy's FrontEnd.pak has no per-player invert menus (`kSS_*` list empty, rumble 4, join 8 entries) and only 3
+text panes in the save-slot list (GC: 9), so upstream's `CollectWidgets`/`UpdateSaveSlots` indexed past the lists.
+TARGET_PC fix in `CScriptGuiScreen.cpp`: `PortIdAt` turns a missing list entry into `kInvalidUniqueId` (null
+widget), and the slot-pane `SetText`s plus the multiplayer invert/rumble users null-check. The non-PC path is
+byte-identical (strip-diff clean). Result: health warning -> main menu (Single Player / Options / Multiplayer) ->
+file select -> new game -> opening cinematic -> first room, no `MP2_SKIP_FRONTEND`
+(`MP2_INPUT=A@1300+3,A@2900+3,A@3400+3,A@3900+3,START@4300+3,...`, ~30 updates/s). Multiplayer is only
+shown, not tested. Unverified: the slot's world-name/play-time panes on a *used* slot (saves not tried here).
+Screenshots from the run: `/tmp/opencode/trilogy/shots/`. GC USA still reaches title and gameplay.
+
+## Disc picker (Android)
+
+`SupportedHeader` accepts a plain GC header (G2ME01/G2MP01/R3ME01/R3MP01) or a container magic
+(RVZ/WIA/CISO/WBFS/GCZ, `port::entry::IsPickableDiscHeader`); nod verifies the disc after open. The picker
+filter lists iso/gcm/rvz/wia/gcz/ciso/wbfs. Unit tests: `tests/port_entry_tests.cpp`.
+
+## Area sweep sample (USA-code-on-Trilogy, fast mode, 6 slots per world, 2026-10-26)
+
+`MP2_DISC=<rvz> MP2_LIST_DISC=<GC USA iso>` (`tools/world_areas.py` cannot read an rvz; `MP2_LIST_DISC` points
+the slot lister at a plain ISO), `MP2_NEW_GAME=1`, `SHARDS=1 COUNT=6`, WORLD = each campaign world.
+Result: 30/30 slots OK (Temple Grounds, Agon, Torvus, Sanctuary, Great Temple, slots 0..5), no crash, no stubs.

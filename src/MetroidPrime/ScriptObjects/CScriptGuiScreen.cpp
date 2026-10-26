@@ -109,6 +109,14 @@ CScriptGuiFrontEndScreen::CScriptGuiFrontEndScreen(TUniqueId uid, const rstl::st
 // @ fn_60_6060
 CScriptGuiFrontEndScreen::~CScriptGuiFrontEndScreen() { CGameOptions::SetFrontEndActive(false); }
 
+#ifdef TARGET_PC
+// Trilogy's smaller FrontEnd.pak drops the multiplayer menu connections: a missing entry is a
+// null widget instead of an out-of-range read.
+static TUniqueId PortIdAt(const rstl::vector< TUniqueId >& ids, int i) {
+  return i >= 0 && i < static_cast< int >(ids.size()) ? ids[i] : kInvalidUniqueId;
+}
+
+#endif
 // @ fn_60_4714
 void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
   TUniqueId defaultId = FindConnectedObject(mgr, kSS_XDamage, kSM_None);
@@ -124,14 +132,24 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
 
   {
     rstl::vector< TUniqueId > ids = FindConnectedObjects(mgr, kSS_AILogicState1, kSM_None);
+#ifdef TARGET_PC
+    mDeathMatchSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(PortIdAt(ids, 0)));
+    mDeathMatchEntity = TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(PortIdAt(ids, 1)));
+#else
     mDeathMatchSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(ids[0]));
     mDeathMatchEntity = TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(ids[1]));
+#endif
   }
 
   {
     rstl::vector< TUniqueId > ids = FindConnectedObjects(mgr, kSS_AILogicState2, kSM_None);
+#ifdef TARGET_PC
+    mCoinSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(PortIdAt(ids, 0)));
+    mCoinEntity = TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(PortIdAt(ids, 1)));
+#else
     mCoinSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(ids[0]));
     mCoinEntity = TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(ids[1]));
+#endif
   }
 
   {
@@ -140,10 +158,18 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
     rstl::vector< TUniqueId > invertIds = FindConnectedObjects(mgr, kSS_Open, kSM_None);
     for (int i = 0; i < 4; ++i) {
       SPlayerSetup setup;
+#ifdef TARGET_PC
+      setup.mJoinedSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(PortIdAt(joinIds, i * 2)));
+      setup.mReadySwitch =
+          TCastToPtr< CScriptSwitch >(mgr.ObjectById(PortIdAt(joinIds, i * 2 + 1)));
+      setup.mRumbleMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(PortIdAt(rumbleIds, i)));
+      setup.mInvertMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(PortIdAt(invertIds, i)));
+#else
       setup.mJoinedSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(joinIds[i * 2]));
       setup.mReadySwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(joinIds[i * 2 + 1]));
       setup.mRumbleMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(rumbleIds[i]));
       setup.mInvertMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(invertIds[i]));
+#endif
       mPlayerSetups.push_back(setup);
     }
   }
@@ -156,6 +182,15 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
     rstl::vector< TUniqueId > difficultyIds = FindConnectedObjects(mgr, kSS_PhazonDamage, kSM_None);
     for (int i = 0; i < 3; ++i) {
       SSaveSlot slot;
+#ifdef TARGET_PC
+      slot.mTitle = TCastToPtr< CScriptTextPane >(mgr.ObjectById(PortIdAt(textIds, i * 3)));
+      slot.mWorldName = TCastToPtr< CScriptTextPane >(mgr.ObjectById(PortIdAt(textIds, i * 3 + 1)));
+      slot.mPlayTime = TCastToPtr< CScriptTextPane >(mgr.ObjectById(PortIdAt(textIds, i * 3 + 2)));
+      slot.mSlotEntity = TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(PortIdAt(slotIds, i)));
+      slot.mUsedSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(PortIdAt(usedIds, i)));
+      slot.mNewGameSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(PortIdAt(newIds, i)));
+      slot.mDifficultyMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(PortIdAt(difficultyIds, i)));
+#else
       slot.mTitle = TCastToPtr< CScriptTextPane >(mgr.ObjectById(textIds[i * 3]));
       slot.mWorldName = TCastToPtr< CScriptTextPane >(mgr.ObjectById(textIds[i * 3 + 1]));
       slot.mPlayTime = TCastToPtr< CScriptTextPane >(mgr.ObjectById(textIds[i * 3 + 2]));
@@ -163,6 +198,7 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
       slot.mUsedSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(usedIds[i]));
       slot.mNewGameSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(newIds[i]));
       slot.mDifficultyMenu = TCastToPtr< CScriptGuiMenu >(mgr.ObjectById(difficultyIds[i]));
+#endif
       mSaveSlots.push_back(slot);
     }
   }
@@ -345,8 +381,12 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
       const CGameState::SPlayerResult& player = results.mPlayers[i];
       SPlayerSetup& setup = mPlayerSetups[player.mPlayerSelection];
 #ifdef TARGET_PC
-      setup.mInvertMenu->SetSelection(player.xc_, mgr);
-      setup.mRumbleMenu->SetSelection(player.mRumbleEnabled, mgr);
+      if (setup.mInvertMenu != nullptr) {
+        setup.mInvertMenu->SetSelection(player.xc_, mgr);
+      }
+      if (setup.mRumbleMenu != nullptr) {
+        setup.mRumbleMenu->SetSelection(player.mRumbleEnabled, mgr);
+      }
 #else
       setup.mInvertMenu->SetSelection(player.mRumbleEnabled, mgr);
       setup.mRumbleMenu->SetSelection(player.xc_, mgr);
@@ -534,8 +574,14 @@ void CScriptGuiFrontEndScreen::StartMultiplayerGame(CStateManager& mgr) {
   for (int i = 0; i < 4; ++i) {
     const SPlayerSetup& setup = mPlayerSetups[i];
     if (setup.mJoinedSwitch->IsOpened()) {
+#ifdef TARGET_PC
+      // Trilogy's FrontEnd.pak has no per-player invert menus.
+      const bool rumble = setup.mRumbleMenu != nullptr && setup.mRumbleMenu->GetSelection() == 1;
+      const bool invert = setup.mInvertMenu != nullptr && setup.mInvertMenu->GetSelection() == 1;
+#else
       const bool rumble = setup.mRumbleMenu->GetSelection() == 1;
       const bool invert = setup.mInvertMenu->GetSelection() == 1;
+#endif
       players.push_back(CFrontEndPlayerData(i, CPlayerOptions(rumble, invert)));
     }
   }
@@ -642,9 +688,22 @@ void CScriptGuiFrontEndScreen::UpdateSaveSlots(CStateManager& mgr) {
       title.assign(table->GetString(table->GetStringIndex("New1") + i), -1);
     }
 
+#ifdef TARGET_PC
+    // Trilogy's FrontEnd.pak lays the slots out with fewer text panes.
+    if (mSaveSlots[i].mTitle != nullptr) {
+      mSaveSlots[i].mTitle->TextSupport().SetText(title);
+    }
+    if (mSaveSlots[i].mWorldName != nullptr) {
+      mSaveSlots[i].mWorldName->TextSupport().SetText(worldName);
+    }
+    if (mSaveSlots[i].mPlayTime != nullptr) {
+      mSaveSlots[i].mPlayTime->TextSupport().SetText(playTime);
+    }
+#else
     mSaveSlots[i].mTitle->TextSupport().SetText(title);
     mSaveSlots[i].mWorldName->TextSupport().SetText(worldName);
     mSaveSlots[i].mPlayTime->TextSupport().SetText(playTime);
+#endif
     mgr.SendScriptMsg(mSaveSlots[i].mUsedSwitch, GetUniqueId(),
                       data != nullptr ? kSM_Open : kSM_Close);
     mgr.SendScriptMsg(mSaveSlots[i].mNewGameSwitch, GetUniqueId(),
@@ -659,7 +718,13 @@ void CScriptGuiFrontEndScreen::UpdateSaveSlots(CStateManager& mgr) {
                       usedSlots == 0 ? kSM_Activate : kSM_Deactivate);
     mgr.SendScriptMsg(mSlotCountRelays[1], GetUniqueId(),
                       usedSlots == 3 ? kSM_Activate : kSM_Deactivate);
+#ifdef TARGET_PC
+    if (i < mSlotNamePanes.size() && mSlotNamePanes[i] != nullptr) {
+      mSlotNamePanes[i]->TextSupport().SetText(title);
+    }
+#else
     mSlotNamePanes[i]->TextSupport().SetText(title);
+#endif
   }
 }
 

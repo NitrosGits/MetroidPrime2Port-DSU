@@ -72,6 +72,24 @@ void TestSupportedDisc() {
 
 void TestDiscImageNames() {
   Check(IsDiscImageName("Metroid Prime 2 (USA) (v1.00).iso"), "an .iso name is accepted");
+  {
+    const char usa[8] = {'G', '2', 'M', 'E', '0', '1', 0, 0};
+    const char tri[8] = {'R', '3', 'M', 'E', '0', '1', 0, 0};
+    const char rev1[8] = {'G', '2', 'M', 'E', '0', '1', 0, 1};
+    const char rvz[8] = {'R', 'V', 'Z', 1, 0, 0, 0, 0};
+    const char gcz[8] = {1, char(0xC0), 0x0B, char(0xB1), 0, 0, 0, 0};
+    const char zip[8] = {'P', 'K', 3, 4, 0, 0, 0, 0};
+    Check(port::entry::IsPickableDiscHeader(usa, 8), "picker: a plain USA header is accepted");
+    Check(port::entry::IsPickableDiscHeader(tri, 8), "picker: a plain Trilogy header is accepted");
+    Check(!port::entry::IsPickableDiscHeader(rev1, 8), "picker: revision 1 is refused");
+    Check(port::entry::IsPickableDiscHeader(rvz, 8), "picker: an RVZ container is accepted");
+    Check(port::entry::IsPickableDiscHeader("WIA\x01", 4), "picker: a WIA container is accepted");
+    Check(port::entry::IsPickableDiscHeader(gcz, 8), "picker: a GCZ container is accepted");
+    Check(port::entry::IsPickableDiscHeader("CISO", 4), "picker: CISO is accepted");
+    Check(port::entry::IsPickableDiscHeader("WBFS", 4), "picker: WBFS is accepted");
+    Check(!port::entry::IsPickableDiscHeader(zip, 8), "picker: a zip is refused");
+    Check(!port::entry::IsPickableDiscHeader(usa, 4), "picker: a short plain header is refused");
+  }
   Check(IsDiscImageName("GAME.ISO"), "the extension check is case-insensitive");
   Check(IsDiscImageName("disc.gcm"), "a .gcm name is accepted");
   Check(IsDiscImageName("Metroid Prime Trilogy (USA).rvz"), "an .rvz name is accepted");
