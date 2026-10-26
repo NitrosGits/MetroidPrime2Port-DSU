@@ -487,6 +487,9 @@ float VertPlusGunDrop(float fovDegrees, float aspect);
 // wider viewport: 4:3 art keeps its shape in a band of that width, centred.
 int FourThreeWidth(int width, int height);
 bool Visible();
+// The F1 window, the resume prompt or another ImGui window is taking the mouse (as of the last
+// drawn frame), so a press or wheel there must not also reach the game's pointer menus.
+bool PointerBlocked();
 // Builds the window. Call once per presented frame, inside the open Aurora frame.
 void Draw();
 

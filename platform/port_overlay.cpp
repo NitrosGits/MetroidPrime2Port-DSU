@@ -558,6 +558,11 @@ bool Visible() {
   return sVisible;
 }
 
+bool PointerBlocked() {
+  return Visible() || PortMouse::UiActive() ||
+         (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureMouse);
+}
+
 bool SkipCinematics() {
   ReadEnv();
   if (OriginalExperience()) {

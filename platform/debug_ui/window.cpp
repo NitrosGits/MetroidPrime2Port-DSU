@@ -398,6 +398,10 @@ void DrawUI() {
   bool promptYes = true;
   const bool promptUp = PortSaveState::ResumePromptShown(promptInfo, promptYes);
   PortMouse::SetUiActive(sVisible || promptUp);
+  // Before the prompt and toasts too: until the window first opened they drew at ImGui's
+  // unscaled 13px, tiny on a phone.
+  UpdateUiScale(static_cast< float >(PortOverlay::UiScale()) / 100.f);
+  ApplyThemeIfChanged();
   BeginTopToastStack();
   if (!sVisible) {
     DrawResumePrompt();
@@ -411,8 +415,6 @@ void DrawUI() {
     UpdateMenuSounds(false);
     return;
   }
-  UpdateUiScale(static_cast< float >(PortOverlay::UiScale()) / 100.f);
-  ApplyThemeIfChanged();
 
   UpdateTouchScroll();
   BeginSearchJump();

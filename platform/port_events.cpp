@@ -432,9 +432,16 @@ bool PortPumpEvents() {
       PortSaveState::ResumeSave();
       return true;
     }
-    // Menu pointer gestures; ImGui keeps the events it wants itself.
-    if (event->type == AURORA_SDL_EVENT && !PortOverlay::Visible()) {
-      PortPointer::HandleEvent(event->sdl);
+    // Menu pointer gestures. A press or wheel over an ImGui window (F1, the resume prompt) is
+    // ImGui's alone; releases and motion still pass, so a gesture begun in the game ends cleanly
+    // and a release whose press was ImGui's is ignored by the recognizer.
+    if (event->type == AURORA_SDL_EVENT) {
+      const uint32_t type = event->sdl.type;
+      const bool starts = type == SDL_EVENT_MOUSE_BUTTON_DOWN || type == SDL_EVENT_FINGER_DOWN ||
+                          type == SDL_EVENT_MOUSE_WHEEL;
+      if (!starts || !PortOverlay::PointerBlocked()) {
+        PortPointer::HandleEvent(event->sdl);
+      }
     }
     if (event->type == AURORA_SDL_EVENT) {
       PortDebug::PhotoTouchEvent(event->sdl);

@@ -530,7 +530,12 @@ bool TakeTap() {
   PortPointer::Recognizer& g = PortPointer::Gestures();
   PortPointer::Click click;
   float gx, gy;
+  // A mouse captured by mouse aim has a hidden cursor that look motion drags around, so its
+  // fire clicks would land on the minimap wherever that cursor drifted; only touch taps it then.
+  SDL_Window* window = PortPointer::Window();
+  const bool captured = window != nullptr && SDL_GetWindowRelativeMouseMode(window);
   if (!g.PeekClick(click) || click.button != PortPointer::kButtonLeft ||
+      (captured && click.device == PortPointer::Device::Mouse) ||
       !PortPointer::WindowToGui(click.x, click.y, gx, gy) || gx < sRect[0] || gx > sRect[2] ||
       gy < sRect[1] || gy > sRect[3]) {
     return false;
