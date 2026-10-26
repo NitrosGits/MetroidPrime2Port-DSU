@@ -128,8 +128,11 @@ enum EElevatorRide { kElevatorRide_Original, kElevatorRide_Fast, kElevatorRide_S
 int ElevatorRide();
 void SetElevatorRide(int mode);
 // Text language (`MP2_LANGUAGE`: 0 English, 1 German, 2 French, 3 Spanish, 4 Italian, 5 Dutch,
-// 6 Japanese): CMain::GetLanguage returns it; read once at startup. A string table without that
-// language falls back to its first one.
+// 6 Japanese): CMain::GetLanguage returns it at startup and the overlay re-applies it every frame
+// (CStringTable::SetLanguage), so a change shows at once in text read from then on; a screen that
+// already copied its text shows the new language when it next opens. A string table without that
+// language falls back to English (PAL discs carry English, French, German, Spanish, Italian and
+// Japanese; the USA disc English only).
 const int kLanguageMax = 6;
 int Language();
 void SetLanguage(int index);

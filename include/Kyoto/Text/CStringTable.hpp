@@ -7,6 +7,9 @@
 
 #include "rstl/auto_ptr.hpp"
 #include "rstl/single_ptr.hpp"
+#ifdef TARGET_PC
+#include <vector>
+#endif
 
 class CInputStream;
 class CResFactory;
@@ -48,6 +51,17 @@ private:
   SStringName* mNames;
   const wchar_t** mStrings;
   rstl::single_ptr< SReloadData > mReloadData;
+#ifdef TARGET_PC
+  // Port: every language section of the table, decoded, so the language can change while the game
+  // runs. Each holds the host string pointers followed by the text; mStrings is the native one.
+  struct PortSection {
+    uint mLanguage;
+    std::vector< uchar > mBlock;
+    const wchar_t** Strings() { return reinterpret_cast< const wchar_t** >(mBlock.data()); }
+  };
+  std::vector< PortSection > mPortSections;
+  const wchar_t* const* PortStrings() const;
+#endif
 };
 CHECK_SIZEOF(CStringTable, 0x18)
 NESTED_CHECK_SIZEOF(CStringTable, SReloadData, 0x10)

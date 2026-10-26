@@ -68,8 +68,11 @@ Game page:
   (`original|fast|skip`). Fast runs the world-transition ride at double speed; Skip ends it as soon as
   the next world has loaded (the load itself still takes its time). Text transitions are unchanged.
 - `language`: Cutscenes > Language (0 English, 1 German, 2 French, 3 Spanish, 4 Italian, 5 Dutch,
-  6 Japanese); env `MP2_LANGUAGE`, console `language`. Picks the string-table language (read once at
-  startup, so it applies from the next launch); a table without it falls back to its first language.
+  6 Japanese); env `MP2_LANGUAGE`, console `language`. Picks the string-table language. Applied live:
+  every STRG keeps all its sections and `GetString` picks the current one, so tables already loaded follow
+  (a widget that copied its text keeps it until its screen reopens). A table without the language falls back
+  to its ENGL section (else the first listed). PAL discs carry ENGL/FREN/GERM/SPAN/ITAL/JAPN, the USA disc ENGL
+  only, so other languages show English there.
 - `igt_timer`: Speedrun > On-screen in-game time; env `MP2_IGT_TIMER`. The save file's play time
   (stops in cutscenes, menus and loads) in the bottom-right corner while a game runs.
 - `hint_delay`: Cutscenes > Hint delay (0 to 30 minutes, default 0 = the game's own timing); env

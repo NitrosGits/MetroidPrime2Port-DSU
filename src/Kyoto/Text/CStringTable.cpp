@@ -11,6 +11,8 @@
 #include <string.h>
 
 #ifdef TARGET_PC
+#include <algorithm>
+#include <utility>
 #include <vector>
 
 static uint ReadBE32(const uchar* p) {
@@ -43,7 +45,17 @@ struct SStringNameLess {
   }
 };
 
+#ifdef TARGET_PC
+void CStringTable::SetLanguage(int language) {
+  // Port: any value is safe, and tables already loaded follow it (GetString picks the section).
+  if (language < 0 || language >= int(sizeof(skLanguages) / sizeof(skLanguages[0]))) {
+    language = 0;
+  }
+  mCurrentLanguage = skLanguages[language];
+}
+#else
 void CStringTable::SetLanguage(int language) { mCurrentLanguage = skLanguages[language]; }
+#endif
 
 CStringTable::CStringTable(CInputStream& in)
 : mStringCount(0)
@@ -86,6 +98,7 @@ void CStringTable::Load(CInputStream& in) {
     SLanguageInfo info = {language, offset, size};
     languages.push_back(info);
   }
+#ifndef TARGET_PC
 
   uint offset = languages[0].mOffset;
   uint size = languages[0].mSize;
@@ -96,16 +109,16 @@ void CStringTable::Load(CInputStream& in) {
       break;
     }
   }
+#endif
 
 #ifdef TARGET_PC
   // Port: the disc holds 32-bit big-endian offsets and UTF-16BE text; a host has 64-bit pointers
-  // and a 4-byte wchar_t. Read the raw names and language section, then lay mData out as host
-  // structures: [SStringName x names][raw names blob][const wchar_t* x strings][wchar_t text].
+  // and a 4-byte wchar_t. Read the raw names, then EVERY language section (so the language can
+  // change while the game runs), and lay each out as host structures. mData holds
+  // [SStringName x names][raw names blob]; a PortSection's block is
+  // [const wchar_t* x strings][wchar_t text]. The names are the same in every language.
   // Every size below is bounded by the stream: a damaged (or absent) table must come out empty
-  // rather than walk off the buffer, which is what `offset` and `size` are for.
-  if (offset > uint(StreamRemaining(in))) {
-    offset = uint(StreamRemaining(in));
-  }
+  // rather than walk off the buffer.
   std::vector< uchar > rawNames;
   if (version != 0) {
     mNameCount = in.Get(TType< int >());
@@ -116,40 +129,16 @@ void CStringTable::Load(CInputStream& in) {
     rawNames.resize(namesSize);
     in.ReadBytes(rawNames.data(), namesSize);
   }
-  for (uint i = 0; i < offset; ++i) {
-    in.ReadInt8();
-  }
-  if (version == 0) {
-    size = in.Get(TType< uint >());
-  }
-  if (size > uint(StreamRemaining(in))) {
-    size = uint(StreamRemaining(in));
-  }
-  std::vector< uchar > section(size);
-  in.ReadBytes(section.data(), size);
-
   if (mNameCount < 0 || size_t(mNameCount) * 8 > rawNames.size()) {
     mNameCount = 0;
   }
-  if (mStringCount < 0 || size_t(mStringCount) * 4 > section.size()) {
+  if (mStringCount < 0) {
     mStringCount = 0;
-  }
-  size_t textUnits = 0;
-  for (int i = 0; i < mStringCount; ++i) {
-    for (size_t p = ReadBE32(&section[i * 4]); p + 1 < section.size(); p += 2, ++textUnits) {
-      if (section[p] == 0 && section[p + 1] == 0) {
-        break;
-      }
-    }
-    ++textUnits;
   }
 
   const size_t namesBytes = size_t(mNameCount) * sizeof(SStringName);
-  const size_t ptrsAt = (namesBytes + rawNames.size() + 7) & ~size_t(7);
-  const size_t textAt = ptrsAt + size_t(mStringCount) * sizeof(const wchar_t*);
-  mData = rs_new uchar[textAt + textUnits * sizeof(wchar_t)];
+  mData = rs_new uchar[namesBytes + rawNames.size()];
   uchar* base = mData.get();
-
   mNames = reinterpret_cast< SStringName* >(base);
   char* blob = reinterpret_cast< char* >(base + namesBytes);
   memcpy(blob, rawNames.data(), rawNames.size());
@@ -159,18 +148,92 @@ void CStringTable::Load(CInputStream& in) {
     mNames[i].mIndex = int(ReadBE32(&rawNames[i * 8 + 4]));
   }
 
-  mStrings = reinterpret_cast< const wchar_t** >(base + ptrsAt);
-  wchar_t* text = reinterpret_cast< wchar_t* >(base + textAt);
-  for (int i = 0; i < mStringCount; ++i) {
-    mStrings[i] = text;
-    for (size_t p = ReadBE32(&section[i * 4]); p + 1 < section.size(); p += 2) {
-      const wchar_t unit = wchar_t(section[p] << 8 | section[p + 1]);
-      if (unit == 0) {
+  // The sections lie in the stream in offset order, not necessarily in header order.
+  std::vector< int > order;
+  for (int i = 0; i < langCount; ++i) {
+    order.push_back(i);
+  }
+  std::stable_sort(order.begin(), order.end(), [&](int a, int b) {
+    return languages[a].mOffset < languages[b].mOffset;
+  });
+  uint pos = 0;
+  int nativeAt = -1;  // index into mPortSections of the English (else first listed) section
+  int firstAt = -1;
+  for (int idx : order) {
+    uint offset = languages[idx].mOffset;
+    uint size = languages[idx].mSize;
+    if (offset < pos || offset > uint(StreamRemaining(in)) + pos) {
+      continue;  // overlaps an earlier section or lies outside the data
+    }
+    for (; pos < offset; ++pos) {
+      in.ReadInt8();
+    }
+    if (version == 0) {
+      if (StreamRemaining(in) < 4) {
         break;
       }
-      *text++ = unit;
+      size = in.Get(TType< uint >());
+      pos += 4;
     }
-    *text++ = 0;
+    if (size > uint(StreamRemaining(in))) {
+      size = uint(StreamRemaining(in));
+    }
+    std::vector< uchar > section(size);
+    in.ReadBytes(section.data(), size);
+    pos += size;
+
+    if (size_t(mStringCount) * 4 > section.size()) {
+      continue;
+    }
+    size_t textUnits = 0;
+    for (int i = 0; i < mStringCount; ++i) {
+      for (size_t p = ReadBE32(&section[i * 4]); p + 1 < section.size(); p += 2, ++textUnits) {
+        if (section[p] == 0 && section[p + 1] == 0) {
+          break;
+        }
+      }
+      ++textUnits;
+    }
+    PortSection port;
+    port.mLanguage = uint(languages[idx].mLanguage);
+    port.mBlock.resize(size_t(mStringCount) * sizeof(const wchar_t*) + textUnits * sizeof(wchar_t));
+    const wchar_t** strings = port.Strings();
+    wchar_t* text = reinterpret_cast< wchar_t* >(port.mBlock.data() +
+                                                 size_t(mStringCount) * sizeof(const wchar_t*));
+    for (int i = 0; i < mStringCount; ++i) {
+      strings[i] = text;
+      for (size_t p = ReadBE32(&section[i * 4]); p + 1 < section.size(); p += 2) {
+        const wchar_t unit = wchar_t(section[p] << 8 | section[p + 1]);
+        if (unit == 0) {
+          break;
+        }
+        *text++ = unit;
+      }
+      *text++ = 0;
+    }
+    mPortSections.push_back(std::move(port));
+    // Header order decides the first listed; ENGL beats it wherever it sits.
+    const int at = int(mPortSections.size()) - 1;
+    if (mPortSections[at].mLanguage == uint(skLanguages[0])) {
+      nativeAt = at;
+    }
+  }
+  // "First listed" is the first of the header that decoded.
+  for (int i = 0; i < langCount && firstAt < 0; ++i) {
+    for (size_t k = 0; k < mPortSections.size(); ++k) {
+      if (mPortSections[k].mLanguage == uint(languages[i].mLanguage)) {
+        firstAt = int(k);
+        break;
+      }
+    }
+  }
+  if (nativeAt < 0) {
+    nativeAt = firstAt;
+  }
+  if (nativeAt >= 0) {
+    mStrings = mPortSections[nativeAt].Strings();
+  } else {
+    mStringCount = 0;
   }
 #else
   if (version != 0) {
@@ -206,12 +269,29 @@ void CStringTable::Load(CInputStream& in) {
   }
 #endif
 }
+#ifdef TARGET_PC
+
+// The section of the current language, else the native one (English; the first listed when the
+// table has no ENGL), so a table that lacks the language shows English.
+const wchar_t* const* CStringTable::PortStrings() const {
+  for (size_t i = 0; i < mPortSections.size(); ++i) {
+    if (mPortSections[i].mLanguage == uint(mCurrentLanguage)) {
+      return const_cast< PortSection& >(mPortSections[i]).Strings();
+    }
+  }
+  return mStrings;
+}
+#endif
 
 const wchar_t* CStringTable::GetString(int idx) const {
   if (idx < 0 || idx >= mStringCount) {
     return skInvalidString;
   }
+#ifdef TARGET_PC
+  return PortStrings()[idx];
+#else
   return mStrings[idx];
+#endif
 }
 
 int CStringTable::GetStringIndex(const char* name) const {

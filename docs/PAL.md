@@ -28,8 +28,17 @@ Prime 1 port's approach to its later revisions.
   (`CCollisionCacheWriter::BeginGeometry`, null), and **USA crashes the same way on the same route**,
   so it is a port bug, not a PAL one; slots 52->53->56 alone are clean on both discs.
 
+## Language
+
+The `language` setting (SETTINGS.md; console `language 0..6` = ENGL GERM FREN SPAN ITAL DUTC JAPN) picks the
+STRG section of every string table: PAL carries ENGL/FREN/GERM/SPAN/ITAL/JAPN, USA only ENGL, and a table
+without the chosen language shows English. It applies live to tables read afterwards and to every
+`GetString`; screens that cached their text (a front-end menu already built) refresh when reopened.
+Checked on PAL 2026-10-26: French front end and data screen, German/English switching at runtime;
+USA with `MP2_LANGUAGE=2` boots and plays unchanged.
+
 ## Not verified
 
-Language selection and PAL's 50 Hz / 60 Hz prompt (not in the USA code the port runs),
+PAL's 50 Hz / 60 Hz prompt (not in the USA code the port runs),
 the SPFN->SWTC rooms on foot, Agon `0a_sand_hall_dark` (new MNNG 000d0016) beyond the sweep's visit,
 Android.

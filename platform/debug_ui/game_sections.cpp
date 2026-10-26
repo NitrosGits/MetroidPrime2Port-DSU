@@ -157,7 +157,9 @@ void DrawCutscenesSection() {
     sLanguage = std::clamp(language, 0, static_cast< int >(PortOverlay::kLanguageMax));
     Changed(true);
   }
-  ItemHelp("The language of the game's text. Applies from the next launch.");
+  ItemHelp("The language of the game's text, changed while the game runs (a screen that is already open "
+           "keeps its text until it is reopened). A PAL disc carries English, French, German, Spanish, "
+           "Italian and Japanese; a language the disc lacks shows English.");
   int hintDelay = sHintDelay;
   if (ImGui::SliderInt("Hint delay", &hintDelay, PortOverlay::kHintDelayMin,
                        PortOverlay::kHintDelayMax, hintDelay == 0 ? "Game default" : "%d min",
