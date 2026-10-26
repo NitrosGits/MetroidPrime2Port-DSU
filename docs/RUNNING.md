@@ -11,7 +11,7 @@ Commands; all runs need `Xvfb :86 -screen 0 1280x720x24 -ac` (check with `pgrep 
       timeout -k 5 120 gdb -q -batch -ex run -ex bt ./metroid_prime2_port > /tmp/mp2boot.log 2>&1
     grep -n 'reach-stub\|signal\|^#[0-9]\|exited\|ssert\|fatal' /tmp/mp2boot.log
 
-A disc that won't open, isn't G2ME01 or G2MP01 (PAL, experimental: docs/PAL.md) revision 0, or is cut short (last 8 files unreadable) is refused at mount;
+A disc that won't open, isn't G2ME01, G2MP01 (PAL, experimental: docs/PAL.md) or R3ME01/R3MP01 (Trilogy, experimental: docs/TRILOGY.md) revision 0, or is cut short (last 8 files unreadable) is refused at mount;
 with a window and no `MP2_FRAMES`/`MP2_HEADLESS`/`MP2_NO_DISC_DIALOG=1` a message box then asks for
 another image (blocks a scripted run until killed), otherwise the run exits 1.
 

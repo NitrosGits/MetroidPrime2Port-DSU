@@ -53,7 +53,8 @@ void Run(std::string path) {
   // A container (RVZ, WIA, WBFS, CISO) hides the disc behind a compressed stream; the check reads
   // plain images, which is what the port itself mounts from an .iso or .gcm.
   const bool plain =
-      std::memcmp(buf.data(), "G2ME01", 6) == 0 || std::memcmp(buf.data(), "G2MP01", 6) == 0;
+      std::memcmp(buf.data(), "G2ME01", 6) == 0 || std::memcmp(buf.data(), "G2MP01", 6) == 0 ||
+      std::memcmp(buf.data(), "R3ME01", 6) == 0 || std::memcmp(buf.data(), "R3MP01", 6) == 0;
   if (!plain) {
     std::fclose(file);
     return Fail("this is not a plain GameCube disc image (an .iso or .gcm); the check does not "
@@ -184,7 +185,8 @@ std::string ReadDiscHeader(const std::string& path, uint8_t out[8]) {
   if (!ok) {
     return "the disc image is too short";
   }
-  const bool plain = std::memcmp(out, "G2ME01", 6) == 0 || std::memcmp(out, "G2MP01", 6) == 0;
+  const bool plain = std::memcmp(out, "G2ME01", 6) == 0 || std::memcmp(out, "G2MP01", 6) == 0 ||
+                     std::memcmp(out, "R3ME01", 6) == 0 || std::memcmp(out, "R3MP01", 6) == 0;
   return plain ? std::string() : "this is not a plain GameCube disc image";
 }
 

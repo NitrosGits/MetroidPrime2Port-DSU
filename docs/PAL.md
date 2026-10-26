@@ -6,7 +6,7 @@ Prime 1 port's approach to its later revisions.
 
 ## What differs and what the port does
 
-- Accepted discs: `G2ME01` rev 0 (USA 1.00) and `G2MP01` rev 0 (PAL); anything else is refused at
+- Accepted discs: `G2ME01` rev 0 (USA 1.00), `G2MP01` rev 0 (PAL) and the Wii Trilogy (docs/TRILOGY.md); anything else is refused at
   mount (`port::entry::IdentifyDisc`, `platform/entry.cpp`; unit-tested in `tests/port_entry_tests.cpp`).
   The mount logs `disc: Metroid Prime 2: Echoes PAL (G2MP01), experimental: USA 1.00 code on PAL data`.
 - Saves: `CARDInit(port::entry::CurrentGameCode(), "01")` (`DolphinCMemoryCardSys.cpp`, TARGET_PC),
