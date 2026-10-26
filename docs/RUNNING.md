@@ -173,6 +173,12 @@ the Activate that wakes it: `spawn COIN 3 inactive model u<actor> prop 54a8c481 
 then `send e<area>ff00 Activate`.
 Ids may be `e<editor id>` (unique ids are reused across layer loads); `covdump` writes a coverage build's gcov counters mid-run (runs that hang in shutdown keep them).
 
+## Driving pads 1-3 (multiplayer)
+
+`MP2_INPUT` entries take a pad prefix: `p1.A@300`, `P2:START@320+4` (`p0.`-`p3.`, `.` or `:`); no
+prefix is pad 0 as before, and warp tokens stay pad 0. A pad is connected and idle (the front end
+counts `DeviceIsPresent`) once any entry names it. Parser test: `port_input_pad_tests`.
+
 ## Area regression sweep (any world, shards, START-free)
 
     USERDIR=/tmp/opencode/u_a10 tools/sweep_areas.sh            # TAG/SHARDS/DWELL/COUNT to taste

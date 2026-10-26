@@ -71,15 +71,18 @@ Result: 30/30 slots OK (Temple Grounds, Agon, Torvus, Sanctuary, Great Temple, s
 
 ## Multiplayer and used save slot (2026-10-26)
 
-Multiplayer (Trilogy USA, desktop, one pad only so only one player can join): main menu, two held
-`SDOWN@f+40` steps select Multiplayer, join screen shows. Trilogy's trimmed FrontEnd never activates an arena
-and a single player cannot trigger the match start from the pad, so the test needed two workarounds:
-console `send <id> SetToZero` to start, and `StartMultiplayerGame` falls back to `mTeleporters[0]` (arena
-`a50a80cc`) when no world was chosen. Arena gameplay is stable. Six one-area arena worlds exist on the disc
-(233e42be, 406add7f, 7e19ed26, a50a80cc, ae171602, e3b0c703); the SamGunFxMulti pak is absent.
+Multiplayer (Trilogy USA, desktop): main menu, two held `SDOWN@f+40` steps select Multiplayer. Pads 1-3 are driven
+with `MP2_INPUT` prefixes (`p1.A@f+3`, docs/RUNNING.md "Driving pads 1-3"); two pads join and the start works from
+pad input alone. The earlier "single pad cannot start" was the pad-count gate (`UpdateControllerCount`), not a
+missing MAXR/ZERO message (inference refuted; no SetToZero workaround needed). Arena is picked naturally
+(`SRIGHT` on the arena screen: world 7e19ed26 instead of the first, a50a80cc); the `mTeleporters[0]` fallback is
+removed. Split-screen 2-player deathmatch: `/tmp/opencode/trilogy/shots/mp2p_deathmatch.png`.
+Real crash found by the trace: Trilogy FRME v5 text panes carry 9 more bytes (2 ints + 1 bool, behaviour unknown)
+after `scaleToViewport`; `CGuiTextPane::Create` skips them for `version >= 5` (TARGET_PC).
 TARGET_PC guards: `CScriptGuiScreen.cpp` `StartMultiplayerGame`/`UpdateUnlocks` (null switches/menus/teleporters,
-`[mp] start:` stderr debug line), `CWorldLayerState::GetLayerCount` (arena worlds have no SAVW layer table).
-Not tested: 2+ players (needs more pads), the natural arena-pick flow.
+`[mp] start:` stderr line), `CWorldLayerState::GetLayerCount` (arena worlds have no SAVW layer table).
+GC USA 2-player start was not reproduced through the GC front-end wheel (stick-direction selection, would not
+reach Multiplayer in 5 attempts); GC FRME is v4 so the text-pane change does not touch it.
 
 Used slot: save via `MP2_SKIP_FRONTEND=1 MP2_NEW_GAME=1` + `STATION@300,A@500+3` (card:
 `USA/Card A/01-R3ME-MetroidPrime2.gci`, region follows the 4th game-code char). Trilogy's file select then shows

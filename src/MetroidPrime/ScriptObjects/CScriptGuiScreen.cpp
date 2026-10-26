@@ -643,16 +643,6 @@ void CScriptGuiFrontEndScreen::StartMultiplayerGame(CStateManager& mgr) {
         break;
       }
     }
-#ifdef TARGET_PC
-    // No arena teleporter active (Trilogy's trimmed FrontEnd.pak): fall back to the first one.
-    if (worldId == kInvalidAssetId) {
-      CScriptWorldTeleporter* arena = mTeleporters.empty() ? mDefaultTeleporter : mTeleporters[0];
-      if (arena != nullptr) {
-        worldId = arena->GetWorldId();
-        areaId = arena->GetAreaId();
-      }
-    }
-#endif
     frontEnd.SetPlayerData(players);
   }
 
