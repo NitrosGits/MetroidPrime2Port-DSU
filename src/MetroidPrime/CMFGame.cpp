@@ -292,6 +292,7 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         const bool canSkip = (cineCam->GetFlags() & 0x800) ||
                              ((cineCam->GetFlags() & 8) && cineCam->CanSkip(*mStateManager));
 #ifdef TARGET_PC
+        bool portSkipActive = false;
         // Port: the debug setting skips cinematics the player has not seen as well, which is
         // what makes a test run reach gameplay in seconds instead of minutes. Stopping the
         // cinematics is what SpecialSkipCinematic does on its way out, and the flow state has
@@ -299,6 +300,7 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         // MP2_SKIP_INTRO's request takes the same path (sHarnessCinematicSkip): a test run wants the
         // intro over with, and "over with" means the scene ended, not only the camera.
         if (PortOverlay::SkipCinematics() || sHarnessCinematicSkip || sPortUserCinematicSkip) {
+          portSkipActive = true;
           // The retail skip first: SpecialSkipCinematic also fires the scene's skip connections
           // (CScriptSpecialFunction::SkipCinematic), which jump the sequence to its end, and it is
           // what the `canSkip` branch below counts as the skip having happened (result 1). Result 0
@@ -393,6 +395,14 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         if (canSkip && mFlowTime >= 1.f && mStateManager->SpecialSkipCinematic() == 1) {
           finished = true;
         }
+#endif
+#ifdef TARGET_PC
+        // Port: a skip that is fast-forwarding a sequence (no skip function, above) must not end at
+        // the first chained camera that has flag 0x10 and another id than the skipped one: retail
+        // gets there only after the scene's skip jumped it to its end, but here the sequence is
+        // still running, and ending the flow hands control back with the next camera playing in
+        // front of the first-person view and the HUD. The camera leaving the cinematic ends it.
+        if (!portSkipActive)
 #endif
         if ((cineCam->GetFlags() & 0x10) && mSkippedCineCam != cineCam->GetScriptCameraId()) {
           finished = true;
