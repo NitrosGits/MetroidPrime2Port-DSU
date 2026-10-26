@@ -4,6 +4,8 @@
 
 #include "port_mods.h"
 
+#include "port_entry.h"
+#include "port_mods_disc.h"
 #include "port_suit_colours.h"
 
 #include <aurora/dvd.h>
@@ -193,33 +195,9 @@ struct Replacement {
 
 } // namespace
 
-// Every .pak on the disc, as (entryNum, path).
+// Every Echoes .pak on the mounted disc, as (original entryNum, path).
 std::vector<std::pair<int32_t, std::string>> DiscPaks() {
-  std::vector<std::pair<int32_t, std::string>> paks;
-  std::vector<std::string> dirs{"/"};
-  while (!dirs.empty()) {
-    const std::string dirPath = dirs.back();
-    dirs.pop_back();
-    DVDDir dir;
-    if (!DVDOpenDir(dirPath.c_str(), &dir)) {
-      continue;
-    }
-    DVDDirEntry entry;
-    while (DVDReadDir(&dir, &entry)) {
-      if (entry.name == nullptr) {
-        continue;
-      }
-      const std::string path = dirPath + entry.name;
-      if (entry.isDir) {
-        dirs.push_back(path + "/");
-      } else if (EndsWith(Lower(path), ".pak")) {
-        paks.emplace_back(int32_t(entry.entryNum), path);
-      }
-    }
-    DVDCloseDir(&dir);
-  }
-  std::sort(paks.begin(), paks.end());
-  return paks;
+  return detail::DiscPaks(port::entry::IsTrilogy(port::entry::CurrentDiscVersion()));
 }
 
 std::string Folder(const std::string& userPath) {
