@@ -13,6 +13,7 @@
 #include "port_debug.h"
 #include "port_harness.h"
 #include "port_input.h"
+#include "port_input_pad.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
 #include "port_pointer.h"
@@ -60,6 +61,7 @@ using PortInput::kButtonNames;
 // `fired` is what makes a token whose frame has already gone by fire at the first frame the script
 // sees instead of being lost, and what keeps a frame the counter skips from dropping a token.
 struct InputToken {
+  int pad;
   const char* name; // the token's text, e.g. "NEXTAREA"
   const char* at;   // the '@' that ends it
   unsigned start;   // the game update it fires on
@@ -95,6 +97,7 @@ InputToken* InputScript(size_t& count) {
       }
       InputToken& token = tokens[sCount++];
       token.name = p;
+      token.pad = PortInputPad::SplitPad(token.name, at);
       token.at = at;
       token.start = start;
       token.length = length;
@@ -210,24 +213,31 @@ void RunInputScript(unsigned frame) {
     return;
   }
   Seconds();
-  PADStatus status{};
-  u16 held = HoldActive() ? sHold.buttons : 0;
+  // Pad 0 also takes the console hold; pads 1-3 are only written when an entry names them.
+  PADStatus pads[PortInputPad::kPadCount]{};
+  u16 heldPads[PortInputPad::kPadCount]{};
+  bool used[PortInputPad::kPadCount]{};
+  used[0] = true;
+  heldPads[0] = HoldActive() ? sHold.buttons : 0;
   if (HoldActive()) {
-    status.stickX += sHold.stickX;
-    status.stickY += sHold.stickY;
-    status.substickX += sHold.substickX;
-    status.substickY += sHold.substickY;
+    pads[0].stickX += sHold.stickX;
+    pads[0].stickY += sHold.stickY;
+    pads[0].substickX += sHold.substickX;
+    pads[0].substickY += sHold.substickY;
   }
 
   for (size_t i = 0; i < count; ++i) {
     InputToken& token = tokens[i];
+    PADStatus& status = pads[token.pad];
+    u16& held = heldPads[token.pad];
+    used[token.pad] = true;
     // Frame 1 is the first game update and 0 means "the state the game starts with", so a token at
     // 0 is served with the first update too rather than never being reached.
     const unsigned start = token.start == 0 ? 1 : token.start;
     const bool down = frame >= start && frame < start + token.length;
     const bool fire = !token.fired && frame >= start;
     token.fired = token.fired || fire;
-    if (fire) {
+    if (fire && token.pad == 0) {
       FireWarpToken(token, frame);
     }
     for (const PortInput::SButtonName& button : kButtonNames) {
@@ -254,16 +264,23 @@ void RunInputScript(unsigned frame) {
       }
     }
   }
-  // Once the script ends, pad 0 stays connected and idle: clearing it would leave no controller,
+  // Once the script ends, a pad stays connected and idle: clearing it would leave no controller,
   // and the game then gets no input messages at all (player dt stays 0, the gun never draws).
-  status.err = PAD_ERR_NONE;
-  status.button = held;
-  // A real pad's L/R click sits at the end of the analog travel, and the keyboard binding drives
-  // both too (the input engine's keyboard profile). Commands bound to the analog trigger - the scan visor's Scan Item,
-  // for one - read only the analog half, so a held L that left it at 0 locked on but never scanned.
-  status.triggerLeft = (held & PAD_TRIGGER_L) != 0 ? 255 : 0;
-  status.triggerRight = (held & PAD_TRIGGER_R) != 0 ? 255 : 0;
-  PADSetVirtualStatus(0, &status);
+  for (int pad = 0; pad < PortInputPad::kPadCount; ++pad) {
+    if (!used[pad]) {
+      continue;
+    }
+    PADStatus& status = pads[pad];
+    const u16 held = heldPads[pad];
+    status.err = PAD_ERR_NONE;
+    status.button = held;
+    // A real pad's L/R click sits at the end of the analog travel, and the keyboard binding drives
+    // both too (the input engine's keyboard profile). Commands bound to the analog trigger - the scan visor's Scan Item,
+    // for one - read only the analog half, so a held L that left it at 0 locked on but never scanned.
+    status.triggerLeft = (held & PAD_TRIGGER_L) != 0 ? 255 : 0;
+    status.triggerRight = (held & PAD_TRIGGER_R) != 0 ? 255 : 0;
+    PADSetVirtualStatus(pad, &status);
+  }
 }
 
 } // namespace

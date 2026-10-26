@@ -65,6 +65,10 @@ the only way to test the keyboard map headless: `MP2_INPUT` and the console's `p
 
 ### `MP2_INPUT` frames
 
+**Pads 1-3:** prefix an entry with `p1.`, `p2.` or `p3.` (or `P2:`) to drive that pad instead
+(`p1.A@300,p2.START@320+4`); no prefix is pad 0. A pad is connected and idle once an entry names
+it. Warp tokens are pad 0 only. Needed for Trilogy/GC multiplayer (the front end counts pads).
+
 `MP2_INPUT="BUTTON@frame[+frames],..."` holds a button (or a stick: `SUP`, `SLEFT`, `CRIGHT`, ...)
 on pad 0 from that frame, and a warp token (`NEXTAREA`, `PREVAREA`, `NEXTWORLD`, `PREVWORLD`,
 `KILL`, `HEAL`, `LAYER<layer>`, `ATDOOR`, `DOOR`, `STATION`, `WORLDPORTAL`) queues a `PortWarp`

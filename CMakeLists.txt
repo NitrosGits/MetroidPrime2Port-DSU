@@ -575,6 +575,12 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_hold_toggle_tests PRIVATE platform/include)
     add_test(NAME port_hold_toggle_tests COMMAND port_hold_toggle_tests)
     set_tests_properties(port_hold_toggle_tests PROPERTIES TIMEOUT 30 LABELS port)
+
+    # Header-only (port_input_pad.h): the MP2_INPUT `pN.` prefix parser.
+    add_executable(port_input_pad_tests tests/port_input_pad.cpp)
+    target_include_directories(port_input_pad_tests PRIVATE platform/include)
+    add_test(NAME port_input_pad_tests COMMAND port_input_pad_tests)
+    set_tests_properties(port_input_pad_tests PROPERTIES TIMEOUT 30 LABELS port)
     # Quick resume's pure rules (platform/include/port_resume_logic.h). Header-only.
     add_executable(port_resume_logic_tests tests/port_resume_logic.cpp)
     target_include_directories(port_resume_logic_tests PRIVATE platform/include)

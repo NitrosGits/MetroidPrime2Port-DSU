@@ -60,6 +60,15 @@ CGuiWidget* CGuiTextPane::Create(CGuiFrame* frame, CInputStream& in, CSimplePool
     SFontInfo font(in);
     SFontInfo alternate(in);
     bool scaleToViewport = version >= 3 ? in.ReadBool() : false;
+#ifdef TARGET_PC
+    if (version >= 5) {
+      // Port: Trilogy FRME v5 text panes carry 9 more bytes (two ints and a flag, all zero but
+      // the flag on some panes) before the widget base info; behaviour unknown, skipped.
+      in.ReadInt32();
+      in.ReadInt32();
+      in.ReadBool();
+    }
+#endif
 
     CGuiTextProperties properties(wordWrap, justification, vertical);
     pane = rs_new CGuiTextPane(parms, pool, width, height, scaleCenter, properties, font, alternate,
