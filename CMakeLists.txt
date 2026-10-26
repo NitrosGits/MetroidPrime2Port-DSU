@@ -592,6 +592,10 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_pointer_tests PRIVATE platform/include)
     add_test(NAME port_pointer_tests COMMAND port_pointer_tests)
     set_tests_properties(port_pointer_tests PROPERTIES TIMEOUT 30 LABELS port)
+    add_executable(port_game_text_tests tests/port_game_text.cpp)
+    target_include_directories(port_game_text_tests PRIVATE platform/include)
+    add_test(NAME port_game_text_tests COMMAND port_game_text_tests)
+    set_tests_properties(port_game_text_tests PROPERTIES TIMEOUT 30 LABELS port)
     # The presentation rules (platform/include/port_presentation_rules.h): snapshot freshness, the
     # actor blend's snap rules and the morph ball's pivoted blend. Header-only.
     add_executable(port_presentation_rules_tests tests/port_presentation_rules.cpp)
