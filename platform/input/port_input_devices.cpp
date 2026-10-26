@@ -482,8 +482,11 @@ void FillRawState(PortInput::RawState& raw, unsigned mouseHeld, bool focused) {
   }
 
   uint32_t mouse = 0;
-  // An input capture reads the mouse buttons as SDL has them.
-  mouse |= (SDL_GetMouseState(nullptr, nullptr) & PortInputMap::kMouseButtonMask) << kMouseKeySlot;
+  // Plain "mouse:left" bindings read SDL's buttons as they are, so a click on F1 or any other
+  // ImGui window must be masked here or it also fires the beam. The remap capture reads its own.
+  if (!PortOverlay::PointerBlocked()) {
+    mouse |= (SDL_GetMouseState(nullptr, nullptr) & PortInputMap::kMouseButtonMask) << kMouseKeySlot;
+  }
   int actions[PortInputMap::kMouseButtonCount];
   for (int i = 0; i < PortInputMap::kMouseButtonCount; ++i) {
     actions[i] = PortInputMap::DefaultMouseAction(i);
