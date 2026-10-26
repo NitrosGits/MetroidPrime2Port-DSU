@@ -2817,8 +2817,8 @@ void CEmperorIngStage1::WarpAttack(CStateManager& mgr, EStateMsg msg, float dt) 
 //   The ray path (the player is morphed): the portal is at the ground under the player - the
 //   ray starts at the player's position plus the up vector (0x64A4..0x64FC), goes straight down
 //   (sDownVector) for 50.0f (lbl_16_rodata_3BC) and the hit point is the portal's position
-//   (0x651C..0x6530); without a hit the player's own position is used. The portal looks at the
-//   origin (the zero vector at 0x6404..0x6418).
+//   (0x651C..0x6530); without a hit the player's own position is used. The portal looks at
+//   the position plus the up vector (0x6534..0x6564).
 void CEmperorIngStage1::GetWarpPortalPlacement(CStateManager& mgr, CVector3f& pos,
                                                 CVector3f& lookAt) const {
   CPlayer* player = mgr.GetPlayer(0);  // the state manager's first player (0x14FC, 0x6304)
@@ -2848,7 +2848,10 @@ void CEmperorIngStage1::GetWarpPortalPlacement(CStateManager& mgr, CVector3f& po
   if (hit.IsValid()) {                // 0x6514
     pos = hit.GetPoint();             // 0x6528
   }
-  lookAt = CVector3f::Zero();  // 0x6404
+  // 0x6534..0x6564: the ray path joins the shared tail, which builds the look point as the
+  // portal position plus the up vector (r30 = sUpVector; the portal faces straight up). The
+  // 0x6404 zero-looking read belongs to the random path (the eye position's x), not this one.
+  lookAt = pos + CVector3f::Up();
 }
 
 // The module's own CPhysicsActor subclass - the "Attack Tip" portal actor (the retail's vtable
