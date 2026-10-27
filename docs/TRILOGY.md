@@ -241,3 +241,12 @@ and `UpdateEnergy` (0x80199774) picks Instant only for |delta|<1e-5. Combat shot
 ## Trilogy reticles (2026-10-27)
 
 `CTargetReticles` (`mPortTri`, TARGET_PC + IsTrilogy) draws Trilogy's reticles from RS5.PAK: scan ring and brackets that follow the pointer (no GC scan box), lock fade timer (`CPlayer`), aiming arms, locked and next-target brackets, a locked reticle on every Seeker lock, and the 6-segment scan progress. Pure math is in `platform/include/port_tri_reticle.h` (`tests/port_tri_reticle.cpp`). Confirmed in `rs5mp2_p.dol`: 7 combat CMDLs, 3 arms at 120°, the -60° progress loop (0x8025e438). MP1-derived: colours, 0.15 s fade, arm/centre curves, segment colour/blend. Off-screen targets draw nothing. Shots: /tmp/opencode/reports/tricombat-*.png; console `lock <id>` gives a real lock-on press.
+
+## File select slots (2026-10-27)
+
+Trilogy's FrontEnd GSCR links one title TXPN per slot (3 `kSS_Modify` connections; GC has 9:
+title, world, play time per slot, in connection order). `CScriptGuiFrontEndScreen::CollectWidgets`
+read stride 3, so on Trilogy slots 1-2 were null and only "New 1" drew. Under `TARGET_PC` it now
+uses stride 1 (title only) when fewer than 9 links exist; GC data is unchanged (still 9 links).
+The other slot states (`APRC`/`CLOS`/`DPHZ`/`DSCW`, 3 each) already matched. Slot 0 of an
+empty save shows no extra panel text; that was not compared against hardware.
