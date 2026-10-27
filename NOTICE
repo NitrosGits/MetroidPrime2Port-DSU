@@ -1,0 +1,70 @@
+# NOTICE
+
+## What the licence covers
+
+`LICENSE` is an MIT grant over **this project's own work**: the platform layer
+under `platform/`, the port-only sources (`src/**/Port*.cpp`, `*PortStub.cpp`),
+the build and packaging scripts, the tests, the tooling under `tools/`, and the
+documentation under `docs/`. Those files carry no licence header of their own,
+so this is where their terms are stated.
+
+## What it does not cover
+
+**The game code is not covered, and cannot be.** `src/` and `include/` are the
+PrimeDecomp decompilation of *Metroid Prime 2: Echoes* (`G2ME01`, USA v1.00),
+recompiled here for the host. That material derives from Nintendo's retail
+executable, no permission to redistribute it is asserted here, and the MIT
+grant above deliberately stops at this project's own code rather than sweeping
+those directories in. Upstream PrimeDecomp's own dedication of its work is kept
+as `LICENSE-decomp`; it speaks for the decompilation's authors, not for
+Nintendo. Anyone who obtained this repository obtained a working copy; that is
+a separate question from what may be redistributed, and it is one only the
+copyright holder can answer.
+
+**The console SDK and runtime are not covered either.** `extern/sdk/` holds the
+decompiled Dolphin (GameCube) SDK, the Metrowerks C library headers and the
+CodeWarrior runtime. Like `src/` and `include/`, they come from the retail
+executable and its toolchain, belong to their owners, and are outside the MIT
+grant. The same goes for the per-version symbol and split data under `config/`,
+which describes that executable.
+
+**No game assets may be packaged with a build.** Not the disc image, not the
+executable or its REL modules, not extracted PAK/STRG data. The build takes no
+game data at all; the port reads the user's own disc image at run time, and
+`tools/make_appimage.sh` says so in its own help text. The only images the port
+ships are its own icon (`packaging/varia-bolt.svg`) and controller-button
+glyphs built from CC0 sources (`tools/prompt_icons/`).
+
+## Third-party components, which keep their own terms
+
+Nothing in `LICENSE` applies to these; each is under its own licence, which
+travels with any build that contains it.
+
+| Component | Licence | Where its terms are |
+|---|---|---|
+| Aurora — windowing, WebGPU/Dawn plumbing | MIT | `extern/aurora/LICENSE` |
+| MusyX — audio mixer | MIT | `extern/musyx-port/LICENSE` |
+| SDL3 | zlib | fetched at configure time, `build/*/_deps/sdl-src/` |
+| Dawn — WebGPU implementation (prebuilt), with its bundled third-party code | BSD-3-Clause and others, © The Dawn & Tint Authors | `packaging/licenses/dawn.txt` (the prebuilt archive has none) |
+| nod — disc image reader (prebuilt) | MIT or Apache-2.0, © Luke Street | `packaging/licenses/nod-MIT.txt`, `nod-Apache-2.0.txt` |
+| Abseil | Apache-2.0 | fetched, `abseil-cpp-src/` |
+| Dear ImGui | MIT | fetched, `imgui-src/` |
+| fmt | MIT | fetched, `fmt-src/` |
+| xxHash | BSD-2-Clause | fetched, `xxhash-src/` |
+| SQLite | public domain | fetched, `sqlite3-src/` (no licence file) |
+| GamepadMotionHelpers — gyro calibration | MIT, © Julian "Jibb" Smart | `extern/GamepadMotionHelpers/LICENSE` |
+| libadrenotools — loads custom Vulkan drivers on Android | BSD-2-Clause, © Billy Laws | `extern/adrenotools/LICENSE` |
+| liblinkernsbypass — used by libadrenotools | BSD-2-Clause, © Billy Laws | `extern/adrenotools/lib/linkernsbypass/LICENSE` |
+| Button prompt icons | Kenney CC0 | `tools/prompt_icons/README.md` |
+
+FreeType and libpng are linked from the system on Linux and are not shipped.
+
+The notices are collected into what is actually shipped:
+`share/licenses/metroid-prime2-port/` in the Linux tarball and the AppImage
+(through `tools/collect_licenses.sh`) and `assets/` in the APK. See
+`docs/RELEASING.md`.
+
+The separate PrimeDecomp **GPL** recompilation toolchain is not part of this
+native link and nothing here is derived from its output. If GPL-covered code
+ever does end up in the combined work, the corresponding source and build
+material must be provided under the applicable GPL terms.
