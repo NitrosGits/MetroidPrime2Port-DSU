@@ -158,6 +158,7 @@
 #include "port_harness.h"
 #include "port_hold_toggle.h"
 #include "port_pointer.h"
+#include "port_mouse.h"
 #include "port_livesplit.h"
 #include "port_overlay.h"
 #include "port_savestate.h"
@@ -2133,8 +2134,32 @@ void CStateManager::CapturePlayerTextures() {
     for (uint i = 0; i < mNumPlayers; ++i) {
       CalculatePlayerViewport(mNumPlayers > 2u ? mPlayerStates[i]->GetPlayerSelection() : i, &left,
                               &bottom, &width, &height);
+#ifdef TARGET_PC
+      // Port: pointer aim (lock-on free aim included) in the Scan Visor picks the scan target
+      // under the pointer, as MP1 and Trilogy do, so the id strip is read there, not at the
+      // centre. Same offset as the lens (TriDrawScanLens) and the orbit box (PortScanPointerNdc),
+      // kept inside the viewport.
+      int portShiftX = 0;
+      int portShiftY = 0;
+      {
+        float px = 0.f, py = 0.f;
+        if (mPlayerState->GetCurrentVisor() == CPlayerState::kPV_Scan &&
+            PortMouse::PointerAimPosition(px, py)) {
+          portShiftX = static_cast< int >(px * 0.5f * width);
+          portShiftY = static_cast< int >(py * 0.5f * height);
+          const int maxX = (width - static_cast< int >(textureWidth)) / 2;
+          const int maxY = (height - static_cast< int >(textureHeight)) / 2;
+          portShiftX = portShiftX < -maxX ? -maxX : portShiftX > maxX ? maxX : portShiftX;
+          portShiftY = portShiftY < -maxY ? -maxY : portShiftY > maxY ? maxY : portShiftY;
+        }
+      }
+      const int textureLeft = left + width / 2 - textureWidth / 2 + portShiftX;
+      const int textureTop =
+          CGraphics::GetViewportTop(bottom) + height / 2 - textureHeight / 2 + portShiftY;
+#else
       const int textureLeft = left + width / 2 - textureWidth / 2;
       const int textureTop = CGraphics::GetViewportTop(bottom) + height / 2 - textureHeight / 2;
+#endif
 #ifdef TARGET_PC
       // Aurora's GXCopyTex resolves into a texture, so the main-memory destination below never
       // gets written; ask for a CPU read-back of the same region first (it has to be issued
