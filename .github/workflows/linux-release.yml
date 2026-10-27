@@ -1,0 +1,135 @@
+name: linux-release
+
+# Builds the Linux release artefacts (AppImage and tarball) on an old glibc.
+#
+# A binary only runs on systems whose glibc and libstdc++ are at least as new
+# as the ones it was linked against, and a desktop build picks up whatever the
+# build host has (issue #3: a 0.12.0 AppImage needing glibc 2.43 refused to
+# start on LMDE). AlmaLinux 9 has glibc 2.34; gcc-toolset links the parts of
+# its newer libstdc++ that the system one lacks statically, so the result needs
+# nothing past the system's GLIBCXX_3.4.29. The last step checks that.
+on:
+  workflow_dispatch:
+
+# Nothing here writes to the repository.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+            ld: ld-linux-x86-64
+          # Native arm64 runner (free for public repositories); Dawn and nod
+          # have linux-aarch64 prebuilts, so nothing is cross-compiled.
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+            ld: ld-linux-aarch64
+    runs-on: ${{ matrix.runner }}
+    container: almalinux:9
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      # Each run saves its own entry of up to this size in the repository's
+      # shared 10 GB of cache; cache-prune deletes the superseded ones.
+      CCACHE_MAXSIZE: 1G
+      MAX_GLIBC: "2.34"
+      MAX_GLIBCXX: "3.4.29"
+    steps:
+      - name: Dependencies
+        run: |
+          dnf install -y epel-release dnf-plugins-core
+          dnf config-manager --set-enabled crb
+          dnf install -y --allowerasing gcc-toolset-14-gcc gcc-toolset-14-gcc-c++ \
+            cmake ninja-build git curl file findutils binutils python3 \
+            alsa-lib-devel pulseaudio-libs-devel libX11-devel libXext-devel \
+            libXrandr-devel libXcursor-devel libXi-devel libXfixes-devel \
+            libXScrnSaver-devel libXtst-devel wayland-devel wayland-protocols-devel \
+            libxkbcommon-devel mesa-libEGL-devel mesa-libGL-devel \
+            freetype-devel libpng-devel zlib-devel bzip2-devel brotli-devel \
+            libzstd-devel openssl-devel ccache \
+            systemd-devel libusb1-devel
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The version string is `git describe`; it needs the tags.
+          fetch-depth: 0
+      # ccache keeps the objects between runs, and the unpacked dependency
+      # sources skip the downloads in Configure, as in windows.yml.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .ccache
+          key: ccache-linux-${{ matrix.arch }}-${{ github.sha }}
+          restore-keys: ccache-linux-${{ matrix.arch }}-
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            build/port-gcc/_deps/*-src
+            build/port-gcc/_deps/*-subbuild
+          key: deps-linux-${{ matrix.arch }}-${{ hashFiles('CMakeLists.txt', 'extern/aurora/**/CMakeLists.txt', 'extern/aurora/**/*.cmake') }}
+      - name: Configure
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          source /opt/rh/gcc-toolset-14/enable
+          cmake -S . -B build/port-gcc -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DMP_SDK_HEADERS_ONLY=OFF -DAURORA_ENABLE_TESTS=OFF
+      - name: Build
+        run: |
+          source /opt/rh/gcc-toolset-14/enable
+          cmake --build build/port-gcc -j 4
+          ccache -s
+      # The settings self-test runs the game binary, so it is a real link check
+      # as well as a test.
+      - name: Test
+        run: ctest --test-dir build/port-gcc -L port --output-on-failure
+      - name: Check the glibc and libstdc++ floor
+        run: |
+          bin=build/port-gcc/metroid_prime2_port
+          file "$bin"
+          too_new() {  # $1 = prefix, $2 = highest allowed version
+            objdump -T "$bin" | grep -oE "\($1_[0-9.]+\)" | tr -d '()' | sort -Vu |
+              awk -F_ '{ print $NF }' |
+              while read -r v; do
+                [ "$(printf '%s\n%s\n' "$v" "$2" | sort -V | tail -1)" = "$2" ] || echo "$1_$v"
+              done
+          }
+          bad="$(too_new GLIBC "$MAX_GLIBC")$(too_new GLIBCXX "$MAX_GLIBCXX")$(too_new CXXABI 1.3.13)"
+          if [ -n "$bad" ]; then
+            echo "symbol versions newer than the floor:" >&2
+            echo "$bad" >&2
+            objdump -T "$bin" | grep -E "$(echo $bad | tr ' ' '|')" >&2
+            exit 1
+          fi
+          echo "needs at most glibc $MAX_GLIBC, GLIBCXX $MAX_GLIBCXX"
+          # SDL builds its HIDAPI hidraw backend only with libudev.h; without it
+          # no controller gyro is found (issue #82). Both libraries are dlopened.
+          nm "$bin" | grep -q PLATFORM_hid_enumerate ||
+            { echo "SDL was built without the hidraw HIDAPI backend (libudev.h missing)" >&2; exit 1; }
+          # Only libraries with stable sonames; freetype and libpng come from the system.
+          extra="$(readelf -d "$bin" | grep -oP 'NEEDED.*\[\K[^]]+' |
+            grep -vxE 'libfreetype\.so\.6|libpng16\.so\.16|lib(ssl|crypto)\.so\.3|lib(z|zstd)\.so\.1|libstdc\+\+\.so\.6|lib(m|c)\.so\.6|libgcc_s\.so\.1|${{ matrix.ld }}\.so\.[12]' || true)"
+          if [ -n "$extra" ]; then
+            echo "unexpected shared libraries:" $extra >&2
+            exit 1
+          fi
+      - name: Package
+        run: |
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          bash tools/make_appimage.sh build/port-gcc build/appimage
+          d=build/release/metroid-prime2-port-linux-${{ matrix.arch }}
+          mkdir -p "$d/share/licenses/metroid-prime2-port"
+          cp build/port-gcc/metroid_prime2_port "$d/"
+          bash tools/collect_licenses.sh build/port-gcc "$d/share/licenses/metroid-prime2-port"
+          tar -C build/release -czf build/release/metroid-prime2-port-linux-${{ matrix.arch }}.tar.gz \
+            metroid-prime2-port-linux-${{ matrix.arch }}
+          mv build/appimage/MetroidPrime2-${{ matrix.arch }}.AppImage build/release/
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          # The x86_64 name is kept so existing release scripts still find it.
+          name: metroid_prime2_port-linux${{ matrix.arch != 'x86_64' && format('-{0}', matrix.arch) || '' }}
+          path: |
+            build/release/MetroidPrime2-${{ matrix.arch }}.AppImage
+            build/release/metroid-prime2-port-linux-${{ matrix.arch }}.tar.gz
