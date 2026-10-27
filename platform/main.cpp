@@ -1194,6 +1194,13 @@ int main(int argc, char** argv) {
       if (!base.empty() && std::filesystem::is_directory(base + "/textures", error)) {
         textures = base + "/textures";
       }
+#if defined(__APPLE__)
+      // A macOS bundle keeps data in Contents/Resources (codesign rejects non-code files in
+      // Contents/MacOS).
+      else if (!base.empty() && std::filesystem::is_directory(base + "/../Resources/textures", error)) {
+        textures = base + "/../Resources/textures";
+      }
+#endif
     }
     std::string userTextures;
     if (const char* env = port::EnvString("MP2_USER_TEXTURES"); env != nullptr && env[0] != '\0') {
