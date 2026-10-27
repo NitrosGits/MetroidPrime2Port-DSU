@@ -338,7 +338,8 @@ bool CSandworm::DoneStraightening(CStateManager& mgr, const CTriggerData& data) 
 
 // @ fn_56_541C
 bool CSandworm::DoneSulking(CStateManager& mgr, const CTriggerData& data) const {
-  return x8B0_activeTime >= x165C_ && PlayerIsOnPathMesh(mgr, CTriggerData(0.f));
+  // 0x5434 bge: NaN passes the time test
+  return !(x8B0_activeTime < x165C_) && PlayerIsOnPathMesh(mgr, CTriggerData(0.f));
 }
 
 // @ fn_56_5470
@@ -414,7 +415,7 @@ bool CSandworm::FacingPlayer(CStateManager& mgr, const CTriggerData& data) const
 // @ fn_56_73F4
 void CSandworm::UpdatePursuePathSpeed(CStateManager& mgr, float dt) {
   x1A04_ += dt;
-  if (x1A04_ >= 0.2f) {
+  if (!(x1A04_ < 0.2f)) { // 0x7424 blt skips: NaN runs
     x1A04_ = 0.f;
     if (x7C4_search.OnPath(GetTranslation() + CVector3f(0.f, 0.f, 1.f)) !=
         CPathFindSearch::kR_Success) {

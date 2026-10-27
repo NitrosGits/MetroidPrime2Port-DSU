@@ -131,7 +131,7 @@ float ClawLiftToClearFloor(const CSandworm& self, CStateManager& mgr, const char
   const float floorZ = self.SpineRenderHelperE008(mgr, tip);
   float lift = 0.f;
   // Retail also builds translation + 0.5 * (2.4 * Y) each step and never reads it.
-  if (-0.6f + tip.GetZ() >= floorZ) {
+  if (!(-0.6f + tip.GetZ() < floorZ)) { // 0xDE78 bge: NaN returns
     return lift;
   }
   for (float i = 1.f; i < 30.f; i += 1.f) {
