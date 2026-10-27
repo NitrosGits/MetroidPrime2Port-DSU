@@ -51,6 +51,14 @@ static gfx::ResolveHdr resolve_hdr(bool linear) noexcept {
 }
 
 void copy_tex(const void* dest, GXBool clear) noexcept {
+  // Port: a frame begin_frame declined (Android surface lost or the app backgrounded, e.g. on
+  // resume) still runs the game's GX work, and a GXDrawDone/GXFlush drains it to this thread with
+  // no recording session: resolve_pass_into would read the null frame packet (SIGSEGV at 0x20 on
+  // resume). push_gx_draw dropped that frame's draws, so the EFB holds nothing of it to copy or
+  // clear; the destination keeps the texture its last recorded copy resolved, and the next
+  // recorded frame copies it again.
+  if (!gfx::has_render_pass())
+    UNLIKELY { return; }
   const auto rect = map_logical_scissor(g_gxState.texCopySrc);
   const auto [dstWidth, dstHeight] = scale_copy_dst(g_gxState.texCopyDstWidth, g_gxState.texCopyDstHeight);
   const auto texCopyFmt = g_gxState.texCopyFmt;
@@ -148,6 +156,9 @@ void copy_tex(const void* dest, GXBool clear) noexcept {
 }
 
 void copy_probe_face(u32 face) noexcept {
+  // Port: as copy_tex, no pass to resolve in a frame begin_frame declined.
+  if (!gfx::has_render_pass())
+    UNLIKELY { return; }
   const auto rect = map_logical_scissor(g_gxState.texCopySrc);
   const auto hdr = resolve_hdr(false);
   gfx::resolve_pass_into(gfx::probe::face(face), rect, true, true, true, g_gxState.clearColor, clear_depth_value(),

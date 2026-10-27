@@ -63,8 +63,15 @@ static const char* const skErrorNames[] = {
 };
 
 // Guessed name
+#ifdef TARGET_PC
+// consoleOrder false: the signature older port builds wrote (see CWorldSaveGameInfo::CalculateHash).
+static uint GetSaveSignature(bool consoleOrder = true) {
+  static uint signatures[2] = {0xffffffff, 0xffffffff};
+  uint& signature = signatures[consoleOrder ? 1 : 0];
+#else
 static uint GetSaveSignature() {
   static uint signature = 0xffffffff;
+#endif
   if (signature != 0xffffffff) {
     return signature;
   }
@@ -74,8 +81,15 @@ static uint GetSaveSignature() {
        it != worlds.end(); ++it) {
     const CAssetId saveId = it->second.GetSaveWorldAssetId();
     TLockedToken< CWorldSaveGameInfo > save(gpSimplePool->GetObj(SObjectTag('SAVW', saveId)));
+#ifdef TARGET_PC
+    signature ^= save->CalculateHash(consoleOrder);
+#else
     signature ^= save->CalculateHash();
+#endif
   }
+#ifdef TARGET_PC
+  fprintf(stderr, "[save] %s signature %08x\n", consoleOrder ? "console" : "legacy port", signature);
+#endif
   return signature;
 }
 
@@ -85,7 +99,9 @@ static bool sDriverExists; // Guessed name
 static bool IsSaveSignatureInvalid(const void* data) {
 #ifdef TARGET_PC
   // SSaveHeader::PutTo wrote the signature through COutputStream, big-endian.
-  return CBasics::SwapBytes(*static_cast< const uint* >(data)) != GetSaveSignature();
+  // Accept the console signature and the one older port builds wrote; saving writes the console one.
+  const uint stored = CBasics::SwapBytes(*static_cast< const uint* >(data));
+  return stored != GetSaveSignature() && stored != GetSaveSignature(false);
 #else
   return *static_cast< const uint* >(data) != GetSaveSignature();
 #endif

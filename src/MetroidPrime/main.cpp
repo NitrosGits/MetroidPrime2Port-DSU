@@ -237,6 +237,9 @@ void PortRearmPad0();
 // (platform/ai_dma.cpp).
 extern "C" void AIPortPoll(void);
 
+#include <chrono>
+#include <thread>
+
 #include "MetroidPrime/CCameraManager.hpp"
 #include "port_mouse.h"
 #include "port_entry.h"
@@ -821,6 +824,17 @@ int CMain::RsMain(int argc, const char* const* argv) {
       if (drawFrame) {
         gpRender->BeginScene();
 #ifdef TARGET_PC
+        // Port: MP1's CMain::RsMain draws only when BeginScene opened a frame. Aurora declines one
+        // while the Android surface is lost or the app is backgrounded (and on resume until the
+        // surface is back); the scene's draws were dropped anyway, but its EFB copies reached the
+        // FIFO processor with no recording session and crashed it. EndScene would return early
+        // and not pace the loop, so this sleeps like MP1's loader idle.
+        if (!CGraphics::PortSceneOpen()) {
+          drawFrame = false;
+          std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+      }
+      if (drawFrame) {
         // Port: MP1's presentation blend (CMain::RsMain there). With the cap off and smooth frames
         // on, the camera is drawn between the last two ticks by the clock's leftover fraction; -1
         // (the cap, or the setting off) draws the simulation camera, as retail does.
