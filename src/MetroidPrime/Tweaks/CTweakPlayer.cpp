@@ -5,6 +5,10 @@
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrTweakPlayer.hpp"
+#ifdef TARGET_PC
+#include "port_entry.h"
+#include "port_tri_orbit.h"
+#endif
 
 float CTweakPlayer::GetNormalGravAccel() const { return mData->motion.gravitationalAccel; }
 
@@ -174,6 +178,12 @@ int CTweakPlayer::GetOrbitZoneWidth(CPlayer::EPlayerZoneInfo zone) const {
   const float scale = CGraphics::GetViewport().mWidth / 640.f;
   const int extent =
       zone == CPlayer::kZI_Scan ? mData->orbit.orbitScanZoneWidth : mData->orbit.orbitZoneWidth;
+#ifdef TARGET_PC
+  // Trilogy's Targeting zone is 0.65 of the tweak; the Scan zone stays GC-style.
+  if (zone == CPlayer::kZI_Targeting && port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    return static_cast< int >(PortTriOrbit::HalfWidth(static_cast< float >(extent)) * scale);
+  }
+#endif
   return static_cast< int >(extent * scale);
 }
 
@@ -181,8 +191,19 @@ int CTweakPlayer::GetOrbitZoneHeight(CPlayer::EPlayerZoneInfo zone) const {
   const float scale = CGraphics::GetViewport().mHeight / 448.f;
   const int extent =
       zone == CPlayer::kZI_Scan ? mData->orbit.orbitScanZoneHeight : mData->orbit.orbitZoneHeight;
+#ifdef TARGET_PC
+  if (zone == CPlayer::kZI_Targeting && port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    return static_cast< int >(PortTriOrbit::HalfHeight(static_cast< float >(extent)) * scale);
+  }
+#endif
   return static_cast< int >(extent * scale);
 }
+
+#ifdef TARGET_PC
+int CTweakPlayer::PortTriTargetingHalfHeight() const {
+  return PortTriOrbit::HalfHeight(static_cast< float >(mData->orbit.orbitZoneHeight));
+}
+#endif
 
 int CTweakPlayer::GetOrbitZoneCentreX(CPlayer::EPlayerZoneInfo zone) const {
   const float scale = CGraphics::GetViewport().mWidth / 640.f;

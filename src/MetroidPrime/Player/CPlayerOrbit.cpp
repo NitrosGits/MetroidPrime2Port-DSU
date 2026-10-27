@@ -1,6 +1,8 @@
 #include "MetroidPrime/Player/CPlayer.hpp"
 #ifdef TARGET_PC
 #include <stdio.h>  // fprintf: the port's scan-target diagnostics
+#include "port_entry.h"
+#include "port_tri_orbit.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
 #endif
@@ -633,6 +635,25 @@ static bool PortScanPointerNdc(CPlayer::EPlayerZoneInfo zone, float& x, float& y
   y = -y;
   return true;
 }
+
+// Trilogy's Targeting zone is centred on the pointer (0x802a0f5c: int((ndc * 0.5 + 0.5) * viewport),
+// viewport centre without a pointer). The Scan zone keeps its GC centre plus the pointer above.
+static void PortTriTargetingCentre(CPlayer::EPlayerZoneInfo zone, float& cx, float& cy) {
+  if (zone != CPlayer::kZI_Targeting ||
+      !port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    return;
+  }
+  float px = 0.f;
+  float py = 0.f;
+  if (!PortMouse::PointerAimPosition(px, py)) {
+    px = 0.f;
+    py = 0.f;
+  }
+  cx = static_cast< float >(
+      PortTriOrbit::PointerCentre(px, CCast::LtoF(CGraphics::GetViewport().mWidth)));
+  cy = static_cast< float >(
+      PortTriOrbit::PointerCentre(-py, CCast::LtoF(CGraphics::GetViewport().mHeight)));
+}
 #endif
 
 bool CPlayer::WithinOrbitScreenEllipse(const CVector3f& screenPosition,
@@ -640,10 +661,18 @@ bool CPlayer::WithinOrbitScreenEllipse(const CVector3f& screenPosition,
   if (screenPosition.GetZ() >= 1.f) {
     return false;
   }
+#ifdef TARGET_PC
+  float cx = CCast::LtoF(GetTweakPlayer()->GetOrbitZoneCentreX(zone));
+  float cy = CCast::LtoF(GetTweakPlayer()->GetOrbitZoneCentreY(zone));
+  PortTriTargetingCentre(zone, cx, cy);
+  const float x = CMath::AbsF(screenPosition.GetX() - cx);
+  const float y = CMath::AbsF(screenPosition.GetY() - cy);
+#else
   const float x =
       CMath::AbsF(screenPosition.GetX() - CCast::LtoF(GetTweakPlayer()->GetOrbitZoneCentreX(zone)));
   const float y =
       CMath::AbsF(screenPosition.GetY() - CCast::LtoF(GetTweakPlayer()->GetOrbitZoneCentreY(zone)));
+#endif
   const float heXSq = CCast::LtoF(GetTweakPlayer()->GetOrbitZoneWidth(zone) *
                                   GetTweakPlayer()->GetOrbitZoneWidth(zone));
   const float heYSq = CCast::LtoF(GetTweakPlayer()->GetOrbitZoneHeight(zone) *
@@ -664,6 +693,7 @@ bool CPlayer::WithinOrbitScreenBox(const CVector3f& screenPosition, EPlayerZoneI
     float cy = float(GetTweakPlayer()->GetOrbitZoneCentreY(zone));
     float pointerX = 0.f;
     float pointerY = 0.f;
+    PortTriTargetingCentre(zone, cx, cy);
     if (PortScanPointerNdc(zone, pointerX, pointerY)) {
       // The zone moves with the pointer, but only what is on screen can be picked.
       const float width = CCast::LtoF(CGraphics::GetViewport().mWidth);

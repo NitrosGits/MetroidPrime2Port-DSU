@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef TARGET_PC
+#include "port_entry.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
 
@@ -1778,6 +1779,12 @@ CVector3f CCompoundTargetReticle::CalculateOrbitZoneReticlePosition(const CState
 #endif
   float halfHeight =
       static_cast< float >(player->GetTweakPlayer()->GetOrbitZoneHeight(CPlayer::kZI_Targeting));
+#ifdef TARGET_PC
+  // Trilogy (0x8025fbcc): 224 over the 0.65 zone height in the 448 basis, unscaled by the viewport.
+  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    halfHeight = static_cast< float >(player->GetTweakPlayer()->PortTriTargetingHalfHeight());
+  }
+#endif
   float distance = 224.f / halfHeight;
   distance /= static_cast< float >(tan(halfFov * (1.f / 360.f) * (2.f * M_PIF)));
 
