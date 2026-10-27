@@ -15,8 +15,6 @@ for f in "$SRC"/orig/G2ME01/*; do
   [ -L "$f" ] && ln -sfn "$(readlink "$f")" "$DIR/orig/G2ME01/$(basename "$f")"
 done
 git -C "$DIR" submodule update -q --init extern/musyx
-mkdir -p "$DIR/build/G2ME01/include/MetroidPrime"
-cp "$SRC"/build/G2ME01/include/MetroidPrime/DefaultFont*.inc "$DIR/build/G2ME01/include/MetroidPrime/"
 "$T/cmake" -S "$DIR" -B "$DIR/build-port-link" -G Ninja -DCMAKE_MAKE_PROGRAM="$T/ninja" \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo -DMP_SDK_HEADERS_ONLY=OFF \
   -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_LINKER_TYPE=MOLD \
