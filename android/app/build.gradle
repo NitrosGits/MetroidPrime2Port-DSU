@@ -181,6 +181,12 @@ android {
         }
     }
 
+    // Third-party notices, gathered from the tree and from whatever the native build
+    // fetched, so an installed app carries the terms of what it links rather than nothing.
+    // The notices travel as assets because assets are the only place a build reliably
+    // reaches an installed package.
+    sourceSets.main.assets.srcDir(layout.buildDirectory.dir("generatedLicenses"))
+
     // So the (unstripped, large) library is stripped when the APK is packaged rather than
     // shipped as it comes out of the link.
     packagingOptions {
@@ -219,4 +225,79 @@ android {
             }
         }
     }
+}
+
+// Gathers the licence of every third-party component the native build links: the vendored
+// snapshots in the tree, and whatever CMake fetched. An installed app then carries the terms
+// of what it contains, which an APK otherwise would not.
+//
+// The same task ../MetroidPrimePort carries, minus what that tree has and this one does not:
+// no astcenc (Aurora's texture encoder is not vendored here), and the notices are named after
+// this tree's own vendored directories. extern/musyx is upstream's unused submodule, not
+// linked, so it ships nothing; extern/musyx-port is the runtime that is.
+tasks.register("syncLicenseNotices", Sync) {
+    def outputDir = layout.buildDirectory.dir("generatedLicenses")
+    into outputDir
+    // zstd ships both LICENSE and COPYING, and several packages appear under every build
+    // variant, so more than one source can land on a name. They are the same terms, so the
+    // first one wins rather than failing the build.
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    // The port's own grant and notice come first: an installed app that links MIT and zlib
+    // components has to carry their terms, and a grant nobody can read inside the package is
+    // not much of a grant.
+    from("../../LICENSE") { rename { "port-license.txt" } }
+    from("../../NOTICE") { rename { "port-notice.txt" } }
+    from("../../extern/aurora/LICENSE") { rename { "aurora.txt" } }
+    from("../../extern/musyx-port/LICENSE") { rename { "musyx-port.txt" } }
+    from("../../extern/GamepadMotionHelpers/LICENSE") { rename { "gamepadmotionhelpers.txt" } }
+    from("../../extern/adrenotools/LICENSE") { rename { "adrenotools.txt" } }
+    from("../../extern/adrenotools/lib/linkernsbypass/LICENSE") { rename { "linkernsbypass.txt" } }
+    // The fetched packages live beside the native build output, so they are only present once
+    // a native build has run at least once. Each is named after its package: the same notice
+    // appears in several build variants, and a glob rename would not flatten those paths,
+    // leaving notices buried in assets/<variant>/<abi>/ where nothing would find them.
+    // Every fetched package, not a fixed list: abseil, freetype, libpng and the rest are
+    // linked in too.
+    from(layout.projectDirectory.dir(".cxx")) {
+        include "**/_deps/*-src/LICENSE*"
+        include "**/_deps/*-src/COPYING*"
+        // A FileTree carries only files, so the copy spec never sees a directory: naming one
+        // in eachFile is what produced an empty path. The notice goes to the root of the asset
+        // dir, because the same notice appears under every build variant and nested paths
+        // would ship it several times in places nothing would look. The first licence of a
+        // package is <dep>.txt, any further one <dep>-<file>.
+        eachFile { details ->
+            def dep = details.file.parentFile.name
+            def name = details.file.name
+            details.relativePath = new RelativePath(true, ".")
+            details.path = (name ==~ /(?i)LICEN[CS]E(\.(txt|md))?/) ? "${dep}.txt" : "${dep}-${name}"
+        }
+        includeEmptyDirs = false
+    }
+    // Prebuilt packages that ship no licence of their own (Dawn, nod).
+    from("../../packaging/licenses") { include "*.txt" }
+    // freetype's FreeType License is not on the LICENSE/COPYING path above.
+    from(layout.projectDirectory.dir(".cxx")) {
+        include "**/_deps/freetype-src/docs/FTL.TXT"
+        eachFile { details -> details.path = "freetype-FTL.txt" }
+        includeEmptyDirs = false
+    }
+    doLast {
+        def out = outputDir.get().asFile
+        if (!out.exists() || out.listFiles()?.length == 0) {
+            logger.warn("no third-party notices found; the APK will carry none")
+        } else {
+            logger.lifecycle("collected ${out.listFiles().length} third-party notice(s) for the APK")
+        }
+    }
+}
+
+// The notices of fetched packages exist only once the native build has fetched them, so they
+// are gathered after it and before anything reads the asset directories: the asset merge, and
+// lint, which scans them. Run earlier, a clean build packages none of them.
+tasks.named("syncLicenseNotices").configure {
+    mustRunAfter(tasks.matching { it.name.startsWith("buildCMake") || it.name.startsWith("externalNativeBuild") })
+}
+tasks.matching { it.name ==~ /merge\w*Assets/ || it.name.toLowerCase().contains("lint") }.configureEach {
+    dependsOn("syncLicenseNotices")
 }
