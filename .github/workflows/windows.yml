@@ -124,6 +124,21 @@ jobs:
           jobs: "-j"
           build-args: "'--' -k 0"
 
+      # The settings self-test hangs on Windows before printing anything: give
+      # every thread's stack of a run that is still alive after 15 s.
+      - name: Stack of a hung settings self-test
+        if: failure()
+        shell: pwsh
+        run: |
+          $env:MP2_USER_PATH = "$PWD/build-win/settings-selftest/"
+          $p = Start-Process -FilePath ./build-win/metroid_prime2_port.exe -ArgumentList '--settings-selftest' -PassThru -RedirectStandardError ./selftest-err.log -RedirectStandardOutput ./selftest-out.log
+          if ($p.WaitForExit(15000)) { "exited $($p.ExitCode)" } else {
+            $cdb = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers" -Recurse -Filter cdb.exe | Where-Object { $_.FullName -match '\\(x64|arm64)\\' } | Select-Object -First 1
+            if ($cdb) { & $cdb.FullName -pv -p $p.Id -y "$PWD/build-win" -c ".symfix+; .reload; ~*kn 40; qd" } else { 'no cdb' }
+            Stop-Process -Id $p.Id -Force
+          }
+          Get-Content ./selftest-err.log, ./selftest-out.log
+
       - name: Package
         shell: pwsh
         run: |
