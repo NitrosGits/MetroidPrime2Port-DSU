@@ -7,6 +7,7 @@ plugins {
 // Android" without a Rust toolchain. Default to the real nod, as ../MetroidPrimePort does,
 // and let a probe opt in: the cost of forgetting -PandroidNodStub=true is the reverse of
 // the cost of forgetting -PandroidNodStub=false, and only the latter ships a broken APK.
+def generatedAssets = layout.buildDirectory.dir("generated/portAssets")
 def useNodStub = providers.gradleProperty("androidNodStub").getOrElse("false")
 // Optional local caches (tools/android_probe.sh documents where they come from). With
 // -PcmakeDependencyCache, or the default build/android-deps when it exists, each dependency
@@ -176,6 +177,8 @@ android {
     // The notices travel as assets because assets are the only place a build reliably
     // reaches an installed package.
     sourceSets.main.assets.srcDir(layout.buildDirectory.dir("generatedLicenses"))
+    // The button glyphs and binding icons (tools/make_prompt_glyphs.py) the activity unpacks.
+    sourceSets.main.assets.srcDir(generatedAssets)
 
     // So the (unstripped, large) library is stripped when the APK is packaged rather than
     // shipped as it comes out of the link.
@@ -215,6 +218,16 @@ android {
             }
         }
     }
+}
+
+tasks.register("syncPortAssets", Sync) {
+    into generatedAssets
+    from("../../textures") {
+        into "textures"
+    }
+}
+tasks.named("preBuild").configure {
+    dependsOn("syncPortAssets")
 }
 
 // Gathers the licence of every third-party component the native build links: the vendored

@@ -920,11 +920,28 @@ else()
         "This port needs an ELF linker with RESCAN support, Apple ld or an MSVC-compatible COFF linker")
 endif()
 
+# The per-device button glyphs and the binding icons (tools/make_prompt_glyphs.py) are loose files the
+# port reads from a `textures` folder beside the executable (platform/main.cpp); on Android the APK
+# packs them as assets and the activity unpacks them. The generated sets are cleared first:
+# copy_directory only adds, and an icon the generator no longer writes would otherwise keep
+# replacing a texture it no longer claims.
+if(NOT ANDROID)
+    set(PORT_TEXTURE_SETS bindings keyboard playstation switch xbox)
+    list(TRANSFORM PORT_TEXTURE_SETS PREPEND "$<TARGET_FILE_DIR:metroid_prime2_port>/textures/")
+    add_custom_command(TARGET metroid_prime2_port POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E rm -rf ${PORT_TEXTURE_SETS}
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/textures"
+            "$<TARGET_FILE_DIR:metroid_prime2_port>/textures"
+        COMMENT "Copying texture replacements next to the executable")
+endif()
+
 # Install rules (desktop only): the executable, and for Linux menus and software centres the desktop
 # entry (Categories=Game), its icon under the app id, and the AppStream metainfo (category Game).
 if(NOT ANDROID)
     include(GNUInstallDirs)
     install(TARGETS metroid_prime2_port RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/textures DESTINATION ${CMAKE_INSTALL_BINDIR})
     if(UNIX AND NOT APPLE)
         install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/packaging/io.github.odrannnn.metroidprime2port.desktop
             DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)

@@ -82,6 +82,7 @@ jobs:
           app="dist/Metroid Prime 2 Port.app"
           mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
           cp build-mac/metroid_prime2_port "$app/Contents/MacOS/"
+          cp -r textures "$app/Contents/MacOS/"
           version=$(sed -n 's/.*versionName "\(.*\)".*/\1/p' android/app/build.gradle)
           iconset=$(mktemp -d)/icon.iconset
           mkdir -p "$iconset"
