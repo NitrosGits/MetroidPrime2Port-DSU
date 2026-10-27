@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <io.h>
 
+#include <atomic>
 #include <string>
 #include <thread>
 
@@ -201,8 +202,6 @@ int OpenTerminal(bool& socket) {
 // to the log file and to wherever stderr went before (the console, or a file a script redirected
 // it to). The file is written by lines landing in the pipe, so a crash loses at most what the
 // thread has not read yet; the exit hook below waits for the pipe to drain.
-HANDLE sPipeRead = nullptr;
-
 void ToHandle(HANDLE handle, const char* data, size_t size) {
   while (size > 0) {
     DWORD wrote = 0;
@@ -220,12 +219,33 @@ struct CopyArgs {
   HANDLE terminal; // may be null
 };
 
+std::atomic< bool > sStop{false};
+std::atomic< bool > sCopierDone{false};
+
+// Polls the pipe instead of blocking in ReadFile: a thread parked in a synchronous read on a pipe
+// this process also holds the write end of keeps ExitProcess from finishing (the packaged startup
+// check hung on it), so the thread must be able to leave on its own once sStop is set.
 void CopyThread(CopyArgs args) {
   long long written = 0;
   bool truncated = false;
   char buffer[8192];
-  DWORD n = 0;
-  while (ReadFile(args.in, buffer, sizeof(buffer), &n, nullptr) && n > 0) {
+  for (;;) {
+    DWORD available = 0;
+    if (!PeekNamedPipe(args.in, nullptr, 0, nullptr, &available, nullptr)) {
+      break; // every writer has gone
+    }
+    if (available == 0) {
+      if (sStop.load()) {
+        break;
+      }
+      Sleep(5);
+      continue;
+    }
+    DWORD n = 0;
+    if (!ReadFile(args.in, buffer, available < sizeof(buffer) ? available : sizeof(buffer), &n, nullptr) ||
+        n == 0) {
+      break;
+    }
     if (args.terminal != nullptr) {
       ToHandle(args.terminal, buffer, n);
     }
@@ -241,18 +261,17 @@ void CopyThread(CopyArgs args) {
       ToHandle(args.file, kNote, sizeof(kNote) - 1);
     }
   }
+  FlushFileBuffers(args.file);
+  sCopierDone.store(true);
 }
 
-// At exit: give the copier up to a second to take what is still in the pipe.
+// At exit: stop the copier once it has taken what is still in the pipe, for up to a second.
 void DrainAtExit() {
   std::fflush(stdout);
   std::fflush(stderr);
-  for (int i = 0; i < 100 && sPipeRead != nullptr; ++i) {
-    DWORD available = 0;
-    if (!PeekNamedPipe(sPipeRead, nullptr, 0, nullptr, &available, nullptr) || available == 0) {
-      break;
-    }
-    Sleep(10);
+  sStop.store(true);
+  for (int i = 0; i < 200 && !sCopierDone.load(); ++i) {
+    Sleep(5);
   }
 }
 
@@ -353,7 +372,6 @@ void Start(const std::string& userDirectory) {
   // Code that writes to the standard handles rather than the C streams.
   SetStdHandle(STD_OUTPUT_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stdout))));
   SetStdHandle(STD_ERROR_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stderr))));
-  sPipeRead = readEnd;
   std::thread(CopyThread, CopyArgs{readEnd, file, terminal}).detach();
   std::atexit(DrainAtExit);
   sStarted = true;
