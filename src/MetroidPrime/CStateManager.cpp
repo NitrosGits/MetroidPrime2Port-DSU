@@ -4760,6 +4760,8 @@ void CStateManager::PortWarpTick() {
   if (!PortWarp::Consume(request)) {
     return;
   }
+  // Only the request that asked for it keeps the player's place; any other warp spawns as usual.
+  mPortWarpKeepPlace = false;
   if (mUpdateFrameIdx > 0) {
     // A boot request is served late by design (see above): say when, so a sweep's timeline is
     // readable - later tokens are counted in game updates from the same clock.
@@ -4817,6 +4819,10 @@ void CStateManager::PortWarpTick() {
         break;
       }
     }
+    break;
+  }
+  case PortWarp::EKind::kDimension: {
+    PortWarpToDimension();
     break;
   }
   case PortWarp::EKind::kDock: {
@@ -5171,7 +5177,8 @@ void CStateManager::PortPlaceArrivalTick() {
   PortSetDarkWorldFromArea(area);
 
   CObjectList* objects = mObjectLists[kOL_All].get();
-  for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
+  for (int i = PortPlaceKeptTransform() ? -1 : objects->GetFirstObjectIndex(); i != -1;
+       i = objects->GetNextObjectIndex(i)) {
     if (CScriptSpawnPoint* spawn = TCastToPtr< CScriptSpawnPoint >((*objects)[i])) {
       if (spawn->GetActive() && spawn->IsFirstSpawn()) {
         SpawnPlayer(*spawn, 0);
@@ -5341,7 +5348,8 @@ void CStateManager::PortWarpSettle() {
   PortSetDarkWorldFromArea(target);
 
   CObjectList* objects = mObjectLists[kOL_All].get();
-  for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
+  for (int i = PortPlaceKeptTransform() ? -1 : objects->GetFirstObjectIndex(); i != -1;
+       i = objects->GetNextObjectIndex(i)) {
     if (CScriptSpawnPoint* spawn = TCastToPtr< CScriptSpawnPoint >((*objects)[i])) {
       if (spawn->GetActive() && spawn->IsFirstSpawn()) {
         SpawnPlayer(*spawn, 0);
@@ -5371,6 +5379,104 @@ void CStateManager::PortWarpSettle() {
     PortWarpToArea(queued);
   }
   mPortDropAreasAtFrame = mUpdateFrameIdx + kPortDropAreasDelay;
+}
+
+// The area in the other dimension that overlays `aid`. Dark Aether's rooms are built on their Light
+// twins' coordinates (a portal crossing keeps the player's position), so the twin is the area whose
+// bounds contain the player and overlap this area's the most. The automapper's light/dark flag (CMapArea
+// bit 0) rules out a neighbour on the same side when both map areas are loaded; a neighbour whose bounds
+// merely touch is ruled out by the overlap floor.
+TAreaId CStateManager::PortDimensionCounterpart(TAreaId aid, const CVector3f& pos) {
+  CWorld* world = World();
+  if (world == nullptr || !world->DoesAreaExist(aid) || world->Area(aid) == nullptr) {
+    return kInvalidAreaId;
+  }
+  const CAABox& from = world->Area(aid)->GetAABB();
+  const auto volume = [](const CVector3f& lo, const CVector3f& hi) {
+    const float x = hi.GetX() - lo.GetX();
+    const float y = hi.GetY() - lo.GetY();
+    const float z = hi.GetZ() - lo.GetZ();
+    return x > 0.f && y > 0.f && z > 0.f ? x * y * z : 0.f;
+  };
+  const float fromVolume = volume(from.GetMinPoint(), from.GetMaxPoint());
+  const CMapWorld* mapWorld = world->IGetMapWorld();
+  const CMapArea* fromMap = mapWorld != nullptr ? mapWorld->GetMapArea(aid.Value()) : nullptr;
+  TAreaId best = kInvalidAreaId;
+  float bestScore = 0.5f; // intersection over union; a twin is close to 1
+  for (int i = 0; i < world->IGetAreaCount(); ++i) {
+    const TAreaId other(i);
+    if (other == aid || !world->DoesAreaExist(other)) {
+      continue;
+    }
+    const CGameArea* area = world->Area(other);
+    if (area == nullptr || area->GetAreaAssetId() == kInvalidAssetId) {
+      continue;
+    }
+    const CAABox& to = area->GetAABB();
+    const float slack = 1.f;
+    if (pos.GetX() < to.GetMinPoint().GetX() - slack || pos.GetX() > to.GetMaxPoint().GetX() + slack ||
+        pos.GetY() < to.GetMinPoint().GetY() - slack || pos.GetY() > to.GetMaxPoint().GetY() + slack ||
+        pos.GetZ() < to.GetMinPoint().GetZ() - slack || pos.GetZ() > to.GetMaxPoint().GetZ() + slack) {
+      continue;
+    }
+    if (fromMap != nullptr) {
+      const CMapArea* toMap = mapWorld->GetMapArea(i);
+      if (toMap != nullptr && toMap->IsInDarkWorld() == fromMap->IsInDarkWorld()) {
+        continue;
+      }
+    }
+    const CVector3f lo(rstl::max_val(from.GetMinPoint().GetX(), to.GetMinPoint().GetX()),
+                       rstl::max_val(from.GetMinPoint().GetY(), to.GetMinPoint().GetY()),
+                       rstl::max_val(from.GetMinPoint().GetZ(), to.GetMinPoint().GetZ()));
+    const CVector3f hi(rstl::min_val(from.GetMaxPoint().GetX(), to.GetMaxPoint().GetX()),
+                       rstl::min_val(from.GetMaxPoint().GetY(), to.GetMaxPoint().GetY()),
+                       rstl::min_val(from.GetMaxPoint().GetZ(), to.GetMaxPoint().GetZ()));
+    const float both = volume(lo, hi);
+    const float either = fromVolume + volume(to.GetMinPoint(), to.GetMaxPoint()) - both;
+    const float score = either > 0.f ? both / either : 0.f;
+    std::fprintf(stderr, "[warp] dimension: area %d overlaps %d by %.2f\n", i, aid.Value(), score);
+    if (score > bestScore) {
+      bestScore = score;
+      best = other;
+    }
+  }
+  return best;
+}
+
+void CStateManager::PortWarpToDimension() {
+  CWorld* world = World();
+  CPlayer* player = mPlayers[0];
+  if (world == nullptr || player == nullptr) {
+    return;
+  }
+  const TAreaId here = world->GetCurrentAreaId();
+  const CTransform4f place = player->GetTransform();
+  const TAreaId twin = PortDimensionCounterpart(here, place.GetTranslation());
+  if (twin == kInvalidAreaId) {
+    std::fprintf(stderr, "[warp] dimension: area %d has no twin in the other dimension\n",
+                 here.Value());
+    PortWarp::NoteDimension(false);
+    return;
+  }
+  std::fprintf(stderr, "[warp] dimension: area %d -> %d\n", here.Value(), twin.Value());
+  PortWarp::NoteDimension(true);
+  PortWarpToArea(twin);
+  if (mPortPendingWarpArea == twin || mPortWarpQueuedArea == twin) {
+    mPortWarpKeepPlace = true;
+    mPortWarpPlace = place;
+  }
+}
+
+// A dimension warp's arrival: the player stays where they stood on the other side. False for any
+// other warp, which then takes the area's first spawn point.
+bool CStateManager::PortPlaceKeptTransform() {
+  if (!mPortWarpKeepPlace) {
+    return false;
+  }
+  mPortWarpKeepPlace = false;
+  mPlayers[0]->Teleport(mPortWarpPlace, *this, true);
+  std::fprintf(stderr, "[warp] kept the player's place across the dimensions\n");
+  return true;
 }
 
 // Stand the player in the nearest doorway of this area, facing through it, so a scripted walk

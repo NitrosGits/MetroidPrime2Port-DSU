@@ -811,6 +811,7 @@ void CmdNextArea(CStateManager&, const Args&, std::string&) { PortWarp::CycleAre
 void CmdPrevArea(CStateManager&, const Args&, std::string&) { PortWarp::CycleArea(-1); }
 void CmdDoor(CStateManager&, const Args&, std::string&) { PortWarp::Door(); }
 void CmdDock(CStateManager&, const Args&, std::string&) { PortWarp::Dock(); }
+void CmdDimension(CStateManager&, const Args&, std::string&) { PortWarp::Dimension(); }
 void CmdStation(CStateManager&, const Args&, std::string&) { PortWarp::Station(); }
 void CmdHeal(CStateManager&, const Args&, std::string&) { PortWarp::Heal(); }
 const CEntity* ResolveObject(CStateManager& mgr, std::string_view text);
@@ -4568,6 +4569,7 @@ const CommandSpec kCommands[] = {
     {"door", CmdDoor,
       "door | dock | station       stand in front of the nearest door / doorway / save station\n"},
     {"dock", CmdDock, ""},
+    {"dimension", CmdDimension, ""},
     {"station", CmdStation, ""},
     {"heal", CmdHeal,
       "heal | kill [id]            refill energy; kill the player (a respawn test) or an actor\n"},

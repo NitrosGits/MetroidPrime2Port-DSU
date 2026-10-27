@@ -266,6 +266,21 @@ void DrawCheatsSection() {
   if (ImGui::Button("Next world")) {
     PortWarp::CycleWorld(1);
   }
+  // The room's twin in the other dimension, where Samus stands (PortWarp::Dimension). The game says
+  // whether there was one a frame later; the line stays until the next press.
+  static int sDimensionResult = 0;
+  if (ImGui::Button("Light / Dark world")) {
+    sDimensionResult = 0;
+    PortWarp::Dimension();
+  }
+  ImGui::SetItemTooltip("Cross to the same spot in the other dimension, if this room has a twin there.");
+  if (const int result = PortWarp::TakeDimensionResult(); result != 0) {
+    sDimensionResult = result;
+  }
+  if (sDimensionResult < 0) {
+    ImGui::SameLine();
+    ImGui::TextDisabled("No twin room in the other dimension");
+  }
   // The Prime 1 port's Teleport block (debug_ui/cheats.cpp): a filtered list of the current
   // world's rooms and the save's world table, both by name. The requests are the same PortWarp
   // ones the console's `warp`/`world` verbs and MP2_TELEPORT use, so nothing here walks around

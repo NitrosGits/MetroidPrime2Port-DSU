@@ -24,7 +24,8 @@ enum class EKind {
   kKill,       // kill the player, to test dying and respawning
   kHeal,       // refill the player's energy, so a sweep survives a damaging environment
   kLayer,      // activate a layer of the current area (its `delta` is the layer number)
-  kLayerOff    // mark a layer of the current area inactive (takes effect on the area's next load)
+  kLayerOff,   // mark a layer of the current area inactive (takes effect on the area's next load)
+  kDimension   // the same spot in the other dimension (light <-> dark), if this room has a twin there
 };
 
 struct SRequest {
@@ -44,6 +45,13 @@ void Station();
 void WorldPortal();
 void Kill();
 void Heal();
+// Cross to the other dimension where the player stands: the area there whose bounds match this
+// one's (Dark Aether's rooms sit on their Light twins' coordinates), keeping the position.
+void Dimension();
+// The last Dimension request's outcome, for the menu: the game notes it, the menu reads and clears it
+// (0 none since the last read, 1 crossing, -1 no twin).
+void NoteDimension(bool found);
+int TakeDimensionResult();
 // Activate a layer of the current area. A module whose actors live in a layer other than 0 - every
 // one of ElitePirate's five areas, for instance - only appears once that layer runs, so this is what
 // makes such a module verifiable from the `MP2_INPUT` token `LAYER<layer>`.

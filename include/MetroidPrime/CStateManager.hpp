@@ -193,6 +193,14 @@ public:
   void PortWarpToWorldPortal();
   void PortWarpToDeath();
   void PortWarpToHeal();
+  // Port: the same spot in the other dimension (light <-> dark), in the area there whose bounds
+  // match the current one's, keeping the player where they stand.
+  void PortWarpToDimension();
+  TAreaId PortDimensionCounterpart(TAreaId aid, const CVector3f& pos);
+  // Places the player once a dimension warp arrives, in place of the area's first spawn point.
+  bool PortPlaceKeptTransform();
+  bool mPortWarpKeepPlace = false;
+  CTransform4f mPortWarpPlace = CTransform4f::Identity();
   // Port: activate a layer of an area (the `LAYER<layer>` input token). A module whose actors live
   // in a non-zero layer - ElitePirate is in all five of its areas - is invisible until its layer
   // runs, so this is what makes such a module verifiable at all.

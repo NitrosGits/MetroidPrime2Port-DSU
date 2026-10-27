@@ -2,6 +2,7 @@
 
 #include "port_warp.h"
 
+#include <atomic>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -107,6 +108,20 @@ void Dock() {
   request.kind = EKind::kDock;
   Queue(request);
 }
+
+void Dimension() {
+  SRequest request;
+  request.kind = EKind::kDimension;
+  Queue(request);
+}
+
+namespace {
+std::atomic<int> sDimensionResult{0};
+}
+
+void NoteDimension(bool found) { sDimensionResult.store(found ? 1 : -1, std::memory_order_relaxed); }
+
+int TakeDimensionResult() { return sDimensionResult.exchange(0, std::memory_order_relaxed); }
 
 void Door() {
   SRequest request;
