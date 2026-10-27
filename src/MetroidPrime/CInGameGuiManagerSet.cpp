@@ -22,6 +22,9 @@
 #include "MetroidPrime/HUD/CSamusHud.hpp"
 #include "MetroidPrime/Player/CPlayerVisor.hpp"
 #include "MetroidPrime/Player/CSamusFaceReflection.hpp"
+#ifdef TARGET_PC
+#include "port_entry.h"
+#endif
 
 static const char* const skMemoFrameNames[] = {"FRME_HudMessage", "FRME_HudMessage2",
                                                "FRME_HudMessage4"};
@@ -66,10 +69,24 @@ bool CInGameGuiManagerSet::CheckLoadComplete(const CStateManager& mgr) {
       mHudFrameLoader =
           rs_new CGuiFrameLoader(gpResourceFactory->GetResourceIdByName(hudFrameName)->id,
                                  *gpResourceFactory, *gpSimplePool);
-      mMemoFrameLoader = rs_new CGuiFrameLoader(
-          gpResourceFactory->GetResourceIdByName(skMemoFrameNames[mgr.GetViewportLayoutIndex()])
-              ->id,
-          *gpResourceFactory, *gpSimplePool);
+      const SObjectTag* memoTag = nullptr;
+#ifdef TARGET_PC
+      // Trilogy's memo frame is RS5_HudMessageUS (RS5_HudMessage as the other region); only
+      // the full-screen layout has one.
+      if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion()) &&
+          mgr.GetViewportLayoutIndex() == 0) {
+        memoTag = gpResourceFactory->GetResourceIdByName("RS5_HudMessageUS");
+        if (memoTag == nullptr) {
+          memoTag = gpResourceFactory->GetResourceIdByName("RS5_HudMessage");
+        }
+      }
+#endif
+      if (memoTag == nullptr) {
+        memoTag = gpResourceFactory->GetResourceIdByName(
+            skMemoFrameNames[mgr.GetViewportLayoutIndex()]);
+      }
+      mMemoFrameLoader =
+          rs_new CGuiFrameLoader(memoTag->id, *gpResourceFactory, *gpSimplePool);
       if (!mgr.IsMultiplayer()) {
         mDarkMaskFrameLoader =
             rs_new CGuiFrameLoader(gpResourceFactory->GetResourceIdByName("FRME_DarkVisorMask")->id,
@@ -78,8 +95,15 @@ bool CInGameGuiManagerSet::CheckLoadComplete(const CStateManager& mgr) {
         mMultiplayerGui = rs_new CMultiplayerGui(mgr);
       }
       if (mgr.GetViewportLayoutIndex() == 0) {
+        const char* helmetName = "FRME_Helmet";
+#ifdef TARGET_PC
+        if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion()) &&
+            gpResourceFactory->GetResourceIdByName("FRME_RS5_Helmet") != nullptr) {
+          helmetName = "FRME_RS5_Helmet";
+        }
+#endif
         mHelmetFrameLoader =
-            rs_new CGuiFrameLoader(gpResourceFactory->GetResourceIdByName("FRME_Helmet")->id,
+            rs_new CGuiFrameLoader(gpResourceFactory->GetResourceIdByName(helmetName)->id,
                                    *gpResourceFactory, *gpSimplePool);
       }
       mLoadPhase = kLP_PreloadDeps;

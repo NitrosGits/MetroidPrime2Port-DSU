@@ -39,6 +39,7 @@
 #include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #ifdef TARGET_PC
+#include "port_entry.h"
 #include "port_overlay.h"
 #include "port_radial.h"
 #endif
@@ -131,6 +132,17 @@ static void StopSound(CSfxHandle& sound) {
 }
 
 const char* CSamusHud::GetHudFrameName(int viewportLayout) {
+#ifdef TARGET_PC
+  // Trilogy ships its own combat HUD frames in RS5.PAK (rs5mp2_p.dol names RS5_SamusHud{1,2,4}Combat).
+  static const char* const sTrilogyCombatHudNames[] = {
+      "RS5_SamusHud1Combat",
+      "RS5_SamusHud2Combat",
+      "RS5_SamusHud4Combat",
+  };
+  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    return sTrilogyCombatHudNames[viewportLayout];
+  }
+#endif
   return sCombatHudNames[viewportLayout];
 }
 

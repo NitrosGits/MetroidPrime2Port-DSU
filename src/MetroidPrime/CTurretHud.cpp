@@ -18,9 +18,17 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Tweaks/CTweakGui.hpp"
 #include "MetroidPrime/Tweaks/CTweakGuiColors.hpp"
+#ifdef TARGET_PC
+#include "port_entry.h"
+#endif
 
 static const char* const skTurretFrameNames[] = {"FRME_TurretHud4Combat", "FRME_TurretHud2Combat",
                                                  "FRME_TurretHud4Combat"};
+#ifdef TARGET_PC
+// Trilogy's own turret HUD frames (RS5.PAK).
+static const char* const skTrilogyTurretFrameNames[] = {
+    "RS5_TurretHud4Combat", "RS5_TurretHud2Combat", "RS5_TurretHud4Combat"};
+#endif
 
 rstl::pair< CVector3f, CVector3f > CTurretHud::GetEnergyBarCoords(float t) {
   const float x = 8.5f * t - 4.25f;
@@ -30,7 +38,15 @@ rstl::pair< CVector3f, CVector3f > CTurretHud::GetEnergyBarCoords(float t) {
 CTurretHud::CTurretHud(const CStateManager& mgr, int playerIndex)
 : mPlayerIndex(playerIndex)
 , mFrameLoader(rs_new CGuiFrameLoader(
-      gpResourceFactory->GetResourceIdByName(skTurretFrameNames[mgr.GetViewportLayoutIndex()])->id,
+      gpResourceFactory
+          ->GetResourceIdByName(
+#ifdef TARGET_PC
+              port::entry::IsTrilogy(port::entry::CurrentDiscVersion())
+                  ? skTrilogyTurretFrameNames[mgr.GetViewportLayoutIndex()]
+                  :
+#endif
+                  skTurretFrameNames[mgr.GetViewportLayoutIndex()])
+          ->id,
       *gpResourceFactory, *gpSimplePool))
 , mFrame(nullptr)
 , mHullEnergy(nullptr) {}
