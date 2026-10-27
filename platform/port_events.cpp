@@ -18,7 +18,7 @@
 #include "port_overlay.h"
 #include "port_pointer.h"
 #include "port_prompts.h"
-#include "port_pipeline_trim.h"
+#include "port_memory_log.h"
 #include "port_savestate.h"
 #include "port_textures.h"
 #include "port_touch.h"
@@ -403,7 +403,7 @@ bool PortPumpEvents() {
   // never returns here is the one the watchdog reports (phase and stack).
   static unsigned sFrame = 0;
   PortWatchdog::Heartbeat(++sFrame);
-  PortPipelineTrim::Tick(SDL_GetTicksNS());
+  PortMemoryLog::Tick(SDL_GetTicksNS());
   static const bool sWatching = SDL_AddEventWatch(ResumeEventWatch, nullptr);
   (void)sWatching;
   PortWarp::ApplyEnvOnce();

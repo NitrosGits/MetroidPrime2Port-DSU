@@ -231,6 +231,14 @@ Video > Quality and Frame rate:
   `MP2_SHOW_MENU_HINT`.
 - `per_pixel_lighting`: Quality > Per-pixel lighting (Aurora lights per pixel); env
   `MP2_PER_PIXEL_LIGHTING`.
+- Pipeline memory (env only, not saved; `platform/port_memory_log.cpp`): `MP2_PIPELINE_LAZY=0|1`
+  builds pipelines when first drawn instead of all at startup (default on for Android, where a
+  low-RAM device - `isLowRamDevice()` or under 4 GiB - is also named in the startup line; off on
+  desktop). With it on, the memory log (Linux and Android) checks system memory every 5 s and evicts idle pipelines when
+  available memory falls below `MP2_PIPELINE_TRIM_MIB` (default 1024: those unused for 3600
+  frames) or `MP2_PIPELINE_TRIM_SEVERE_MIB` (default 512: those unused for 16 frames), at most
+  every 30 s while it stays low. `MP2_PIPELINE_EVICT=<frames>` evicts pipelines unused for that
+  many frames regardless of memory. Console `pipetrim [frames]` forces one eviction.
 - `dynamic_res`, `dynamic_res_target`, `dynamic_res_min`: Quality > Dynamic resolution (Off, Auto,
   User; the mode is `dynamic_res` with `render_scale`: Auto goes up to the window's own scale
   (`render_scale` 0), User up to the "Maximum resolution scale" set), Frame rate target (0 =
