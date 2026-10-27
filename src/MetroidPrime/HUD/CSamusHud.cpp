@@ -2023,8 +2023,14 @@ void CSamusHud::UpdateStateTransition(float dt, const CStateManager& mgr) {
       } else if (mNextState == kHS_Ball) {
         UninitializeFrameGlueMutable();
         mPendingHudFrame = rs_new CGuiFrameLoader(
+#ifdef TARGET_PC
+            // Leaving the ball reloads the combat frame: Trilogy's RS5 one, as at area load.
+            gpResourceFactory->GetResourceIdByName(GetHudFrameName(mgr.GetViewportLayoutIndex()))
+                ->GetId(),
+#else
             gpResourceFactory->GetResourceIdByName(sCombatHudNames[mgr.GetViewportLayoutIndex()])
                 ->GetId(),
+#endif
             *gpResourceFactory, *gpSimplePool);
       }
       mTransitionState = kTS_Loading;
