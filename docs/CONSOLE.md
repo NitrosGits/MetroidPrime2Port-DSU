@@ -101,6 +101,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `give <item> [n] | take` — add an item (capacity and amount), or remove capacity (also `take`)
 - `press <a+b+...> [updates]` — hold pad buttons (0 updates: until the next press/stick)
 - `grapple <id> [d]` — wake a grapple point, stand d (8) units from it facing it, hold L
+- `lock <id> [d] [updates]` — face an actor d (10) units away from the first side with a clear line, rebuild the candidates, hold L (a real lock-on press)
 - `scan <id> [d] [updates]` — scan an actor: d (40) units away, orbit locked, L held (alone: progress)
 - `stick <x> <y> [updates]` — hold the main stick, -127..127
 - `cstick <x> <y> [updates]` — hold the C-stick (Spring Ball in Morph Ball), -127..127
