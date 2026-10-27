@@ -130,7 +130,7 @@ CVector3f CSandworm::FindCoverPoint(CStateManager& mgr) {
 
 // @ fn_56_A8E0
 bool CSandworm::NearlyOnPath(const CVector3f& pos, float radius) const {
-  for (float z = 0.f; z < 5.f; z += 1.f) {
+  for (float z = 0.f; z <= 5.f; z += 1.f) { // 0xA998 cror eq,lt,eq: <= 5.0
     if (x7C4_search.NearlyOnPath(pos + CVector3f(0.f, 0.f, z), radius) ==
         CPathFindSearch::kR_Success) {
       return true;

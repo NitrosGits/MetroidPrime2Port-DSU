@@ -1148,10 +1148,10 @@ void CSandBoss::RotateToPlayerHelper(const CVector3f& target) {
   const float angle = CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY), toTarget);
   if (angle < 0.6108652353286743f || angle > 2.5307273864746094f) {
     BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 1
-  } else if (CVector3f::Dot(GetTransform().GetColumn(kDX), toTarget) <= 0.f) {
-    BodyController()->SetLocomotionType(pas::kLT_Internal11); // 0xB
-  } else {
+  } else if (CVector3f::Dot(GetTransform().GetColumn(kDX), toTarget) > 0.f) {
     BodyController()->SetLocomotionType(pas::kLT_Internal10); // 0xA
+  } else {
+    BodyController()->SetLocomotionType(pas::kLT_Internal11); // 0xB (NaN lands here, as retail)
   }
 }
 
