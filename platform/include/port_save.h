@@ -110,8 +110,11 @@ std::string SharedCardBase(std::string* why = nullptr);
 // save.bin" and mirror. `ExportTrilogy` writes the card's newest slot into the Mii-owned file of a
 // save.bin the Trilogy made (the old one is kept as save.bin.bak). The mirror (`MirrorTrilogy`, needs
 // sharing on) keeps the card and the bin in step: a save made here goes out once written, and in the
-// front end a newer one made in the Trilogy comes in. The slot stream conversion is the seam in
-// port_save_trilogy_payload.cpp; until it exists every export reports that and writes nothing.
+// front end a newer one made in the Trilogy comes in. The slot stream conversion is
+// port_save_trilogy_payload.cpp (G2ME only; a G2MP card file is refused). What the Trilogy cannot hold
+// is lost on the way out: the "initialise powerups" bit, the save index and, in the Wii's 2000-byte
+// part B, the tail of the last world's record; scans, hints, relays, doors, layers and cinematics
+// with no counterpart in the other release are dropped.
 std::string FindEmulatorTrilogy(); // Dolphin's save.bin for this region, or empty
 bool ExportTrilogy(const std::string& saveBin, std::string& message);
 void SetMirrorTrilogy(bool mirror);
