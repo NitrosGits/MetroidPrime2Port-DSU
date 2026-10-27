@@ -41,6 +41,12 @@ public:
   void SetControlTXTRMap(const rstl::vector< rstl::pair< CAssetId, CAssetId > >* textureMap);
   void SetWordWrap(bool wordWrap);
   void SetImageBaseline(bool baseline);
+#ifdef TARGET_PC
+  const CGuiTextProperties& PortProperties() const { return mProperties; }
+  const CColor& PortFontColor() const { return mFontColor; }
+  const CColor& PortOutlineColor() const { return mOutlineColor; }
+  const CColor& PortGeometryColor() const { return mGeometryColor; }
+#endif
   void SetTypeWriteEffectOptions(bool enable, float fadeTime, float rate);
   void Update(float dt);
   void Render() const;

@@ -31,6 +31,13 @@ public:
 
   void SetRenderScale(float scale);
   CGuiTextSupport& TextSupport() { return mTextSupport; } // Guessed name.
+#ifdef TARGET_PC
+  // Port: a pane like this one, `scale` of its size, `lineOffset` of its heights below it, added to
+  // the same area (Trilogy's file select has no panes for a slot's details). Returns its id.
+  TUniqueId PortAddDetailsPane(CStateManager& mgr, float lineOffset, float scale) const;
+  // Moves this details pane with `title` (same lineOffset as PortAddDetailsPane).
+  void PortFollow(const CScriptTextPane& title, float lineOffset);
+#endif
 
 private:
   // Guessed member names.

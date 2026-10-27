@@ -86,8 +86,9 @@ reach Multiplayer in 5 attempts); GC FRME is v4 so the text-pane change does not
 
 Used slot: save via `MP2_SKIP_FRONTEND=1 MP2_NEW_GAME=1` + `STATION@300,A@500+3` (card:
 `USA/Card A/01-R3ME-MetroidPrime2.gci`, region follows the 4th game-code char). Trilogy's file select then shows
-all three panes: "Samus 1" (title), "00:00 elapsed" (play time), "Temple Grounds 00%" (world + completion).
-Nothing seen missing; the other six GC panes do not exist in Trilogy's pak. Loading it reaches Temple Grounds
+only "Samus 1": that earlier "all three panes" was stride-3 indexing writing slot 0's play time and world into
+slots 1-2's title panes. Trilogy's pak has no world/time panes (the six GC ones do not exist), so
+`UpdateSaveSlots` adds a second `CScriptTextPane` (`PortAddDetailsPane`, 0.5 scale, 2 heights below the title, followed each frame by `CScriptGuiFrontEndScreen::Think`) with the play time and the world flattened to one line; "Samus 1" stays where it was (2026-10-28, `fix/filesel-info`). GC (G2ME) file select is unchanged: `/tmp/opencode/filesel/d/gc_filesel_after.png`. Loading it reaches Temple Grounds
 gameplay (world 3bfa3eff, area 0, 6500 frames). The GC USA side-by-side was not done (the GC ISO uses G2ME and
 rejects the R3ME gci). Shots: `/tmp/opencode/trilogy/shots/mp_*.png`, `slot_*.png`.
 Gotcha: launch under Xvfb with `WAYLAND_DISPLAY=` empty, else it hangs at "[aurora::gpu] Requesting adapter".

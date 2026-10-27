@@ -194,6 +194,36 @@ bool CScriptTextPane::CanRenderUnsorted(const CStateManager& mgr) const { return
 
 void CScriptTextPane::SetRenderScale(float scale) { mTargetRenderScale = scale; }
 
+#ifdef TARGET_PC
+TUniqueId CScriptTextPane::PortAddDetailsPane(CStateManager& mgr, float lineOffset,
+                                              float scale) const {
+  const TUniqueId uid = mgr.AllocateUniqueId();
+  const CEntityInfo info(GetCurrentAreaId(), rstl::vector< SConnection >(), GetActive());
+  const CGuiTextSupport& ts = mTextSupport;
+  CScriptTextPane* pane = rs_new CScriptTextPane(
+      uid, rstl::string_l("PortDetails"), info,
+      GetTransform() * CTransform4f::Translate(0.f, 0.f, -lineOffset * mHeight),
+      CVector3f(mPivotOffset.GetX() - mWidth * (1.f - scale) * 0.5f, mPivotOffset.GetY(),
+                mPivotOffset.GetZ() - mHeight * (1.f - scale) * 0.5f),
+      mWidth * scale, mHeight * scale, ts.GetTextBoundingWidth(),
+      ts.GetTextBoundingHeight(), ts.PortFontColor(), ts.PortOutlineColor(), ts.PortGeometryColor(),
+      ts.GetFontID(), kInvalidAssetId, rstl::string_l(""), mBlendMode, mFadeInTime, mFadeOutTime,
+      ts.PortProperties(), rstl::string_l(""), mDepthCompare, mDepthUpdate, mDepthBackwards);
+  if (pane != nullptr) {
+    mgr.AddObject(*pane);
+  }
+  return uid;
+}
+
+void CScriptTextPane::PortFollow(const CScriptTextPane& title, float lineOffset) {
+  // The slot panes are moved and scaled by the screen's script while selected.
+  mRenderScale = title.mRenderScale;
+  mTargetRenderScale = title.mTargetRenderScale;
+  SetTransform(title.GetTransform() *
+               CTransform4f::Translate(0.f, 0.f, -lineOffset * title.mHeight * title.mRenderScale));
+}
+#endif
+
 CEntity* LoadTextPane(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrTextPane sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrTextPane.inc"
