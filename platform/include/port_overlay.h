@@ -153,6 +153,15 @@ bool ConsumeReturnToTitleRequest();
 // Mods, input, video and audio settings are not touched.
 bool OriginalExperience();
 void SetOriginalExperience(bool enabled);
+// Unlocks that finishing the game gives (F1 > Game > Unlocks), applied without writing the save, so
+// turning one off locks it again. UnlockHardMode (`MP2_UNLOCK_HARD_MODE`) offers the difficulty
+// choice on an empty file slot as after NormalModeCompleted; UnlockGalleries
+// (`MP2_UNLOCK_GALLERIES`) makes CSlideShow::GetGalleriesUnlocked() report every gallery. Both read
+// false while Original experience is on.
+bool UnlockHardMode();
+void SetUnlockHardMode(bool enabled);
+bool UnlockGalleries();
+void SetUnlockGalleries(bool enabled);
 // Hint delay in minutes (`MP2_HINT_DELAY`, 0 = the game's own timing): HintDelaySeconds() caps the
 // wait before a hint first shows (CHintOptions::Update), 0 when off. RequestShowHint() (F1 button,
 // `hintshow`) asks the next CHintOptions::Update to show the hint the game would show next;

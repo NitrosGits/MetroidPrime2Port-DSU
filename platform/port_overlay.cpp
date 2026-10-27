@@ -71,6 +71,8 @@ int sPromptGlyphs = 0;
 bool sSwapVisors = false;
 bool sIgtTimer = false;
 bool sOriginalExperience = false;
+bool sUnlockHardMode = false;
+bool sUnlockGalleries = false;
 int sHintDelay = 0;
 bool sSpringBall = false;
 bool sSpringFlick = false;
@@ -1779,6 +1781,28 @@ bool OriginalExperience() {
 void SetOriginalExperience(bool enabled) {
   ReadEnv();
   sOriginalExperience = enabled;
+  Persist();
+}
+
+bool UnlockHardMode() {
+  ReadEnv();
+  return EnvBool("MP2_UNLOCK_HARD_MODE", sUnlockHardMode) && !OriginalExperience();
+}
+
+void SetUnlockHardMode(bool enabled) {
+  ReadEnv();
+  sUnlockHardMode = enabled;
+  Persist();
+}
+
+bool UnlockGalleries() {
+  ReadEnv();
+  return EnvBool("MP2_UNLOCK_GALLERIES", sUnlockGalleries) && !OriginalExperience();
+}
+
+void SetUnlockGalleries(bool enabled) {
+  ReadEnv();
+  sUnlockGalleries = enabled;
   Persist();
 }
 

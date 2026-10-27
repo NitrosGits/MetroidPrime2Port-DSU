@@ -95,6 +95,28 @@ void DrawGameSection() {
   }
 }
 
+// MP1's Game > Unlocks section: what finishing the game unlocks, applied without writing the save.
+// Only the unlocks Echoes has: its Fusion Suit and the Remastered galleries are Prime 1's.
+static void DrawUnlocksSection() {
+  ImGui::SeparatorText("Unlocks");
+  const bool locked = PortOverlay::OriginalExperience();
+  ImGui::BeginDisabled(locked);
+  bool hardMode = sUnlockHardMode;
+  if (ImGui::Checkbox("Hard mode", &hardMode)) {
+    PortOverlay::SetUnlockHardMode(hardMode);
+  }
+  ImGui::SetItemTooltip("Offered when starting a file, as after finishing the game.");
+  ImGui::SameLine();
+  bool galleries = sUnlockGalleries;
+  if (ImGui::Checkbox("Image galleries", &galleries)) {
+    PortOverlay::SetUnlockGalleries(galleries);
+  }
+  ImGui::SetItemTooltip("All of them.");
+  ImGui::EndDisabled();
+  ImGui::TextDisabled("What finishing the game unlocks. Not written into the save.");
+  ItemHelp("Turning an option off locks it again.");
+}
+
 void DrawCutscenesSection() {
   ImGui::SeparatorText("Cutscenes");
   Changed(ImGui::Checkbox("Original experience", &sOriginalExperience));
@@ -179,6 +201,7 @@ void DrawCutscenesSection() {
   ImGui::EndDisabled();
   ItemHelp("Shows the hint the game would show next, now: the one on screen again, or the one "
            "due soonest. Needs the in-game hint system on.");
+  DrawUnlocksSection();
 }
 
 // The game's own volumes, the same as the pause menu's two sliders.

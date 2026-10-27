@@ -29,6 +29,8 @@ extern int sPromptGlyphs;
 extern bool sSwapVisors;
 extern bool sIgtTimer;
 extern bool sOriginalExperience;
+extern bool sUnlockHardMode;
+extern bool sUnlockGalleries;
 extern int sHintDelay;
 extern bool sSpringBall;
 extern bool sSpringFlick;

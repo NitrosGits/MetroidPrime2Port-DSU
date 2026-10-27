@@ -177,6 +177,8 @@ bool sGameOptionsRestored = false;
 const SettingKey kSettingKeys[] = {
     BoolKey< &sOriginalExperience >("original_experience"),
     BoolKey< &sSkipCinematics >("skip_cinematics"),
+    BoolKey< &sUnlockHardMode >("unlock_hard_mode"),
+    BoolKey< &sUnlockGalleries >("unlock_galleries"),
     IntKey< &sBootLogos, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off >(
         "boot_logos", "0", "2"),
     IntKey< &sWorldNameCard, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off >(
