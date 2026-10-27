@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Building or packaging the port
+    url: https://github.com/Odrannnn/MetroidPrime2Port/blob/port/docs/RUNNING.md
+    about: Build steps, settings, environment variables and testing notes.
