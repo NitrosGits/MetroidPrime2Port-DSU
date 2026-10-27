@@ -35,7 +35,7 @@ def cmakeArguments = [
     "-DAURORA_NOD_LINKAGE=static",
 ]
 
-["DAWN_PREBUILT": "dawn_prebuilt", "SDL": "sdl"].each { name, directory ->
+["DAWN_PREBUILT": "dawn_prebuilt", "SDL": "sdl", "OPENSSL": "openssl"].each { name, directory ->
     def source = new File(dependencyCache, directory)
     if (source.isDirectory()) {
         cmakeArguments.add("-DFETCHCONTENT_SOURCE_DIR_${name}=${source}")
@@ -251,6 +251,9 @@ tasks.register("syncLicenseNotices", Sync) {
     from(layout.projectDirectory.dir(".cxx")) {
         include "**/_deps/*-src/LICENSE*"
         include "**/_deps/*-src/COPYING*"
+        // A copy cmake/AndroidOpenSSL.cmake makes, because the OpenSSL source may come from
+        // the dependency cache rather than _deps.
+        include "**/_deps/openssl-license/LICENSE*"
         // A FileTree carries only files, so the copy spec never sees a directory: naming one
         // in eachFile is what produced an empty path. The notice goes to the root of the asset
         // dir, because the same notice appears under every build variant and nested paths

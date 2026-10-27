@@ -9,6 +9,8 @@
 #include "port_overlay.h"
 #include "port_savestate.h"
 #include "port_suit_colours.h"
+#include "port_build_info.h"
+#include "port_update_check.h"
 #include "port_video.h"
 
 #include <SDL3/SDL.h>
@@ -822,6 +824,83 @@ void DrawMenuHintToast() {
   }
   ImGui::End();
   ImGui::PopStyleVar();
+}
+
+// Once per launch, for 12 s: a newer release than this build is out (MP1's DrawUpdateToast).
+// Taps arrive on Android's UI thread (TouchControlsView), so the rect is shared under a lock and
+// a hit only sets a flag; the page opens on the game thread.
+namespace {
+bool sUpdateToastDone = false;
+std::mutex sUpdateToastMutex;
+bool sUpdateToastShowing = false;
+ImVec4 sUpdateToastRect; // last drawn: x0, y0, x1, y1 as fractions of the window
+std::atomic< bool > sUpdateToastTapped{false};
+
+void SetUpdateToastShowing(bool showing, const ImVec4& rect = ImVec4()) {
+  std::lock_guard lock(sUpdateToastMutex);
+  sUpdateToastShowing = showing;
+  sUpdateToastRect = rect;
+}
+
+void OpenUpdateToastRelease() {
+  SDL_OpenURL(PortUpdateCheck::Latest().url.c_str());
+  sUpdateToastDone = true;
+  SetUpdateToastShowing(false);
+}
+} // namespace
+
+void DrawUpdateToast() {
+  static double sShownAt = -1.0;
+  SetUpdateToastShowing(false);
+  if (sUpdateToastDone || PortUpdateCheck::Status() != PortUpdateCheck::kStatus_Available) {
+    return;
+  }
+  if (sUpdateToastTapped.exchange(false)) {
+    OpenUpdateToastRelease();
+    return;
+  }
+  const double now = ImGui::GetTime();
+  if (sShownAt < 0.0) {
+    sShownAt = now;
+  }
+  if (now - sShownAt > 12.0) {
+    sUpdateToastDone = true;
+    return;
+  }
+  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  PlaceTopToast(viewport);
+  ImGui::SetNextWindowSize(ImVec2(std::min(viewport->Size.x - 32.f, 560.f), 0.f));
+  ImGui::SetNextWindowBgAlpha(0.8f);
+  if (ImGui::Begin("##update-toast", nullptr,
+                   ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav |
+                       ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoSavedSettings)) {
+    ImGui::TextWrapped("Version %s is out (this is %s). Click or tap here to open its release page.",
+                       PortUpdateCheck::Latest().version.c_str(), MP_BUILD_VERSION);
+    TopToastPlaced(viewport);
+    const ImVec2 pos = ImGui::GetWindowPos();
+    const ImVec2 size = ImGui::GetWindowSize();
+    if (viewport->Size.x > 0.f && viewport->Size.y > 0.f) {
+      SetUpdateToastShowing(true, ImVec4((pos.x - viewport->Pos.x) / viewport->Size.x,
+                                         (pos.y - viewport->Pos.y) / viewport->Size.y,
+                                         (pos.x + size.x - viewport->Pos.x) / viewport->Size.x,
+                                         (pos.y + size.y - viewport->Pos.y) / viewport->Size.y));
+    }
+    // A mouse click; taps go through PortDebug::TapUpdateToast.
+    if (ImGui::IsWindowHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+      OpenUpdateToastRelease();
+    }
+  }
+  ImGui::End();
+}
+
+bool TapUpdateToast(float x, float y) {
+  std::lock_guard lock(sUpdateToastMutex);
+  const ImVec4& r = sUpdateToastRect;
+  if (!sUpdateToastShowing || x < r.x || x > r.z || y < r.y || y > r.w) {
+    return false;
+  }
+  sUpdateToastTapped.store(true);
+  return true;
 }
 
 } // namespace PortDebug

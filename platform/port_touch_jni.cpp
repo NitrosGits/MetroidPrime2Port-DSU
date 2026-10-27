@@ -288,8 +288,8 @@ Java_org_metroidprime2_port_TouchControlsView_nativePointerMenuActive(JNIEnv*, j
 }
 
 JNIEXPORT jboolean JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeTapUpdateToast(
-    JNIEnv*, jclass, jfloat, jfloat) {
-  return JNI_FALSE;
+    JNIEnv*, jclass, jfloat x, jfloat y) {
+  return PortDebug::TapUpdateToast(x, y) ? JNI_TRUE : JNI_FALSE;
 }
 
 // Every overlay control's press and release, for touch: bindings in controls.toml

@@ -413,6 +413,7 @@ void DrawUI() {
   DrawMenuHintToast();
   DrawIgtTimer();
   DrawShaderCompilationToast();
+  DrawUpdateToast();
   DrawPhotoUI();
   if (!sVisible) {
     sTouchScroll = TouchScroll{};

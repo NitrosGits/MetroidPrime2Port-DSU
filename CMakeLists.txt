@@ -454,6 +454,37 @@ endif()
 # also keeps tools/probe_sources.sh honest - it covers mp_platform and
 # mp_port_entry, which compile against Aurora's headers alone, and this file is
 # syntax-checked by the full build instead.
+# OpenSSL gives the HTTPS client (platform/port_ws.cpp) its TLS, for the update check. On the desktop
+# it is optional: without it the port still builds and the check fails with a clear error. On Android
+# it is built from source (cmake/AndroidOpenSSL.cmake), because the NDK has no TLS library and a
+# find_package that quietly finds nothing is how an APK ends up unable to reach GitHub. Leaving it
+# out there has to be asked for. Mirrors the Prime 1 port's CMakeLists.txt.
+option(MP_ALLOW_NO_TLS "Android: build without OpenSSL, so the update check's https:// is refused" OFF)
+if(ANDROID)
+    if(NOT MP_ALLOW_NO_TLS)
+        include(cmake/AndroidOpenSSL.cmake)
+    endif()
+else()
+    find_package(OpenSSL)
+endif()
+function(mp_websocket_tls target)
+    if(OpenSSL_FOUND)
+        target_compile_definitions(${target} PRIVATE MP_HAVE_OPENSSL)
+        target_link_libraries(${target} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+        if(WIN32)
+            target_link_libraries(${target} PRIVATE crypt32)
+        endif()
+        if(MP_OPENSSL_BUILD_TARGET)
+            add_dependencies(${target} ${MP_OPENSSL_BUILD_TARGET})
+        endif()
+    endif()
+endfunction()
+if(OpenSSL_FOUND)
+    message(STATUS "OpenSSL ${OPENSSL_VERSION} found: https:// enabled")
+else()
+    message(STATUS "OpenSSL not found: https:// disabled")
+endif()
+
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_controls.cpp
         platform/port_save.cpp platform/port_savestate.cpp platform/port_savestate_room.cpp platform/port_savestate_format.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
@@ -465,6 +496,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_gyro_motion.cpp
         platform/port_dynamic_res.cpp platform/port_video.cpp platform/port_gpu_driver.cpp
         platform/port_data_folder.cpp
+        platform/port_json.cpp platform/port_ws.cpp platform/port_update_check.cpp
         platform/debug_ui/audio.cpp platform/debug_ui/card_data.cpp platform/debug_ui/cheats.cpp platform/debug_ui/controls.cpp platform/debug_ui/debug.cpp
         platform/debug_ui/game_sections.cpp platform/debug_ui/mods.cpp platform/debug_ui/performance.cpp platform/debug_ui/randomizer.cpp
         platform/debug_ui/savestates.cpp platform/debug_ui/search.cpp platform/debug_ui/settings.cpp
@@ -493,6 +525,7 @@ if(AURORA_SDL3_TARGET)
         target_compile_definitions(mp_port_audio PRIVATE MP_PORT_COVERAGE=1)
     endif()
     mp_signed_char(mp_port_audio)
+    mp_websocket_tls(mp_port_audio)
     # aurora::core carries ImGui's include directory, which the F1 overlay builds against.
     target_link_libraries(mp_port_audio PRIVATE ${AURORA_SDL3_TARGET} aurora::core)
     # platform/main.cpp turns fd 1 and fd 2 into logcat lines and resolves its directories
@@ -710,6 +743,13 @@ target_include_directories(metroid_prime2_port PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_compile_definitions(metroid_prime2_port PRIVATE TARGET_PC AURORA)
 mp_signed_char(metroid_prime2_port)
+mp_websocket_tls(metroid_prime2_port)
+if(ANDROID AND OpenSSL_FOUND)
+    # The OpenSSL linked in is private to the game library. Exporting its symbols would let them
+    # interpose on, or be interposed by, another copy in the process. Only its archives are named:
+    # excluding ALL would also hide the JNI entry points in the static SDL archive.
+    target_link_options(metroid_prime2_port PRIVATE "-Wl,--exclude-libs,libssl.a:libcrypto.a")
+endif()
 
 # A coverage build links libgcov: the counters' writer, and __gcov_dump() for the flush hook.
 if(MP_PORT_COVERAGE)
