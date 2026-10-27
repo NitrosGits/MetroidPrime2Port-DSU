@@ -114,6 +114,13 @@ extern "C" void InvokeCMain(int argc, char** argv, COsContext* context, void* un
 namespace {
 
 const char* kAppName = "Metroid Prime 2: Echoes";
+// The folder under the user's data directory. Windows forbids ':' in a name (it reads as an NTFS
+// stream), so SDL_GetPrefPath(nullptr, kAppName) fails there and Aurora's null cachePath crashed.
+#if defined(_WIN32)
+const char* kAppFolder = "Metroid Prime 2 Echoes";
+#else
+const char* kAppFolder = kAppName;
+#endif
 
 std::string ExecutableDir(const char* argv0) {
   if (argv0 == nullptr || argv0[0] == '\0') {
@@ -205,7 +212,7 @@ std::string DesktopUserFolder() {
     dir += '/';
   }
   // SDL's own name for the folder: the app name, verbatim, with no organisation above it.
-  dir += kAppName;
+  dir += kAppFolder;
   dir += '/';
   std::error_code error;
   std::filesystem::create_directories(dir, error);
@@ -957,6 +964,7 @@ int main(int argc, char** argv) {
   appPaths = ResolveAndroidPaths();
 #else
   appPaths.user = DesktopUserFolder();
+  appPaths.cache = appPaths.user;  // Aurora's own fallback is this folder too, but can come back null
   if (!appPaths.user.empty()) {
     std::printf("metroid_prime2_port: user folder %s\n", appPaths.user.c_str());
   } else {
