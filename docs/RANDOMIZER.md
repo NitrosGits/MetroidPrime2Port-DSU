@@ -5,8 +5,10 @@
 The port carries no Randovania code or data: no patch-data importer, no location table taken from
 its logic database. Seeds use the port's own format (`"locations"` keyed `WORLD:AREA:ENTITY`, below)
 and come from the port's own generator; any logic the generator grows is written here, from the
-disc. An Archipelago client stays possible on the port side, but its logic cannot come from
-Randovania either. (Superseded the same day's "Randovania decides, the port applies" plan; its
+disc. Logic may also live outside the port: an Archipelago apworld (a separate program, licensed
+on its own terms, GPL if it derives from Randovania's database) generates the placements and hands
+the port `WORLD:AREA:ENTITY` keys through slot data; the port is then only a client (checks out,
+items in) and stays MIT. (Superseded the same day's "Randovania decides, the port applies" plan; its
 importer and table were removed in the commit that records this.)
 
 Still true from that work: pickups **can** be enumerated statically from the disc, so the dump sweep
@@ -29,7 +31,7 @@ is no longer the only source of locations. Plan, each step checkable on its own:
    4 hops), so `Touch` suppresses MEMO display while it sends `Arrived` and shows
    "<ItemName> acquired!" itself. A MEMO behind a timer would still show vanilla text. Scans are
    out of scope: vanilla pickups carry no scan.
-4. **Logic** - the port's own, so seeds can be beatable.
+4. **Logic** - from an apworld (port as AP client), or the port's own for offline beatable seeds.
 5. **Non-pickup grants** - items a script grants (the energy controllers' translators, ...).
 6. **Save binding and the F1 page** - seed hash in the save, spoiler. The F1 Randomizer page is
    hidden (`platform/debug_ui/search.cpp`) until then.
