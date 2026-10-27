@@ -516,7 +516,7 @@ void CEmperorIngStage1::UpdateTentacleMotion(int index, float dt, CStateManager&
     }
   }
   float hitTime = joint.mDamageHitTime + dt;
-  if (hitTime >= CPatterned::skDamageHitTime) {
+  if (!(hitTime < CPatterned::skDamageHitTime)) { // 0x2678 fcmpo; bge (taken on NaN)
     hitTime = CPatterned::skDamageHitTime;
   }
   joint.mDamageHitTime = hitTime;
@@ -3060,12 +3060,12 @@ void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) {
 void CEmperorIngStage1::ChooseRandomTentacleCount(CStateManager& mgr, float dt) {
   const float roll = mgr.Random()->Range(0.f, 100.f);
   if (x7c0_ == 1) {
-    x7c4_ = roll >= 50.f ? 2 : 1;
+    x7c4_ = !(roll < 50.f) ? 2 : 1; // 0x49CC fcmpo; bge
   } else if (x7c0_ >= 1) {
     // The asm's `bge` at 0x498C: the mode is 2 or more here, because 1 was taken above.
     x7c4_ = 2;
   } else if (x7c0_ >= 0) {
-    x7c4_ = roll >= 50.f ? 1 : 0;
+    x7c4_ = !(roll < 50.f) ? 1 : 0; // 0x49A8 fcmpo; bge
   } else {
     x7c4_ = 2;
   }
