@@ -512,6 +512,12 @@ if(MP_SDK_HEADERS_ONLY)
     add_test(NAME port_rando_world_tests COMMAND port_rando_world_tests)
     set_tests_properties(port_rando_world_tests PROPERTIES TIMEOUT 30 LABELS port)
 
+    add_executable(port_rando_logic_tests tests/port_rando_logic.cpp platform/port_rando_logic.cpp
+        platform/port_rando_world.cpp)
+    target_include_directories(port_rando_logic_tests PRIVATE platform/include)
+    add_test(NAME port_rando_logic_tests COMMAND port_rando_logic_tests)
+    set_tests_properties(port_rando_logic_tests PROPERTIES TIMEOUT 30 LABELS port)
+
     add_executable(port_entry_tests tests/port_entry_tests.cpp platform/entry.cpp)
     target_include_directories(port_entry_tests PRIVATE platform/include extern/aurora/include)
     target_compile_definitions(port_entry_tests PRIVATE TARGET_PC)
@@ -571,7 +577,7 @@ endif()
 
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_controls.cpp
-        platform/port_save.cpp platform/port_save_convert.cpp platform/port_save_trilogy.cpp platform/port_save_trilogy_payload.cpp platform/port_savestate.cpp platform/port_savestate_room.cpp platform/port_savestate_format.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_rando_models.cpp platform/port_rando_world.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
+        platform/port_save.cpp platform/port_save_convert.cpp platform/port_save_trilogy.cpp platform/port_save_trilogy_payload.cpp platform/port_savestate.cpp platform/port_savestate_room.cpp platform/port_savestate_format.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_rando_models.cpp platform/port_rando_world.cpp platform/port_rando_logic.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
         platform/port_crash.cpp platform/port_watchdog.cpp platform/port_memory_log.cpp platform/port_storage_report.cpp
         platform/port_pointer.cpp platform/port_pointer_menu.cpp
         platform/port_events.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp

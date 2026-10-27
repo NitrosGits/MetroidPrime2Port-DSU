@@ -75,6 +75,30 @@ is no longer the only source of locations. Plan, each step checkable on its own:
      traced: 2 translator checks and roughly half of the LOCK/ULCK senders sit on layers that are
      off by default.
    - Temporary locks are fight and cutscene locks, mostly harmless to logic but not proven so.
+
+   **Hand rules (format).** One file per world, `tools/rando_rules/<MLVL internal name>.rules`,
+   compiled by `tools/rando_rules.py` into `platform/include/port_rando_logic.inc`:
+
+   ```
+   area 0a_temple_hall                       # MLVL internal area name; one block per area
+     dock0 - dock1: any                      # '-' both ways, '>' one way
+     dock1 > loc0x00020034: SpaceJumpBoots | (MorphBall & MorphBallBombs)
+     @ledge - dock2: GrappleBeam             # @name: an in-room node
+     tel0x0C06013A - dock0: any              # a teleporter (editor id)
+     covers 0x00020041 0x00020042            # obstacles these rules account for
+     ignore 0x00020050: decorative webbing   # obstacles that block nothing, with a reason
+   ```
+
+   - Requirements: `any`, `never`, item names as spelled in `port_randomizer.cpp`'s table,
+     `Name>=N` for counts, `&`, `|`, parentheses. `Missile` means at least one Missile.
+   - Every obstacle of the area (`--dump-obstacles`) must be in a `covers` or an `ignore` line,
+     and every `dockN`/`locX`/`telX` must exist in the area, or the compiler fails.
+   - Fail closed: an area with no block connects nothing, so its docks are dead ends.
+   - Dock edges come from `PORT_RANDO_DOCK`; the evaluator adds their locks: both sides' beam
+     and shield, the translator, and `never` for a Permanent script lock on the side you leave
+     from. Temporary locks are ignored. Rules only describe movement inside a room.
+   - When unsure whether a route works without an item, require the item. A rule that is too
+     strict only shrinks the seed space; one that is too loose makes unbeatable seeds.
 5. **Non-pickup grants** - items a script grants (the energy controllers' translators, ...).
 6. **Save binding and the F1 page** - seed hash in the save, spoiler. The F1 Randomizer page is
    hidden (`platform/debug_ui/search.cpp`) until then.
