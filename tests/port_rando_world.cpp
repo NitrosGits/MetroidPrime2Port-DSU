@@ -4,6 +4,7 @@
 #include "port_rando_world.h"
 
 #include <cstdio>
+#include <cstring>
 
 namespace {
 
@@ -109,6 +110,37 @@ int main() {
   Check(perItem[44] == 49, "49 missile locations", perItem[44]);
   Check(perItem[18] == 1, "bombs from the Bomb Guardian's generated drop", perItem[18]);
   Check(FindLocation(0x3BFA3EFFu, 0x75318D5Eu, 0x001600CBu) >= 0, "Windchamber Gateway tank", 0);
+
+  // Obstacles: totals by kind, then two known rows.
+  Check(ObstacleCount() == 708, "708 obstacles", ObstacleCount());
+  int perKind[9] = {};
+  for (int i = 0; i < ObstacleCount(); ++i) {
+    const Obstacle* o = ObstacleAt(i);
+    Check(o->area >= 0 && o->area < AreaCount(), "obstacle area in range", i);
+    Check(o->needs < (1u << kObstacleNeedBits), "obstacle needs known bits", i);
+    perKind[static_cast<int>(o->kind)]++;
+  }
+  const int kKinds[9] = {122, 15, 32, 23, 46, 197, 29, 60, 184};
+  for (int k = 0; k < 9; ++k)
+    Check(perKind[k] == kKinds[k], "obstacles of kind", k);
+  auto obstacleOf = [](const char* area, uint32_t id) -> const Obstacle* {
+    for (int i = 0; i < ObstacleCount(); ++i)
+      if (ObstacleAt(i)->editorId == id && std::strcmp(AreaAt(ObstacleAt(i)->area)->name, area) == 0)
+        return ObstacleAt(i);
+    return nullptr;
+  };
+  // Agon 0i_sand_hall_dark: the PLAT is hurt by ball weapons and screw, its "Kill webbing" DTRG by
+  // light (incl. Sunburst) and screw; the DTRG's set is the requirement.
+  const Obstacle* o = obstacleOf("0i_sand_hall_dark", 0x003700E2u);
+  Check(o && o->kind == ObstacleKind::TriggeredBarrier && o->needs == (kNeedLightBeam | kNeedScrewAttack) &&
+            o->layerDefault && o->nearestDock == 1,
+        "Dark Webbing needs Light or Screw", 0);
+  o = obstacleOf("0r_temple_hall", 0x00160097u);
+  Check(o && o->kind == ObstacleKind::GrapplePoint && o->needs == kNeedGrappleBeam && o->layerDefault,
+        "Temple Grounds 0r_temple_hall grapple point", 0);
+  Check(ObstacleNeedItem(kNeedScrewAttack) == 27 && ObstacleNeedItem(kNeedMissile) == 44 &&
+            ObstacleNeedItem(kNeedLightBeam | kNeedScrewAttack) == -1,
+        "need bits map to items", 0);
 
   if (g_failures == 0)
     std::puts("port_rando_world_tests: ok");

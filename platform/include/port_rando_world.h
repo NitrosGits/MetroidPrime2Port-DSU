@@ -61,6 +61,53 @@ struct Location {
   const char* itemName;
 };
 
+// Things inside a room that need an item (tools/rando_world.py, classify_obstacles). Only the
+// requirement is read from the disc; which of the area's docks and locations an obstacle cuts off
+// is not, and is left to hand-written rules.
+enum class ObstacleKind {
+  Barrier,          // a PLAT only some player weapons hurt
+  TriggeredBarrier, // a PLAT removed when its DTRG (or PLAT) driver dies; needs what hurts the driver
+  GrapplePoint,
+  Spinner,
+  CannonBall,
+  BallTrigger,
+  SpiderTrack,      // all of an area's BALW (or BALS) in one row, at their centroid; editorId 0
+  Portal,           // PRTT: needs not derived (0)
+  SafeZoneCrystal,  // SFZC: needs not derived (0)
+};
+
+// Obstacle::needs bits; any one set bit is enough. Names are PortRandomizer's ItemName spellings.
+enum ObstacleNeed : uint32_t {
+  kNeedDarkBeam = 1u << 0,
+  kNeedLightBeam = 1u << 1,
+  kNeedAnnihilatorBeam = 1u << 2,
+  kNeedMissile = 1u << 3,
+  kNeedSuperMissile = 1u << 4,
+  kNeedMorphBallBombs = 1u << 5,
+  kNeedPowerbomb = 1u << 6,
+  kNeedBoostBall = 1u << 7,
+  kNeedScrewAttack = 1u << 8,
+  kNeedGrappleBeam = 1u << 9,
+  kNeedSpiderBall = 1u << 10,
+  kNeedMorphBall = 1u << 11,
+};
+constexpr int kObstacleNeedBits = 12;
+
+struct Obstacle {
+  int area;
+  int layer;
+  bool layerDefault; // the layer is on by default
+  uint32_t editorId; // 0 for a SpiderTrack row
+  ObstacleKind kind;
+  uint32_t needs;    // ObstacleNeed bits, any one of; 0 = none derived
+  float x, y, z;     // world position
+  int nearestDock;   // dock number in the area, -1 if none
+  float dockDistance;
+  uint32_t nearestLocation; // editor id of the nearest location in the area, 0xFFFFFFFF if none
+  float locationDistance;
+  const char* name;  // INAM; a TriggeredBarrier's is "<plat> <= <drivers>"
+};
+
 int WorldCount();
 int AreaCount();
 int DockCount();
@@ -72,6 +119,10 @@ const Dock* DockAt(int index);
 const DockLock* DockLockAt(int index); // same index as DockAt
 const Teleporter* TeleporterAt(int index);
 const Location* LocationAt(int index);
+int ObstacleCount();
+const Obstacle* ObstacleAt(int index);
+// The vanilla EItemType that grants one ObstacleNeed bit, else -1.
+int ObstacleNeedItem(uint32_t need);
 
 // Index of the area with this MLVL/MREA pair, else -1.
 int FindArea(uint32_t mlvl, uint32_t mrea);

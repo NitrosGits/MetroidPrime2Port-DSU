@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the randomizer's world graph and location list from the user's own disc.
 
-usage: tools/rando_world.py [--write]
+usage: tools/rando_world.py [--write] [--dump-obstacles]
 
 Walks the single-player worlds (the MLVLs in Metroid1.pak..Metroid5.pak; Metroid6.pak holds the
 multiplayer arenas) and writes platform/include/port_rando_world.inc:
@@ -36,7 +36,29 @@ multiplayer arenas) and writes platform/include/port_rando_world.inc:
       - scriptLock: LOCK sent to the door (or isLocked at load): Temporary when something in the
         area sends ULCK, else Permanent (isLocked counts as Permanent). scriptLockDefaultLayer:
         a LOCK sender (or the isLocked door) is on a layer that is on by default.
-    Ing webs, grapple points and story layer switches are not wired to docks and are not read.
+  * obstacles - in-room things that need an item, with their position, the nearest dock (by the
+    DOCK object's position, which is the MLVL portal's centre) and the nearest location in the area
+    (classify_obstacles). Only the requirement is derived; which routes an obstacle cuts is not,
+    and is left to hand rules (--dump-obstacles prints each area's docks, locations and obstacles).
+      - Barrier: a PLAT whose own vulnerability is restricted: power does not hurt it and some
+        player weapon does. Needs the weapons that hurt it.
+      - TriggeredBarrier: a PLAT that a DTRG (or another PLAT) removes on DEAD (DECR fades a
+        platform out, DCTV deactivates it; ACTV, STRT and the rest do not count). Needs what hurts its drivers, not the PLAT's own set
+        (Dark Webbing: bomb/boost/pb/screw on the PLAT, light/screw on its "Kill webbing" DTRG).
+        A driver power hurts makes the PLAT free (the Luminoth webs' acid sacs): not listed.
+      - device types, one row each: GRAP GrapplePoint (GrappleBeam), SPIN Spinner (BoostBall),
+        CANB CannonBall and BALT BallTrigger (MorphBall); one row per area for BALW/BALS spider
+        tracks (SpiderBall), at their centroid; PRTT PortalTransition and SFZC SafeZoneCrystal with
+        no requirement (what opens a portal or charges a crystal is not derived).
+    Weapons fold as in WEAPONS (charged and combo shots count as their beam) and map to the item
+    that grants them (NEEDS, ItemName spellings): dark DarkBeam, light LightBeam, annih
+    AnnihilatorBeam, missile Missile (44: missile capacity; the launcher, 73, is no location),
+    superMissile SuperMissile, bomb MorphBallBombs, pb Powerbomb (43), boost BoostBall, screw
+    ScrewAttack. MorphBall is implied by the ball weapons and not added.
+    Not listed (OBSTACLE_SKIP, by INAM): darkbuttons (door hardware next to docks), Bomb Slot
+    Rings (puzzle parts), Ing cocoons (enemies), crates; and every ACTR (not solid; the door
+    shield actors are dock locks).
+    Story layer switches are not read.
 
 The rule is the disc's, the exclusions are judgement; each one says why.
 """
@@ -95,6 +117,24 @@ TRANSLATORS = {0x61: "Violet", 0x62: "Amber", 0x63: "Emerald", 0x64: "Cobalt"}
 SHIELDS = {("missile",): "Missile", ("superMissile",): "SuperMissile", ("pb",): "PowerBomb"}
 # Measured on G2ME01 (2026-10-27): docked doors, shields, translator gates per world, in pak order.
 EXPECTED_LOCKS = [(111, 27, 7), (20, 0, 3), (162, 31, 2), (152, 27, 2), (124, 12, 2)]
+
+XFRM, INAM = 0x5846524D, 0x494E414D  # EditorProperties transform (position first), name
+# Obstacle requirement bits, in the order of PortRandoWorld::ObstacleNeed; names are ItemName's.
+NEEDS = ["DarkBeam", "LightBeam", "AnnihilatorBeam", "Missile", "SuperMissile", "MorphBallBombs",
+         "Powerbomb", "BoostBall", "ScrewAttack", "GrappleBeam", "SpiderBall", "MorphBall"]
+WEAPON_NEED = {"dark": "DarkBeam", "light": "LightBeam", "annih": "AnnihilatorBeam", "missile": "Missile",
+               "superMissile": "SuperMissile", "bomb": "MorphBallBombs", "pb": "Powerbomb",
+               "boost": "BoostBall", "screw": "ScrewAttack"}
+DEVICES = {"GRAP": ("GrapplePoint", ("GrappleBeam",)), "SPIN": ("Spinner", ("BoostBall",)),
+           "CANB": ("CannonBall", ("MorphBall",)), "BALT": ("BallTrigger", ("MorphBall",)),
+           "PRTT": ("Portal", ()), "SFZC": ("SafeZoneCrystal", ())}
+KILL_MSGS = {"DECR", "DCTV"}  # messages that remove a platform; ACTV (spawn a broken piece) does not
+TRACKS = {"BALW", "BALS"}  # spider ball waypoints / attraction surfaces: one row per area
+OBSTACLE_SKIP = [("door hardware", re.compile(r"darkbutton", re.I)),
+                 ("puzzle part", re.compile(r"Bomb Slot Ring", re.I)),
+                 ("enemy", re.compile(r"Cocoon", re.I)), ("crate", re.compile(r"Crate", re.I))]
+# Measured on G2ME01 (2026-10-27): obstacle rows per world, in pak order.
+EXPECTED_OBSTACLES = [109, 4, 227, 188, 180]
 
 
 def sub_props(raw):
@@ -223,6 +263,54 @@ def classify_locks(where, ents, layer_on, dock_number):
     return locks, gates
 
 
+def classify_obstacles(ents, layer_on, skipped):
+    """[(layer, editor id, kind, needs, position, name)] for one area; ents as classify_locks."""
+    by = {e[2]: e for e in ents}
+    drivers = {}
+    for layer, t4, eid, conns, props in ents:
+        if t4 in ("DTRG", "PLAT"):
+            for state, msg, target in conns:
+                if state == "DEAD" and msg in KILL_MSGS and target != eid and target in by and by[target][1] == "PLAT":
+                    drivers.setdefault(target, set()).add(eid)
+    name = lambda props: editor(props, INAM).rstrip(b"\0").decode("latin1")  # noqa: E731
+    pos = lambda props: struct.unpack(">3f", editor(props, XFRM)[:12])  # noqa: E731
+    weapons = lambda props: {w for w in hurts(props) if w != "cannon"}  # noqa: E731
+    out, tracks = [], {}
+    for layer, t4, eid, conns, props in ents:
+        if t4 in DEVICES:
+            kind, needs = DEVICES[t4]
+            out.append((layer, eid, kind, needs, pos(props), name(props)))
+        elif t4 in TRACKS:
+            tracks.setdefault(t4, []).append((layer, pos(props)))
+        elif t4 == "PLAT":
+            sets = [weapons(by[d][4]) for d in sorted(drivers.get(eid, ()))]
+            sets = [w for w in sets if w]
+            kind, need = ("TriggeredBarrier", set().union(*sets)) if sets else ("Barrier", weapons(props))
+            if not need or "power" in need or any("power" in w for w in sets):
+                continue
+            label = name(props)
+            if sets:
+                label += " <= " + ", ".join(name(by[d][4]) for d in sorted(drivers[eid]) if weapons(by[d][4]))
+            reason = next((r for r, rx in OBSTACLE_SKIP if rx.search(label)), None)
+            if reason:
+                skipped[reason] = skipped.get(reason, 0) + 1
+                continue
+            out.append((layer, eid, kind, tuple(n for n in NEEDS if n in {WEAPON_NEED[w] for w in need}),
+                        pos(props), label))
+    for t4, rows in sorted(tracks.items()):
+        layers = [l for l, _p in rows]
+        centre = tuple(sum(p[k] for _l, p in rows) / len(rows) for k in range(3))
+        layer = next((l for l in sorted(set(layers)) if layer_on >> l & 1), min(layers))
+        out.append((layer, 0, "SpiderTrack", ("SpiderBall",), centre, f"{len(rows)} {t4}"))
+    return out
+
+
+def nearest(p, points):
+    """(key, distance) of the nearest (key, position) in points, else (-1, 0.0)."""
+    best = min(((sum((a - b) ** 2 for a, b in zip(p, q)) ** 0.5, k) for k, q in points), default=None)
+    return (best[1], best[0]) if best else (-1, 0.0)
+
+
 def sldr_prop(name, field):
     """Property id of `field` in include/MetroidPrime/ScriptLoader/SLdr<name>.inc."""
     src = (ROOT / "include" / "MetroidPrime" / "ScriptLoader" / f"SLdr{name}.inc").read_text()
@@ -242,6 +330,7 @@ def collect():
     dock_virtual = sldr_prop("Dock", "isVirtual")
     worlds, areas, docks, teleporters, locations = [], [], [], [], []
     dock_locks, lock_totals = {}, []
+    obstacles, obstacle_totals, skipped, dock_pos, loc_pos = [], [], {}, {}, {}
     excluded_hits = set()
     for pk in ed.load_paks(iso):
         if not SINGLE_PLAYER_PAKS.search(pk.path):
@@ -252,7 +341,7 @@ def collect():
             world = len(worlds)
             mlvl_areas = ed.parse_mlvl(pk.get(mlvl))["areas"]
             layer_on = savw_diff.parse_mlvl(pk.get(mlvl))["layerDefaults"]
-            totals = [0, 0, 0]
+            totals, n_obstacles = [0, 0, 0], 0
             worlds.append((mlvl, name))
             base = len(areas)
             for a in mlvl_areas:
@@ -267,11 +356,13 @@ def collect():
                         ents.append((layer, t4, eid, conns, props))
                         if t4 == "DOCK":
                             virtual[i32(props, dock_number, -1)] = bool(props.get(dock_virtual, b"\0")[-1])
+                            dock_pos[gi, i32(props, dock_number, -1)] = struct.unpack(">3f", editor(props, XFRM)[:12])
                         elif t4 == "TEL1":
                             teleporters.append((gi, layer, eid, i32(props, TEL_WORLD_PROP, -1) & 0xFFFFFFFF,
                                                 i32(props, TEL_AREA_PROP, -1) & 0xFFFFFFFF))
                         elif t4 == "PCKP":
                             add_pickup(locations, excluded_hits, a["iname"], gi, layer, eid, props, False)
+                            loc_pos[gi, eid] = struct.unpack(">3f", editor(props, XFRM)[:12])
                 locks, gates = classify_locks(f"{name} {a['iname']}", ents, layer_on[a["index"]], dock_number)
                 totals[0] += len(locks)
                 totals[1] += sum(lk["shield"] != "None" for lk in locks.values())
@@ -284,8 +375,15 @@ def collect():
                 if gen is not None:
                     for t4, eid, body in ed.scgn_objects(gen):
                         if t4 == "PCKP":
-                            add_pickup(locations, excluded_hits, a["iname"], gi, -1, eid,
-                                       rm.pickup_props(body), True)
+                            props = rm.pickup_props(body)
+                            add_pickup(locations, excluded_hits, a["iname"], gi, -1, eid, props, True)
+                            loc_pos[gi, eid] = struct.unpack(">3f", editor(props, XFRM)[:12])
+                area_docks = [(di, dock_pos[gi, di]) for di in range(len(a["docks"])) if (gi, di) in dock_pos]
+                area_locs = [(eid, loc_pos[gi, eid]) for g, _l, eid, *_ in locations if g == gi]
+                for layer, eid, kind, needs, p, label in classify_obstacles(ents, layer_on[a["index"]], skipped):
+                    obstacles.append((gi, layer, bool(layer_on[a["index"]] >> layer & 1), eid, kind, needs, p,
+                                      *nearest(p, area_docks), *nearest(p, area_locs), label))
+                    n_obstacles += 1
                 for di, conns in enumerate(a["docks"]):
                     for ca, cd in conns:
                         back = mlvl_areas[ca]["docks"][cd]
@@ -293,13 +391,38 @@ def collect():
                             sys.exit(f"[rando_world] {name} area {a['index']} dock {di}: no reverse dock")
                         docks.append((gi, di, base + ca, cd, virtual.get(di, False)))
             lock_totals.append(tuple(totals))
+            obstacle_totals.append(n_obstacles)
     missing = set(EXCLUDED) - excluded_hits
     if missing:
         sys.exit(f"[rando_world] exclusions that matched nothing: {sorted(missing)}")
     if lock_totals != EXPECTED_LOCKS:
         sys.exit(f"[rando_world] (docked doors, shields, translator gates) per world {lock_totals},"
                  f" expected {EXPECTED_LOCKS}")
-    return worlds, areas, docks, teleporters, locations, dock_locks
+    if EXPECTED_OBSTACLES is not None and obstacle_totals != EXPECTED_OBSTACLES:
+        sys.exit(f"[rando_world] obstacles per world {obstacle_totals}, expected {EXPECTED_OBSTACLES}")
+    print("obstacles per world " + str(obstacle_totals) + "; not listed: " +
+          ", ".join(f"{k} {v}" for k, v in sorted(skipped.items())))
+    return worlds, areas, docks, teleporters, locations, dock_locks, obstacles, dock_pos, loc_pos
+
+
+def dump_obstacles(worlds, areas, docks, locations, dock_locks, obstacles, dock_pos, loc_pos, names):
+    """Per area, every line prefixed with the area name: docks, locations, obstacles."""
+    fmt = lambda p: "(%.1f, %.1f, %.1f)" % p  # noqa: E731
+    for gi, (w, _m, _d, an) in enumerate(areas):
+        tag = f"{worlds[w][1]}:{an}"
+        for a, d, ta, td, _v in docks:
+            if a != gi:
+                continue
+            lk = dock_locks[a, d]
+            lock = " ".join(f"{k}={v}" for k, v in lk.items() if v not in ("None", False))
+            print(f"{tag} dock {d} {fmt(dock_pos.get((a, d), (0, 0, 0)))} -> {areas[ta][3]}:{td} {lock}")
+        for a, l, e, item, *_ in locations:
+            if a == gi:
+                print(f"{tag} loc 0x{e:08X} L{l} {names.get(item, item)} {fmt(loc_pos[a, e])}")
+        for a, l, on, e, kind, needs, p, dk, dd, lk, ld, label in obstacles:
+            if a == gi:
+                print(f"{tag} obst 0x{e:08X} L{l}{'' if on else '(off)'} {kind} {'|'.join(needs) or '-'} {fmt(p)}"
+                      f" dock{dk}@{dd:.1f} loc{f' 0x{lk:08X}@{ld:.1f}' if lk >= 0 else ' -'} {label}")
 
 
 def add_pickup(locations, excluded_hits, area_name, area, layer, eid, props, generated):
@@ -315,7 +438,7 @@ def add_pickup(locations, excluded_hits, area_name, area, layer, eid, props, gen
 
 
 def main():
-    worlds, areas, docks, teleporters, locations, dock_locks = collect()
+    worlds, areas, docks, teleporters, locations, dock_locks, obstacles, dock_pos, loc_pos = collect()
     names = {v: k for k, v in rm.item_names().items()}
     keys = {(worlds[areas[a][0]][0], areas[a][1], eid) for a, _l, eid, *_ in locations}
     if len(keys) != len(locations):
@@ -328,6 +451,12 @@ def main():
         for lock in dock_locks.values():
             counts[lock[field]] = counts.get(lock[field], 0) + 1
         print(f"dock sides by {field}: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
+    counts = {}
+    for o in obstacles:
+        counts[o[4]] = counts.get(o[4], 0) + 1
+    print("obstacles by kind: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
+    if "--dump-obstacles" in sys.argv[1:]:
+        dump_obstacles(worlds, areas, docks, locations, dock_locks, obstacles, dock_pos, loc_pos, names)
     if "--write" not in sys.argv[1:]:
         return
     lines = [
@@ -361,6 +490,15 @@ def main():
               " capacity, item name)"]
     lines += [f'PORT_RANDO_LOCATION({a}, {l}, 0x{e:08X}u, {i}, {am}, {c}, "{names.get(i, i)}")'
               for a, l, e, i, am, c in locations]
+    lines += ["#endif", "#ifdef PORT_RANDO_OBSTACLE",
+              "// PORT_RANDO_OBSTACLE(area, layer, layer on by default, editor id (0: a per-area spider",
+              "//   track row), kind, needs (any one of; 0 = not derived), x, y, z, nearest dock, its",
+              "//   distance, nearest location's editor id (0xFFFFFFFF: none in the area), its distance, name)"]
+    for a, l, on, e, kind, needs, p, dk, dd, lk, ld, label in obstacles:
+        mask = " | ".join(f"kNeed{n}" for n in needs) or "0"
+        lines.append(f'PORT_RANDO_OBSTACLE({a}, {l}, {"true" if on else "false"}, 0x{e:08X}u, {kind}, {mask}, '
+                     f'{p[0]:.2f}f, {p[1]:.2f}f, {p[2]:.2f}f, {dk}, {dd:.1f}f, 0x{lk & 0xFFFFFFFF:08X}u, {ld:.1f}f, '
+                     f'"{label.replace(chr(34), chr(39))}")')
     lines.append("#endif")
     OUT.write_text("\n".join(lines) + "\n")
     print(f"wrote {OUT.relative_to(ROOT)}")

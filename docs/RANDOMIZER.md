@@ -59,7 +59,18 @@ is no longer the only source of locations. Plan, each step checkable on its own:
    Ambiguities:
    - Nothing wires a translator gate to a door. It is assigned to the nearest docked door, 6 to 45
      units away (0u_temple_hall is 44.9).
-   - Ing webs, grapple points and barrier PLATs are not wired to docks and are not read.
+   - Obstacles are extracted separately and are not wired to docks. `classify_obstacles` lists
+     708 in-room obstacles (`PORT_RANDO_OBSTACLE`, `ObstacleAt()`), each with its position, the
+     nearest dock and the nearest location. Barrier PLATs that power does not hurt need the
+     weapons that do. A PLAT that a DTRG removes on DEAD (Agon's Dark Webbing) needs what hurts
+     the DTRG. The other rows are grapple points, spinners, cannon balls, ball triggers, spider
+     tracks (one row per area), portals and safe-zone crystals. Each requirement is an OR of the
+     `ObstacleNeed` items; the docstring has the item mapping and the skipped names.
+     `--dump-obstacles` prints every area's docks, locations and obstacles.
+   - Topology is not derived: nothing says which docks or locations an obstacle separates, so
+     that needs hand rules. The PATH navmesh cannot stand in for it: 150 of 284 areas have no
+     regions, only 141 of 441 docks lie within 3 units of a region, and only 94 of 131 multi-dock
+     areas have all their docks in one component.
    - Layer state is read only as the MLVL default flags. Which events switch a layer on is not
      traced: 2 translator checks and roughly half of the LOCK/ULCK senders sit on layers that are
      off by default.

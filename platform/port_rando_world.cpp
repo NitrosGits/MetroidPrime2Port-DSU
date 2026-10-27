@@ -41,6 +41,15 @@ const Location kLocations[] = {
 #undef PORT_RANDO_LOCATION
 };
 
+const Obstacle kObstacles[] = {
+#define PORT_RANDO_OBSTACLE(area, layer, layerDefault, id, kind, needs, x, y, z, dock, dockDistance, \
+                            location, locationDistance, name)                                     \
+  {area, layer, layerDefault, id, ObstacleKind::kind, needs, x, y, z, dock, dockDistance, location,  \
+   locationDistance, name},
+#include "port_rando_world.inc"
+#undef PORT_RANDO_OBSTACLE
+};
+
 template <typename T, int N>
 constexpr int CountOf(const T (&)[N]) {
   return N;
@@ -64,6 +73,18 @@ const Dock* DockAt(int index) { return At(kDocks, index); }
 const DockLock* DockLockAt(int index) { return At(kDockLocks, index); }
 const Teleporter* TeleporterAt(int index) { return At(kTeleporters, index); }
 const Location* LocationAt(int index) { return At(kLocations, index); }
+int ObstacleCount() { return CountOf(kObstacles); }
+const Obstacle* ObstacleAt(int index) { return At(kObstacles, index); }
+
+int ObstacleNeedItem(uint32_t need) {
+  // Bit order of ObstacleNeed: DarkBeam, LightBeam, AnnihilatorBeam, Missile, SuperMissile,
+  // MorphBallBombs, Powerbomb, BoostBall, ScrewAttack, GrappleBeam, SpiderBall, MorphBall.
+  static const int kItems[kObstacleNeedBits] = {1, 2, 3, 44, 4, 18, 43, 16, 27, 23, 17, 15};
+  for (int bit = 0; bit < kObstacleNeedBits; ++bit)
+    if (need == 1u << bit)
+      return kItems[bit];
+  return -1;
+}
 
 int FindArea(uint32_t mlvl, uint32_t mrea) {
   for (int i = 0; i < AreaCount(); ++i)
