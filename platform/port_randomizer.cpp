@@ -67,6 +67,7 @@ struct Placement {
   int capacity = 0;
   bool hasAmount = false;
   bool hasCapacity = false;
+  std::string hudText; // Randovania hud_text[0]; empty for other seed formats
 };
 
 struct State {
@@ -423,6 +424,8 @@ bool LoadRandovania(State& state, const std::string& text) {
       placement.amount = placement.capacity = pickup.resources.front().amount;
     }
     placement.hasAmount = placement.hasCapacity = true;
+    if (!pickup.hudText.empty())
+      placement.hudText = pickup.hudText.front();
     placements[key] = placement;
   }
   state.seedName = seed.name;
@@ -628,6 +631,31 @@ bool ApplyPickup(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId,
     return false;
   }
 }
+
+bool AcquisitionText(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int itemType,
+                     std::string& out) {
+  EnsureLoaded();
+  try {
+    State& state = GetState();
+    if (!state.enabled || state.dump)
+      return false;
+    char key[32];
+    FormatLocationKey(worldAssetId, areaAssetId, entityId, key, sizeof(key));
+    const auto it = state.placements.find(key);
+    if (it == state.placements.end())
+      return false;
+    out = it->second.hudText;
+    if (out.empty())
+      out = std::string(ItemName(itemType)) + " acquired!";
+    return true;
+  } catch (...) {
+    return false;
+  }
+}
+
+static bool gMemoSuppressed = false;
+void SetMemoSuppressed(bool suppressed) { gMemoSuppressed = suppressed; }
+bool MemoSuppressed() { return gMemoSuppressed; }
 
 void RecordCheck(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int itemType) {
   EnsureLoaded();

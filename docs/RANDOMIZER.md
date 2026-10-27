@@ -28,6 +28,17 @@ runtime instead of patching the ISO. Plan, each step checkable on its own:
    from a real Randovania export; `port_rando_seed_tests` uses a hand-built fixture. The F1
    Randomizer page is hidden (`platform/debug_ui/search.cpp`) until import is usable.
 3. **Pickup presentation** - the placed item's model and acquisition text.
+   *Done (builds, unit-tested, not yet seen in game):* `tools/rando_models.py` reads every PCKP on
+   disc and writes `platform/include/port_rando_models.inc` (44 rows: item -> CMDL + animation set,
+   with the world paks that hold them). `LoadPickup` swaps in the donor only when
+   `gpResourceFactory->GetResourceTypeById` resolves its CMDL (and ANCS), since lookup only sees
+   loaded paks (`CResLoader::FindResourceForLoad`); otherwise the original model stays. ETM (107)
+   borrows item 28's model, MissileLauncher (73) the Missile's. Items with no vanilla Pickup (Power
+   Beam, Combat/Scan Visor, Varia, Morph Ball, Charge, Cannon Ball, ...) have no donor yet.
+   Acquisition text: pickups reach their MEMO through SRLY/MRLY relays on `ZERO` (120 of 132 within
+   4 hops), so `Touch` suppresses MEMO display while it sends `Arrived` and shows the seed's
+   hud_text (else "<ItemName> acquired!") itself. A MEMO behind a timer would still show vanilla
+   text. Scans are out of scope: vanilla pickups carry no scan.
 4. **Non-pickup grants** - the 4 custom locations and any item a script grants.
 5. **Script and layer patches** - Randovania's per-instance edits, applied as areas load.
 6. **Save binding and the F1 page** - seed hash in the save, spoiler.

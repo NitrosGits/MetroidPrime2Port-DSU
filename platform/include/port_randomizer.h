@@ -20,6 +20,14 @@ const char* StatusText();
 // Logs a location in dump mode, or applies its placement when enabled.
 bool ApplyPickup(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId,
                  int& itemType, int& capacity, int& amount);
+// For a location the seed places: true, and `out` is the text to show on pickup (the seed's first
+// hud_text, else "<ItemName> acquired!"). False for an unplaced location or when disabled.
+bool AcquisitionText(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int itemType,
+                     std::string& out);
+// While set, CScriptHUDMemo drops its display: a randomized pickup's script chain
+// (pickup -> relay -> MEMO) would otherwise show the vanilla item's text.
+void SetMemoSuppressed(bool suppressed);
+bool MemoSuppressed();
 // Records a collected pickup check when randomizer or dump mode is active.
 void RecordCheck(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int itemType);
 // The seed file the loader reads (MP_RANDO_SEED, else <user>/randomizer_seed.json) and the dump

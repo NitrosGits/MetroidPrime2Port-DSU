@@ -35,6 +35,8 @@
 #ifdef TARGET_PC
 #include "MetroidPrime/CWorld.hpp"
 #include "port_randomizer.h"
+#include "port_rando_models.h"
+#include <string>
 #endif
 #include <float.h>
 
@@ -353,7 +355,29 @@ void CScriptPickup::Touch(CActor& act, CStateManager& mgr) {
       playerState->SetItemAmount(itemType, mAmount);
     }
     playerState->SetTimeLeft(itemType, mPickupEffectLifetime);
+#ifdef TARGET_PC
+    // Randomized location: its script chain ends in a MEMO with the vanilla item's text. Drop
+    // that display (immediate path only; a MEMO behind a timer still shows) and show ours.
+    std::string randoText;
+    bool randoMemo = false;
+    if (mgr.GetWorld() != nullptr) {
+      randoMemo = PortRandomizer::AcquisitionText(
+          static_cast< uint32_t >(mgr.GetWorld()->IGetWorldAssetId()),
+          static_cast< uint32_t >(
+              mgr.GetWorld()->IGetAreaAlways(GetCurrentAreaId())->IGetAreaAssetId()),
+          static_cast< uint32_t >(GetEditorId().value), static_cast< int >(itemType), randoText);
+    }
+    PortRandomizer::SetMemoSuppressed(randoMemo);
+#endif
     SendScriptMsgs(kSS_Arrived, mgr, player->GetUniqueId(), kSM_None);
+#ifdef TARGET_PC
+    PortRandomizer::SetMemoSuppressed(false);
+    if (randoMemo) {
+      std::wstring wide(randoText.begin(), randoText.end());
+      CSamusHud::DisplayHudMemo(rstl::wstring_l(wide.c_str()),
+                                CHUDMemoParms(5.f, true, false, false, 1 << playerIndex, true));
+    }
+#endif
     if (mRespawnTime == 0.0f) {
       mSuppressDeathScriptMsgs = true;
       mgr.DeleteObjectRequest(GetUniqueId());
@@ -530,13 +554,28 @@ CEntity* LoadPickup(CStateManager& mgr, CInputStream& input, CEntityInfo& info) 
 #ifdef TARGET_PC
   if (mgr.GetWorld() != nullptr) {
     // Randomizer: rewrite (or, in dump mode, log) the item this location gives.
-    int randoItem = sldrThis.itemToGive.value;
-    PortRandomizer::ApplyPickup(
+    const int originalItem = sldrThis.itemToGive.value;
+    int randoItem = originalItem;
+    const bool applied = PortRandomizer::ApplyPickup(
         static_cast< uint32_t >(mgr.GetWorld()->IGetWorldAssetId()),
         static_cast< uint32_t >(mgr.GetWorld()->IGetAreaAlways(info.GetAreaId())->IGetAreaAssetId()),
         static_cast< uint32_t >(info.GetEditorId().value), randoItem, sldrThis.capacityIncrease,
         sldrThis.amount);
     sldrThis.itemToGive.value = randoItem;
+    if (applied && randoItem != originalItem) {
+      // Look like the new item: borrow a vanilla pickup's model, but only if its assets are
+      // resolvable now (they live in a world pak). Otherwise keep the original model.
+      const uint32_t world = static_cast< uint32_t >(mgr.GetWorld()->IGetWorldAssetId());
+      const PortRandoModels::Donor* donor = PortRandoModels::ForItem(randoItem, world);
+      if (donor != nullptr && gpResourceFactory->GetResourceTypeById(CAssetId(donor->model)) != 0 &&
+          (donor->anim[0] == PortRandoModels::kInvalidAsset ||
+           gpResourceFactory->GetResourceTypeById(CAssetId(donor->anim[0])) != 0)) {
+        sldrThis.model = CAssetId(donor->model);
+        sldrThis.animationInformation.ancs = CAssetId(donor->anim[0]);
+        sldrThis.animationInformation.character_index = static_cast< int >(donor->anim[1]);
+        sldrThis.animationInformation.initial_anim = static_cast< int >(donor->anim[2]);
+      }
+    }
   }
 #endif
   rstl::optional_object< CModelData > modelData(

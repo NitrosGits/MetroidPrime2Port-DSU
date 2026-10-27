@@ -8,6 +8,9 @@
 #include "MetroidPrime/ScriptLoader/SLdrHUDMemo.hpp"
 
 #include "Kyoto/Text/CStringTable.hpp"
+#ifdef TARGET_PC
+#include "port_randomizer.h"
+#endif
 
 CScriptHUDMemo::CScriptHUDMemo(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                                const CHUDMemoParms& parms, bool useOriginator,
@@ -36,6 +39,11 @@ void CScriptHUDMemo::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) 
 
   switch (message) {
   case kSM_SetToZero:
+#ifdef TARGET_PC
+    if (PortRandomizer::MemoSuppressed()) {
+      break;
+    }
+#endif
     if (GetActive()) {
       if (m_dispType == kDT_MessageBox) {
         mgr.ShowPausedHUDMemo(m_stringTableId, m_parms.GetDisplayTime());
