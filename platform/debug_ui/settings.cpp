@@ -449,7 +449,7 @@ const SettingKey kSettingKeys[] = {
      [](std::ostream& out) { WriteBool(out, PortMods::Enabled()); }, false, "1", "0"},
     {"mods_disabled", [](const std::string& value) { PortMods::SetDisabled(value); },
      [](std::ostream& out) { out << PortMods::Disabled(); }, true, "a/b", "c"},
-    // Suit colours (port_suit_colours.h): served at startup and on a mod reload (Apply now).
+    // Suit colours (port_suit_colours.h): served at startup and on a mod reload (Apply suit colours).
     {"suit_colour_varia", &ReadSuitColours< 0 >, &WriteSuitColours< 0 >, true, "FF4000,-", "-,2050FF"},
     {"suit_colour_dark", &ReadSuitColours< 1 >, &WriteSuitColours< 1 >, true, "FF4000", "2050FF"},
     {"suit_colour_light", &ReadSuitColours< 2 >, &WriteSuitColours< 2 >, true, "FF4000,-", "-,2050FF"},

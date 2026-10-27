@@ -69,7 +69,7 @@ void DrawVideoDisplay() {
     }
     ImGui::SetItemTooltip(
         "Each suit's colours, saved per suit (* = changed). Recoloured from your disc, so the\n"
-        "change shows everywhere it is used; Apply now (or a restart) puts it in the game.\n"
+        "change shows everywhere it is used; Apply suit colours (or a restart) puts it in the game.\n"
         "A mod's own suit textures are left alone. The Light Suit's Main colour tints its\n"
         "silver and white body; its Accent is the gold trim.");
     for (int slot = 0; slot < suit.slots; ++slot) {
@@ -99,21 +99,22 @@ void DrawVideoDisplay() {
       PortSuitColours::Randomise(sSuitColoursSuit, std::random_device{}());
       Changed(true);
     }
-    ImGui::SetItemTooltip("Random colours for every slot of this suit; Apply now to see them.");
-    if (PortSuitColours::Pending(true)) {
-      // Not on every picker drag frame: the reload rebuilds the room, so it is the player's click.
-      const bool reloading = PortSaveState::ModReloadActive();
-      ImGui::SameLine();
-      ImGui::BeginDisabled(reloading);
-      if (ImGui::Button(reloading ? "Applying..." : "Apply now")) {
-        PortSaveState::RequestModReload();
-      }
-      ImGui::EndDisabled();
-      ImGui::SetItemTooltip("Recolours the suit textures and rebuilds the room (the same as Game > Mods >\n"
-                            "Reload mods), so the suit shows the new colours without a restart. In the pause\n"
-                            "menu it refreshes the Inventory model at once and the room follows when you\n"
-                            "unpause; on the title screen they apply at the next start.");
-      ImGui::TextDisabled("Colours not applied yet: Apply now, or they apply at the next start.");
+    ImGui::SetItemTooltip("Random colours for every slot of this suit; Apply suit colours to see them.");
+    ImGui::SameLine();
+    // Not on every picker drag frame: the reload rebuilds the room, so it is the player's click.
+    const bool pending = PortSuitColours::Pending(true);
+    const bool reloading = PortSaveState::ModReloadActive();
+    ImGui::BeginDisabled(!pending || reloading);
+    if (ImGui::Button(reloading ? "Applying..." : "Apply suit colours")) {
+      PortSaveState::RequestModReload();
+    }
+    ImGui::EndDisabled();
+    ImGui::SetItemTooltip("Recolours the suit textures and rebuilds the room (the same as Game > Mods >\n"
+                          "Reload mods), so the suit shows the new colours without a restart. In the pause\n"
+                          "menu it refreshes the Inventory model at once and the room follows when you\n"
+                          "unpause; on the title screen they apply at the next start.");
+    if (pending) {
+      ImGui::TextDisabled("Colours not applied yet: Apply suit colours, or they apply at the next start.");
     }
   }
 
@@ -140,11 +141,12 @@ void DrawVideoDisplay() {
   Changed(ImGui::SliderInt("HUD scale", &sHudScale, PortOverlay::kHudScaleMin, PortOverlay::kHudScaleMax, "%d%%"));
   ImGui::SetItemTooltip("Shrinks the HUD toward the middle; the helmet and menus keep their size.");
   ImGui::BeginDisabled(!hudWide);
-  Changed(ImGui::SliderInt("Scan panel spread", &sScanSpread, PortOverlay::kScanSpreadMin,
+  Changed(ImGui::SliderInt("Scan image spread", &sScanSpread, PortOverlay::kScanSpreadMin,
                            PortOverlay::kScanSpreadMax, "%d%%"));
   ImGui::EndDisabled();
-  ImGui::SetItemTooltip("How far the scan visor's side panels spread to the screen edges. 0 keeps\n"
-                        "them at their 4:3 place near the centre (default on a phone).");
+  ImGui::SetItemTooltip("How far the widescreen HUD moves the scan visor's side panels toward the screen\n"
+                        "edges. 0%% keeps them at the 4:3 position, clear of touch controls; 100%% puts\n"
+                        "them at the edges.");
   // The game's Visor Opacity is one value for every visor. A ticked box follows it; an unticked one
   // gives that visor's HUD (and its menus and radar) its own.
   const auto hudOpacityRow = [](const char* label, int& value) {
@@ -182,6 +184,13 @@ void DrawVideoDisplay() {
     }
     ImGui::SetItemTooltip("Remastered is the one this port can draw: the classic reticle's model does\n"
                           "not load here.");
+    Changed(ImGui::Checkbox("Custom crosshair colour", &sCrosshairCustomColor));
+    ImGui::SetItemTooltip("Off: the game's own colour.");
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!sCrosshairCustomColor);
+    Changed(ImGui::ColorEdit3("##crosshair_color", sCrosshairColor,
+                              ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel));
+    ImGui::EndDisabled();
   }
   Changed(ImGui::Checkbox("Hide helmet", &sHideHelmet));
   Changed(ImGui::Checkbox("Hide visor effects", &sHideVisorEffects));

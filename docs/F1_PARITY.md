@@ -160,12 +160,12 @@ Statuses:
 | Item | MP1 | MP2 | Status |
 | --- | --- | --- | --- |
 | Sub-tabs: Display, Quality, Frame rate, Compatibility | tabs.cpp:233-254 | tabs.cpp:48-69 | SAME |
-| Sharp scan window | video.cpp:72 | — | MISSING |
-| Suit-coloured morph balls | video.cpp:81 | — | MISSING |
-| Apply suit colours | video.cpp:141 | — | MISSING (MP2 already reads and writes suit colours: settings.cpp:121-130) |
-| Scan image spread | video.cpp:164 | "Scan panel spread" :143, "Widest HUD spread" :131 | DIFF |
-| Custom crosshair colour | video.cpp:216 | — | MISSING |
-| Third-person camera | video.cpp:239 | — | MISSING |
+| Sharp scan window | video.cpp:72 | — | SKIPPED (f1-video): MP1 re-renders the world through a zoomed camera inside `CPlayerVisor::PortScanZoom`/`PortCopyScanZoom` (own GX copies and a scan-pane hook). Echoes' `CPlayerVisor` is a different class with no counterpart; a row would do nothing without that renderer. |
+| Suit-coloured morph balls | video.cpp:81 | — | MP1-ONLY: `PortBallLooks` recolours Prime 1's per-suit morph ball models from the disc (Power Suit spider ball); Echoes has one ball model and no per-suit borrowing. |
+| Apply suit colours | video.cpp:141 | video.cpp, "Apply suit colours" beside Random | SAME (f1-video): label, always shown, disabled until pending, MP1's tooltip role; shows "Applying..." during the reload |
+| Scan image spread | video.cpp:164 | "Scan image spread" (video.cpp), "Widest HUD spread" | SAME (f1-video): label and tooltip as MP1; Echoes keeps the slider disabled while the widescreen HUD is off |
+| Custom crosshair colour | video.cpp:216 | video.cpp, after Crosshair style (inside the aim-crosshair block) | SAME (f1-video): checkbox + colour picker; the backend (`PortOverlay::CrosshairColor`, `crosshair_color` keys, CTargetReticles) already existed |
+| Third-person camera | video.cpp:239 | — | SKIPPED (f1-video): MP1 `PortThirdPerson` (202 + body lines) hooks CStateManager, CGameCamera, CTargetReticles and a Samus body model; none of those hooks exist in Echoes and the body/arm-hiding needs its player model. Too large for a row package; needs its own package. |
 | Field of view | video.cpp:254 | video.cpp:196 | SAME |
 | Sun shadows, projected actor shadows | video.cpp:459,465 | — | MP1-ONLY: Remastered render backends |
 | HD font | video.cpp:602 | — | MP1-ONLY: font from a Remastered import |
