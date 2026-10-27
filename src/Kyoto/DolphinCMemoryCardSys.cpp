@@ -14,7 +14,32 @@
 #ifdef TARGET_PC
 #include <aurora/card.h>
 #include <cstdio>
+#include <filesystem>
+#include <string>
 #endif
+#endif
+
+#ifdef TARGET_PC
+namespace {
+// The card base Aurora mounted at CARDInit (the port's own card), and the one mounted now.
+std::string sDefaultCardBase;
+std::string sCardBase;
+
+// Aurora's mounted path is <base>/<region>/Card A (GCI folder) or <base>/MemoryCardA.<region>.raw.
+std::string BaseOfMountedCard() {
+  char buffer[1024];
+  const size_t size = aurora_card_get_path(port::entry::CurrentGameCode(), aurora_card_get_type(0),
+                                           0, buffer, sizeof(buffer));
+  if (size == 0 || size > sizeof(buffer)) {
+    return {};
+  }
+  std::filesystem::path path(buffer);
+  if (aurora_card_get_type(0) == AURORA_CARD_GCI_DIRECTORY) {
+    path = path.parent_path();
+  }
+  return path.parent_path().string();
+}
+} // namespace
 #endif
 
 static uint RoundUp(uint value, uint align) { return (value + align - 1) & ~(align - 1); }
@@ -394,18 +419,41 @@ void CMemoryCardSys::Initialize() {
     CARDInit(port::entry::CurrentGameCode(), "01");
     // F1 > System > Memory card > "Share memory card with emulator": mount the emulator's card
     // base instead, so the port and Dolphin/PrimeHack use the same saves.
-    const std::string shared = PortSave::SharedCardBase();
-    if (!shared.empty()) {
-      const bool mounted = aurora_card_set_base_path(shared.c_str());
-      std::fprintf(stderr, "port: memory card: sharing the emulator's card under %s%s\n",
-                   shared.c_str(), mounted ? "" : " (no card could be mounted there)");
-    }
+    sDefaultCardBase = BaseOfMountedCard();
+    sCardBase = sDefaultCardBase;
+    PortSwitchCard(PortSave::SharedCardBase().c_str());
 #else
     CARDInit();
 #endif
     mIsInitialized = true;
   }
 }
+
+#ifdef TARGET_PC
+bool CMemoryCardSys::PortSwitchCard(const char* directory) {
+  if (!mIsInitialized && sDefaultCardBase.empty()) {
+    return false;
+  }
+  const std::string target =
+      directory != nullptr && directory[0] != '\0' ? std::string(directory) : sDefaultCardBase;
+  if (target.empty() || target == sCardBase) {
+    return false;
+  }
+  std::error_code error;
+  std::filesystem::create_directories(target, error);
+  const bool mounted = aurora_card_set_base_path(target.c_str());
+  // Taken even when it did not mount, so a bad directory is not retried every frame; the front
+  // end then shows no card, which is the truth.
+  sCardBase = target;
+  std::fprintf(stderr, "port: memory card: switched to %s%s\n", target.c_str(),
+               mounted ? "" : " (no card could be mounted there)");
+  return true;
+}
+
+bool CMemoryCardSys::PortOnDefaultCard() {
+  return !sDefaultCardBase.empty() && sCardBase == sDefaultCardBase;
+}
+#endif
 
 CMemoryCardSys::~CMemoryCardSys() {
   mIsCardSysExists = false;

@@ -75,6 +75,10 @@ bool Export(const std::string& destination, std::string& message);
 // newest backup. The card's current file is copied into the backups folder before it is replaced,
 // never deleted, and Aurora re-reads the card afterwards (`aurora_card_remount`).
 bool Import(const std::string& source, std::string& message);
+// Import and the Dolphin copies mark the card changed; the front end's save screen re-reads it
+// (`aurora_card_remount`) when it is idle, never in game. True when it did.
+void MarkCardChanged();
+bool RemountIfChanged();
 // A copy of the card's file as it is on disk now, pruned to the newest kBackupsKept. `written` is
 // the path when one was made.
 constexpr int kBackupsKept = 20;

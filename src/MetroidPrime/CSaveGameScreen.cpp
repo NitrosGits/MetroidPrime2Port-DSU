@@ -14,6 +14,11 @@
 #include "MetroidPrime/SFX/UIMemory.h"
 #include "rstl/StringExtras.hpp"
 
+#ifdef TARGET_PC
+#include "Kyoto/CMemoryCardSys.hpp"
+#include "port_save.h"
+#endif
+
 static const char* const skSaveBanner = "TXTR_SaveBanner";
 static const char* const skSaveIcon0 = "TXTR_SaveIcon0";
 static const char* const skSaveIcon1 = "TXTR_SaveIcon1";
@@ -292,6 +297,19 @@ CIOWin::EMessageReturn CSaveGameScreen::Update(float dt) {
   }
   mLoadedFrame->Update(dt);
   mCardDriver->Update();
+
+#ifdef TARGET_PC
+  // Port: F1 > System > Memory card > "Share memory card with emulator" switches the card live,
+  // and saves imported from Dolphin are picked up, but only in the front end while the card is
+  // idle. In game the card never changes: the game would take it for another.
+  if (mSaveCtx == kSC_FrontEnd && !mNeedsDriverReset && mIowRet == CIOWin::kMR_Normal &&
+      !CMemoryCardDriver::IsCardBusy(mCardDriver->GetState()) &&
+      (CMemoryCardSys::PortSwitchCard(PortSave::SharedCardBase().c_str()) ||
+       PortSave::RemountIfChanged())) {
+    ResetCardDriver();
+    return CIOWin::kMR_Normal;
+  }
+#endif
 
   const EState state = mCardDriver->GetState();
   const CMemoryCardDriver::EError error = mCardDriver->GetError();

@@ -177,7 +177,7 @@ void DrawEmulatorCard() {
   }
   ImGui::EndDisabled();
   ItemHelp("The port and the emulator share the same saves: never run both at once. Takes effect "
-           "the next time the game starts.");
+           "at once in the front end; in game the card never changes, so it waits for the front end.");
   if (!share) {
     return;
   }
@@ -194,7 +194,7 @@ void DrawEmulatorCard() {
     ImGui::TextWrapped("Sharing: %s", shared.string().c_str());
     return;
   }
-  ImGui::TextWrapped("Will share %s from the next start.", shared.string().c_str());
+  ImGui::TextWrapped("Will share %s once the front end is shown.", shared.string().c_str());
   ImGui::BeginDisabled(inGame || sDialogOpen || active.empty());
   if (ImGui::Button("Copy port saves into shared card")) {
     std::string message;

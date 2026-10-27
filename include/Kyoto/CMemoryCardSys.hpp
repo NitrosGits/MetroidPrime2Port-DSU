@@ -163,6 +163,14 @@ public:
   static void FreeCardWorkArea(EMemoryCardPort port);
   inline void Initialize();
 
+#ifdef TARGET_PC
+  // Port: move both slots to the cards under `directory` ("" = the port's own card base). True
+  // when the card changed. Front end only, while the card is idle: the game holds no open file.
+  static bool PortSwitchCard(const char* directory);
+  // Port: true while the port's own (default) card base is mounted.
+  static bool PortOnDefaultCard();
+#endif
+
   static bool mIsCardBusy;
 
 private:

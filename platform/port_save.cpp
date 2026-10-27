@@ -10,6 +10,7 @@
 #include <aurora/card.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
@@ -578,6 +579,20 @@ bool Export(const std::string& destination, std::string& message) {
   return true;
 }
 
+namespace {
+std::atomic<bool> sCardChanged{false};
+} // namespace
+
+void MarkCardChanged() { sCardChanged = true; }
+
+bool RemountIfChanged() {
+  if (!sCardChanged.exchange(false)) {
+    return false;
+  }
+  aurora_card_remount(0);
+  return true;
+}
+
 bool Import(const std::string& source, std::string& message) {
   std::string path = source;
   if (path == "latest") {
@@ -624,7 +639,7 @@ bool Import(const std::string& source, std::string& message) {
       message = "Aurora could not write " + image;
       return false;
     }
-    aurora_card_remount(0);
+    MarkCardChanged();
     message = "imported " + path + " into " + image;
     return true;
   }
@@ -658,7 +673,7 @@ bool Import(const std::string& source, std::string& message) {
     message = error;
     return false;
   }
-  aurora_card_remount(0);
+  MarkCardChanged();
   message = "imported " + path + " as " + target;
   if (!kept.empty()) {
     message += " (the file it replaced is " + kept + ")";
