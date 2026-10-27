@@ -2490,20 +2490,11 @@ static int MapReferenceWidth() {
   return widen > 0.f ? static_cast< int >(static_cast< float >(width) / widen + 0.5f) : width;
 }
 
-// The map screen's frame is spread over the widened framebuffer (CGuiCamera, capped by
-// HudSpreadCap), so its plane takes that width's aspect instead of the authored one.
-static int MapScreenWidth() {
-  const int width = CGraphics::GetViewport().mWidth;
-  const float widen = PortOverlay::AspectWiden();
-  if (widen <= 0.f) {
-    return width;
-  }
-  float spread = 1.f;
-  if (PortOverlay::HudWide() && widen > 1.f) {
-    spread = widen < PortOverlay::HudSpreadCap() ? widen : PortOverlay::HudSpreadCap();
-  }
-  return static_cast< int >(static_cast< float >(width) / widen * spread + 0.5f);
-}
+// The map screen's plane keeps the authored aspect too. The frame's spread (CGuiCamera,
+// HudSpreadCap) only moves widgets: the map geometry is projected through the widened camera, and a
+// plane aspect wider than the authored one (the old spread factor) squeezed it horizontally by
+// that factor on a wide screen.
+static int MapScreenWidth() { return MapReferenceWidth(); }
 #endif
 
 CVector2i CAutoMapper::GetMiniMapViewportSize() {
