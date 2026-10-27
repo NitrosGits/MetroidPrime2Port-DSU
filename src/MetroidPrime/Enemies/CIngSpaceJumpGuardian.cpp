@@ -1062,6 +1062,9 @@ void CIngSpaceJumpGuardian::SpawnShockWave(CStateManager& mgr) {
 #ifdef TARGET_PC
 
 // 0x1928-0x1930: retail passes the caller's locator name (r5) to GetLctrTransform.
+// 0x1A0C/0x1A10 lfs f2 rodata_68 (0.0), lfs f1 rodata_B4 (1.75): fn_80171970 gets
+// minActiveTime=1.75, knockback=0.0. The overload above has them swapped, so its wave never
+// expires (CShockWave::Think deletes only when minActiveTime > 0).
 // @ fn_34_1904
 void CIngSpaceJumpGuardian::SpawnShockWave(CStateManager& mgr, const rstl::string& locatorName) {
   if (mJumpMode == kJM_Waypoint) {
@@ -1070,7 +1073,7 @@ void CIngSpaceJumpGuardian::SpawnShockWave(CStateManager& mgr, const rstl::strin
     CShockWave* shockWave = rs_new CShockWave(
         mgr.AllocateUniqueId(), rstl::string_l("Shock Wave"),
         CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
-        CTransform4f::Translate(origin), GetUniqueId(), shockWaveInfo, 0.f, 1.75f);
+        CTransform4f::Translate(origin), GetUniqueId(), shockWaveInfo, 1.75f, 0.f);
     mgr.AddObject(shockWave);
   }
 }
