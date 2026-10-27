@@ -18,6 +18,15 @@ runtime instead of patching the ISO. Plan, each step checkable on its own:
    `port_rando_locations_tests` checks its shape. Regenerate when Randovania's database changes.
 2. **Seed import** - read Randovania's Echoes patch data (pickups per index with resources, model,
    HUD and scan text; starting items; spawn; elevators; translator gates; door weaknesses).
+   *Done (parse only):* `platform/port_rando_seed.cpp` (`PortRandoSeed::ParseRandovania`) reads the
+   legacy-patcher JSON (`pickups`, `spawn_point`, `elevators`, `translator_gates`, `banner_name`);
+   a seed file with a top-level `pickups` key loads through it instead of the native format. Each
+   pickup with a Pickup object becomes a placement of its first resource (amount = capacity);
+   Randovania's Multiworld counter (item 74) is dropped and an empty pickup becomes the ETM (107).
+   The rest (extra resources, progressive `conditional_resources`, `convert`, custom locations,
+   spawn, elevators, gates) is parsed and kept in the state but not yet applied. Not yet loaded
+   from a real Randovania export; `port_rando_seed_tests` uses a hand-built fixture. The F1
+   Randomizer page is hidden (`platform/debug_ui/search.cpp`) until import is usable.
 3. **Pickup presentation** - the placed item's model and acquisition text.
 4. **Non-pickup grants** - the 4 custom locations and any item a script grants.
 5. **Script and layer patches** - Randovania's per-instance edits, applied as areas load.
