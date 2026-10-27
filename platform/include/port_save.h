@@ -84,8 +84,9 @@ std::string BackupsDirectory();
 
 // The emulator's card, shared with the port (MP1's PortGci emulator folder and "Share memory card"):
 // with sharing on, CMemoryCardSys::Initialize mounts <emulator folder>/GC as the card base, so the
-// port and Dolphin/PrimeHack read and write the same 01-G2ME-*.gci. Desktop only; Trilogy's save.bin
-// has no Echoes counterpart, so there is no mirror mode.
+// port and Dolphin/PrimeHack read and write the same 01-G2ME-*.gci. Desktop only. Metroid Prime
+// Trilogy's Wii save.bin does carry an Echoes slot (port_save_trilogy.h), so a card can also be
+// exported into it and mirrored with it (below).
 //
 // The emulator user folder the player chose (the one with GC/ in it; a GC, GC/<region> or
 // GC/<region>/Card A folder resolves to the folder above), or empty for autodetection.
@@ -100,6 +101,20 @@ bool ShareEmulatorCard();
 // <emulator folder>/GC when sharing is on and the emulator has a GCI-folder card A for this region;
 // otherwise empty, with `why` (if given) saying why for the player.
 std::string SharedCardBase(std::string* why = nullptr);
+
+// Metroid Prime Trilogy's Wii save.bin (R3ME/R3MP, in Dolphin's Wii NAND), MP1's "Export into
+// save.bin" and mirror. `ExportTrilogy` writes the card's newest slot into the Mii-owned file of a
+// save.bin the Trilogy made (the old one is kept as save.bin.bak). The mirror (`MirrorTrilogy`, needs
+// sharing on) keeps the card and the bin in step: a save made here goes out once written, and in the
+// front end a newer one made in the Trilogy comes in. The slot stream conversion is the seam in
+// port_save_trilogy_payload.cpp; until it exists every export reports that and writes nothing.
+std::string FindEmulatorTrilogy(); // Dolphin's save.bin for this region, or empty
+bool ExportTrilogy(const std::string& saveBin, std::string& message);
+void SetMirrorTrilogy(bool mirror);
+bool MirrorTrilogy();
+std::string TrilogyShareBin(); // the mirrored save.bin, empty when mirroring is off
+// Rate-limited to 500 ms; true when the card changed (it was remounted).
+bool SyncTrilogyShare(bool pull);
 
 // The card-write hook (`MP2_CARD_BACKUP=1`, F1 > Saves): a copy of the file as it is *before* the
 // game replaces it, so a bad save can always be recovered. Called by

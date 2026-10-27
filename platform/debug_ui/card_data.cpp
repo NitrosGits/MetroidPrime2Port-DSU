@@ -1,8 +1,9 @@
 // F1 overlay: System > Memory card import/export and System > Data folder. The Prime 1 port's
 // debug_ui/file_dialogs.cpp card section and data folder panel, on MP2's own card tools
-// (PortSave: one 01-G2ME-*.gci, or 01-G2MP-*.gci on PAL, per card, no region conversion) and without MP1's Wii Trilogy
-// save.bin and raw-image Dolphin cards, which MP2 has no counterpart for. The file dialogs answer
-// on another thread, so a pick waits in sPicks until the next frame.
+// (PortSave: one 01-G2ME-*.gci, or 01-G2MP-*.gci on PAL, per card, no region conversion), including
+// MP1's "Export as" Wii Trilogy (save.bin) choice and the Trilogy mirror; MP1's raw-image Dolphin
+// cards have no counterpart here. The file dialogs answer on another thread, so a pick waits in
+// sPicks until the next frame.
 #include "debug_ui_internal.h"
 
 #include "port_data_folder.h"
@@ -24,7 +25,9 @@ namespace {
 
 namespace fs = std::filesystem;
 
-enum Pick { kPick_Import, kPick_Export, kPick_Emulator };
+enum Pick { kPick_Import, kPick_Export, kPick_Emulator, kPick_Trilogy };
+// The overlay's "Export as" choice: 0 the card's files as they are, 1 the Wii Trilogy's save.bin.
+int sExportChoice = 0;
 std::mutex sPickMutex;
 std::vector< std::pair< Pick, std::string > > sPicks;
 bool sDialogOpen = false;
@@ -52,6 +55,9 @@ void OpenDialog(Pick pick) {
   void* userdata = reinterpret_cast< void* >(static_cast< intptr_t >(pick));
   if (pick == kPick_Import) {
     SDL_ShowOpenFileDialog(OnPick, userdata, FirstWindow(), filters, 2, nullptr, false);
+  } else if (pick == kPick_Trilogy) {
+    static const SDL_DialogFileFilter bin[] = {{"Trilogy save (save.bin)", "bin"}, {"All files", "*"}};
+    SDL_ShowOpenFileDialog(OnPick, userdata, FirstWindow(), bin, 2, nullptr, false);
   } else {
     // A folder: the card's files keep their names, so they import back as they are; the emulator
     // pick is its user folder.
@@ -107,6 +113,9 @@ void TakePicks() {
       PortSave::SetEmulatorFolder(path);
       PortOverlaySettings::MarkDirty();
       sStatus = "Emulator folder: " + PortSave::EmulatorFolder();
+    } else if (pick == kPick_Trilogy) {
+      const bool ok = PortSave::ExportTrilogy(path, message);
+      sStatus = ok ? "Exported: " + message : "Export failed: " + message;
     } else if (pick == kPick_Import) {
       const bool ok = PortSave::Import(path, message);
       sStatus = ok ? "Imported: " + message : "Import failed: " + message;
@@ -181,6 +190,23 @@ void DrawEmulatorCard() {
   if (!share) {
     return;
   }
+  bool mirror = PortSave::MirrorTrilogy();
+  if (ImGui::Checkbox("Mirror with the Trilogy save.bin", &mirror)) {
+    PortSave::SetMirrorTrilogy(mirror);
+    PortOverlaySettings::MarkDirty();
+  }
+  ItemHelp("Keeps the card and Dolphin's Metroid Prime Trilogy save.bin (Wii/title/00010000/"
+           "52334d45/data/save.bin) in step: a save made here goes out once written, and a newer "
+           "one made in the Trilogy comes in at the front end. The Trilogy file must have been "
+           "started once.");
+  if (mirror) {
+    const std::string bin = PortSave::FindEmulatorTrilogy();
+    if (bin.empty()) {
+      ImGui::TextColored(ThemeWarnColor(), "No Trilogy save.bin found in the emulator folder.");
+    } else {
+      ImGui::TextWrapped("Mirroring: %s", bin.c_str());
+    }
+  }
   std::string why;
   const std::string base = PortSave::SharedCardBase(&why);
   if (base.empty()) {
@@ -246,21 +272,33 @@ void DrawCardTransfer() {
                             " card folder.").c_str());
   ImGui::EndDisabled();
   ImGui::BeginDisabled(sDialogOpen || saves == 0);
-  if (ImGui::Button("Export to folder...")) {
-    OpenDialog(kPick_Export);
+  const char* choices[] = {"As on the card (.gci)", "Wii Trilogy (save.bin)"};
+  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14.0f);
+  ImGui::Combo("Export as", &sExportChoice, choices, IM_ARRAYSIZE(choices));
+  ItemHelp("The format to export in. For the Trilogy, start Metroid Prime 2 in an existing save.bin "
+           "and save once first: that file's Echoes game is replaced. A Wii's signed data.bin "
+           "can't be made here.");
+  const bool trilogy = sExportChoice == 1;
+  if (ImGui::Button(trilogy ? "Export into save.bin..." : "Export to folder...")) {
+    OpenDialog(trilogy ? kPick_Trilogy : kPick_Export);
   }
-  ItemHelp("Copies the card's save files into the folder you pick, with their own names so they can "
-           "be imported again.");
+  ItemHelp(trilogy ? "Pick the Trilogy save.bin to write into; the old one is kept as save.bin.bak."
+                   : "Copies the card's save files into the folder you pick, with their own names so "
+                     "they can be imported again.");
   ImGui::SameLine();
-  ImGui::BeginDisabled(dolphin.empty());
+  const std::string trilogyBin = trilogy ? PortSave::FindEmulatorTrilogy() : std::string();
+  ImGui::BeginDisabled(trilogy ? trilogyBin.empty() : dolphin.empty());
   if (ImGui::Button("Export to Dolphin/PrimeHack")) {
     std::string message;
-    const bool ok = PortSave::Export(dolphin.string(), message);
+    const bool ok = trilogy ? PortSave::ExportTrilogy(trilogyBin, message)
+                            : PortSave::Export(dolphin.string(), message);
     sStatus = ok ? "Exported: " + message : "Export failed: " + message;
   }
   ImGui::EndDisabled();
-  ItemHelp("Close the emulator first. Writes the save into its card folder for this release; a file of the same "
-           "name there gets a numbered copy, not replaced.");
+  ItemHelp(trilogy ? "Close the emulator first. Goes to its Trilogy save (Wii/title/00010000/52334d45/"
+                     "data/save.bin); the old one is kept as save.bin.bak."
+                   : "Close the emulator first. Writes the save into its card folder for this release; a file "
+                     "of the same name there gets a numbered copy, not replaced.");
   ImGui::EndDisabled();
   ImGui::SameLine();
   if (ImGui::Button("Open card folder")) {

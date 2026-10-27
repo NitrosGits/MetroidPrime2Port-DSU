@@ -428,6 +428,13 @@ if(MP_SDK_HEADERS_ONLY)
     add_test(NAME port_arena_placement_tests COMMAND port_arena_placement_tests)
     set_tests_properties(port_arena_placement_tests PROPERTIES TIMEOUT 30 LABELS port)
 
+    add_executable(port_save_trilogy_tests tests/port_save_trilogy.cpp platform/port_save_trilogy.cpp
+        platform/port_save_trilogy_payload.cpp)
+    target_include_directories(port_save_trilogy_tests PRIVATE platform/include)
+    add_test(NAME port_save_trilogy_tests
+        COMMAND port_save_trilogy_tests ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/trilogy)
+    set_tests_properties(port_save_trilogy_tests PROPERTIES TIMEOUT 30 LABELS port)
+
     add_executable(port_entry_tests tests/port_entry_tests.cpp platform/entry.cpp)
     target_include_directories(port_entry_tests PRIVATE platform/include extern/aurora/include)
     target_compile_definitions(port_entry_tests PRIVATE TARGET_PC)
@@ -456,7 +463,7 @@ endif()
 # syntax-checked by the full build instead.
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_controls.cpp
-        platform/port_save.cpp platform/port_savestate.cpp platform/port_savestate_room.cpp platform/port_savestate_format.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
+        platform/port_save.cpp platform/port_save_trilogy.cpp platform/port_save_trilogy_payload.cpp platform/port_savestate.cpp platform/port_savestate_room.cpp platform/port_savestate_format.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
         platform/port_crash.cpp platform/port_watchdog.cpp platform/port_memory_log.cpp platform/port_storage_report.cpp
         platform/port_pointer.cpp platform/port_pointer_menu.cpp
         platform/port_events.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp

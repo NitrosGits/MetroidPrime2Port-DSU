@@ -14,6 +14,10 @@
 #include "MetroidPrime/SFX/UIMemory.h"
 #include "rstl/StringExtras.hpp"
 
+#ifdef TARGET_PC
+#include "port_save.h"
+#endif
+
 static const char* const skSaveBanner = "TXTR_SaveBanner";
 static const char* const skSaveIcon0 = "TXTR_SaveIcon0";
 static const char* const skSaveIcon1 = "TXTR_SaveIcon1";
@@ -292,6 +296,17 @@ CIOWin::EMessageReturn CSaveGameScreen::Update(float dt) {
   }
   mLoadedFrame->Update(dt);
   mCardDriver->Update();
+
+#ifdef TARGET_PC
+  // Port: with the Trilogy mirror on, a save made here goes out to Dolphin's Trilogy save.bin once
+  // written, and in the front end a newer one made there comes in (PortSave::SyncTrilogyShare).
+  if (PortSave::MirrorTrilogy() && !CMemoryCardDriver::IsCardBusy(mCardDriver->GetState())) {
+    if (PortSave::SyncTrilogyShare(mSaveCtx == kSC_FrontEnd)) {
+      ResetCardDriver();
+      return CIOWin::kMR_Normal;
+    }
+  }
+#endif
 
   const EState state = mCardDriver->GetState();
   const CMemoryCardDriver::EError error = mCardDriver->GetError();

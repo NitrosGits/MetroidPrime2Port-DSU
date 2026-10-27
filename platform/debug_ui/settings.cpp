@@ -270,6 +270,9 @@ const SettingKey kSettingKeys[] = {
     {"share_emulator_card",
      [](const std::string& value) { PortSave::SetShareEmulatorCard(ParseBool(value)); },
      [](std::ostream& out) { WriteBool(out, PortSave::ShareEmulatorCard()); }, false, "1", "0"},
+    {"mirror_trilogy_save",
+     [](const std::string& value) { PortSave::SetMirrorTrilogy(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortSave::MirrorTrilogy()); }, false, "1", "0"},
     // Mouse and stick aim. These live in PortMouse rather than here, and the file is read by
     // PortMouse's own ReadEnv (the file first, the MP2_* environment on top), so the rows below
     // would otherwise be the only F1 switches a restart forgot.

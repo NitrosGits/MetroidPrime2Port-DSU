@@ -1,5 +1,7 @@
 #include "port_save.h"
 
+#include "port_save_trilogy.h"
+
 #include "port_entry.h"
 #include "port_env.h"
 #include "port_overlay.h"
@@ -10,6 +12,7 @@
 #include <aurora/card.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
@@ -705,6 +708,237 @@ void BeforeCardWrite(const char* fileName) {
   } else {
     std::fprintf(stderr, "[save] card backup failed: %s\n", error.c_str());
   }
+}
+
+// ---- Metroid Prime Trilogy's save.bin (port_save_trilogy.h) ----------------------------------------
+// MP1's PortGci::ExportTrilogy / SyncTrilogy / SyncTrilogyShare. The container is complete; the slot
+// stream conversion is the seam in port_save_trilogy_payload.cpp, so until it exists every export
+// ends with that stage's message and leaves save.bin as it was.
+
+namespace {
+
+bool sMirrorTrilogy = false;
+
+// The Trilogy's title ids: R3ME (USA) and R3MP (PAL).
+std::string FindTrilogyBin(bool pal) {
+  std::error_code ec;
+  for (const std::filesystem::path& root : EmulatorRoots()) {
+    const std::filesystem::path bin =
+        root / "Wii/title/00010000" / (pal ? "52334d50" : "52334d45") / "data/save.bin";
+    if (std::filesystem::is_regular_file(bin, ec)) {
+      return bin.string();
+    }
+  }
+  return {};
+}
+
+bool IsPal() { return port::entry::IsPalRegion(port::entry::CurrentDiscVersion()); }
+
+// The card's own G2ME/G2MP files, newest first by modification time.
+std::vector<std::string> GameFilesNewest() {
+  std::vector<std::string> out;
+  for (const std::string& path : Files()) {
+    std::ifstream in(path, std::ios::binary);
+    char head[3];
+    if (in.read(head, sizeof head) && std::memcmp(head, "G2M", 3) == 0) {
+      out.push_back(path);
+    }
+  }
+  std::sort(out.begin(), out.end(), [](const std::string& a, const std::string& b) {
+    std::error_code ec;
+    return std::filesystem::last_write_time(a, ec) > std::filesystem::last_write_time(b, ec);
+  });
+  return out;
+}
+
+} // namespace
+
+void SetMirrorTrilogy(bool mirror) {
+#if defined(__ANDROID__)
+  mirror = false;
+#endif
+  std::lock_guard<std::mutex> lock(sEmulatorMutex);
+  sMirrorTrilogy = mirror;
+}
+
+bool MirrorTrilogy() {
+  std::lock_guard<std::mutex> lock(sEmulatorMutex);
+  return sMirrorTrilogy;
+}
+
+std::string FindEmulatorTrilogy() { return FindTrilogyBin(IsPal()); }
+
+bool ExportTrilogy(const std::string& saveBin, std::string& message) {
+  const std::vector<std::string> files = GameFilesNewest();
+  if (files.empty()) {
+    message = "the card has no save file to export";
+    return false;
+  }
+  std::vector<uint8_t> base;
+  if (!ReadAll(saveBin, base, message)) {
+    message += " (start the Trilogy once so that it makes its save)";
+    return false;
+  }
+  if (!Trilogy::Validate(base.data(), base.size(), message)) {
+    return false;
+  }
+  // The Trilogy shows one Echoes file per Mii, the first whose summary carries the Mii's id, which
+  // only the Trilogy can write: the newest slot goes into a file a Mii owns.
+  const int target = Trilogy::TargetFile(base.data());
+  if (target < 0) {
+    message = "the Trilogy save has no Metroid Prime file yet: start Metroid Prime in the Trilogy once first";
+    return false;
+  }
+  // The newest of the card's slots, by the save time the game stored.
+  File best;
+  int slot = -1;
+  std::vector<uint8_t> gci;
+  for (const std::string& path : files) {
+    File info;
+    std::string error;
+    if (!Inspect(path, info, error)) {
+      continue;
+    }
+    for (int i = 0; i < 3; ++i) {
+      if (info.slots[i].present && (slot < 0 || info.slots[i].timestamp > best.slots[slot].timestamp)) {
+        best = info;
+        slot = i;
+      }
+    }
+  }
+  if (slot < 0) {
+    message = "the card's save has no slots";
+    return false;
+  }
+  if (!ReadAll(best.path, gci, message)) {
+    return false;
+  }
+  Trilogy::Payload payload;
+  if (!Trilogy::PayloadFromGci(gci, slot, payload.partA, payload.partB, message)) {
+    return false;
+  }
+  const Slot& s = best.slots[slot];
+  payload.summary.difficulty = s.hardMode ? 1 : 0;
+  payload.summary.percent = s.itemPercent;
+  payload.summary.playTime = s.playTime;
+  payload.summary.tanks = s.energyTanks;
+  payload.summary.mlvl = s.worldId;
+  std::vector<uint8_t> out;
+  if (!Trilogy::Write(base, target, payload, out, message)) {
+    return false;
+  }
+  const std::string backup = saveBin + ".bak";
+  std::error_code ec;
+  std::filesystem::copy_file(saveBin, backup, std::filesystem::copy_options::overwrite_existing, ec);
+  if (ec) {
+    message = "cannot back up " + saveBin + ": " + ec.message();
+    return false;
+  }
+  if (!WriteAll(saveBin, out, message)) {
+    return false;
+  }
+  message = "slot " + std::to_string(slot + 1) + " of " + best.path + " written into Trilogy file " +
+            std::to_string(target + 1) + " of " + saveBin + "; the previous save is kept as " +
+            std::filesystem::path(backup).filename().string();
+  return true;
+}
+
+// Brings the Trilogy's file into the card: the converter updates the card's newest file (or makes
+// one), the card file is backed up first, and Aurora re-reads the card.
+static bool ImportTrilogy(const std::string& saveBin, std::string& message) {
+  std::vector<uint8_t> bin;
+  if (!ReadAll(saveBin, bin, message) || !Trilogy::Validate(bin.data(), bin.size(), message)) {
+    return false;
+  }
+  const int file = Trilogy::TargetFile(bin.data());
+  Trilogy::Payload payload;
+  if (file < 0 || !Trilogy::Read(bin.data(), file, payload)) {
+    message = "the Trilogy save has no Echoes progress";
+    return false;
+  }
+  const std::string dir = Directory();
+  if (dir.empty() || IsImage()) {
+    message = "the card is not a GCI folder";
+    return false;
+  }
+  const std::vector<std::string> existing = GameFilesNewest();
+  std::vector<uint8_t> gci;
+  if (!existing.empty() && !ReadAll(existing.front(), gci, message)) {
+    return false;
+  }
+  if (!Trilogy::GciFromPayload(payload, gci, message)) {
+    return false;
+  }
+  std::string backup;
+  if (!existing.empty()) {
+    Backup(&backup, message);
+  }
+  const std::string target = existing.empty()
+                                 ? dir + "/01-" + port::entry::CurrentGameCode() + "-" + kSaveFileName + ".gci"
+                                 : existing.front();
+  if (!WriteAll(target, gci, message)) {
+    return false;
+  }
+  aurora_card_remount(0);
+  message = "Trilogy file " + std::to_string(file + 1) + " imported as " + target;
+  return true;
+}
+
+std::string TrilogyShareBin() {
+  if (!ShareEmulatorCard() || !MirrorTrilogy()) {
+    return {};
+  }
+  return FindTrilogyBin(IsPal());
+}
+
+// MP1's SyncTrilogy: the newer of the card and the bin wins, and an equal modification time means
+// in step. What a sync failed on is remembered, so a save the converter cannot take is not retried
+// every check.
+bool SyncTrilogyShare(bool pull) {
+  static std::chrono::steady_clock::time_point sNext{};
+  static std::filesystem::file_time_type sFailedCard{};
+  static std::filesystem::file_time_type sFailedBin{};
+  const auto now = std::chrono::steady_clock::now();
+  if (now < sNext) {
+    return false;
+  }
+  sNext = now + std::chrono::milliseconds(500);
+  const std::string bin = TrilogyShareBin();
+  if (bin.empty()) {
+    return false;
+  }
+  std::error_code ec;
+  const std::filesystem::file_time_type binTime = std::filesystem::last_write_time(bin, ec);
+  if (ec) {
+    return false;
+  }
+  const std::vector<std::string> files = GameFilesNewest();
+  std::filesystem::file_time_type cardTime = std::filesystem::file_time_type::min();
+  for (const std::string& file : files) {
+    cardTime = std::max(cardTime, std::filesystem::last_write_time(file, ec));
+  }
+  std::string message;
+  if (!files.empty() && cardTime > binTime && cardTime != sFailedCard) {
+    if (!ExportTrilogy(bin, message)) {
+      std::fprintf(stderr, "[save] Trilogy mirror: export failed: %s\n", message.c_str());
+      sFailedCard = cardTime;
+      return false;
+    }
+    std::filesystem::last_write_time(bin, cardTime, ec); // equal times mean in step
+    return false;
+  }
+  if (!pull || binTime <= cardTime || binTime == sFailedBin) {
+    return false;
+  }
+  if (!ImportTrilogy(bin, message)) {
+    std::fprintf(stderr, "[save] Trilogy mirror: import failed: %s\n", message.c_str());
+    sFailedBin = binTime;
+    return false;
+  }
+  for (const std::string& file : GameFilesNewest()) {
+    std::filesystem::last_write_time(file, binTime, ec);
+  }
+  return true;
 }
 
 } // namespace PortSave
