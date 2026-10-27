@@ -165,6 +165,36 @@ bool IsSeekerTargetInRange(const CActor& target, const CPlayer& player, const CS
   return (aimPosition - player.GetEyePosition()).MagSquared() < radius * radius;
 }
 
+#ifdef TARGET_PC
+void CPlayerGun::PortFireStackedBeams(float dt, CStateManager& mgr, const CTransform4f& xf,
+                                      bool targetHoming) {
+  if (!PortOverlay::StackBeams()) {
+    PortReleaseStackedBeams();
+    return;
+  }
+  const CPlayerState& playerState = *GetPlayerFromAll(mgr)->GetPlayerState();
+  const TUniqueId homingTarget = targetHoming ? PortHomingTargetId(mgr) : kInvalidUniqueId;
+  for (int i = 0; i < mSelectableBeams.size(); ++i) {
+    CGunWeapon* beam = mSelectableBeams[i];
+    if (beam == nullptr || beam == mCurrentBeam ||
+        !playerState.HasPowerUp(CPlayerState::EItemType(i))) {
+      continue;
+    }
+    beam->PortLockStackTokens();
+    beam->PortFireStackedProjectile(mUnderwater, dt, mChargeState, xf, mgr, homingTarget,
+                                    playerState.GetChargeBeamFactor());
+  }
+}
+
+void CPlayerGun::PortReleaseStackedBeams() {
+  for (int i = 0; i < mSelectableBeams.size(); ++i) {
+    if (mSelectableBeams[i] != nullptr) {
+      mSelectableBeams[i]->PortUnlockStackTokens();
+    }
+  }
+}
+#endif
+
 void CPlayerGun::UpdateNormalShotCycle(float dt, CStateManager& mgr) {
   CPlayer* player = GetPlayerFromAll(mgr);
   CPlayerState* playerState = player->GetPlayerState();
@@ -252,6 +282,11 @@ void CPlayerGun::UpdateNormalShotCycle(float dt, CStateManager& mgr) {
                          chargeState, xf, mgr, homingTarget, attributes,
                          CSfxManager::kInternalInvalidSfxId, nullptr, nullptr, chargeFactor1,
                          chargeFactor1);
+#ifdef TARGET_PC
+      if (!outOfAmmo) {
+        PortFireStackedBeams(dt, mgr, xf, targetHoming);
+      }
+#endif
     }
 
     mgr.InformListeners(mGunWorldXf.GetTranslation(), kLNT_PlayerFire);

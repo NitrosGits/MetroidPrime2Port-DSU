@@ -22,7 +22,11 @@ public:
                            EInvulnerable invulnerable, const CVisorParameters& visor);
 
   // CEntity
+#ifdef TARGET_PC
+  ~CScriptDamageableTrigger() override;
+#else
   ~CScriptDamageableTrigger() override {}
+#endif
   CEntity* TypesMatch(int typeId) const override;
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
@@ -37,6 +41,9 @@ public:
                                                          int attributes) const override;
 
 private:
+#ifdef TARGET_PC
+  const CDamageVulnerability* PortActiveVulnerability() const;
+#endif
   CAABox mBounds;
   CHealthInfo mHealth;
   CDamageVulnerability mVulnerability;

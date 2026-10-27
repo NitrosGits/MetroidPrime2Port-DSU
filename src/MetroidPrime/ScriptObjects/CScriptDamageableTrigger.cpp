@@ -8,6 +8,9 @@
 #ifdef TARGET_PC
 #include <cstdio>
 #include <cstdlib>
+#include <map>
+
+#include "port_overlay.h"
 
 // MP2_DEBUG_BALL=1: the wall of a two-stage cannon puzzle is one of these, so a damage message
 // and the HP it leaves behind are the only way to see whether the missile, the cannon ball or
@@ -151,12 +154,58 @@ void CScriptDamageableTrigger::Think(float, CStateManager& mgr) {
 
 CHealthInfo* CScriptDamageableTrigger::HealthInfo() { return &mHealth; }
 
+#ifdef TARGET_PC
+// Beam doors (F1 > Game > Unlocks): the vulnerability of a colour-locked lock with the four beams
+// (shot and charged) made Normal. Built on first use and kept per object so the pointer
+// GetDamageVulnerability() hands out stays valid; ~CScriptDamageableTrigger drops it.
+static std::map< const CScriptDamageableTrigger*, CDamageVulnerability > sAnyBeamVulnerability;
+
+static bool PortIsColorLock(const CDamageVulnerability& vuln) {
+  int hits = 0;
+  for (int type = kWT_Power; type <= kWT_Annihilator; ++type) {
+    hits += vuln.WeaponHits(CWeaponMode(EWeaponType(type)), 0) ? 1 : 0;
+  }
+  return hits > 0 && hits < 4;
+}
+
+CScriptDamageableTrigger::~CScriptDamageableTrigger() { sAnyBeamVulnerability.erase(this); }
+
+const CDamageVulnerability* CScriptDamageableTrigger::PortActiveVulnerability() const {
+  if (!PortOverlay::UnlockBeamDoors() || !PortIsColorLock(mVulnerability)) {
+    return &mVulnerability;
+  }
+  auto it = sAnyBeamVulnerability.find(this);
+  if (it == sAnyBeamVulnerability.end()) {
+    auto make = [](EWeaponType type) {
+      return CDamageVulnerability::MakeWeaponVulnerability(type, CWeaponTypeVulnerability::Normal());
+    };
+    const CDamageVulnerability::TWeaponVulnerability beams[4] = {
+        make(kWT_Power), make(kWT_Dark), make(kWT_Light), make(kWT_Annihilator)};
+    it = sAnyBeamVulnerability
+             .emplace(this, CDamageVulnerability(mVulnerability, beams, 4,
+                                                 CDamageVulnerability::kOF_Normal |
+                                                     CDamageVulnerability::kOF_Charged))
+             .first;
+  }
+  return &it->second;
+}
+#endif
+
 const CDamageVulnerability* CScriptDamageableTrigger::GetDamageVulnerability() const {
+#ifdef TARGET_PC
+  return PortActiveVulnerability();
+#else
   return &mVulnerability;
+#endif
 }
 
 EWeaponCollisionResponseTypes
 CScriptDamageableTrigger::GetCollisionResponseType(const CVector3f&, const CVector3f&,
                                                    const CWeaponMode& weapon, int) const {
-  return mVulnerability.WeaponHits(weapon, 0) ? kWCR_OtherProjectile : kWCR_Unknown15;
+  #ifdef TARGET_PC
+  const CDamageVulnerability& vulnerability = *PortActiveVulnerability();
+#else
+  const CDamageVulnerability& vulnerability = mVulnerability;
+#endif
+  return vulnerability.WeaponHits(weapon, 0) ? kWCR_OtherProjectile : kWCR_Unknown15;
 }

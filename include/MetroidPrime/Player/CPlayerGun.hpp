@@ -123,6 +123,11 @@ public:
 #ifdef TARGET_PC
   // Port: the beam in hand, for the console's `shoot` (a harness shot that is a real projectile).
   CGunWeapon* PortCurrentBeam() const { return mCurrentBeam; }
+  // Port: stacked beams (PortOverlay::StackBeams). Fires every other owned beam beside the one in
+  // hand, or releases their projectile tokens once the setting is off.
+  void PortFireStackedBeams(float dt, CStateManager& mgr, const CTransform4f& xf,
+                            bool targetHoming);
+  void PortReleaseStackedBeams();
   // Port: records the gun's camera-relative pose before a tick, so frames drawn between ticks
   // can blend the bob and sway (MP1's CPlayerGun::PortSnapshotPresentedPose).
   void PortSnapshotPresentedPose(const CStateManager& mgr) const;

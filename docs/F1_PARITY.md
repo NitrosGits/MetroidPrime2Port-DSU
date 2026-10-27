@@ -126,9 +126,9 @@ Statuses:
 | Restart to menu | tabs.cpp:38-80 | "Restart to menu" (`RequestReset`), game_sections.cpp | SAME (f1-frame) |
 | Screenshot / Photo mode buttons | tabs.cpp:38-80 | photo.cpp | SAME |
 | Exit game + "Exit game?" modal | tabs.cpp:38-80 | game_sections.cpp:77-82 | SAME |
-| Unlock beam doors once opened | game_sections.cpp:85 | — | SKIPPED (package 3): door lock logic lives in the retail REL, no `port_beam_doors` hook point in Echoes |
-| Stack beams | game_sections.cpp:92 | — | SKIPPED (package 3): Echoes' Dark/Light/Annihilator beams cannot all fire together; no counterpart to MP1's CPlayerGun change |
-| 1.00 revision compatibility | game_sections.cpp:107-111 | — | SKIPPED (package 3): Echoes has no `Revision100` sequence-break fixes to restore |
+| Unlock beam doors once opened | game_sections.cpp:85 | game_sections.cpp `DrawUnlocksSection`; `CScriptDamageableTrigger::PortActiveVulnerability` | DONE (build-verified, not play-tested): colour-locked doors (a lock whose vulnerability hits 1-3 of the 4 beams) take a per-object any-beam vulnerability. Persisted as `unlock_beam_doors`
+| Stack beams | game_sections.cpp:92 | game_sections.cpp; `CPlayerGun::PortFireStackedBeams`, `CGunWeapon::PortFireStackedProjectile` | DONE (build-verified, not play-tested): each shot also fires the other owned beams from their own locked weapon tokens. Persisted as `stack_beams`
+| 1.00 revision compatibility | game_sections.cpp:107-111 | — | SKIPPED, with evidence: the G2ME-vs-G2MP differences are script-graph rewrites in Temple Grounds areas 6 and 19, in the disc's MREA data, not in code. The only `VERSION_G2MP01` code differences are lighting and shadows (CActor.cpp, CScriptWater.cpp). A G2MP disc has no G2ME scripts to restore, and layer 8 cannot be dropped alone because layer-0 objects were rewired. A toggle would need G2ME MREA patches shipped with the port
 | Hard mode unlock | game_sections.cpp:138 | game_sections.cpp `DrawUnlocksSection` (called from the Cutscenes section until package 2 gives it a tab); hook `CScriptGuiScreen.cpp` `UpdateSaveSlots` | SAME (package 3) |
 | Fusion Suit, Wear Fusion Suit | game_sections.cpp:144,166 | — | MP1-ONLY: Prime 1's Fusion Suit unlock |
 | Image galleries + gallery window | game_sections.cpp:175; gallery.cpp (138 lines) | unlock row in `DrawUnlocksSection`; hook `CSlideShow::GetGalleriesUnlocked` (mask 0x3F) | SAME for the unlock (package 3). Gallery window SKIPPED: it shows Remastered-import pictures (`port_gallery`), Echoes has no such source |
