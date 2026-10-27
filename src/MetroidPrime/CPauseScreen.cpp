@@ -50,11 +50,6 @@
 #ifdef TARGET_PC
 #include "port_pointer.h"
 #include "port_pointer_menu.h"
-
-// A finger spin of the logbook tree only turns it: the node nearest the front is not picked up
-// (a stick turn does that) until the stick turns the tree again; only a tap selects.
-static bool sPortTouchSpin = false;
-static int sPortTouchSpinNode = -1;
 #endif
 #include "rstl/StringExtras.hpp"
 #include "rstl/algorithm.hpp"
@@ -692,11 +687,6 @@ void CPauseScreen::Update(float dt, const CStateManager& mgr, CArchitectureQueue
   const int selectedId = mScanTree.GetSelectedNode();
   const rstl::rc_ptr< CScanTreeNode > node = mScanTree.GetNode(selectedId);
   const CVector3f position = node->GetDisplayPosition();
-#ifdef TARGET_PC
-  if (!close_enough(mRotationInput.GetX(), 0.f) || !close_enough(mRotationInput.GetY(), 0.f)) {
-    sPortTouchSpin = false;
-  }
-#endif
   mRotationVelocity += mRotationInput * dt;
   mRotationVelocity *= 0.97f;
   mRotationInput = CVector2f::Zero();
@@ -708,11 +698,7 @@ void CPauseScreen::Update(float dt, const CStateManager& mgr, CArchitectureQueue
   const CVector3f selectionOffset = -2.f * view.GetColumn(kDY);
   mViewRotation = mViewRotation * CQuaternion::ZRotation(CRelAngle::FromDegrees(rotation.GetX())) *
                   CQuaternion::XRotation(CRelAngle::FromDegrees(rotation.GetY()));
-#ifdef TARGET_PC
-  if (close_enough(transition, 0.f) && close_enough(mSelectionDelay, 0.f) && !sPortTouchSpin) {
-#else
   if (close_enough(transition, 0.f) && close_enough(mSelectionDelay, 0.f)) {
-#endif
     float bestDistance = 10000.f;
     if (node->GetNodeType() == CScanTreeNode::kNT_Category) {
       const rstl::rc_ptr< CScanTreeCategory > categoryNode(node);
@@ -920,10 +906,6 @@ void CPauseScreen::PortPointerInput(CFinalInput& input) {
   }
   const int selectedId = mScanTree.GetSelectedNode();
   rstl::rc_ptr< CScanTreeNode > node = mScanTree.GetNode(selectedId);
-  if (selectedId != sPortTouchSpinNode) {
-    sPortTouchSpin = false;  // a new category starts with the usual front pick
-    sPortTouchSpinNode = selectedId;
-  }
   const CScanTreeNode::ENodeType type = node->GetNodeType();
   float cx = 0.f, cy = 0.f;
   int count = 0;
@@ -943,11 +925,8 @@ void CPauseScreen::PortPointerInput(CFinalInput& input) {
     } else if (dragging) {
       mRotationVelocity = CVector2f::Zero();
     }
-    if (dragging && g.FingerCount() == 1) {
-      sPortTouchSpin = true;
-    }
     // Hover is the cursor's: a finger that lands or slides over a node must not select it, or its
-    // release would land on a selected node and press A (only a tap on the selected node does).
+    // release would land on a selected node and press A (only a tap does).
     const CScanTreeNode* hover =
         have && moved && !g.Pressed() && PortPointer::MouseIsLast() ? PortNodeAt(px, py) : nullptr;
     int hoverId = -1;
@@ -980,9 +959,7 @@ void CPauseScreen::PortPointerInput(CFinalInput& input) {
           mSelectionDelay = 1.f;
           mSelectionHighlight = 1.f;
         }
-        if (wasSelected || PortPointer::MouseIsLast()) {
-          PortPointerMenu::PressA(input);
-        }
+        PortPointerMenu::PressA(input);
       } else if (hit == node.GetPtr() && node->GetParentNode() != -1 && !mOpenedFromScan) {
         PortPointerMenu::PressB(input);
       }
