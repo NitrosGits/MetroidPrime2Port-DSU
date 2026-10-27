@@ -182,6 +182,11 @@ void DrawControlsTouchGyro();
 // The remaining pages and sections.
 void DrawFreeCam();
 void DrawCheatsTab();
+// MP1's cheat rows without the page's own wrapper, for a caller that draws them under a heading.
+void DrawCheatsSection();
+void DrawRendering();
+void DrawAudio();
+void DrawVoices();
 void DrawDebugTab();
 void DrawPerformanceTab();
 void DrawSaveStatesTab();

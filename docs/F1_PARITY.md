@@ -218,16 +218,18 @@ Statuses:
 
 | Item | MP1 | MP2 | Status |
 | --- | --- | --- | --- |
-| Sections | debug.cpp:148-172: Cheats, Camera, Rendering, Audio backends, Sounds playing | debug.cpp:115-131: Game, Camera, Photo, Console | DIFF |
+| Sections | debug.cpp:148-172: Cheats, Camera, Rendering, Audio backends, Sounds playing | debug.cpp: Game, Camera (with Photo), Rendering, Audio backends, Sounds playing, Console; Cheats stays its own page (`DrawCheatsSection()` is the call for Debug) | DIFF: Cheats not in Debug yet (package 2) |
 | Free camera / Freeze / Show Samus / Speed | cheats.cpp:301-319 | debug.cpp:22-41 | SAME |
-| Collision combo, Frame statistics | cheats.cpp:341-352 | — | MISSING |
-| Streamed audio / MusyX audio | audio.cpp:26,30 | — | MISSING |
-| Sounds playing (Freeze list, Unmute all) | audio.cpp:111,161 | — | MISSING |
+| Collision combo | cheats.cpp:341-346 | — | MP1-ONLY: no PortCollisionView in Echoes |
+| Frame statistics | cheats.cpp:348-352 | cheats.cpp `DrawRendering` (fps, draws, passes, buffers, textures, pipelines; no PBR or room-geometry lines) | DIFF: PBR and room-geometry counters are MP1's |
+| Streamed audio / MusyX audio | audio.cpp:26,30 | audio.cpp `DrawAudio` | SAME |
+| Sounds playing (Freeze list, Unmute all) | audio.cpp:111,161 | audio.cpp `DrawVoices` | SAME |
 | Remastered debug | remastered.cpp | — | MP1-ONLY: Remastered |
 | Full health / Grant everything / Abilities / Energy Tanks / Teleport / Reload | cheats.cpp:88,92,115,176,181,247 | cheats.cpp:163,167,183,210,217,287 | SAME |
 | Invulnerable | cheats.cpp:103 | "God mode", cheats.cpp:151 | DIFF: label |
 | Phazon Beam | cheats.cpp:108 | — | MP1-ONLY: Prime 1 item |
-| Missiles / Power Bombs sliders | cheats.cpp:168,172 | — | MISSING |
+| Missiles / Power Bombs sliders | cheats.cpp:168,172 | cheats.cpp `counter()` (Echoes ids kIT_Missile, kIT_Powerbomb; also Dark/Light Ammo) | SAME |
+| Replace disc image… | debug.cpp:122 | — | MISSING: needs a PortDiscReplace backend (no Echoes counterpart; a feature, not a row) |
 
 ## Touch overlay (Android)
 

@@ -6,6 +6,8 @@
 
 #include "port_warp.h"
 
+#include <aurora/gfx.h>
+
 #include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CMemoryCard.hpp"
@@ -147,7 +149,32 @@ void DrawItemChecks(CPlayerState& ps, const char* tableId, const SItemCheck* ite
 
 } // namespace
 
-void DrawCheatsTab() {
+// The readouts for working on what mods draw. MP1's DrawRendering (debug_ui/cheats.cpp) also has a
+// Collision view and PBR / room-geometry counters; this port has neither, so only the frame
+// statistics are here.
+void DrawRendering() {
+  if (ImGui::CollapsingHeader("Frame statistics")) {
+    if (const AuroraStats* stats = aurora_get_stats()) {
+      ImGui::Text("%.0f fps, %u draws (%u merged), %u passes", aurora_get_fps(), stats->drawCallCount,
+                  stats->mergedDrawCallCount, stats->renderPassCount);
+      ImGui::Text("vertices %.1f MiB, indices %.1f, arrays %.1f, uniforms %.1f, texture uploads %.1f",
+                  stats->lastVertSize / 1048576.f, stats->lastIndexSize / 1048576.f,
+                  stats->lastStorageSize / 1048576.f, stats->lastUniformSize / 1048576.f,
+                  stats->lastTextureUploadSize / 1048576.f);
+      if (const uint32_t resident = aurora_get_resident_geometry_mib()) {
+        ImGui::Text("kept on the GPU %.1f of %u MiB", aurora_get_resident_geometry_used() / 1048576.f, resident);
+      }
+      ImGui::Text("pipelines %u made, %u waiting", stats->createdPipelines, stats->queuedPipelines);
+    }
+    AuroraTextureStats textures{};
+    aurora_get_texture_stats(&textures);
+    ImGui::Text("textures %u, %.0f MiB; render targets %u, %.0f MiB; lighting %u, %.0f MiB", textures.count[0],
+                textures.bytes[0] / 1048576.f, textures.count[1], textures.bytes[1] / 1048576.f, textures.count[2],
+                textures.bytes[2] / 1048576.f);
+  }
+}
+
+void DrawCheatsSection() {
   ImGui::Checkbox("God mode", &sGodMode);
   ItemHelp("The player takes no damage; other actors still do. Not saved.");
 
@@ -365,6 +392,10 @@ void DrawCheatsTab() {
       }
     }
   }
+}
+
+void DrawCheatsTab() {
+  DrawCheatsSection();
 }
 
 } // namespace PortDebug
