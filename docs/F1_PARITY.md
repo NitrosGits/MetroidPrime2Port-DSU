@@ -205,8 +205,8 @@ Statuses:
 | Section order | tabs.cpp:261-274: Overlay, Settings, Memory card, Data folder, Log, Disc check, Discord, Update, About | tabs.cpp:71-82: Overlay, Settings, Disc image, Memory card, Data folder, Discord, Log, About | DIFF |
 | Overlay (floating window, Menu theme, Menu sounds) | game_sections.cpp | game_sections.cpp:415-427 | SAME |
 | Memory card, Import file, Import from Dolphin, Export to Dolphin, Open card folder | file_dialogs.cpp | card_data.cpp | SAME |
-| Emulator card (Choose…, Auto, Installed emulators, Share card, Copy port saves) | file_dialogs.cpp:542-603 | — | MISSING |
-| Export as / Export into save.bin / Export… | file_dialogs.cpp:680-693 | — | MISSING |
+| Emulator card (Choose…, Auto, Installed emulators, Share card, Copy port saves) | file_dialogs.cpp:542-603 | card_data.cpp DrawEmulatorCard; port_save.cpp; DolphinCMemoryCardSys.cpp Initialize | SAME (sharing takes effect at next launch, not live; no Trilogy mirror) |
+| Export as / Export into save.bin / Export… | file_dialogs.cpp:680-693 | — | SKIPPED: Trilogy save.bin has no Echoes counterpart; "Export to folder…" already matches the .gci export |
 | Data folder (Android) | PortDataFolder::DrawPanel | tabs.cpp | SAME |
 | Log | debug.cpp | game_sections.cpp:631 | SAME |
 | Disc image | debug.cpp | game_sections.cpp:522 | SAME |

@@ -10,6 +10,11 @@
 #ifdef TARGET_PC
 #include "port_entry.h"
 #include "port_save.h"
+
+#ifdef TARGET_PC
+#include <aurora/card.h>
+#include <cstdio>
+#endif
 #endif
 
 static uint RoundUp(uint value, uint align) { return (value + align - 1) & ~(align - 1); }
@@ -387,6 +392,14 @@ void CMemoryCardSys::Initialize() {
     // Aurora's user path (MP2_USER_PATH), in the region folder of the mounted disc's game code
     // (G2ME -> USA, G2MP -> EUR), so PAL and USA saves never share a card.
     CARDInit(port::entry::CurrentGameCode(), "01");
+    // F1 > System > Memory card > "Share memory card with emulator": mount the emulator's card
+    // base instead, so the port and Dolphin/PrimeHack use the same saves.
+    const std::string shared = PortSave::SharedCardBase();
+    if (!shared.empty()) {
+      const bool mounted = aurora_card_set_base_path(shared.c_str());
+      std::fprintf(stderr, "port: memory card: sharing the emulator's card under %s%s\n",
+                   shared.c_str(), mounted ? "" : " (no card could be mounted there)");
+    }
 #else
     CARDInit();
 #endif

@@ -82,6 +82,25 @@ bool Backup(std::string* written, std::string& error);
 std::vector<std::string> Backups();
 std::string BackupsDirectory();
 
+// The emulator's card, shared with the port (MP1's PortGci emulator folder and "Share memory card"):
+// with sharing on, CMemoryCardSys::Initialize mounts <emulator folder>/GC as the card base, so the
+// port and Dolphin/PrimeHack read and write the same 01-G2ME-*.gci. Desktop only; Trilogy's save.bin
+// has no Echoes counterpart, so there is no mirror mode.
+//
+// The emulator user folder the player chose (the one with GC/ in it; a GC, GC/<region> or
+// GC/<region>/Card A folder resolves to the folder above), or empty for autodetection.
+void SetEmulatorFolder(const std::string& path);
+std::string EmulatorFolder();
+// Autodetected Dolphin/PrimeHack user folders that exist on this machine and contain GC/.
+std::vector<std::string> DetectedEmulatorFolders();
+// The emulator's GCI-folder card A for the mounted release, or empty.
+std::string EmulatorCardFolder();
+void SetShareEmulatorCard(bool share);
+bool ShareEmulatorCard();
+// <emulator folder>/GC when sharing is on and the emulator has a GCI-folder card A for this region;
+// otherwise empty, with `why` (if given) saying why for the player.
+std::string SharedCardBase(std::string* why = nullptr);
+
 // The card-write hook (`MP2_CARD_BACKUP=1`, F1 > Saves): a copy of the file as it is *before* the
 // game replaces it, so a bad save can always be recovered. Called by
 // CMemoryCardSys::CCardFileInfo::WriteFile under TARGET_PC; `fileName` is the card's own file name.
