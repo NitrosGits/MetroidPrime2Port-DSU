@@ -681,6 +681,7 @@ void SetAimSpeed(float pxPerDp) { SetNumber(&Settings::aimSpeed, pxPerDp, 0.5f, 
 void SetAimSpeedY(float pxPerDp) { SetNumber(&Settings::aimSpeedY, pxPerDp, 0.5f, 6.f); }
 
 void SetMorphed(bool morphed) { sMorphed.store(morphed, std::memory_order_release); }
+bool Morphed() { return sMorphed.load(std::memory_order_acquire); }
 
 void RequestEdit() {
   PortRadial::CancelAllTouches();

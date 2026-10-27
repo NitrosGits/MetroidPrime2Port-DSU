@@ -121,6 +121,7 @@ bool TakeEditRequested();
 // CPlayer::Update publishes whether player 0 is out of the unmorphed state (bit 13 of the wheel
 // state, the Java view's Ball page), as MP1's CPlayer does.
 void SetMorphed(bool morphed);
+bool Morphed();
 // Steps Default -> Classic -> Twin -> Default and persists it. The per-control offsets stay:
 // the Java view keys them by control id, which differs between layouts, as in MP1.
 void CycleLayout();

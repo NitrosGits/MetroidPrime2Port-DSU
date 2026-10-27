@@ -574,14 +574,19 @@ CPlayerState* PlayerInPlay() {
 }
 
 // Menu (front end, pause screen, or anything that is not in play) or gameplay; the
-// scan visor adds scan to gameplay. MP1 also tells the map screen and morph ball
-// apart and adds menu while the scan text soft-pauses the game: those read the
-// CStateManager and CPlayer, which nothing outside src/ holds in MP2.
+// scan visor adds scan to gameplay, and the Morph Ball (or morphing; CPlayer::Update
+// publishes it) adds Morph Ball, which the Morph Ball rows and the touch overlay's
+// Ball page need. MP1 also tells the map screen apart and adds menu while the scan
+// text soft-pauses the game: those read the CStateManager, which nothing outside
+// src/ holds in MP2.
 uint16_t GameContexts() {
   const CPlayerState* state = PlayerInPlay();
   if (state == nullptr || PortTouch::PauseScreenOpen()) return PortInput::kCtxMenu;
   uint16_t contexts = PortInput::kCtxGameplay;
   if (state->GetCurrentVisor() == CPlayerState::kPV_Scan) contexts |= PortInput::kCtxScan;
+  // The front end's ('FRND') own Samus sits in the ball: that is not play.
+  if (PortTouch::Morphed() && gpGameState->GetGameMode().GetGameModeType() != 'FRND')
+    contexts |= PortInput::kCtxMorphBall;
   return contexts;
 }
 
