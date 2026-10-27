@@ -259,6 +259,14 @@ if(ANDROID)
         HINTS "${MP_ANDROID_LLVM_BIN}" NO_DEFAULT_PATH REQUIRED)
     find_program(MP_NM NAMES llvm-nm
         HINTS "${MP_ANDROID_LLVM_BIN}" NO_DEFAULT_PATH REQUIRED)
+elseif(WIN32)
+    # COFF has no partial link (lld-link -r); tools/scope_module.py --format coff renames each
+    # module's private symbols per object with llvm-objcopy, so only objcopy and nm are needed.
+    get_filename_component(MP_WIN_LLVM_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    find_program(MP_OBJCOPY NAMES llvm-objcopy ${CMAKE_OBJCOPY} objcopy
+        HINTS "${MP_WIN_LLVM_BIN}" REQUIRED)
+    find_program(MP_NM NAMES llvm-nm ${CMAKE_NM} nm HINTS "${MP_WIN_LLVM_BIN}" REQUIRED)
+    set(MP_LD_BFD "")
 else()
     find_program(MP_LD_BFD NAMES ld.bfd ld REQUIRED)
     find_program(MP_OBJCOPY NAMES ${CMAKE_OBJCOPY} objcopy REQUIRED)
@@ -300,14 +308,42 @@ function(mp_scope_modules)
     endforeach()
     file(GENERATE OUTPUT "${MP_MODULE_DIR}/others.txt" CONTENT "${content}")
     set(outs)
-    foreach(m ${MP_MODULES})
-        list(APPEND outs "${MP_MODULE_DIR}/${m}.o")
-    endforeach()
+    set(scope_args --ld "${MP_LD_BFD}")
+    set(scope_deps)
+    if(WIN32)
+        # One scoped object per input object, at paths known now: <Name>/<index>_<source>.obj, in
+        # the order $<TARGET_OBJECTS> lists the compiled sources. The tool checks the counts.
+        set(outlist "")
+        foreach(m ${MP_MODULES})
+            set(i 0)
+            string(APPEND outlist "${m}")
+            foreach(src ${MP_MODULE_${m}_SOURCES})
+                if(src MATCHES "\\.(c|cc|cpp|cxx|C)$")
+                    get_filename_component(base "${src}" NAME)
+                    set(o "${MP_MODULE_DIR}/${m}/${i}_${base}.obj")
+                    list(APPEND outs "${o}")
+                    string(APPEND outlist ";${o}")
+                    math(EXPR i "${i} + 1")
+                endif()
+            endforeach()
+            string(APPEND outlist "\n")
+        endforeach()
+        file(WRITE "${MP_MODULE_DIR}/outputs.txt.tmp" "${outlist}")
+        file(COPY_FILE "${MP_MODULE_DIR}/outputs.txt.tmp" "${MP_MODULE_DIR}/outputs.txt" ONLY_IF_DIFFERENT)
+        file(REMOVE "${MP_MODULE_DIR}/outputs.txt.tmp")
+        set(scope_args --format coff --outputs "${MP_MODULE_DIR}/outputs.txt")
+        set(scope_deps "${MP_MODULE_DIR}/outputs.txt")
+    else()
+        foreach(m ${MP_MODULES})
+            list(APPEND outs "${MP_MODULE_DIR}/${m}.o")
+        endforeach()
+    endif()
     add_custom_command(OUTPUT ${outs}
         COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/tools/scope_module.py" scope
                 --modules "${MP_MODULE_DIR}/modules.txt" --others "${MP_MODULE_DIR}/others.txt"
-                --outdir "${MP_MODULE_DIR}" --ld "${MP_LD_BFD}" --objcopy "${MP_OBJCOPY}" --nm "${MP_NM}"
+                --outdir "${MP_MODULE_DIR}" ${scope_args} --objcopy "${MP_OBJCOPY}" --nm "${MP_NM}"
         DEPENDS ${_mp_mod_objs} ${others} "${CMAKE_CURRENT_SOURCE_DIR}/tools/scope_module.py"
+                ${scope_deps}
         COMMENT "Scoping REL modules" VERBATIM)
     add_custom_target(mp_modules DEPENDS ${outs})
     set(MP_SCOPED_MODULE_OBJECTS ${outs} PARENT_SCOPE)
