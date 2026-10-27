@@ -436,6 +436,11 @@ void CCameraFilterPass::DrawDialogBox(const CColor& color, const CTexture* textu
 
 void CCameraFilterPass::DrawCinematicPlaceholderLabel(const CColor& color, const CTexture* texture,
                                                       float alpha) {
+#ifdef TARGET_PC
+  if (gpDefaultFont == nullptr) {
+    return;
+  }
+#endif
   const CViewport viewport = CGraphics::GetViewport();
   gpRender->SetDepthReadWrite(false, false);
   gpRender->SetModelMatrix(CTransform4f::Identity());

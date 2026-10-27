@@ -126,8 +126,12 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
 - On LP64 `u64` is `unsigned long`: `CInputStream::Get<unsigned long>` reads 64 bits under
   TARGET_PC (a 32-bit read there broke COBBTree materials). Spell 32-bit fields `uint`.
 - Allocator pools scale by `kAllocatorPointerSize` (8 on host): retail fixed buffer sizes overrun.
-- `DefaultFont*.inc` come from the upstream build's `extract:` (`build/G2ME01/include`, on mp_game's
-  include path): run the upstream build once before the host build in a fresh checkout.
+- The default font (`gpDefaultFont`) is read from the mounted disc's boot DOL at run time
+  (`src/MetroidPrime/PortDefaultFont.cpp`: 16-byte prefix scan + SHA-256 per blob, so USA, PAL and
+  Trilogy's `rs5mp2_p.dol` all resolve; no `DefaultFont*.inc`, no retail bytes in the binary, and the
+  host build no longer needs the upstream build first). A miss logs `port: default font: ERROR ...`
+  and leaves `gpDefaultFont` null: `CSplashScreen::Draw`, `CErrorOutputWindow::Draw` and the camera
+  filter's placeholder label return early under TARGET_PC. A new host user of `gpDefaultFont` needs the same test.
 - The GC compiler has no C++ standard headers: `#include <cstdio>`/`<cstring>` build on the host and
   break the matching build ("the file 'cstdio' cannot be opened"). Use the C headers and guard them,
   e.g. `#ifdef TARGET_PC` / `#include <string.h>` / `#endif`, and run the matching build after every

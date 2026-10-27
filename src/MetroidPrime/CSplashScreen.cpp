@@ -333,6 +333,12 @@ void CSplashScreen::Draw() const {
 #endif
   }
 
+#ifdef TARGET_PC
+  // The default font is read from the disc at run time (PortDefaultFont.cpp); null if not found.
+  if (gpDefaultFont == nullptr) {
+    return;
+  }
+#endif
   const CViewport viewport = CGraphics::GetViewport();
   CTextExecuteBuffer text;
   text.AddWordWrapping(true);

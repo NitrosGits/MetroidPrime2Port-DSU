@@ -105,6 +105,12 @@ void CErrorOutputWindow::DrawError() const {
   if (!mMsg) {
     return;
   }
+#ifdef TARGET_PC
+  // The default font is read from the disc at run time (PortDefaultFont.cpp); null if not found.
+  if (gpDefaultFont == nullptr) {
+    return;
+  }
+#endif
 
   CViewport viewport = CGraphics::GetViewport();
   CTextExecuteBuffer execBuffer;
