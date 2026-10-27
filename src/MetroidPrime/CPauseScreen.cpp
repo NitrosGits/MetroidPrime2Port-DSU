@@ -916,7 +916,8 @@ void CPauseScreen::PortPointerInput(CFinalInput& input) {
     // A left drag (one finger) spins the tree like the stick: the drag sets the spin rate, so a
     // flick keeps turning and slows down as Update damps it; holding still stops it.
     PortPointer::Recognizer& g = PortPointer::Gestures();
-    const bool dragging = g.Pressed() && (g.Buttons() & PortPointer::kButtonLeft) != 0;
+    const bool dragging =
+        g.Pressed() && ((g.Buttons() & PortPointer::kButtonLeft) != 0 || g.FingerCount() == 1);
     PortPointerMenu::ViewMotion m;
     const float dt = input.DeltaTime();
     if (PortPointerMenu::TakeViewMotion(m) && (m.rotateX != 0.f || m.rotateY != 0.f) && dt > 0.f) {
@@ -924,7 +925,10 @@ void CPauseScreen::PortPointerInput(CFinalInput& input) {
     } else if (dragging) {
       mRotationVelocity = CVector2f::Zero();
     }
-    const CScanTreeNode* hover = have && moved && !dragging ? PortNodeAt(px, py) : nullptr;
+    // Hover is the cursor's: a finger that lands or slides over a node must not select it, or its
+    // release would land on a selected node and press A (only a tap on the selected node does).
+    const CScanTreeNode* hover =
+        have && moved && !g.Pressed() && PortPointer::MouseIsLast() ? PortNodeAt(px, py) : nullptr;
     int hoverId = -1;
     for (int i = 0; hover != nullptr && i < childCount; ++i) {
       const int childId = category->GetChild(i);
