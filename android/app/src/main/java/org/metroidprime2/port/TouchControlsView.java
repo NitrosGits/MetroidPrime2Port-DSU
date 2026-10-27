@@ -246,14 +246,14 @@ final class TouchControlsView extends View {
 
     // The Visor and Beam buttons and their wheels.
     private static final String[] WHEEL_BUTTON_LABELS = {"Visor", "Beam"};
-    // Sectors run up, right, down, left, as the stock D-pad (visors) and C-stick
-    // (beams) directions do. Items are numbered as the native side does: visors
-    // Combat/Echo/Scan/Dark, beams Power/Dark/Light/Annihilator (MP2's).
+    // Sectors run up, right, down, left, placed as the HUD's own menus place them
+    // (CHudVisorBeamMenu::UpdateMenuWidgetTransform). Items are numbered as the native
+    // side does: visors Combat/Echo/Scan/Dark, beams Power/Dark/Light/Annihilator (MP2's).
     private static final String[][] WHEEL_LABELS = {
-        {"Combat", "Echo", "Dark", "Scan"},
-        {"Power", "Light", "Annihil.", "Dark"},
+        {"Combat", "Dark", "Echo", "Scan"},
+        {"Power", "Dark", "Annihil.", "Light"},
     };
-    private static final int[][] WHEEL_ITEMS = {{0, 1, 3, 2}, {0, 2, 3, 1}};
+    private static final int[][] WHEEL_ITEMS = {{0, 3, 1, 2}, {0, 1, 3, 2}};
     // Each beam icon's colour: Power yellow, Dark purple, Light white, Annihilator grey.
     // Visor icons stay white.
     private static final int[] BEAM_ICON_COLORS = {0xFFFFFF00, 0xFF8033FF, 0xFFFFFFFF, 0xFFB0B0C0};
