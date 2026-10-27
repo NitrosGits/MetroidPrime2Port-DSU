@@ -1,0 +1,32 @@
+name: Build and test
+description: >
+  Builds a configured port build directory, runs the port's CTest suite and
+  Aurora's GX FIFO regressions. The build directory must have been configured
+  with -DMP_SDK_HEADERS_ONLY=OFF and -DAURORA_ENABLE_TESTS=ON.
+
+inputs:
+  build-dir:
+    description: The configured build directory, relative to the workspace.
+    required: true
+  jobs:
+    description: The parallelism arguments for cmake --build, e.g. "-j" or "-j 4".
+    default: "-j"
+  build-args:
+    description: Extra arguments for the main build only, e.g. "-- -k 0".
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Build
+      shell: bash
+      run: cmake --build ${{ inputs.build-dir }} ${{ inputs.jobs }} ${{ inputs.build-args }}
+    - name: Test
+      shell: bash
+      run: ctest --test-dir ${{ inputs.build-dir }} -L port --output-on-failure
+    - name: Build FIFO regressions
+      shell: bash
+      run: cmake --build ${{ inputs.build-dir }} --target gx_fifo_tests ${{ inputs.jobs }}
+    - name: Test FIFO regressions
+      shell: bash
+      run: ./${{ inputs.build-dir }}/extern/aurora/tests/gx_fifo_tests --gtest_brief=1

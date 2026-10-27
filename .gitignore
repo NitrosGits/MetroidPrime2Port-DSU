@@ -39,3 +39,6 @@ compile_commands.json
 # Native port build dirs
 build-*/
 build-boot-probe/
+
+# The CI composite action lives under a build-* directory name.
+!/.github/actions/build-and-test/
