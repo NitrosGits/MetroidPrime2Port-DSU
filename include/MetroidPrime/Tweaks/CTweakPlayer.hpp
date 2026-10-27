@@ -64,6 +64,10 @@ public:
   float GetOrbitDistanceThreshold() const;
   int GetOrbitZoneWidth(CPlayer::EPlayerZoneInfo zone) const;
   int GetOrbitZoneHeight(CPlayer::EPlayerZoneInfo zone) const;
+#ifdef TARGET_PC
+  // Trilogy Targeting zone half height in the 640x448 basis (no viewport scale): the ring distance.
+  int PortTriTargetingHalfHeight() const;
+#endif
   int GetOrbitZoneCentreX(CPlayer::EPlayerZoneInfo zone) const;
   int GetOrbitZoneCentreY(CPlayer::EPlayerZoneInfo zone) const;
   int GetOrbitZoneIdealX(CPlayer::EPlayerZoneInfo zone) const;
