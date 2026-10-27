@@ -12,6 +12,12 @@ class CStateManager;
 
 class CMFGame : public CIOWin {
 public:
+#ifdef TARGET_PC
+  // Port: the credits / end-of-game results have started. Ends a running port skip and blocks new
+  // ones until the game flow goes away, so those screens run at normal speed (CMFGame.cpp).
+  static void PortMarkGameEnded();
+#endif
+
   enum EFlowState {
     kFS_Zero,
     kFS_InGame,
