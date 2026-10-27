@@ -4,6 +4,13 @@ description: >
   Aurora's GX FIFO regressions. The build directory must have been configured
   with -DMP_SDK_HEADERS_ONLY=OFF and -DAURORA_ENABLE_TESTS=ON.
 
+# Windows runs every step in PowerShell: Git Bash would put its own find, link
+# and openssl ahead of the runner's on PATH (cargo then links nod's build
+# scripts with coreutils' link). Elsewhere bash runs them. PowerShell takes a
+# bare -- as its own end-of-parameters marker, so Windows callers quote it in
+# build-args ("'--' -k 0"). The inputs are fixed strings from this repository's
+# workflows, spliced into the commands as is.
+
 inputs:
   build-dir:
     description: The configured build directory, relative to the workspace.
@@ -19,14 +26,34 @@ runs:
   using: composite
   steps:
     - name: Build
+      if: runner.os != 'Windows'
       shell: bash
       run: cmake --build ${{ inputs.build-dir }} ${{ inputs.jobs }} ${{ inputs.build-args }}
+    - name: Build
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: cmake --build ${{ inputs.build-dir }} ${{ inputs.jobs }} ${{ inputs.build-args }}
     - name: Test
+      if: runner.os != 'Windows'
       shell: bash
+      run: ctest --test-dir ${{ inputs.build-dir }} -L port --output-on-failure
+    - name: Test
+      if: runner.os == 'Windows'
+      shell: pwsh
       run: ctest --test-dir ${{ inputs.build-dir }} -L port --output-on-failure
     - name: Build FIFO regressions
       shell: bash
       run: cmake --build ${{ inputs.build-dir }} --target gx_fifo_tests ${{ inputs.jobs }}
+      if: runner.os != 'Windows'
+    - name: Build FIFO regressions
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: cmake --build ${{ inputs.build-dir }} --target gx_fifo_tests ${{ inputs.jobs }}
     - name: Test FIFO regressions
+      if: runner.os != 'Windows'
       shell: bash
+      run: ./${{ inputs.build-dir }}/extern/aurora/tests/gx_fifo_tests --gtest_brief=1
+    - name: Test FIFO regressions
+      if: runner.os == 'Windows'
+      shell: pwsh
       run: ./${{ inputs.build-dir }}/extern/aurora/tests/gx_fifo_tests --gtest_brief=1

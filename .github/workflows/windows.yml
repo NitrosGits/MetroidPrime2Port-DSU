@@ -122,7 +122,7 @@ jobs:
         with:
           build-dir: build-win
           jobs: "-j"
-          build-args: "-- -k 0"
+          build-args: "'--' -k 0"
 
       - name: Package
         shell: pwsh

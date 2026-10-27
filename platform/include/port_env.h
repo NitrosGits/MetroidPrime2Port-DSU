@@ -20,6 +20,15 @@ inline int SetEnv(const char* name, const char* value) {
 #endif
 }
 
+// unsetenv(name); 0 on success. On Windows an empty _putenv_s value removes the variable.
+inline int UnsetEnv(const char* name) {
+#if defined(_WIN32)
+  return _putenv_s(name, "");
+#else
+  return ::unsetenv(name);
+#endif
+}
+
 inline bool EnvFlag(const char* name, bool fallback = false) {
   const char* value = std::getenv(name);
   if (value == nullptr) {

@@ -1,5 +1,6 @@
 // Standalone integration test: compile with platform/port_mouse.cpp and SDL's include path.
 // SDL capture/window stubs keep this test deterministic and device-free; no SDL library needed.
+#include "port_env.h"
 #include "port_mouse.h"
 #include "port_radial.h"
 #include "port_test.h"
@@ -65,7 +66,7 @@ int main() {
   for (const char* key : {"MP2_MOUSE_AIM", "MP2_TWIN_STICK", "MP2_MOUSE_SENS",
                           "MP2_MOUSE_SENS_Y", "MP2_MOUSE_SENS_SPLIT", "MP2_MOUSE_INVERT_X",
                           "MP2_MOUSE_INVERT_Y", "MP2_STICK_AIM_RATE", "MP2_STICK_AIM_RATE_Y",
-                          "MP2_STICK_AIM_SPLIT", "MP2_TOUCH_AIM_SPEED"}) unsetenv(key);
+                          "MP2_STICK_AIM_SPLIT", "MP2_TOUCH_AIM_SPEED"}) port::UnsetEnv(key);
   REQUIRE(Near(Sensitivity(), 0.0035f)); // Do not import MP1's changed default.
   REQUIRE(Near(SensitivityY(), 0.0035f));
   for (float sensitivity : {0.0001f, 0.0035f, 0.01f}) {

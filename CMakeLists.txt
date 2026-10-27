@@ -194,9 +194,12 @@ target_include_directories(mp_game PUBLIC
 # CMemory/IAllocator headers), so it must not reach the few C translation units
 # in the list - the bundled LZO codec - which are compiled as C, exactly as the
 # matching build does.
+# clang-cl takes the GNU-style warning flags too; MWCC accepted the narrowing initializers.
+set(MP_MSVC_GAME_OPTIONS /W3
+    $<$<CXX_COMPILER_ID:Clang>:-Wno-c++11-narrowing -Wno-multichar -Wno-trigraphs>
+    "$<$<COMPILE_LANGUAGE:CXX>:/FI${CMAKE_CURRENT_SOURCE_DIR}/platform/compat.h>")
 if(MSVC)
-    target_compile_options(mp_game PRIVATE /W3
-        "$<$<COMPILE_LANGUAGE:CXX>:/FI${CMAKE_CURRENT_SOURCE_DIR}/platform/compat.h>")
+    target_compile_options(mp_game PRIVATE ${MP_MSVC_GAME_OPTIONS})
 else()
     # -Werror=return-type is what the Metroid Prime port uses, but the Echoes
     # decompilation is only ~7% done: several not-yet-finished functions fall off
@@ -231,6 +234,8 @@ foreach(m ${MP_MODULES})
             -Wformat -Wno-error=return-type -Wno-narrowing -Wno-multichar -Wno-write-strings
             -Wno-trigraphs
             "$<$<COMPILE_LANGUAGE:CXX>:-include${CMAKE_CURRENT_SOURCE_DIR}/platform/compat.h>")
+    else()
+        target_compile_options(mp_mod_${m} PRIVATE ${MP_MSVC_GAME_OPTIONS})
     endif()
     list(APPEND MP_MODULE_OBJECT_TARGETS mp_mod_${m})
 endforeach()
@@ -663,7 +668,7 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_save_convert_tests PRIVATE platform/include include tests)
     target_compile_definitions(port_save_convert_tests PRIVATE
         SAVE_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/01-G2ME-MetroidPrime2.gci")
-    target_compile_options(port_save_convert_tests PRIVATE -include cstdint)
+    target_compile_options(port_save_convert_tests PRIVATE $<IF:$<BOOL:${MSVC}>,/FIcstdint,-include$<SEMICOLON>cstdint>)
     add_test(NAME port_save_convert_tests COMMAND port_save_convert_tests)
     set_tests_properties(port_save_convert_tests PROPERTIES TIMEOUT 30 LABELS port)
     # Android's data folder move: the copy engine and the port_paths.txt rewrite (platform/port_data_folder.cpp).

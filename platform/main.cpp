@@ -41,7 +41,9 @@
 #if defined(__linux__)
 #include <sys/prctl.h>
 #endif
+#if !defined(_WIN32)
 #include <unistd.h>
+#endif
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>

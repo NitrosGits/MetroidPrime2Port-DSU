@@ -17,6 +17,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#ifdef _WIN32
+#include <SDL3/SDL_timer.h>
+#endif
 
 namespace {
 bool DebugAudio() {
@@ -28,7 +31,11 @@ bool DebugAudio() {
 double sRefillIssued[2];
 double NowMs() {
   timespec ts;
+#ifdef _WIN32
+  timespec_get(&ts, TIME_UTC); // no CLOCK_MONOTONIC; only differences are logged
+#else
   clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
   return ts.tv_sec * 1000.0 + ts.tv_nsec / 1e6;
 }
 
@@ -114,8 +121,12 @@ void CDSPStreamManager::Shutdown() {
         break;
       }
     }
+#ifdef _WIN32
+    SDL_Delay(1);
+#else
     const timespec wait = {0, 1000000};
     nanosleep(&wait, nullptr);
+#endif
   }
 #endif
   for (int i = 0; i < 2; ++i) {
