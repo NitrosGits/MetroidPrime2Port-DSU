@@ -31,7 +31,7 @@ bool ResidentIn(const Donor& donor, uint32_t worldAssetId) {
 // Items no vanilla Pickup gives, shown as the nearest one that has a donor.
 static int ModelItem(int item) {
   switch (item) {
-  case 107: // EnergyTransferModule (Randovania's "nothing") -> the ETM location's item
+  case 107: // EnergyTransferModule -> the ETM location's item
     return 28;
   case 73: // MissileLauncher
     return 44;

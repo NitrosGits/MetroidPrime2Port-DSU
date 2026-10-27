@@ -1,8 +1,6 @@
 #include "port_randomizer.h"
 
 #include "port_rando_gen.h"
-#include "port_rando_locations.h"
-#include "port_rando_seed.h"
 
 #include <SDL3/SDL.h>
 
@@ -67,15 +65,10 @@ struct Placement {
   int capacity = 0;
   bool hasAmount = false;
   bool hasCapacity = false;
-  std::string hudText; // Randovania hud_text[0]; empty for other seed formats
 };
 
 struct State {
   std::map<std::string, Placement> placements;
-  // Full Randovania patch data when the seed was one; later phases read the multi-resource
-  // grants, custom locations, spawn point, elevators and translator gates from it.
-  PortRandoSeed::Seed randovania;
-  bool hasRandovania = false;
   std::string seedName;
   int checkCount = 0;
   bool enabled = false;
@@ -395,47 +388,6 @@ public:
   }
 };
 
-// Randovania Echoes patch data: one placement per pickup that has a Pickup object on disc.
-bool LoadRandovania(State& state, const std::string& text) {
-  PortRandoSeed::Seed seed;
-  std::string error;
-  if (!PortRandoSeed::ParseRandovania(text, seed, error)) {
-    std::fprintf(stderr, "randomizer: Randovania patch data error: %s\n", error.c_str());
-    return false;
-  }
-  std::map<std::string, Placement> placements;
-  for (const PortRandoSeed::Pickup& pickup : seed.pickups) {
-    const PortRandoLocations::Location* location =
-        PortRandoLocations::ByPickupIndex(pickup.pickupIndex);
-    if (location == nullptr) {
-      std::fprintf(stderr, "randomizer: skipping unknown pickup_index %d\n", pickup.pickupIndex);
-      continue;
-    }
-    if (location->entityId == 0)
-      continue; // custom location: no Pickup object to hook
-    char key[32];
-    PortRandomizer::FormatLocationKey(location->worldAssetId, location->areaAssetId,
-                                      location->entityId, key, sizeof(key));
-    Placement placement;
-    if (pickup.resources.empty()) {
-      placement.itemType = 107; // EnergyTransferModule
-    } else {
-      placement.itemType = pickup.resources.front().item;
-      placement.amount = placement.capacity = pickup.resources.front().amount;
-    }
-    placement.hasAmount = placement.hasCapacity = true;
-    if (!pickup.hudText.empty())
-      placement.hudText = pickup.hudText.front();
-    placements[key] = placement;
-  }
-  state.seedName = seed.name;
-  state.placements = std::move(placements);
-  state.randovania = std::move(seed);
-  state.hasRandovania = true;
-  state.enabled = !state.placements.empty();
-  return state.enabled;
-}
-
 bool LoadSeed(State& state) {
   const std::string path = SeedPath();
   std::ifstream input(path, std::ios::binary);
@@ -446,9 +398,6 @@ bool LoadSeed(State& state) {
     std::fprintf(stderr, "randomizer: seed read error at byte offset 0: could not read file\n");
     return false;
   }
-
-  if (PortRandoSeed::IsRandovania(text))
-    return LoadRandovania(state, text);
 
   std::string seedName;
   std::map<std::string, Placement> placements;
@@ -644,9 +593,7 @@ bool AcquisitionText(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entit
     const auto it = state.placements.find(key);
     if (it == state.placements.end())
       return false;
-    out = it->second.hudText;
-    if (out.empty())
-      out = std::string(ItemName(itemType)) + " acquired!";
+    out = std::string(ItemName(itemType)) + " acquired!";
     return true;
   } catch (...) {
     return false;

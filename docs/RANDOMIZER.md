@@ -1,32 +1,22 @@
 # Randomizer
 
-## Decision (2026-10-27): Randovania decides, the port applies
+## Decision (2026-10-27): no Randovania in the port
 
-Supersedes the 2026-10-18 decision below in one point: the pickups **can** be enumerated statically.
-Randovania's Echoes logic database names, per location, the region's MLVL, the area's MREA and the
-Pickup's instance id - exactly the port's `WORLD:AREA:ENTITY` key. So the port does not grow logic of
-its own: Randovania generates (logic, tricks, presets, multiworld) and the port applies its seed at
-runtime instead of patching the ISO. Plan, each step checkable on its own:
+The port carries no Randovania code or data: no patch-data importer, no location table taken from
+its logic database. Seeds use the port's own format (`"locations"` keyed `WORLD:AREA:ENTITY`, below)
+and come from the port's own generator; any logic the generator grows is written here, from the
+disc. An Archipelago client stays possible on the port side, but its logic cannot come from
+Randovania either. (Superseded the same day's "Randovania decides, the port applies" plan; its
+importer and table were removed in the commit that records this.)
 
-1. **Location table** - done. `tools/rando_locations.py RANDOVANIA_DIR [--write]` reads
-   `randovania/games/prime2/logic_database/*.json` and checks every row on the user's disc: the MLVL
-   lists the MREA, the MREA holds a `PCKP` with that editor id, and its item is the database's
-   `original_model`. 119 locations, 115 standard, 4 custom (the energy controllers' translators,
-   which have no pickup on disc); 0 failed checks against Randovania `1ec92e8f` (2026-10-26). The
-   output, `platform/include/port_rando_locations.inc`, is compiled into
-   `platform/port_rando_locations.cpp` (`PortRandoLocations::PickupIndexFor`, `ByPickupIndex`);
-   `port_rando_locations_tests` checks its shape. Regenerate when Randovania's database changes.
-2. **Seed import** - read Randovania's Echoes patch data (pickups per index with resources, model,
-   HUD and scan text; starting items; spawn; elevators; translator gates; door weaknesses).
-   *Done (parse only):* `platform/port_rando_seed.cpp` (`PortRandoSeed::ParseRandovania`) reads the
-   legacy-patcher JSON (`pickups`, `spawn_point`, `elevators`, `translator_gates`, `banner_name`);
-   a seed file with a top-level `pickups` key loads through it instead of the native format. Each
-   pickup with a Pickup object becomes a placement of its first resource (amount = capacity);
-   Randovania's Multiworld counter (item 74) is dropped and an empty pickup becomes the ETM (107).
-   The rest (extra resources, progressive `conditional_resources`, `convert`, custom locations,
-   spawn, elevators, gates) is parsed and kept in the state but not yet applied. Not yet loaded
-   from a real Randovania export; `port_rando_seed_tests` uses a hand-built fixture. The F1
-   Randomizer page is hidden (`platform/debug_ui/search.cpp`) until import is usable.
+Still true from that work: pickups **can** be enumerated statically from the disc, so the dump sweep
+is no longer the only source of locations. Plan, each step checkable on its own:
+
+1. **Location list from the disc** - walk every `PCKP` of the single-player worlds (`Metroid1.pak`
+   ..`Metroid5.pak`; `Metroid6.pak` is the multiplayer arenas), script layers and the MREA's
+   generated-object section, into a `WORLD:AREA:ENTITY` table the generator reads instead of the
+   dump log. `tools/rando_models.py` already does this walk for models.
+2. **Seed format** - the native JSON only (done; see Workflow).
 3. **Pickup presentation** - the placed item's model and acquisition text.
    *Done (builds, unit-tested, not yet seen in game):* `tools/rando_models.py` reads every PCKP on
    disc and writes `platform/include/port_rando_models.inc` (44 rows: item -> CMDL + animation set,
@@ -36,28 +26,29 @@ runtime instead of patching the ISO. Plan, each step checkable on its own:
    borrows item 28's model, MissileLauncher (73) the Missile's. Items with no vanilla Pickup (Power
    Beam, Combat/Scan Visor, Varia, Morph Ball, Charge, Cannon Ball, ...) have no donor yet.
    Acquisition text: pickups reach their MEMO through SRLY/MRLY relays on `ZERO` (120 of 132 within
-   4 hops), so `Touch` suppresses MEMO display while it sends `Arrived` and shows the seed's
-   hud_text (else "<ItemName> acquired!") itself. A MEMO behind a timer would still show vanilla
-   text. Scans are out of scope: vanilla pickups carry no scan.
-4. **Non-pickup grants** - the 4 custom locations and any item a script grants.
-5. **Script and layer patches** - Randovania's per-instance edits, applied as areas load.
-6. **Save binding and the F1 page** - seed hash in the save, spoiler.
+   4 hops), so `Touch` suppresses MEMO display while it sends `Arrived` and shows
+   "<ItemName> acquired!" itself. A MEMO behind a timer would still show vanilla text. Scans are
+   out of scope: vanilla pickups carry no scan.
+4. **Logic** - the port's own, so seeds can be beatable.
+5. **Non-pickup grants** - items a script grants (the energy controllers' translators, ...).
+6. **Save binding and the F1 page** - seed hash in the save, spoiler. The F1 Randomizer page is
+   hidden (`platform/debug_ui/search.cpp`) until then.
 
-Findings from step 1:
+Disc findings:
 
-- Dark-world regions carry no asset id in Randovania; they are areas of their light world's MLVL.
-- The Bomb Guardian's drop (index 38, Agon Temple `081A0074`) is not in any script layer but in the
-  MREA's generated-object section (`SCGN`, header word 19; `tools/echoes_disc.py` `mrea_generated`).
+- Dark-world areas are areas of their light world's MLVL.
+- The Bomb Guardian's drop (Agon Temple `081A0074`) is not in any script layer but in the MREA's
+  generated-object section (`SCGN`, header word 19; `tools/echoes_disc.py` `mrea_generated`).
   `CScriptObjectLoaderHelper::GenerateScriptObject` builds it with its own editor id through the same
   `LoadPickup`, so the hook keys it like any other pickup.
 - The Energy Transfer Module location gives item 28 (`TranslatorUpgrade_TempETM`), not
-  `EnergyTransferModule` (107). Randovania shows the Echo Visor model for the Dark Visor location.
+  `EnergyTransferModule` (107).
 
 ## Decision (2026-10-18)
 
 MP2 gets a **no-logic shuffle generator over a dumped location list**, not a port of the MP1
 generator. `../MetroidPrimePort/platform/port_rando_gen.cpp` is the Archipelago apworld
-(Randovania-style) in C++: its locations are the fixed table of MP1 `5031xxx` ids and its fill is
+in C++: its locations are the fixed table of MP1 `5031xxx` ids and its fill is
 driven by region/item logic (`PortApLogic`, elevators, blast shields, start rooms). MP2 has none of
 that data, and its pickups cannot be enumerated statically: they exist only as `Pickup` script
 objects inside each area's MREA, so the only list the port can get is the one the game itself reports

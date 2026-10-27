@@ -33,7 +33,7 @@ const DebugPage kDebugPages[] = {
     {"Controls", DrawControlsTab},
     {"Video", DrawVideoTab},
     {"Mods", DrawModsTab},
-    // Randomizer page hidden until the Randovania import is usable (DrawRandomizerTab).
+    // Randomizer page hidden for now (DrawRandomizerTab).
     {"Save states", DrawSaveStatesTab},
     {"System", DrawSystemTab},
     {"Debug", DrawDebugTab},

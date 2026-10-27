@@ -5,8 +5,9 @@ usage: tools/rando_models.py [--write]
 
 A randomized pickup keeps its location's model unless the port can swap in the model of the item
 it now gives. Echoes has no item -> model table in code (each Pickup carries its own CMDL and
-animation set), so the table is read from the disc: every PCKP of every area of the world MLVLs
-the randomizer knows (the ones in platform/include/port_rando_locations.inc) is walked, and for
+animation set), so the table is read from the disc: every PCKP of every area of the single-player
+worlds (the MLVLs in Metroid1.pak..Metroid5.pak; Metroid6.pak holds the multiplayer arenas) is
+walked, and for
 each item the (CMDL 0xc27ffa8f, animation set 0xe25fb08c = {ANCS, character index, initial
 animation}) pairs it uses are counted.
 
@@ -33,10 +34,10 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import echoes_disc as ed  # noqa: E402
-import rando_locations as rl  # noqa: E402
 
 OUT = ROOT / "platform" / "include" / "port_rando_models.inc"
-LOCATIONS = ROOT / "platform" / "include" / "port_rando_locations.inc"
+SINGLE_PLAYER_PAKS = re.compile(r"(^|/)Metroid[1-5]\.pak$", re.I)
+ITEM_PROP = 0xA02EF0C4  # SLdrPickup itemToGive (include/MetroidPrime/ScriptLoader/SLdrPickup.inc)
 MODEL_PROP = 0xC27FFA8F
 ANIM_PROP = 0xE25FB08C
 INVALID = 0xFFFFFFFF
@@ -52,20 +53,35 @@ def pickup_props(body):
     return out
 
 
-def location_worlds():
-    """MLVL ids of platform/include/port_rando_locations.inc rows ({index, 0xMLVLu, ...})."""
-    return sorted({int(line.split(",")[1].strip()[2:10], 16)
-                   for line in LOCATIONS.read_text().splitlines() if line.startswith("{")})
+def item_names():
+    """EItemType enumerator -> value, from the header the runtime's item table also follows."""
+    src = (ROOT / "include" / "MetroidPrime" / "Player" / "CPlayerState.hpp").read_text()
+    body = src[src.index("enum EItemType"):]
+    body = body[body.index("{") + 1:body.index("}")]
+    out, nxt = {}, 0
+    for line in body.split(","):
+        tok = line.split("//")[0].strip()
+        if not tok.startswith("kIT_"):
+            continue
+        if "=" in tok:
+            name, val = (t.strip() for t in tok.split("=", 1))
+            nxt = int(val, 0)
+        else:
+            name = tok
+        out[name[4:]] = nxt
+        nxt += 1
+    return out
 
 
 def collect():
     iso = ed.Iso(ed.find_iso() or sys.exit("no disc image (set MP2_DISC)"))
-    worlds = set(location_worlds())
     pairs = collections.defaultdict(collections.Counter)  # item -> Counter((cmdl, anim3))
     resident = {}  # world mlvl -> set of asset ids in that world's pak
     for pk in ed.load_paks(iso):
+        if not SINGLE_PLAYER_PAKS.search(pk.path):
+            continue
         for _nm, (t, mid) in pk.names.items():
-            if t != "MLVL" or mid not in worlds or mid in resident:
+            if t != "MLVL" or mid in resident:
                 continue
             resident[mid] = set(pk.res)
             for a in ed.parse_mlvl(pk.get(mid))["areas"]:
@@ -79,9 +95,9 @@ def collect():
                         if t4 != "PCKP":
                             continue
                         props = pickup_props(body)
-                        if rl.ITEM_PROP not in props or MODEL_PROP not in props:
+                        if ITEM_PROP not in props or MODEL_PROP not in props:
                             continue
-                        item = struct.unpack(">I", props[rl.ITEM_PROP][-4:])[0]
+                        item = struct.unpack(">I", props[ITEM_PROP][-4:])[0]
                         model = struct.unpack(">I", props[MODEL_PROP][:4])[0]
                         anim = struct.unpack(">3I", props[ANIM_PROP][:12]) if ANIM_PROP in props else (INVALID, 0, 0)
                         pairs[item][(model, anim)] += 1
@@ -113,7 +129,7 @@ def rows_for(pairs, resident):
 def main():
     pairs, resident = collect()
     rows = rows_for(pairs, resident)
-    names = rl.item_names()
+    names = item_names()
     by_value = {v: k for k, v in names.items()}
     have = {r[0] for r in rows}
     missing = [by_value.get(i, str(i)) for i in range(max(names.values()) + 1) if i not in have]
