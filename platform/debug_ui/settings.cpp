@@ -518,6 +518,12 @@ const SettingKey kSettingKeys[] = {
        sStorageClampAtStart = sStorageClamp;
      },
      [](std::ostream& out) { out << sStorageClamp; }, false, "-1", "1"},
+    {"gpu_driver",
+     [](const std::string& value) {
+       sGpuDriver = value;
+       sGpuDriverAtStart = value;
+     },
+     [](std::ostream& out) { out << sGpuDriver; }, false, "turnip", ""},
     {"low_power_gpu",
      [](const std::string& value) {
        sLowPowerGpu = ParseBool(value);

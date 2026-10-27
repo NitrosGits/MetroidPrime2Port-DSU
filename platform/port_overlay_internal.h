@@ -119,6 +119,8 @@ extern bool sOpenGles;
 extern bool sOpenGlesAtStart;
 extern int sStorageClamp;       // -1 auto, 0 off, 1 on
 extern int sStorageClampAtStart;
+extern std::string sGpuDriver;        // Android custom Vulkan driver id (port_gpu_driver.h); "" = the system's
+extern std::string sGpuDriverAtStart;
 extern unsigned sDriverWorkarounds; // bit i = PortVideo::kDriverWorkarounds[i]
 extern unsigned sDriverWorkaroundsAtStart;
 extern bool sLowPowerGpu;

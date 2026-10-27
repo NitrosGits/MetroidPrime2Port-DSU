@@ -167,6 +167,7 @@
 {"Video", "Compatibility", "Compatibility", "Renderer", "renderer graphics api backend direct3d d3d12 d3d11 vulkan compatibility"},
 #endif
 {"Video", "Compatibility", "Compatibility", "Use OpenGL ES", "gles opengl android compatibility driver"},
+{"Video", "Compatibility", "Compatibility", "Vulkan driver", "gpu driver turnip adreno mesa adrenotools android vulkan custom"},
 {"Video", "Compatibility", "Compatibility", "Adreno shader fix", "adreno shader fix qualcomm android gpu"},
 {"Video", "Compatibility", "Compatibility", "Low-power GPU", "integrated gpu power battery adapter igpu"},
 {"Video", "Compatibility", "Compatibility > Driver workarounds", "Keep depth buffers (Direct3D 11)", "driver workaround intel flicker depth discard d3d11"},

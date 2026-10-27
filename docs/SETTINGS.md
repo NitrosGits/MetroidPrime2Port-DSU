@@ -261,6 +261,10 @@ Video > Compatibility (read once, when the GPU starts: a change applies after a 
   `unmonitored_fence`, `validation` (validation lasts one start). `MP2_DRIVER_WORKAROUNDS` replaces
   them for a run; a start that fails leaves `driver_workarounds_starting` and the next start
   clears them.
+- `gpu_driver` (Android arm64 only, MP1 port): Vulkan driver, the id of a driver installed under
+  `gpu_drivers/<id>/` (empty = System). Env `MP2_GPU_DRIVER` overrides it for one run. A start that
+  crashes leaves `gpu_driver_starting` and the next start goes back to System; a driver Vulkan
+  cannot start with is switched back to System in the same run. See docs/ANDROID.md.
 - GPU self-test (button, no key): logs one PASS/FAIL line per feature; `MP2_GPU_SELFTEST=1` runs
   it at start. Console `gpuselftest` runs it too.
 
