@@ -15,9 +15,11 @@
 #include <imgui_internal.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cfloat>
 #include <cmath>
 #include <ctime>
+#include <mutex>
 #include <string>
 
 namespace PortDebug {
@@ -292,6 +294,91 @@ bool DrawDesktopWindow() {
 
 } // namespace
 
+// ShowNote's text, set from any thread and timed from the first frame that draws it (MP1's
+// overlays.cpp:468-512).
+namespace {
+std::mutex sNoteMutex;
+std::string sNote;
+bool sNoteNew = false;
+// Set at startup when the last session ended on a failed disc read (main.cpp's marker file).
+std::atomic_bool sDiscReadFailedLastSession{false};
+} // namespace
+
+void ShowNote(const std::string& text) {
+  std::lock_guard<std::mutex> lock(sNoteMutex);
+  sNote = text;
+  sNoteNew = true;
+}
+
+void NoteDiscReadFailedLastSession() { sDiscReadFailedLastSession = true; }
+
+namespace {
+void DrawNoteToast() {
+  static std::string sText;
+  static double sShownAt = -1.0;
+  const double now = ImGui::GetTime();
+  {
+    std::lock_guard<std::mutex> lock(sNoteMutex);
+    if (sNoteNew) {
+      sText = sNote;
+      sNoteNew = false;
+      sShownAt = now;
+    }
+  }
+  if (sText.empty() || now - sShownAt > 2.5) {
+    return;
+  }
+  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  PlaceTopToast(viewport);
+  ImGui::SetNextWindowBgAlpha(0.8f);
+  if (ImGui::Begin("##note-toast", nullptr,
+                   ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav |
+                       ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoSavedSettings |
+                       ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::TextUnformatted(sText.c_str());
+    TopToastPlaced(viewport);
+  }
+  ImGui::End();
+}
+
+// Once per launch, for longer and in red: the last session ended on a failed disc read.
+void DrawDiscReadFailedAlert() {
+  static double sShownAt = -1.0;
+  if (!sDiscReadFailedLastSession) {
+    return;
+  }
+  const double now = ImGui::GetTime();
+  if (sShownAt < 0.0) {
+    sShownAt = now;
+  }
+  if (now - sShownAt > 20.0) {
+    sDiscReadFailedLastSession = false;
+    return;
+  }
+  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  PlaceTopToast(viewport);
+  ImGui::SetNextWindowSize(ImVec2(std::min(viewport->Size.x - 32.f, 640.f), 0.f));
+  ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.6f, 0.05f, 0.05f, 0.92f));
+  ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.f, 0.35f, 0.35f, 1.f));
+  ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.f));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.f);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.f, 10.f));
+  if (ImGui::Begin("##disc-read-failed-alert", nullptr,
+                   ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav |
+                       ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoSavedSettings)) {
+    ImGui::SetWindowFontScale(1.4f);
+    ImGui::TextWrapped("The last session crashed: the disc image is damaged.");
+    ImGui::SetWindowFontScale(1.f);
+    ImGui::TextWrapped("Part of it couldn't be read. If the game stops again, copy the image again or check it in "
+                       "Dolphin (Properties > Verify).");
+    TopToastPlaced(viewport);
+  }
+  ImGui::End();
+  ImGui::PopStyleVar(2);
+  ImGui::PopStyleColor(3);
+}
+} // namespace
+
 bool TouchScrolling() { return sTouchScroll.dragging; }
 
 std::string HotkeyHint() {
@@ -411,9 +498,11 @@ void DrawUI() {
     DrawResumePrompt();
   }
   DrawMenuHintToast();
+  DrawDiscReadFailedAlert();
   DrawIgtTimer();
   DrawShaderCompilationToast();
   DrawUpdateToast();
+  DrawNoteToast();
   DrawPhotoUI();
   if (!sVisible) {
     sTouchScroll = TouchScroll{};
