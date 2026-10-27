@@ -18,9 +18,28 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Tweaks/CTweakGui.hpp"
 #include "MetroidPrime/Tweaks/CTweakGuiColors.hpp"
+#ifdef TARGET_PC
+#include "port_entry.h"
+#endif
 
 static const char* const skTurretFrameNames[] = {"FRME_TurretHud4Combat", "FRME_TurretHud2Combat",
                                                  "FRME_TurretHud4Combat"};
+#ifdef TARGET_PC
+// Trilogy's own turret HUD frames (RS5.PAK).
+static const char* const skTrilogyTurretFrameNames[] = {
+    "RS5_TurretHud4Combat", "RS5_TurretHud2Combat", "RS5_TurretHud4Combat"};
+
+static const SObjectTag* PortTurretFrameTag(const CStateManager& mgr) {
+  const int layout = mgr.GetViewportLayoutIndex();
+  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    if (const SObjectTag* tag =
+            gpResourceFactory->GetResourceIdByName(skTrilogyTurretFrameNames[layout])) {
+      return tag;
+    }
+  }
+  return gpResourceFactory->GetResourceIdByName(skTurretFrameNames[layout]);
+}
+#endif
 
 rstl::pair< CVector3f, CVector3f > CTurretHud::GetEnergyBarCoords(float t) {
   const float x = 8.5f * t - 4.25f;
@@ -29,9 +48,14 @@ rstl::pair< CVector3f, CVector3f > CTurretHud::GetEnergyBarCoords(float t) {
 
 CTurretHud::CTurretHud(const CStateManager& mgr, int playerIndex)
 : mPlayerIndex(playerIndex)
+#ifdef TARGET_PC
+, mFrameLoader(rs_new CGuiFrameLoader(PortTurretFrameTag(mgr)->id, *gpResourceFactory,
+                                      *gpSimplePool))
+#else
 , mFrameLoader(rs_new CGuiFrameLoader(
       gpResourceFactory->GetResourceIdByName(skTurretFrameNames[mgr.GetViewportLayoutIndex()])->id,
       *gpResourceFactory, *gpSimplePool))
+#endif
 , mFrame(nullptr)
 , mHullEnergy(nullptr) {}
 
