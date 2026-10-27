@@ -24,12 +24,20 @@ compares the port body with the retail body (asm and rodata read through tools/a
          the port has fewer strict (or non-strict) compares than retail has plain (cror) float
          compares, or more negated `!(a <= b)` forms than retail has crors. rstl::min_val/max_val,
          CMath::Min/Max count as one strict compare, CMath::Clamp as two. Counts only: leads.
+  args   a retail `bl` whose float arguments (each a rodata constant loaded in the straight
+         line before the call, at least two resolved) are the same multiset as the literal float
+         arguments of the port's one call to that callee, in a different order (swapped
+         minActiveTime/knockback). Skipped: callees called more than once on either side, a float
+         register set by anything but a rodata load or cleared by a label, fewer than two
+         floats, equal values. Integer immediates are not compared (too noisy)
 Findings are hints for a human (inlined callees, constants named in another file show up); a clean
 function is a good sign, not proof.
 
-usage: retail_diff.py [--module M ...] [--fn fn_X ...] [--diff BASE] [--kinds call,const,shape,nan]
+usage: retail_diff.py [--module M ...] [--fn fn_X ...] [--diff BASE] [--kinds call,const,shape,nan,args]
+                      [--file PATH ...]
                       [--top N] [--strict]
   no selector: whole port, per-kind totals and the N (default 40) worst functions
+  --file PATH: check only the marked bodies of these source files (e.g. an old `git show` copy)
   --diff BASE: only functions whose marked body is new or changed since BASE (lane review)
 """
 import argparse
@@ -374,6 +382,111 @@ def plumbing(ck, ctx, depth=0):
     return ok
 
 
+FREG = re.compile(r"f(\d+)$")
+FLIT = re.compile(r"^[-+]?(?:\d+\.\d*(?:[eE][-+]?\d+)?|\.\d+(?:[eE][-+]?\d+)?|\d+[eE][-+]?\d+)[fF]?$")
+
+
+def retail_call_floats(mod, fn):
+    """[(callee, {fN: value})] per `bl`: the rodata constants the float argument registers hold
+    there (a register another instruction wrote, or any state across a label, is dropped)."""
+    out, base, fr = [], {}, {}
+    targets = set(fn.labels.values())
+    for i in fn.ins:
+        a = i.args
+        if i.idx in targets:
+            fr = {}
+        if i.op == "bl" and a:
+            out.append((a[0].strip('"'), {k: v for k, v in fr.items() if v is not None}))
+            fr = {}
+            base = {}
+            continue
+        if i.op == "addi" and len(a) == 3:
+            mm = re.match(r"(lbl_\w+?)(?:\+0x([0-9A-Fa-f]+))?@l$", a[2])
+            if mm:
+                base[a[0]] = (mm.group(1), int(mm.group(2) or "0", 16))
+                continue
+        if i.op in ("lfs", "lfd", "lfsu", "lfdu") and len(a) == 2 and FREG.match(a[0]):
+            kind = "d" if i.op.startswith("lfd") else "f"
+            v = None
+            mm = re.match(r"(lbl_\w+?)(?:\+0x([0-9A-Fa-f]+))?@(?:l|sda21)\((r\d+)\)$", a[1])
+            if mm:
+                v = ac.rod_value(mod, mm.group(1), int(mm.group(2) or "0", 16), kind)
+            else:
+                mm = re.match(r"(-?(?:0x[0-9A-Fa-f]+|\d+))\((r\d+)\)$", a[1])
+                if mm and mm.group(2) in base:
+                    lbl, d = base[mm.group(2)]
+                    v = ac.rod_value(mod, lbl, d + int(mm.group(1), 0), kind)
+            fr[a[0]] = f32(v) if isinstance(v, float) and v == v else None
+        elif a and FREG.match(a[0]) and not i.op.startswith(("st", "fcmp")):
+            fr[a[0]] = None
+        elif a and a[0] in base and i.op not in ("lfs", "lfd", "lfsu", "lfdu", "stfs", "stfd", "lwz", "lbz",
+                                                  "lhz", "lha", "stw", "stb", "sth", "cmpwi", "cmplwi"):
+            base.pop(a[0], None)
+    return out
+
+
+def split_call_args(code, name):
+    """Top-level argument strings of every `name(...)` call in code."""
+    res = []
+    for m in re.finditer(rf"(?<![\w:~])(?:\w+::)*{re.escape(name)}\s*\(", strip_strings(code)):
+        s = strip_strings(code)
+        i, d, cur, args = m.end(), 1, "", []
+        while i < len(s) and d:
+            c = s[i]
+            if c in "([{":
+                d += 1
+            elif c in ")]}":
+                d -= 1
+                if d == 0:
+                    break
+            if c == "," and d == 1:
+                args.append(cur.strip())
+                cur = ""
+            else:
+                cur += c
+            i += 1
+        if cur.strip():
+            args.append(cur.strip())
+        res.append(args)
+    return res
+
+
+def check_args(mod, fn, f, ctx):
+    """`args` findings: swapped literal float arguments (see the docstring)."""
+    out = []
+    calls = retail_call_floats(mod, fn)
+    for idx, (c, fr) in enumerate(calls):
+        if len(fr) < 2 or sum(1 for x, _ in calls if x == c) != 1:
+            continue
+        regs = sorted(int(k[1:]) for k in fr)   # gaps are computed args: literal order is unchanged
+        rv = [fr[f"f{n}"] for n in regs]
+        m = FNID.match(c)
+        if m:
+            ck = (int(m.group(1)), int(m.group(2), 16))
+            if ck not in ctx["pnames"]:
+                continue
+            name = ctx["pnames"][ck]
+        else:
+            name = ac.base_name(ctx["dol_name"](c))
+        if not name or name.startswith(("operator", "~")):
+            continue
+        sites = split_call_args(f.code, name)
+        if len(sites) != 1:
+            continue
+        pv = []
+        for x in sites[0]:
+            if FLIT.match(x):
+                pv.append(f32(float(x.rstrip("fF"))))
+        if len(pv) != len(rv) or len(set(rv)) < 2 or pv == rv:
+            continue
+        if sorted(pv) != sorted(rv):
+            continue
+        out.append(("args", f"call {name} at retail bl #{idx}: float args {','.join(f'f{n}' for n in regs)} = "
+                            f"{', '.join(f'{v:g}' for v in rv)} but the port's literal floats are "
+                            f"{', '.join(f'{v:g}' for v in pv)}"))
+    return out
+
+
 def check(key, f, retail, ctx):
     mod, fn = retail
     calls, consts, conds, fcmps = retail_facts(mod, fn)
@@ -443,6 +556,7 @@ def check(key, f, retail, ctx):
             missing.append(f"{v:.9g}")
         if missing:
             out.append(("const", "retail constant(s) not in the port file: " + ", ".join(sorted(set(missing))[:6])))
+    out += check_args(mod, fn, f, ctx)
     nonblank = [x for x in code.split("\n") if x.strip()]
     shape_body = code if len(nonblank) > 5 else body
     pc = len(PORT_COND.findall(strip_strings(shape_body)))
@@ -504,17 +618,20 @@ def main():
     ap.add_argument("--module", action="append", default=[], help="only this REL module (repeatable)")
     ap.add_argument("--fn", action="append", default=[], help="only fn_<mod>_<off> (repeatable)")
     ap.add_argument("--diff", metavar="BASE", help="only bodies new or changed since BASE")
-    ap.add_argument("--kinds", help="comma list of call,const,shape,nan")
+    ap.add_argument("--kinds", help="comma list of call,const,shape,nan,args")
+    ap.add_argument("--file", action="append", default=[], help="check only the marked bodies in these files")
     ap.add_argument("--top", type=int, default=40, help="whole-port listing: N worst functions")
     ap.add_argument("--strict", action="store_true", help="also show calls to port-model callees")
     args = ap.parse_args()
 
     mods = sorted(p.name for p in rm.RELS.iterdir() if p.is_dir())
     retail, ids, sizes = load_retail(mods)
-    funcs, helpers, texts = port_functions(marker_files())
-    ctx = {"helpers": helpers, "texts": texts, "sizes": sizes, "dol": dol_symbols(), "lits": {}, "sites": {},
+    funcs, helpers, texts = port_functions([Path(x).resolve() for x in args.file] if args.file else marker_files())
+    dol = dol_symbols()
+    ctx = {"helpers": helpers, "texts": texts, "sizes": sizes, "dol": dol, "lits": {}, "sites": {},
            "pnames": {k: f.short for k, f in funcs.items()}, "funcs": funcs, "strict": args.strict,
-           "retail": retail, "ids": ids, "plumb": {}}
+           "retail": retail, "ids": ids, "plumb": {},
+           "dol_name": lambda c: dol_callee(c, dol)[0]}
     marks = port_progress.markers()
     found_by, nobody = {}, []
     for k in sorted(marks):
