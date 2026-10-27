@@ -24,6 +24,11 @@ public:
   void PreRender(CStateManager& mgr) override;
   void Render(const CStateManager& mgr) const override;
 
+#ifdef TARGET_PC
+  // Port: true while a movie that a cinematic skip stopped is still in the area (see CMFGame).
+  static bool PortSkippedMovieLive(const CStateManager& mgr);
+#endif
+
 private:
   void LoadMovie(CStateManager& mgr);                    // Guessed name
   void PlayMovie(CStateManager& mgr);                    // Guessed name
