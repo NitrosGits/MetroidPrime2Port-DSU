@@ -230,3 +230,10 @@ desktop console, rather than importing a new UI or inventing layouts:
 Synthetic desktop tests exercise the native resources/input/request pipeline, not Android
 MotionEvent dispatch, density, layout hit-testing or on-device visuals. A real-nod **release APK
 was built without installation**; Android end-to-end touch/device behavior remains unverified.
+
+## Trilogy HUD frames (sync/trihud, 2026-10-27)
+On a Trilogy disc the combat HUD is `RS5_SamusHud{1,2,4}Combat`, the memo frame `RS5_HudMessageUS` (fallback
+`RS5_HudMessage`; layout 0 only), the helmet `FRME_RS5_Helmet` and the turret HUD `RS5_TurretHud{2,4}Combat`
+(all in RS5.PAK, names from rs5mp2_p.dol). Ball HUD, scan HUD and boss frames stay GC. MP1's STRG_Hud text,
+energy-word and instant-fill commits do not apply: Echoes looks strings up by name, has no energy-word pane,
+and `UpdateEnergy` (0x80199774) picks Instant only for |delta|<1e-5. Combat shot: `/tmp/opencode/reports/trihud-combat.png`.
