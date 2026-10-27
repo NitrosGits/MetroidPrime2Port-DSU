@@ -2139,6 +2139,17 @@ void CStateManager::CapturePlayerTextures() {
       // under the pointer, as MP1 and Trilogy do, so the id strip is read there, not at the
       // centre. Same offset as the lens (TriDrawScanLens) and the orbit box (PortScanPointerNdc),
       // kept inside the viewport.
+      // The console's 32x64 strip is 5% x 14% of its 640x448 frame. The logical viewport is 448
+      // high at any window size but as wide as the aspect needs, so keep the same share of the
+      // screen by widening the read-back region; FillBuffers resamples it to 32x64.
+      int pickWidth = (width * static_cast< int >(textureWidth) + 320) / 640;
+      int pickHeight = (height * static_cast< int >(textureHeight) + 224) / 448;
+      pickWidth = pickWidth < static_cast< int >(textureWidth) ? static_cast< int >(textureWidth)
+                  : pickWidth > 128                            ? 128
+                                                               : pickWidth;
+      pickHeight = pickHeight < static_cast< int >(textureHeight) ? static_cast< int >(textureHeight)
+                   : pickHeight > 128                             ? 128
+                                                                  : pickHeight;
       int portShiftX = 0;
       int portShiftY = 0;
       {
@@ -2147,8 +2158,8 @@ void CStateManager::CapturePlayerTextures() {
             PortMouse::PointerAimPosition(px, py)) {
           portShiftX = static_cast< int >(px * 0.5f * width);
           portShiftY = static_cast< int >(py * 0.5f * height);
-          const int maxX = (width - static_cast< int >(textureWidth)) / 2;
-          const int maxY = (height - static_cast< int >(textureHeight)) / 2;
+          const int maxX = (width - pickWidth) / 2;
+          const int maxY = (height - pickHeight) / 2;
           portShiftX = portShiftX < -maxX ? -maxX : portShiftX > maxX ? maxX : portShiftX;
           portShiftY = portShiftY < -maxY ? -maxY : portShiftY > maxY ? maxY : portShiftY;
         }
@@ -2156,6 +2167,8 @@ void CStateManager::CapturePlayerTextures() {
       const int textureLeft = left + width / 2 - textureWidth / 2 + portShiftX;
       const int textureTop =
           CGraphics::GetViewportTop(bottom) + height / 2 - textureHeight / 2 + portShiftY;
+      const int pickLeft = left + width / 2 - pickWidth / 2 + portShiftX;
+      const int pickTop = CGraphics::GetViewportTop(bottom) + height / 2 - pickHeight / 2 + portShiftY;
 #else
       const int textureLeft = left + width / 2 - textureWidth / 2;
       const int textureTop = CGraphics::GetViewportTop(bottom) + height / 2 - textureHeight / 2;
@@ -2165,7 +2178,7 @@ void CStateManager::CapturePlayerTextures() {
       // gets written; ask for a CPU read-back of the same region first (it has to be issued
       // before the copies, which seal the pass holding the frame's scene draws) and then fill
       // the player's buffers from the previous frame's read-back. See PortScanTarget.
-      PortScanTarget::Request(textureLeft, textureTop, textureWidth, textureHeight);
+      PortScanTarget::Request(pickLeft, pickTop, pickWidth, pickHeight);
 #endif
       gpRender->CopyTextureRegion(mPlayers[i]->GetScanTargetIdTextureData(), 0, textureLeft,
                                   textureTop, textureWidth, textureHeight);

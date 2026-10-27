@@ -15,8 +15,10 @@ namespace PortScanTarget {
 namespace {
 
 // The game's capture is 32x64 pixels (kScanTargetTextureSize) and it reads the buffers back as
-// height * width entries, so the staging copy is sized for exactly that.
-constexpr uint32_t kMaxPixels = 32 * 64;
+// height * width entries. The region read back can be larger than that (a wider aspect than the
+// console's 4:3 needs more logical pixels to cover the same share of the screen); FillBuffers
+// resamples it down to the game's size, so the staging copy is sized for the larger region.
+constexpr uint32_t kMaxPixels = 128 * 128;
 
 // Filled by Aurora's render thread when a read-back completes, read here on the game thread.
 // `sequence` is the seqlock scan_peek.hpp describes: it is odd while the arrays are being
@@ -35,6 +37,9 @@ uint32_t sTornReads = 0;
 bool sLoggedFirstFill = false;
 int sLastLoggedVisor = -1;
 int sLastLoggedFrom = -1;
+// Size of the region the last Request asked for (game thread only, as is FillBuffers).
+int sRequestWidth = 0;
+int sRequestHeight = 0;
 
 bool DebugScan() {
   static const bool enabled = std::getenv("MP2_DEBUG_SCAN") != nullptr;
@@ -54,6 +59,8 @@ void Request(int left, int top, int width, int height) {
   if (static_cast<uint32_t>(width) * static_cast<uint32_t>(height) > kMaxPixels) {
     return;
   }
+  sRequestWidth = width;
+  sRequestHeight = height;
   GXRequestScanPeek(left, top, static_cast<uint32_t>(width), static_cast<uint32_t>(height), sStaging.id,
                     sStaging.depthHigh, sStaging.depthLow, &sStaging.sequence);
 }
@@ -63,9 +70,11 @@ void FillBuffers(void* idData, void* depthHighData, void* depthLowData, int widt
     return;
   }
   const uint32_t pixels = static_cast<uint32_t>(width) * static_cast<uint32_t>(height);
-  if (pixels > kMaxPixels) {
+  if (pixels > kMaxPixels || sRequestWidth <= 0 || sRequestHeight <= 0) {
     return;
   }
+  const int srcWidth = sRequestWidth;
+  const int srcHeight = sRequestHeight;
 
   std::atomic_ref<uint32_t> sequence(sStaging.sequence);
   const uint32_t before = sequence.load(std::memory_order_acquire);
@@ -74,9 +83,28 @@ void FillBuffers(void* idData, void* depthHighData, void* depthLowData, int widt
     return;
   }
 
-  std::memcpy(idData, sStaging.id, pixels);
-  std::memcpy(depthHighData, sStaging.depthHigh, pixels * sizeof(uint16_t));
-  std::memcpy(depthLowData, sStaging.depthLow, pixels);
+  if (srcWidth == width && srcHeight == height) {
+    std::memcpy(idData, sStaging.id, pixels);
+    std::memcpy(depthHighData, sStaging.depthHigh, pixels * sizeof(uint16_t));
+    std::memcpy(depthLowData, sStaging.depthLow, pixels);
+  } else {
+    // Nearest-neighbour from the requested region to the game's grid (the same sampling Aurora
+    // uses when it scales), so the histogram sees the same share of the screen at any aspect.
+    auto* id = static_cast<uint8_t*>(idData);
+    auto* depthHigh = static_cast<uint16_t*>(depthHighData);
+    auto* depthLow = static_cast<uint8_t*>(depthLowData);
+    for (int j = 0; j < height; ++j) {
+      const int sy = (2 * j + 1) * srcHeight / (2 * height);
+      for (int i = 0; i < width; ++i) {
+        const int sx = (2 * i + 1) * srcWidth / (2 * width);
+        const int from = sy * srcWidth + sx;
+        const int to = j * width + i;
+        id[to] = sStaging.id[from];
+        depthHigh[to] = sStaging.depthHigh[from];
+        depthLow[to] = sStaging.depthLow[from];
+      }
+    }
+  }
 
   const uint32_t after = sequence.load(std::memory_order_acquire);
   if (after != before) {
