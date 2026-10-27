@@ -572,8 +572,8 @@ float CPlayer::PortTriOrbitFade() const {
   return PortTriOrbit::FadeRatio(mPortTriOrbitFadeTimer, mOrbitState != kOS_NoOrbit,
                                  GetTweakPlayer()->GetOrbitModeTimer());
 }
-#endif
 
+#endif
 void CPlayer::UpdateOrbitModeTimer(float dt) {
 #ifdef TARGET_PC
   mPortTriOrbitFadeTimer = port::entry::IsTrilogy(port::entry::CurrentDiscVersion())

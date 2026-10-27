@@ -12,7 +12,9 @@
 #include "Kyoto/Math/CloseEnough.hpp"
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/CActor.hpp"
+#ifdef TARGET_PC
 #include "MetroidPrime/CAnimData.hpp"
+#endif
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/CEulerAngles.hpp"
@@ -156,25 +158,8 @@ CCompoundTargetReticle::CCompoundTargetReticle(const CStateManager& mgr, int pla
 , mScanTargetFactor(0.f)
 , mBeamShot(false)
 , mMissileShot(false)
-, mFullyCharged(false)
+, mFullyCharged(false) {
 #ifdef TARGET_PC
-, mPortTri(false)
-, mPortTriScanFade(0.f)
-, mPortTriScanLerp(0.f)
-, mPortTriScanning(0.f)
-, mPortTriScanPrevCentre(CVector3f::Zero())
-, mPortTriScanCentre(CVector3f::Zero())
-, mPortTriScanPrevSize(CVector3f::Zero())
-, mPortTriScanSize(CVector3f::Zero())
-, mPortTriScanTargetCount(0)
-, mPortTriScanTargets{kInvalidUniqueId}
-, mPortTriLastNextTarget(kInvalidUniqueId)
-, mPortTriScanTarget(kInvalidUniqueId)
-, mPortTriPointerPos(CVector3f::Zero())
-#endif
-{
-#ifdef TARGET_PC
-  mPortTriScanTargets[0] = kInvalidUniqueId;
   if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
     mPortTri = true;
     // Ctor tokens in rs5mp2_p.dol (0x80259b70); the same RS5 names as MP1's.
@@ -475,8 +460,8 @@ void CCompoundTargetReticle::PortTriDrawScan(const CMatrix3f& rotation,
     bracket->Draw(CModelFlags::Additive(drawColor).DepthCompareUpdate(false, false));
   }
 }
-#endif
 
+#endif
 EReticleState CCompoundTargetReticle::GetDesiredReticleState(const CStateManager& mgr) const {
   switch (mgr.GetPlayerState(mPlayerIndex)->GetCurrentVisor()) {
   case CPlayerState::kPV_Scan:
