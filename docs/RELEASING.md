@@ -1,19 +1,71 @@
-# Linux CI and packaging
+# Releasing
 
-Mirrors `../MetroidPrimePort` (its `docs/RELEASING.md`), Linux only. No game data is ever packaged:
-the disc image is the user's, asked for on first launch.
+How a release of the port is built, what it may contain, and what has to travel with it. Mirrors
+`../MetroidPrimePort/docs/RELEASING.md`, for the platforms this tree builds: Linux and Android.
+Windows comes next, then macOS and iOS; none of them has been built yet.
 
-| File | What it does |
-|---|---|
-| `.github/workflows/linux-build.yml` | push to `port`, PRs: Ubuntu 24.04, gcc-14, `-DMP_SDK_HEADERS_ONLY=OFF`, `.github/actions/build-and-test` (build, `ctest -L port`, Aurora `gx_fifo_tests`) |
-| `.github/workflows/linux-release.yml` | manual: `almalinux:9` + gcc-toolset-14, x86_64 and aarch64; fails if the binary needs glibc > 2.34 or GLIBCXX > 3.4.29; artifacts `metroid_prime2_port-linux[-aarch64]` (AppImage + tarball) |
-| `.github/workflows/cache-prune.yml` | keeps the newest cache entry per key family after each build workflow |
-| `tools/make_appimage.sh`, `tools/collect_licenses.sh` | AppImage (no bundled libs) and the notices (`share/licenses/metroid-prime2-port/`); Dawn/nod texts in `packaging/licenses/` |
-| `.github/workflows/build.yml.disable` | upstream's matching-decomp CI (needs the retail DOL); disabled as MP1 did |
+## What may ship
 
-Release: `gh workflow run linux-release.yml --ref port -R Odrannnn/MetroidPrime2Port`, then
-`gh run download <id> -n metroid_prime2_port-linux`. The linker is the container's default (bfd); the
-CMake needs only an ELF linker with RESCAN support. Checkout takes no submodules: `extern/musyx` is unused
-by the port build (`extern/musyx-port` is vendored).
+The binary and the port's own files, nothing of the game's: no disc image, no DOL or REL, no
+extracted PAK/STRG data, no bytes copied out of the executable. The port reads the user's own disc
+at run time. `LICENSE` (MIT) covers only this project's own work; `NOTICE` says what it does not
+cover (`src/`, `include/`, `extern/sdk/`, `config/`) and lists the third-party terms.
+`LICENSE-decomp` is upstream PrimeDecomp's dedication, kept as it was.
 
-Not done: the Windows/macOS/Android/iOS workflows, Flatpak, Linux `--version` check (no such flag).
+Every package carries `LICENSE`, `NOTICE` and the third-party notices:
+`share/licenses/metroid-prime2-port/` in the AppImage and the tarball (`tools/collect_licenses.sh`,
+Dawn and nod from `packaging/licenses/`, whose prebuilt archives carry none), and `assets/` in the
+APK (Gradle's `syncLicenseNotices`).
+
+## CI
+
+| Workflow | Trigger | Produces |
+|---|---|---|
+| `linux-build.yml` | push to `port`, PRs, manual | Ubuntu 24.04, gcc-14; build, `ctest -L port`, Aurora `gx_fifo_tests` (`.github/actions/build-and-test`) |
+| `linux-release.yml` | manual | `almalinux:9` + gcc-toolset-14, x86_64 and aarch64; AppImage + tarball, artifacts `metroid_prime2_port-linux[-aarch64]`; fails if the binary needs glibc > 2.34 or GLIBCXX > 3.4.29 |
+| `android.yml` | manual | release APK signed with this project's key, artifact `android-apk`; fails on any other signer |
+| `cache-prune.yml` | after the build workflows | keeps the newest cache entry per key family |
+| `build.yml.disable` | never | upstream's matching-decomp CI; needs the retail DOL, which this repository cannot have |
+
+The checkout takes no submodules: `extern/musyx` is upstream's and unused by the port build
+(`extern/musyx-port` is vendored).
+
+## Runtime dependencies (Linux)
+
+A Linux binary only runs where glibc and libstdc++ are at least as new as the ones it was linked
+against, so release artefacts come from `linux-release.yml`, never a desktop build. The AppImage
+bundles no libraries: FreeType, libpng and a Vulkan driver, X11 or Wayland come from the system.
+
+## Signing identity (Android)
+
+Releases are signed with this project's own key (`android/keystore.jks` + `keystore.properties`,
+both untracked; `tools/make_android_keystore.sh` made them). Its SHA-256 is
+`5c380a13d5bfc5c57a093a22d2ec70d62109a927f76b0bf7fe61db7d5428bd20`; `android.yml` checks it. CI
+gets the key from the repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Android treats another signer as another app (an
+update would need an uninstall, which deletes the save), so never sign a release with anything
+else. The app id is `org.metroidprime2.port`.
+
+## Version
+
+`versionName`/`versionCode` in `android/app/build.gradle`, plus a `<release version=… date=…>`
+entry (newest first) in `packaging/io.github.odrannnn.metroidprime2port.metainfo.xml`.
+
+## Release checklist
+
+1. Bump the version (above), commit, `git push origin port`.
+2. Build every artefact from that commit, all at once:
+   - Linux: `gh workflow run linux-release.yml --ref port -R Odrannnn/MetroidPrime2Port`, then
+     `gh run download <id> -n metroid_prime2_port-linux` and `-n metroid_prime2_port-linux-aarch64`.
+     Rename the tarballs `metroid-prime2-port-X-linux-{x86_64,aarch64}.tar.gz`; the AppImages keep
+     their names.
+   - Android: `gh workflow run android.yml --ref port -R Odrannnn/MetroidPrime2Port`, download
+     `android-apk`, ship as `metroid-prime2-port-X-android-arm64.apk`.
+3. Crash soak the release commit: `python3 tools/mpsoak.py --evidence-dir build/s-release-<date>/soak`;
+   every row of `summary.tsv` `ok`, exit 0.
+4. Check each artefact's version and that none holds game data (`unzip -l`, `--appimage-extract`),
+   then `git tag -a vX` and `git push origin vX`.
+5. `gh release create vX --notes-file …` with every asset passed explicitly; confirm with
+   `gh release view vX --json assets`.
+
+The repository is private until the first public release; changing that is the maintainer's call.
