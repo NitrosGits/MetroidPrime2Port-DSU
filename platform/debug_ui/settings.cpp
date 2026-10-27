@@ -12,6 +12,7 @@
 #include "port_mouse.h"
 #include "port_overlay.h"
 #include "port_photo.h"
+#include "port_save.h"
 #include "port_settings.h"
 #include "port_suit_colours.h"
 #include "port_video.h"
@@ -260,6 +261,13 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sResetAimBoth >("reset_aim_both"),
     BoolKey< &sMenuStandardButtons >("menu_standard_buttons"),
     BoolKey< &sMouseButtons >("mouse_buttons"),
+    // The emulator whose card the port shares (System > Memory card); normalised on the way in.
+    {"emulator_folder", [](const std::string& value) { PortSave::SetEmulatorFolder(value); },
+     [](std::ostream& out) { out << PortSave::EmulatorFolder(); }, true, "/tmp/mp2-emu-a",
+     "/tmp/mp2-emu-b"},
+    {"share_emulator_card",
+     [](const std::string& value) { PortSave::SetShareEmulatorCard(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortSave::ShareEmulatorCard()); }, false, "1", "0"},
     // Mouse and stick aim. These live in PortMouse rather than here, and the file is read by
     // PortMouse's own ReadEnv (the file first, the MP2_* environment on top), so the rows below
     // would otherwise be the only F1 switches a restart forgot.

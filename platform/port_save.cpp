@@ -1,6 +1,7 @@
 #include "port_save.h"
 
 #include "port_entry.h"
+#include "port_env.h"
 #include "port_overlay.h"
 
 #include "Kyoto/CCrc32.hpp"
@@ -14,6 +15,7 @@
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <mutex>
 
 namespace PortSave {
 
@@ -237,7 +239,143 @@ void PruneBackups() {
   }
 }
 
+std::mutex sEmulatorMutex;
+std::string sEmulatorFolder;
+bool sShareCard = false;
+
+// "USA" or "EUR": the region folder of the mounted disc's game code.
+const char* CardRegion() { return port::entry::IsPalRegion(port::entry::CurrentDiscVersion()) ? "EUR" : "USA"; }
+
+// Where Dolphin (and PrimeHack) keep their user folders, in preference order.
+std::vector< std::filesystem::path > AutoEmulatorRoots() {
+  namespace fs = std::filesystem;
+  std::vector< fs::path > roots;
+#if defined(__ANDROID__)
+  // No emulator to find.
+#else
+  const char* appdata = std::getenv("APPDATA");
+  const char* xdg = std::getenv("XDG_DATA_HOME");
+  const char* home = port::HomeFolder();
+  if (appdata != nullptr) {
+    roots.push_back(fs::path(appdata) / "Dolphin Emulator");
+  }
+  if (xdg != nullptr && xdg[0] == '/') {
+    roots.push_back(fs::path(xdg) / "dolphin-emu");
+  }
+  if (home != nullptr) {
+    const fs::path h(home);
+    roots.push_back(h / ".local/share/dolphin-emu");
+    roots.push_back(h / ".var/app/org.DolphinEmu.dolphin-emu/data/dolphin-emu");
+    roots.push_back(h / ".dolphin-emu");
+    roots.push_back(h / ".var/app/io.github.shiiion.primehack/data/dolphin-emu");
+    roots.push_back(h / "Library/Application Support/Dolphin");
+  }
+#endif
+  return roots;
+}
+
+// The chosen emulator folder, else the autodetected ones.
+std::vector< std::filesystem::path > EmulatorRoots() {
+  {
+    std::lock_guard< std::mutex > lock(sEmulatorMutex);
+    if (!sEmulatorFolder.empty()) {
+      return {std::filesystem::path(sEmulatorFolder)};
+    }
+  }
+  return AutoEmulatorRoots();
+}
+
 } // namespace
+
+void SetEmulatorFolder(const std::string& path) {
+  namespace fs = std::filesystem;
+  fs::path picked(path);
+  if (!path.empty()) {
+    if (!picked.has_filename()) {
+      picked = picked.parent_path(); // a trailing slash
+    }
+    const std::string name = picked.filename().string();
+    auto up = [&](int levels) {
+      for (int i = 0; i < levels; ++i) {
+        picked = picked.parent_path();
+      }
+    };
+    if (name == "Card A" && picked.parent_path().parent_path().filename() == "GC") {
+      up(3);
+    } else if ((name == "USA" || name == "EUR" || name == "JAP") &&
+               picked.parent_path().filename() == "GC") {
+      up(2);
+    } else if (name == "GC") {
+      up(1);
+    }
+  }
+  std::lock_guard< std::mutex > lock(sEmulatorMutex);
+  sEmulatorFolder = path.empty() ? std::string() : picked.string();
+}
+
+std::string EmulatorFolder() {
+  std::lock_guard< std::mutex > lock(sEmulatorMutex);
+  return sEmulatorFolder;
+}
+
+std::vector< std::string > DetectedEmulatorFolders() {
+  std::vector< std::string > found;
+  std::error_code ec;
+  for (const std::filesystem::path& root : AutoEmulatorRoots()) {
+    if (std::filesystem::is_directory(root / "GC", ec)) {
+      found.push_back(root.string());
+    }
+  }
+  return found;
+}
+
+std::string EmulatorCardFolder() {
+  std::error_code ec;
+  for (const std::filesystem::path& root : EmulatorRoots()) {
+    const std::filesystem::path card = root / "GC" / CardRegion() / "Card A";
+    if (std::filesystem::is_directory(card, ec)) {
+      return card.string();
+    }
+  }
+  return {};
+}
+
+void SetShareEmulatorCard(bool share) {
+#if defined(__ANDROID__)
+  share = false; // no emulator to share with
+#endif
+  std::lock_guard< std::mutex > lock(sEmulatorMutex);
+  sShareCard = share;
+}
+
+bool ShareEmulatorCard() {
+  std::lock_guard< std::mutex > lock(sEmulatorMutex);
+  return sShareCard;
+}
+
+std::string SharedCardBase(std::string* why) {
+  if (!ShareEmulatorCard()) {
+    if (why != nullptr) {
+      *why = "Sharing is off.";
+    }
+    return {};
+  }
+  std::error_code ec;
+  const std::vector< std::filesystem::path > roots = EmulatorRoots();
+  for (const std::filesystem::path& root : roots) {
+    if (std::filesystem::is_directory(root / "GC" / CardRegion() / "Card A", ec)) {
+      return (root / "GC").string();
+    }
+  }
+  if (why != nullptr) {
+    *why = roots.empty()
+               ? "No Dolphin or PrimeHack folder found: choose it above."
+               : std::string("The emulator folder has no GCI-folder card for this region (") +
+                     CardRegion() +
+                     "): set its Slot A to \"GCI Folder\" and start the game once there.";
+  }
+  return {};
+}
 
 void Initialize(const std::string& userDirectory) { sUserDirectory = userDirectory; }
 

@@ -6,6 +6,7 @@
 #include "debug_ui_internal.h"
 
 #include "port_data_folder.h"
+#include "port_overlay.h"
 #include "port_entry.h"
 #include "port_save.h"
 
@@ -13,7 +14,6 @@
 #include <imgui.h>
 
 #include <algorithm>
-#include <cstdlib>
 #include <filesystem>
 #include <mutex>
 #include <string>
@@ -24,7 +24,7 @@ namespace {
 
 namespace fs = std::filesystem;
 
-enum Pick { kPick_Import, kPick_Export };
+enum Pick { kPick_Import, kPick_Export, kPick_Emulator };
 std::mutex sPickMutex;
 std::vector< std::pair< Pick, std::string > > sPicks;
 bool sDialogOpen = false;
@@ -53,7 +53,8 @@ void OpenDialog(Pick pick) {
   if (pick == kPick_Import) {
     SDL_ShowOpenFileDialog(OnPick, userdata, FirstWindow(), filters, 2, nullptr, false);
   } else {
-    // A folder: the card's files keep their names, so they import back as they are.
+    // A folder: the card's files keep their names, so they import back as they are; the emulator
+    // pick is its user folder.
     SDL_ShowOpenFolderDialog(OnPick, userdata, FirstWindow(), nullptr, false);
   }
 }
@@ -64,35 +65,8 @@ const char* DolphinRegion() {
 }
 
 // Dolphin's (or PrimeHack's) GCI-folder card A for the mounted disc's release, where this machine
-// has one. The roots are the usual user folders; the card folder is <root>/GC/USA/Card A (G2ME) or
-// <root>/GC/EUR/Card A (G2MP).
-fs::path DolphinCardFolder() {
-  std::vector< fs::path > roots;
-  const char* home = std::getenv("HOME");
-  const char* appdata = std::getenv("APPDATA");
-  const char* xdg = std::getenv("XDG_DATA_HOME");
-  if (appdata != nullptr) {
-    roots.push_back(fs::path(appdata) / "Dolphin Emulator");
-  }
-  if (xdg != nullptr && xdg[0] == '/') {
-    roots.push_back(fs::path(xdg) / "dolphin-emu");
-  }
-  if (home != nullptr) {
-    const fs::path h(home);
-    roots.push_back(h / ".local/share/dolphin-emu");
-    roots.push_back(h / ".var/app/org.DolphinEmu.dolphin-emu/data/dolphin-emu");
-    roots.push_back(h / ".dolphin-emu");
-    roots.push_back(h / "Library/Application Support/Dolphin");
-  }
-  for (const fs::path& root : roots) {
-    std::error_code ec;
-    const fs::path card = root / "GC" / DolphinRegion() / "Card A";
-    if (fs::is_directory(card, ec)) {
-      return card;
-    }
-  }
-  return {};
-}
+// has one: the chosen emulator folder, else the usual user folders (port_save.cpp).
+fs::path DolphinCardFolder() { return fs::path(PortSave::EmulatorCardFolder()); }
 
 // Dolphin's card files for the mounted release, newest last: 01-G2ME-*.gci (01-G2MP-*.gci on PAL).
 std::vector< fs::path > DolphinSaves(const fs::path& card) {
@@ -129,7 +103,11 @@ void TakePicks() {
   }
   for (const auto& [pick, path] : picks) {
     std::string message;
-    if (pick == kPick_Import) {
+    if (pick == kPick_Emulator) {
+      PortSave::SetEmulatorFolder(path);
+      PortOverlaySettings::MarkDirty();
+      sStatus = "Emulator folder: " + PortSave::EmulatorFolder();
+    } else if (pick == kPick_Import) {
       const bool ok = PortSave::Import(path, message);
       sStatus = ok ? "Imported: " + message : "Import failed: " + message;
     } else {
@@ -143,10 +121,97 @@ void PathRow(const char* label, const std::string& path) {
   ImGui::TextWrapped("%s: %s", label, path.empty() ? "(not set)" : path.c_str());
 }
 
+// MP1's emulator card block (file_dialogs.cpp DrawEmulatorCard): the emulator folder, the installed
+// emulators, and sharing its card. Sharing mounts <folder>/GC as the card base at launch
+// (CMemoryCardSys::Initialize), so it takes effect on the next start.
+void DrawEmulatorCard() {
+#if !defined(__ANDROID__)
+  const bool inGame = sWorldId != 0;
+  const std::string chosen = PortSave::EmulatorFolder();
+  std::string found = "none found";
+  if (chosen.empty()) {
+    const fs::path card = DolphinCardFolder();
+    if (!card.empty()) {
+      found = card.parent_path().parent_path().parent_path().string();
+    }
+  }
+  ImGui::TextUnformatted("Emulator folder");
+  ImGui::SameLine(0.0f, 0.0f);
+  ImGui::TextWrapped(": %s", chosen.empty() ? ("Auto (" + found + ")").c_str() : chosen.c_str());
+  ImGui::BeginDisabled(sDialogOpen);
+  if (ImGui::Button("Choose...")) {
+    OpenDialog(kPick_Emulator);
+  }
+  ImGui::EndDisabled();
+  ItemHelp("The Dolphin or PrimeHack user folder (the one containing GC/). Only needed for "
+           "portable installs.");
+  ImGui::SameLine();
+  ImGui::BeginDisabled(chosen.empty());
+  if (ImGui::Button("Auto")) {
+    PortSave::SetEmulatorFolder("");
+    PortOverlaySettings::MarkDirty();
+  }
+  ImGui::EndDisabled();
+  // With Dolphin and PrimeHack both installed, Auto takes the first; pick the other here.
+  const std::vector< std::string > detected = PortSave::DetectedEmulatorFolders();
+  if (!detected.empty()) {
+    const std::string preview = chosen.empty() ? "Auto" : chosen;
+    if (ImGui::BeginCombo("Installed emulators", preview.c_str())) {
+      for (const std::string& root : detected) {
+        const std::string label =
+            (root.find("primehack") != std::string::npos ? "PrimeHack: " : "Dolphin: ") + root;
+        if (ImGui::Selectable(label.c_str(), root == chosen)) {
+          PortSave::SetEmulatorFolder(root);
+          PortOverlaySettings::MarkDirty();
+        }
+      }
+      ImGui::EndCombo();
+    }
+    ItemHelp("Installs found on this computer. Pick one instead of the automatic choice.");
+  }
+  bool share = PortSave::ShareEmulatorCard();
+  ImGui::BeginDisabled(inGame);
+  if (ImGui::Checkbox("Share memory card with emulator", &share)) {
+    PortSave::SetShareEmulatorCard(share);
+    PortOverlaySettings::MarkDirty();
+  }
+  ImGui::EndDisabled();
+  ItemHelp("The port and the emulator share the same saves: never run both at once. Takes effect "
+           "the next time the game starts.");
+  if (!share) {
+    return;
+  }
+  std::string why;
+  const std::string base = PortSave::SharedCardBase(&why);
+  if (base.empty()) {
+    ImGui::TextColored(ThemeWarnColor(), "%s", why.c_str());
+    return;
+  }
+  const std::string active = PortSave::Directory();
+  const fs::path shared = fs::path(base) / DolphinRegion() / "Card A";
+  std::error_code ec;
+  if (!active.empty() && fs::equivalent(fs::path(active), shared, ec)) {
+    ImGui::TextWrapped("Sharing: %s", shared.string().c_str());
+    return;
+  }
+  ImGui::TextWrapped("Will share %s from the next start.", shared.string().c_str());
+  ImGui::BeginDisabled(inGame || sDialogOpen || active.empty());
+  if (ImGui::Button("Copy port saves into shared card")) {
+    std::string message;
+    const bool ok = PortSave::Export(shared.string(), message);
+    sStatus = ok ? "Copied: " + message : "Copy failed: " + message;
+  }
+  ImGui::EndDisabled();
+  ItemHelp("Copies the port's current card saves into the shared card; a file of the same name "
+           "there gets a numbered copy, not replaced.");
+#endif
+}
+
 } // namespace
 
 void DrawCardTransfer() {
   TakePicks();
+  DrawEmulatorCard();
   const std::string folder = PortSave::Directory();
   const size_t saves = PortSave::Files().size();
   if (PortSave::IsImage() || folder.empty()) {
@@ -194,7 +259,7 @@ void DrawCardTransfer() {
     sStatus = ok ? "Exported: " + message : "Export failed: " + message;
   }
   ImGui::EndDisabled();
-  ItemHelp("Close the emulator first. Writes the save into its USA card folder; a file of the same "
+  ItemHelp("Close the emulator first. Writes the save into its card folder for this release; a file of the same "
            "name there gets a numbered copy, not replaced.");
   ImGui::EndDisabled();
   ImGui::SameLine();
