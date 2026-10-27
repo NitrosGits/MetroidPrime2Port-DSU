@@ -863,7 +863,7 @@ endif()
 # aurora_core (webgpu/gpu.cpp) and aurora_gx reference each other; group them so the
 # linker rescans and resolves the cycle. Same construct, same reason, as the Prime 1 port.
 if(MSVC)
-    target_link_libraries(metroid_prime2_port PRIVATE aurora::main aurora::core aurora::gx)
+    target_link_libraries(metroid_prime2_port PRIVATE mp_game aurora::main aurora::core aurora::gx)
     target_link_options(metroid_prime2_port PRIVATE /INCREMENTAL:NO)
 elseif(CMAKE_LINK_GROUP_USING_RESCAN_SUPPORTED OR CMAKE_CXX_LINK_GROUP_USING_RESCAN_SUPPORTED)
     target_link_libraries(metroid_prime2_port PRIVATE
