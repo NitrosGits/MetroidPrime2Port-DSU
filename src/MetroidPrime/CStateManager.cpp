@@ -156,8 +156,10 @@
 
 #ifdef TARGET_PC
 #include "port_harness.h"
+#include "port_entry.h"
 #include "port_hold_toggle.h"
 #include "port_pointer.h"
+#include "port_mouse.h"
 #include "port_livesplit.h"
 #include "port_overlay.h"
 #include "port_savestate.h"
@@ -2133,14 +2135,81 @@ void CStateManager::CapturePlayerTextures() {
     for (uint i = 0; i < mNumPlayers; ++i) {
       CalculatePlayerViewport(mNumPlayers > 2u ? mPlayerStates[i]->GetPlayerSelection() : i, &left,
                               &bottom, &width, &height);
+#ifdef TARGET_PC
+      // Port: pointer aim (lock-on free aim included) in the Scan Visor picks the scan target
+      // under the pointer, as MP1 and Trilogy do, so the id strip is read there, not at the
+      // centre. Same offset as the lens (TriDrawScanLens) and the orbit box (PortScanPointerNdc),
+      // kept inside the viewport.
+      // The console's 32x64 strip is 5% x 14% of its 640x448 frame. The logical viewport is 448
+      // high at any window size but as wide as the aspect needs, so keep the same share of the
+      // screen by widening the read-back region; FillBuffers resamples it to 32x64.
+      int pickWidth = (width * static_cast< int >(textureWidth) + 320) / 640;
+      int pickHeight = (height * static_cast< int >(textureHeight) + 224) / 448;
+      pickWidth = pickWidth < static_cast< int >(textureWidth) ? static_cast< int >(textureWidth)
+                  : pickWidth > 128                            ? 128
+                                                               : pickWidth;
+      pickHeight = pickHeight < static_cast< int >(textureHeight) ? static_cast< int >(textureHeight)
+                   : pickHeight > 128                             ? 128
+                                                                  : pickHeight;
+      int portShiftX = 0;
+      int portShiftY = 0;
+      // The pointer's offset from the viewport's centre (the lens's, unclamped) when it aims.
+      int lensX = 0;
+      int lensY = 0;
+      const bool scanVisor = mPlayerState->GetCurrentVisor() == CPlayerState::kPV_Scan;
+      {
+        float px = 0.f, py = 0.f;
+        if (scanVisor && PortMouse::PointerAimPosition(px, py)) {
+          lensX = static_cast< int >(px * 0.5f * width);
+          lensY = static_cast< int >(py * 0.5f * height);
+        }
+      }
+      // Trilogy's Scan visor picks inside its lens: the region is the lens's bounding square
+      // (the circle is cut out in PortScanTarget), not the console's strip.
+      const bool lensPick = scanVisor && port::entry::IsTrilogy(port::entry::CurrentDiscVersion());
+      float lensRadius = 0.f;
+      if (lensPick) {
+        lensRadius = PortScanTarget::LensRadius(width, height);
+        int side = static_cast< int >(2.f * lensRadius + 0.999f);
+        side = side > 256 ? 256 : side > width ? width : side > height ? height : side;
+        pickWidth = side;
+        pickHeight = side;
+      }
+      {
+        const int maxX = (width - pickWidth) / 2;
+        const int maxY = (height - pickHeight) / 2;
+        portShiftX = lensX < -maxX ? -maxX : lensX > maxX ? maxX : lensX;
+        portShiftY = lensY < -maxY ? -maxY : lensY > maxY ? maxY : lensY;
+      }
+      const int textureLeft = left + width / 2 - textureWidth / 2 + portShiftX;
+      const int textureTop =
+          CGraphics::GetViewportTop(bottom) + height / 2 - textureHeight / 2 + portShiftY;
+      const int pickLeft = left + width / 2 - pickWidth / 2 + portShiftX;
+      const int pickTop = CGraphics::GetViewportTop(bottom) + height / 2 - pickHeight / 2 + portShiftY;
+      PortScanTarget::Pick portPick;
+      portPick.viewportWidth = width;
+      portPick.viewportHeight = height;
+      portPick.regionWidth = pickWidth;
+      portPick.regionHeight = pickHeight;
+      portPick.regionLeft = static_cast< float >(pickLeft - (left + width / 2));
+      portPick.regionTop =
+          static_cast< float >(pickTop - (CGraphics::GetViewportTop(bottom) + height / 2));
+      // The lens centre in region pixels (the region can sit off it where the lens hangs over the
+      // viewport's edge).
+      portPick.centreX = static_cast< float >(pickWidth) * 0.5f + static_cast< float >(lensX - portShiftX);
+      portPick.centreY = static_cast< float >(pickHeight) * 0.5f + static_cast< float >(lensY - portShiftY);
+      portPick.radius = lensRadius;
+#else
       const int textureLeft = left + width / 2 - textureWidth / 2;
       const int textureTop = CGraphics::GetViewportTop(bottom) + height / 2 - textureHeight / 2;
+#endif
 #ifdef TARGET_PC
       // Aurora's GXCopyTex resolves into a texture, so the main-memory destination below never
       // gets written; ask for a CPU read-back of the same region first (it has to be issued
       // before the copies, which seal the pass holding the frame's scene draws) and then fill
       // the player's buffers from the previous frame's read-back. See PortScanTarget.
-      PortScanTarget::Request(textureLeft, textureTop, textureWidth, textureHeight);
+      PortScanTarget::Request(pickLeft, pickTop, pickWidth, pickHeight);
+      PortScanTarget::SetPick(portPick);
 #endif
       gpRender->CopyTextureRegion(mPlayers[i]->GetScanTargetIdTextureData(), 0, textureLeft,
                                   textureTop, textureWidth, textureHeight);

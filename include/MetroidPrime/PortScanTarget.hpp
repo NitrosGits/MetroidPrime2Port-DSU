@@ -27,6 +27,29 @@ namespace PortScanTarget {
 // scene draws.
 void Request(int left, int top, int width, int height);
 
+// Where the last request sat, for the code that reads the buffers back (CPlayer::FindScanTargetId):
+// the region's top-left corner is `regionLeft/regionTop` logical pixels from the viewport's centre
+// (+y down) and `regionWidth` x `regionHeight` big, and the 32x64 grid FillBuffers produces spans
+// it. `radius` > 0 marks a circular pick (Trilogy's scan lens): pixels further than `radius` from
+// (`centreX`, `centreY`), in region pixels, are left out and the grid is pooled, not sampled.
+struct Pick {
+  int viewportWidth = 0;
+  int viewportHeight = 0;
+  int regionWidth = 0;
+  int regionHeight = 0;
+  float regionLeft = 0.f;
+  float regionTop = 0.f;
+  float centreX = 0.f;
+  float centreY = 0.f;
+  float radius = 0.f;
+};
+// Called right after Request, with the geometry of the request just made.
+void SetPick(const Pick& pick);
+const Pick& GetPick();
+// The Trilogy scan lens's outline radius in logical pixels for a viewport (CPlayerVisor's
+// TriDrawScanLens draws its outline at 122 Wii pixels, scaled by the window's fit).
+float LensRadius(int viewportWidth, int viewportHeight);
+
 // Copies the most recent completed read-back into the player's scan target buffers, if one is
 // there and newer than the last one consumed. The buffers are what `CPlayer::FindScanTargetId`
 // reads: `idData` gets `width * height` bytes, `depthHighData` twice that (Z16, byte-swapped the
