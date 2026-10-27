@@ -1,7 +1,7 @@
 # Echoes save layouts across releases
 
 This is research for carrying a save from one disc release to another, as the Prime 1 port can.
-It describes the formats only; there is no converter yet. Measured on 2026-10-27.
+It describes the formats and the converter (`platform/port_save_convert.cpp`, hooked into `port::save::Import()`); the restore offer is not written yet. Measured on 2026-10-27.
 
 Each claim carries one of two labels:
 
@@ -455,12 +455,24 @@ How each piece maps onto Echoes [I unless marked]:
 | `kReleases` (GM8E, GM8P, R3ME, R3MP) | G2ME, G2MP, R3ME, R3MP. The USA/EUR folder split is the same: `aurora_card_get_path(GameCode(), …)` gives `<user>/USA/Card A` or `<user>/EUR/Card A` [M, `platform/port_save.cpp:23,144`] | Ready |
 | Release discovery, marker file, the prompt and its skip knobs | Same logic, over `port::entry::CurrentGameCode()`. Skip it under `MP2_CONSOLE` and the gameplay harness. | Not written |
 | Hook at boot in `DolphinCMemoryCardSys.cpp` | Same file exists here; hook it after `CMemoryCardSys::MountCard` [M, line 414] | Not written |
-| Import path (`CopyFiles` → converter) | `port::save::Import()` (`port_save.cpp:443`). It backs up what it replaces (`replaced-<stamp>.gci`), but it **refuses another game code** at line 471 [M]. The restore path must convert before that check, or the check must route a different code through the converter. | Partly there |
+| Import path (`CopyFiles` → converter) | `port::save::Import()` (`port_save.cpp:443`). It backs up what it replaces (`replaced-<stamp>.gci`), and now converts G2ME <-> G2MP through `PortSave::Convert::Gci` instead of refusing (other codes are still refused). | Done |
 | `gen_save_layouts.py` tables | `tools/savw_diff.py` already extracts every per-world list and size the converter needs. Emit them as a generated table rather than printing them. | Data measured; generator not written |
-| `MapIds` / `Remap` (ID remap, dropped counts) | Rebuild each bit list by stable ID: relay, door and unmappable `TEditorId`s, cinematic IDs, scan asset IDs, and layer names per area (§4). Report the dropped bits, as Prime 1 does. | Not written |
+| `MapIds` / `Remap` (ID remap, dropped counts) | Rebuild each bit list by stable ID: relay, door and unmappable `TEditorId`s, cinematic IDs, scan asset IDs, and layer names per area (§4). Report the dropped bits, as Prime 1 does. | Done: `Convert::Report` |
 | `ReadSlot` / `WriteSlot`, `ReadSystem` / `WriteSystem` | The `CGameState::PutTo` and `CPersistentOptions` bitstreams of §2. They are the same on G2ME and G2MP. | Layout from source; not checked on data |
-| `MakeHeader` / `PutComment` / `CardCrc` | Rewrite the `SSaveHeader` signature with the **target release's console value** (§3 table), then the two copy CRCs and the header-block CRC. The comment and banner are the same on both GC releases. | Not written |
+| `MakeHeader` / `PutComment` / `CardCrc` | Rewrite the `SSaveHeader` signature with the **target release's console value** (§3 table), then the two copy CRCs and the header-block CRC. The comment and banner are the same on both GC releases. | Done (header block kept; CRC and generation keep the source file's byte order) |
 | `ReadUsaContainer` / `ReadPalContainer` | One GCI reader covers both GC releases, because the container is the same (§1). | Exists (`Inspect()`) |
 | `ReadWii` (AES-CBC `save.bin`) | Trilogy R3ME/R3MP: **blocked** until the `save.bin` framing is known (§6 items 1-2). Prime 1's `ReadWii` is the place to start, because Trilogy's front end owns one `save.bin` for all three games. | Blocked |
 
 The first slice worth building is G2ME ↔ G2MP only: both directions are a remap by ID (§4), and the offer, marker and backup flow carries over unchanged.
+
+## Converter status and test (2026-10-27)
+
+`PortSave::Convert::Gci` converts a whole .gci; `Import()` calls it when the file's game code is the
+other Echoes release. ME -> MP loses nothing; MP -> ME drops the three scans G2ME lacks and the
+Temple Grounds layer it lacks, and the import message says how many were set. The converter writes
+the target's console signature, so a port-written sample (legacy signature `37d0412e`) comes back
+from ME -> MP -> ME with the console value `44bfc715` and fresh CRCs; every other byte is identical.
+`port_save_convert_tests` (`tests/port_save_convert.cpp`, fixture `tests/data/01-G2ME-MetroidPrime2.gci`)
+asserts exactly that, plus the refusals (Trilogy, same release, truncated file, damaged SAVH).
+Not covered by a test: a slot with PAL-only scans set (no such real save is available), and a real
+console save of either release.
