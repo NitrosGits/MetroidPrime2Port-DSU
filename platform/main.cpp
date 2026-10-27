@@ -85,6 +85,7 @@ extern void* gPortGameHeapHi;
 #include "port_memory_log.h"
 #include "port_save.h"
 #include "port_overlay.h"
+#include "port_disc_replace.h"
 #include "port_overlay_internal.h"
 #include "port_prompts.h"
 #include "port_mods.h"
@@ -148,6 +149,25 @@ const char* EnvOrFallback(const char* name, const std::string& fallback) {
 }
 
 #if !defined(__ANDROID__)
+// The disc image to try after the command line: MP2_DISC, else the one F1 > System > Disc image >
+// Replace remembered (settings.cfg `disc_path`, while the file is still there), else none, which
+// leaves the search of the executable's folder.
+std::string DesktopDiscFallback(const std::string& resolved) {
+  if (const char* env = EnvOrFallback("MP2_DISC", resolved)) {
+    return env;
+  }
+  const std::string saved = PortOverlaySettings::DiscPath();
+  std::error_code error;
+  if (!saved.empty() && std::filesystem::is_regular_file(saved, error)) {
+    std::fprintf(stderr, "metroid_prime2_port: using the remembered disc image: %s\n", saved.c_str());
+    return saved;
+  }
+  if (!saved.empty()) {
+    std::fprintf(stderr, "metroid_prime2_port: the remembered disc image is gone: %s\n", saved.c_str());
+  }
+  return {};
+}
+
 // SDL_GetPrefPath(nullptr, kAppName), worked out by hand: Aurora falls back to it for its own
 // user path, so the port has to name the same folder or the two disagree about where
 // settings.cfg, controls.toml and the tools' backups live. Not SDL's call itself because SDL is
@@ -1129,7 +1149,7 @@ int main(int argc, char** argv) {
       // Resolved and, if need be, picked from the user's storage before Aurora started.
       androidDiscImage;
 #else
-      port::entry::ResolveDiscPath(argc, argv, EnvOrFallback("MP2_DISC", appPaths.disc),
+      port::entry::ResolveDiscPath(argc, argv, DesktopDiscFallback(appPaths.disc).c_str(),
                                    ExecutableDir(argc > 0 ? argv[0] : nullptr));
 #endif
   if (discImage.empty()) {
@@ -1284,6 +1304,7 @@ int main(int argc, char** argv) {
     port::modules::ShutdownAll();
   }
 
+  PortDiscReplace::Shutdown();
   aurora_dvd_close();
   aurora_shutdown();
 #ifdef MP_PORT_COVERAGE

@@ -328,6 +328,7 @@ add_library(mp_platform OBJECT
     platform/sdk_stubs.cpp
     platform/port_reset.cpp
     platform/port_settings.cpp
+    platform/port_collision_view.cpp
     platform/port_mods.cpp
     platform/port_mods_pak.cpp
     platform/port_suit_colours.cpp
@@ -492,7 +493,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_pointer.cpp platform/port_pointer_menu.cpp
         platform/port_events.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp
         platform/port_radial.cpp
-        platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp
+        platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp platform/port_disc_replace.cpp
         platform/port_gyro_motion.cpp
         platform/port_dynamic_res.cpp platform/port_video.cpp platform/port_gpu_driver.cpp
         platform/port_data_folder.cpp

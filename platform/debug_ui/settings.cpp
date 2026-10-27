@@ -178,6 +178,8 @@ constexpr SettingKey FloatKey(const char* key, const char* sampleA, const char* 
 // file; empty until the game's options are first recorded.
 constexpr size_t kGameOptionsBytes = 0x20;
 std::string sGameOptions;
+// The disc image F1 > System > Disc image > Replace remembered for the next start (port_disc_replace.h).
+std::string sDiscPath;
 bool sGameOptionsRestored = false;
 
 const SettingKey kSettingKeys[] = {
@@ -562,6 +564,8 @@ const SettingKey kSettingKeys[] = {
        }
      },
      true, "keep_depth", "unmonitored_fence,validation"},
+    {"disc_path", [](const std::string& value) { sDiscPath = value; },
+     [](std::ostream& out) { out << sDiscPath; }, true, "/a/disc.iso", "/b/disc.iso"},
     // Last, as in MP1: the game's options blob (PortOverlay::SyncGameOptions).
     {"game_options", [](const std::string& value) { sGameOptions = value; },
      [](std::ostream& out) { out << sGameOptions; }, true, "0a1b", "ff"},
@@ -745,6 +749,17 @@ void SaveSettings() {
 }
 
 void MarkDirty() { sSettingsDirty = true; }
+
+std::string DiscPath() {
+  std::lock_guard< std::recursive_mutex > lock(sMutex);
+  return sDiscPath;
+}
+
+void SetDiscPath(const std::string& path) {
+  std::lock_guard< std::recursive_mutex > lock(sMutex);
+  sDiscPath = path;
+  sSettingsDirty = true;
+}
 
 bool Dirty() { return sSettingsDirty.load(); }
 

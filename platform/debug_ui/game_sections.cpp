@@ -5,6 +5,7 @@
 #include "debug_ui_internal.h"
 
 #include "port_config_reset.h"
+#include "port_disc_replace.h"
 #include "port_disc_verify.h"
 #include "port_discord.h"
 #include "port_freecam.h"
@@ -472,9 +473,8 @@ void DrawSettingsSection() {
   }
 }
 
-// The whole disc image check (port_disc_verify.h): MP1's System > Disc image section, without its
-// "Replace disc image" (that picks a new file to copy, which this port's mount loop already does
-// on a failed boot).
+// The whole disc image check (port_disc_verify.h) and MP1's "Replace disc image" (port_disc_replace.h):
+// the picked file is checked and remembered for the next start; the mounted disc is not swapped.
 void DrawDiscImageSection() {
   using PortDiscVerify::State;
   ImGui::SeparatorText("Disc image");
@@ -483,11 +483,43 @@ void DrawDiscImageSection() {
   if (const std::string image = PortDiscVerify::ImagePath(); !image.empty()) {
     ImGui::TextWrapped("Disc image: %s", image.c_str());
   }
+  if (PortDiscReplace::Poll()) {
+    // Remembered; the status below says to restart.
+  }
+  if (const std::string next = PortOverlaySettings::DiscPath(); !next.empty()) {
+    ImGui::TextWrapped("Disc image for the next start: %s", next.c_str());
+  }
   ImGui::BeginDisabled(running);
   if (ImGui::Button("Check disc image")) {
     PortDiscVerify::Start();
   }
   ImGui::EndDisabled();
+  const PortDiscReplace::Status replace = PortDiscReplace::Snapshot();
+  ImGui::BeginDisabled(replace.state == PortDiscReplace::State::Running);
+  ImGui::SameLine();
+  if (ImGui::Button("Replace disc image...")) {
+    PortDiscReplace::PickAsync();
+  }
+  ImGui::EndDisabled();
+  ItemHelp("Picks another disc image (Echoes USA 1.00, PAL, or Metroid Prime Trilogy), checks it, and "
+           "remembers it for the next start. The game keeps running from the disc it started with. A "
+           "file or MP2_DISC given on the command line still wins.");
+  if (replace.state == PortDiscReplace::State::Running) {
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel##replace")) {
+      PortDiscReplace::Cancel();
+    }
+    if (replace.copying && replace.bytesTotal > 0) {
+      ImGui::ProgressBar(static_cast< float >(replace.bytesDone) / static_cast< float >(replace.bytesTotal),
+                         ImVec2(-FLT_MIN, 0.0f));
+    } else {
+      ImGui::TextUnformatted("Checking the picked file...");
+    }
+  } else if (replace.state == PortDiscReplace::State::Failed) {
+    ImGui::TextWrapped("Not changed: %s", replace.message.c_str());
+  } else if (replace.state == PortDiscReplace::State::Done) {
+    ImGui::TextWrapped("%s (%s: %s)", replace.message.c_str(), replace.revision.c_str(), replace.path.c_str());
+  }
   if (running) {
     ImGui::SameLine();
     if (ImGui::Button("Cancel##disc")) {

@@ -210,7 +210,7 @@ Statuses:
 | Data folder (Android) | PortDataFolder::DrawPanel | tabs.cpp | SAME |
 | Log | debug.cpp | game_sections.cpp:631 | SAME |
 | Disc image | debug.cpp | game_sections.cpp:522 | SAME |
-| Replace disc image… | debug.cpp:122 | — | MISSING |
+| Replace disc image… | debug.cpp:122 | game_sections.cpp (DrawDiscImageSection) | DONE: PortDiscReplace; saved `disc_path` used at next start |
 | Update | tabs.cpp:271 | tabs.cpp `DrawSystemTab` → `DrawUpdateSection` | SAME (see Game › Updates) |
 | About | tabs.cpp:272-273: MP_BUILD_VERSION + MP_BUILD_REVISION | tabs.cpp `DrawSystemTab`: "Version %s, build %s" (MP_BUILD_VERSION from android/app/build.gradle via cmake/BuildRevision.cmake) | SAME (f1-frame) |
 
@@ -220,7 +220,7 @@ Statuses:
 | --- | --- | --- | --- |
 | Sections | debug.cpp:148-172: Cheats, Camera, Rendering, Audio backends, Sounds playing | debug.cpp: Game, Camera (with Photo), Rendering, Audio backends, Sounds playing, Console; Cheats stays its own page (`DrawCheatsSection()` is the call for Debug) | DIFF: Cheats not in Debug yet (package 2) |
 | Free camera / Freeze / Show Samus / Speed | cheats.cpp:301-319 | debug.cpp:22-41 | SAME |
-| Collision combo | cheats.cpp:341-346 | — | MP1-ONLY: no PortCollisionView in Echoes |
+| Collision combo | cheats.cpp:341-346 | cheats.cpp DrawRendering | DONE: PortCollisionView (off/overlay/only), hooks in CStateManager::DrawWorld |
 | Frame statistics | cheats.cpp:348-352 | cheats.cpp `DrawRendering` (fps, draws, passes, buffers, textures, pipelines; no PBR or room-geometry lines) | DIFF: PBR and room-geometry counters are MP1's |
 | Streamed audio / MusyX audio | audio.cpp:26,30 | audio.cpp `DrawAudio` | SAME |
 | Sounds playing (Freeze list, Unmute all) | audio.cpp:111,161 | audio.cpp `DrawVoices` | SAME |
@@ -229,7 +229,7 @@ Statuses:
 | Invulnerable | cheats.cpp:103 | "God mode", cheats.cpp:151 | DIFF: label |
 | Phazon Beam | cheats.cpp:108 | — | MP1-ONLY: Prime 1 item |
 | Missiles / Power Bombs sliders | cheats.cpp:168,172 | cheats.cpp `counter()` (Echoes ids kIT_Missile, kIT_Powerbomb; also Dark/Light Ammo) | SAME |
-| Replace disc image… | debug.cpp:122 | — | MISSING: needs a PortDiscReplace backend (no Echoes counterpart; a feature, not a row) |
+| Replace disc image… | debug.cpp:122 | game_sections.cpp | DONE: validates, remembers path, applies on next start (no live swap) |
 
 ## Touch overlay (Android)
 
@@ -288,7 +288,7 @@ checks.
    - Size: about 0.8k lines.
 5. **Debug page.**
    - Files: `debug.cpp`, `cheats.cpp`, new `audio.cpp`.
-   - Rows: Rendering (collision, frame statistics), audio backends, sounds playing, Replace disc
+   - Rows: Rendering (collision, frame statistics), audio backends, sounds playing, Replace disc (collision and Replace disc image: done 2026-10-27)
      image, Missiles and Power Bombs sliders.
    - Size: about 0.7k lines.
 6. **Memory card.**
