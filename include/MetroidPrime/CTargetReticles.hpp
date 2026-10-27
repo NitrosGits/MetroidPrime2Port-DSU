@@ -97,6 +97,30 @@ public:
   // MP1's PortPresentGroup: carry a group placed at the tick to where its target is drawn
   // between ticks (CActor::PortPresentedPoint), or an idle group with the presented camera.
   void PortPresentGroup(CTargetReticleRenderState& state, const CStateManager& mgr) const;
+
+  // Trilogy (rs5mp2_p.dol) scan visor ring and target brackets, ported from MP1's PortTriDrawScan
+  // (MP1 bc1332c52..ed42d564a). Echoes' draw is 0x8025de8c; see PortTriDrawScan.
+  void PortTriUpdateScanPointer(const CStateManager& mgr);
+  void PortTriUpdateScan(float dt, const CStateManager& mgr);
+  void PortTriUpdateScanBounds(const CStateManager& mgr);
+  static TUniqueId PortTriResolveScanTarget(TUniqueId id, const CStateManager& mgr);
+  void PortTriDrawScan(const CMatrix3f& rotation, const CStateManager& mgr) const;
+  bool mPortTri;
+  TCachedToken< CModel > mPortTriScanRing;
+  TCachedToken< CModel > mPortTriScanBracket;
+  TCachedToken< CModel > mPortTriScanProgress;
+  float mPortTriScanFade;
+  float mPortTriScanLerp;
+  float mPortTriScanning;
+  CVector3f mPortTriScanPrevCentre;
+  CVector3f mPortTriScanCentre;
+  CVector3f mPortTriScanPrevSize;
+  CVector3f mPortTriScanSize;
+  int mPortTriScanTargetCount;
+  TUniqueId mPortTriScanTargets[1];
+  TUniqueId mPortTriLastNextTarget;
+  TUniqueId mPortTriScanTarget;
+  CVector3f mPortTriPointerPos;
 #endif
   EReticleState GetDesiredReticleState(const CStateManager& mgr) const;
   bool CheckLoadComplete();

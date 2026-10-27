@@ -12,6 +12,7 @@
 #include "Kyoto/Math/CloseEnough.hpp"
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/CEulerAngles.hpp"
@@ -155,7 +156,33 @@ CCompoundTargetReticle::CCompoundTargetReticle(const CStateManager& mgr, int pla
 , mScanTargetFactor(0.f)
 , mBeamShot(false)
 , mMissileShot(false)
-, mFullyCharged(false) {
+, mFullyCharged(false)
+#ifdef TARGET_PC
+, mPortTri(false)
+, mPortTriScanFade(0.f)
+, mPortTriScanLerp(0.f)
+, mPortTriScanning(0.f)
+, mPortTriScanPrevCentre(CVector3f::Zero())
+, mPortTriScanCentre(CVector3f::Zero())
+, mPortTriScanPrevSize(CVector3f::Zero())
+, mPortTriScanSize(CVector3f::Zero())
+, mPortTriScanTargetCount(0)
+, mPortTriScanTargets{kInvalidUniqueId}
+, mPortTriLastNextTarget(kInvalidUniqueId)
+, mPortTriScanTarget(kInvalidUniqueId)
+, mPortTriPointerPos(CVector3f::Zero())
+#endif
+{
+#ifdef TARGET_PC
+  mPortTriScanTargets[0] = kInvalidUniqueId;
+  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    mPortTri = true;
+    // Ctor tokens in rs5mp2_p.dol (0x80259b70); the same RS5 names as MP1's.
+    mPortTriScanRing = gpSimplePool->GetObj("CMDL_ScanReticleRing");
+    mPortTriScanBracket = gpSimplePool->GetObj("CMDL_ScanReticleBracket");
+    mPortTriScanProgress = gpSimplePool->GetObj("CMDL_ScanReticleProgress");
+  }
+#endif
   mOuterBeamIconSquares.reserve(9);
   for (int i = 0; i < 9; ++i) {
     char name[64];
@@ -173,6 +200,282 @@ CCompoundTargetReticle::CCompoundTargetReticle(const CStateManager& mgr, int pla
 }
 
 bool CCompoundTargetReticle::CheckLoadComplete() { return true; }
+
+#ifdef TARGET_PC
+namespace {
+// rs5mp2_p.dol 0x8025fbcc/0x80260070 share MP1's Trilogy constants; the tweak colours below are
+// MP1's Trilogy tweak ctor values (fn_802685B8), not confirmed in Echoes' tweak.
+const float kPortTriScanFadeTime = 0.15f;
+const float kPortTriScanRingScale = 0.25f;
+const CColor kPortTriScanRingColor(uchar(0x56), uchar(0xC1), uchar(0xFB), uchar(0x9F));
+const CColor kPortTriScanBracketColor(uchar(0x49), uchar(0xC3), uchar(0xF6), uchar(0xA0));
+const CColor kPortTriScanLockedColor(uchar(0x49), uchar(0xC3), uchar(0xF6), uchar(0x31));
+
+// psq_st ...,1,qr2: float to u8, saturating, truncating.
+uchar PortTriAlphaU8(float a) { return static_cast< uchar >(CMath::Clamp(0.f, a, 255.f)); }
+
+// The pointer ray (screen centre without a pointer) in world space.
+CVector3f PortTriPointerDir(const CTransform4f& camXf, const CGameCamera& cam) {
+  float x = 0.f;
+  float y = 0.f;
+  if (!PortMouse::PointerAimPosition(x, y) || (x == 0.f && y == 0.f)) {
+    return camXf.GetForward();
+  }
+  float yaw = 0.f, pitch = 0.f, rx = 0.f, ry = 1.f, rz = 0.f;
+  PortMouse::PointerAim::RayAngles(x, y, cam.GetFov(), cam.GetAspectRatio(), yaw, pitch);
+  PortMouse::PointerAim::RayDirection(yaw, pitch, rx, ry, rz);
+  return camXf.Rotate(CVector3f(rx, ry, rz));
+}
+} // namespace
+
+void CCompoundTargetReticle::PortTriUpdateScanPointer(const CStateManager& mgr) {
+  const CCameraManager* camMgr = mgr.GetCameraManager(mPlayerIndex);
+  const CTransform4f camXf = camMgr->GetCurrentCameraTransform(mgr, true);
+  const CVector3f start = camXf.GetTranslation();
+  CVector3f dir = PortTriPointerDir(camXf, *camMgr->GetCurrentCamera(mgr, true));
+  if (!dir.CanBeNormalized()) {
+    return;
+  }
+  dir.Normalize();
+  const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid, kMT_Character, kMT_NonSolidDamageable),
+      CMaterialList(kMT_ProjectilePassthrough, kMT_Player));
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, start, dir, 100.f, filter, mgr.GetPlayer(mPlayerIndex));
+  TUniqueId hitId = kInvalidUniqueId;
+  const CRayCastResult result = mgr.RayWorldIntersection(hitId, start, dir, 100.f, filter, nearList);
+  float dist = 100.f;
+  if (result.IsValid()) {
+    dist = rstl::max_val(result.GetTime(), 0.25f);
+  }
+  mPortTriPointerPos = start + dir * dist;
+}
+
+void CCompoundTargetReticle::PortTriUpdateScan(float dt, const CStateManager& mgr) {
+  const CPlayer* player = mgr.GetPlayer(mPlayerIndex);
+  if (mgr.GetPlayerState(mPlayerIndex)->GetCurrentVisor() != CPlayerState::kPV_Scan) {
+    mPortTriScanSize = CVector3f::Zero();
+    mPortTriScanCentre = mPortTriPointerPos;
+    mPortTriScanLerp = 0.f;
+    mPortTriScanTargetCount = 0;
+    return;
+  }
+
+  const TUniqueId scanningId = player->GetScanningObject();
+  const TUniqueId id = scanningId != kInvalidUniqueId ? scanningId : mPortTriScanTarget;
+  int count = 0;
+  TUniqueId list[1] = {kInvalidUniqueId};
+  if (id != kInvalidUniqueId) {
+    list[count++] = id;
+  }
+  const bool same = count == mPortTriScanTargetCount &&
+                    (count == 0 || list[0] == mPortTriScanTargets[0]);
+  if (!same) {
+    if (count != 0) {
+      mPortTriScanTargets[0] = list[0];
+    }
+    mPortTriScanTargetCount = count;
+    const float t = mPortTriScanLerp;
+    mPortTriScanPrevSize = mPortTriScanSize * (1.f - t) + mPortTriScanPrevSize * t;
+    mPortTriScanPrevCentre = mPortTriScanCentre * (1.f - t) + mPortTriScanPrevCentre * t;
+    mPortTriScanLerp = 1.f;
+  } else {
+    mPortTriScanLerp = rstl::max_val(0.f, mPortTriScanLerp - dt / kPortTriScanFadeTime);
+  }
+
+  const bool anyActor =
+      mPortTriScanTargetCount != 0 &&
+      TCastToConstPtr< CActor >(mgr.GetObjectById(mPortTriScanTargets[0])) != nullptr;
+  if (mPreviousState == kRS_Scan && anyActor) {
+    mPortTriScanFade = rstl::min_val(1.f, mPortTriScanFade + dt / kPortTriScanFadeTime);
+  } else {
+    mPortTriScanFade = rstl::max_val(0.f, mPortTriScanFade - dt / kPortTriScanFadeTime);
+  }
+
+  if (scanningId != kInvalidUniqueId) {
+    mPortTriScanning = rstl::min_val(1.f, mPortTriScanning + dt);
+  } else {
+    mPortTriScanning = rstl::max_val(0.f, mPortTriScanning - dt);
+  }
+
+  const TUniqueId next = player->GetOrbitNextTargetId();
+  if (next != mPortTriLastNextTarget) {
+    mPortTriLastNextTarget = next;
+    mPortTriScanTarget = PortTriResolveScanTarget(next, mgr);
+  }
+}
+
+TUniqueId CCompoundTargetReticle::PortTriResolveScanTarget(TUniqueId id,
+                                                           const CStateManager& mgr) {
+  // MP1 also follows an actor's Play->Activate connection to a point of interest; Echoes has no
+  // such object, so only an active scannable actor qualifies.
+  const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(id));
+  if (actor && actor->GetScannableObjectInfo() && actor->GetActive()) {
+    return id;
+  }
+  return kInvalidUniqueId;
+}
+
+void CCompoundTargetReticle::PortTriUpdateScanBounds(const CStateManager& mgr) {
+  if (mgr.GetPlayerState(mPlayerIndex)->GetCurrentVisor() != CPlayerState::kPV_Scan) {
+    return;
+  }
+  CVector3f centre = mPortTriPointerPos;
+  CVector3f size = CVector3f::Zero();
+  const CActor* actor =
+      mPortTriScanTargetCount != 0
+          ? TCastToConstPtr< CActor >(mgr.GetObjectById(mPortTriScanTargets[0]))
+          : nullptr;
+  const CModelData* modelData = actor ? actor->GetModelData() : nullptr;
+  if (modelData && !modelData->IsNull()) {
+    // Starts from the inverted box (MP1 959e9458b); both corners are accumulated.
+    CAABox accum = CAABox::MakeMaxInvertedBox();
+    const CVector3f scale = modelData->GetScale();
+    if (const CAnimData* animData = modelData->GetAnimationData()) {
+      const CAABox local = animData->GetBoundingBox();
+      const CTransform4f& xf = actor->GetTransform();
+      const CVector3f p0 = xf * CVector3f::ByElementMultiply(scale, local.GetMinPoint());
+      const CVector3f p1 = xf * CVector3f::ByElementMultiply(scale, local.GetMaxPoint());
+      accum.AccumulateBounds(CVector3f(rstl::min_val(p0.GetX(), p1.GetX()),
+                                       rstl::min_val(p0.GetY(), p1.GetY()),
+                                       rstl::min_val(p0.GetZ(), p1.GetZ())));
+      accum.AccumulateBounds(CVector3f(rstl::max_val(p0.GetX(), p1.GetX()),
+                                       rstl::max_val(p0.GetY(), p1.GetY()),
+                                       rstl::max_val(p0.GetZ(), p1.GetZ())));
+    } else {
+      // GetBounds(xf) already scales; Trilogy scales the extent again (MP1 fn_80139524 note).
+      const CAABox b = modelData->GetBounds(actor->GetTransform());
+      const CVector3f c = b.GetCenterPoint();
+      const CVector3f half =
+          CVector3f::ByElementMultiply((b.GetMaxPoint() - b.GetMinPoint()) * 0.5f, scale);
+      accum.AccumulateBounds(c - half);
+      accum.AccumulateBounds(c + half);
+    }
+    centre = accum.GetCenterPoint();
+    const CAABox t =
+        accum.GetTransformedAABox(mgr.GetCameraManager(mPlayerIndex)->GetCurrentCameraTransform(mgr, true));
+    size = t.GetMaxPoint() - t.GetMinPoint();
+    // Behind the camera: fall back to the pointer and a unit size.
+    const CVector3f proj =
+        mgr.GetCameraManager(mPlayerIndex)->GetCurrentCamera(mgr, true)->ConvertToScreenSpace(centre);
+    if (proj.GetZ() >= 1.f) {
+      centre = mPortTriPointerPos;
+      size = CVector3f(1.f, 1.f, 1.f);
+    }
+  }
+  mPortTriScanCentre = centre;
+  mPortTriScanSize = size;
+}
+
+// Corner pulled sideways in the camera's XZ plane onto the NDC unit disc (MP1 fn_80239DB0).
+static CVector3f PortTriProjectScanCorner(const CVector3f& world, const CStateManager& mgr,
+                                          int playerIndex, float radius) {
+  const CGameCamera& cam = *mgr.GetCameraManager(playerIndex)->GetCurrentCamera(mgr, true);
+  const CTransform4f camXf = mgr.GetCameraManager(playerIndex)->GetCurrentCameraTransform(mgr, true);
+  const CVector3f view = camXf.TransposeRotate(world - camXf.GetTranslation());
+  const CVector3f ndc = cam.GetPerspectiveMatrix().MultiplyOneOverW(view);
+  const CVector3f flat(ndc.GetX(), ndc.GetY(), 0.f);
+  if (flat.MagSquared() <= radius * radius) {
+    return world;
+  }
+  const CVector3f c(view.GetZ(), 0.f, -view.GetX());
+  const float tangLen = c.Magnitude();
+  const CVector3f nc = c * (1.f / tangLen);
+  const CVector3f n(nc.GetZ(), 0.f, -nc.GetX());
+  const float flatLen = flat.Magnitude();
+  const float k = tangLen * ((flatLen - radius) / flatLen);
+  return camXf * (view + k * n);
+}
+
+// MP1 fn_80238DD4 analogue; Echoes' is 0x8025de8c. Same constants (1.8, 0.85, 120, +-100) but
+// Echoes' draw has an extra 6-step loop rotated -60 degrees per step that is not ported.
+void CCompoundTargetReticle::PortTriDrawScan(const CMatrix3f& rotation,
+                                             const CStateManager& mgr) const {
+  if (mNoDrawTicks > 0 ||
+      mgr.GetPlayerState(mPlayerIndex)->GetCurrentVisor() != CPlayerState::kPV_Scan ||
+      mPreviousState != kRS_Scan) {
+    return;
+  }
+  const_cast< TCachedToken< CModel >& >(mPortTriScanRing).TryCache();
+  const_cast< TCachedToken< CModel >& >(mPortTriScanBracket).TryCache();
+  const_cast< TCachedToken< CModel >& >(mPortTriScanProgress).TryCache();
+  const CModel* ring = mPortTriScanRing.GetObject();
+  const CModel* bracket = mPortTriScanBracket.GetObject();
+  if (!ring || !bracket || !mPortTriScanProgress.GetObject()) {
+    return;
+  }
+
+  const CPlayer* player = mgr.GetPlayer(mPlayerIndex);
+  const bool scanning = player->GetScanningObject() != kInvalidUniqueId;
+  const float intensity = scanning ? 1.f - player->PortTriOrbitFade()
+                                   : 1.f - player->PortTriOrbitFade();
+
+  const CCameraManager* camMgr = mgr.GetCameraManager(mPlayerIndex);
+  const CTransform4f camXf = camMgr->GetCurrentCameraTransform(mgr, true);
+  const CGameCamera& cam = *camMgr->GetCurrentCamera(mgr, true);
+  float ringDist = 224.f / static_cast< float >(player->GetTweakPlayer()->PortTriTargetingHalfHeight());
+  ringDist /= static_cast< float >(tan(cam.GetRenderFov() * 0.5f * (1.f / 360.f) * (2.f * M_PIF)));
+  const CVector3f ringPos = camXf.GetTranslation() + ringDist * PortTriPointerDir(camXf, cam);
+
+  CColor ringColor =
+      CColor::Lerp(kPortTriScanRingColor, kPortTriScanLockedColor, mPortTriScanFade);
+  ringColor.SetAlpha(PortTriAlphaU8(intensity * ringColor.GetAlphau8()));
+  // Brackets lerp the other way (MP1 ed42d564a): faint on the pointer, full once on a target.
+  CColor bracketColor =
+      CColor::Lerp(kPortTriScanLockedColor, kPortTriScanBracketColor, mPortTriScanFade);
+  bracketColor.SetAlpha(PortTriAlphaU8(intensity * bracketColor.GetAlphau8()));
+
+  const float t = mPortTriScanLerp;
+  const float it = 1.f - t;
+  const CVector3f centre = mPortTriScanCentre * it + mPortTriScanPrevCentre * t;
+  const CVector3f size = mPortTriScanSize * it + mPortTriScanPrevSize * t;
+  const float s = CalculateClampedScale(centre, 1.f, 120.f, 120.f, mgr, mPlayerIndex);
+  const float hx = 0.5f * rstl::max_val(0.f, 0.85f * size.GetX());
+  const float hz = 0.5f * rstl::max_val(0.f, 0.85f * size.GetZ());
+  const CVector3f halfExt(hx, 0.f, -hz);
+
+  gpRender->SetModelMatrix(CTransform4f(rotation, ringPos) *
+                           CTransform4f::Scale(1.8f * kPortTriScanRingScale));
+  ring->Draw(CModelFlags::Additive(ringColor).DepthCompareUpdate(false, false));
+
+  CVector3f corners[4];
+  int n = 0;
+  if (mPortTriScanFade > 0.f) {
+    for (int i = 0; i < 4; ++i) {
+      const float cx = (i & 1) ? -1.f : 1.f;
+      const float cz = i < 2 ? -1.f : 1.f;
+      const CVector3f world =
+          centre + rotation * CVector3f(halfExt.GetX() * cx, 0.f, halfExt.GetZ() * cz);
+      const CVector3f proj = PortTriProjectScanCorner(world, mgr, mPlayerIndex, 1.f);
+      const CVector3f local = rotation.GetTranspose() * (proj - centre);
+      corners[n++] = CVector3f(local.GetX() * cx, local.GetY(), local.GetZ() * cz);
+    }
+  }
+  if (n == 4) {
+    const float xA = rstl::max_val(rstl::min_val(corners[0].GetX(), corners[2].GetX()), -100.f);
+    const float xB = rstl::max_val(rstl::min_val(corners[1].GetX(), corners[3].GetX()), -100.f);
+    const float zA = rstl::min_val(rstl::max_val(corners[1].GetZ(), corners[0].GetZ()), 100.f);
+    const float zB = rstl::min_val(rstl::max_val(corners[3].GetZ(), corners[2].GetZ()), 100.f);
+    corners[0] = CVector3f(xA, 0.f, zA);
+    corners[1] = CVector3f(xB, 0.f, zA);
+    corners[2] = CVector3f(xA, 0.f, zB);
+    corners[3] = CVector3f(xB, 0.f, zB);
+  }
+
+  const float invS = 1.f / s;
+  CColor drawColor = bracketColor;
+  drawColor.SetAlpha(PortTriAlphaU8((1.f - mPortTriScanning) * bracketColor.GetAlphau8()));
+  for (int i = 0; i < 4; ++i) {
+    const float cx = (i & 1) ? -1.f : 1.f;
+    const float cz = i < 2 ? -1.f : 1.f;
+    const CVector3f pos = n != 0 ? corners[i] * mPortTriScanFade : halfExt;
+    gpRender->SetModelMatrix(CTransform4f(rotation * CMatrix3f::Scale(s), centre) *
+                             CTransform4f::Scale(cx, 1.f, cz) *
+                             CTransform4f::Translate(pos * invS));
+    bracket->Draw(CModelFlags::Additive(drawColor).DepthCompareUpdate(false, false));
+  }
+}
+#endif
 
 EReticleState CCompoundTargetReticle::GetDesiredReticleState(const CStateManager& mgr) const {
   switch (mgr.GetPlayerState(mPlayerIndex)->GetCurrentVisor()) {
@@ -216,6 +519,11 @@ void CCompoundTargetReticle::Update(float dt, const CStateManager& mgr) {
   UpdateNextLockOnGroup(dt, mgr);
   UpdateOrbitZoneGroup(dt, mgr);
 #ifdef TARGET_PC
+  if (mPortTri) {
+    PortTriUpdateScanPointer(mgr);
+    PortTriUpdateScan(dt, mgr);
+    PortTriUpdateScanBounds(mgr);
+  }
   if (PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_Remastered) {
     PortUpdateRemasteredCrosshair(dt, mgr);
   }
@@ -669,6 +977,11 @@ void CCompoundTargetReticle::Draw(const CStateManager& mgr, bool hideLockOn) con
       DrawCrosshairs(rotation, mgr);
       DrawScanTargetGroup(rotation, mgr);
       DrawNextLockOnGroup(rotation, mgr);
+#ifdef TARGET_PC
+      if (mPortTri) {
+        PortTriDrawScan(rotation, mgr);
+      }
+#endif
       DrawOrbitZoneGroup(rotation, mgr);
     }
 #ifdef TARGET_PC
@@ -1195,6 +1508,12 @@ void CCompoundTargetReticle::DrawSeeker(const CMatrix3f& rotation, const CStateM
     break;
   }
 
+#ifdef TARGET_PC
+  // Trilogy's scan reticle is the ring and brackets (PortTriDrawScan), not the Seeker box.
+  if (mPortTri) {
+    scanReticle = false;
+  }
+#endif
   float minimumScale = mNextGroupInterpolated.GetMinViewportClampScale();
   float visorFactor = mgr.GetPlayerState(mPlayerIndex)->GetVisorTransitionFactor();
   if (scanReticle && visorFactor > 0.f) {
@@ -1498,6 +1817,12 @@ void CCompoundTargetReticle::DrawScanTargetGroup(const CMatrix3f& rotation,
   if (mPreviousState != kRS_Scan) {
     return;
   }
+#ifdef TARGET_PC
+  // Trilogy replaces the GC scan target crosshair with the ring and brackets (PortTriDrawScan).
+  if (mPortTri) {
+    return;
+  }
+#endif
 
   const_cast< TCachedToken< CModel >& >(mScanTargetCenter).TryCache();
   const_cast< TCachedToken< CModel >& >(mScanTargetLeft).TryCache();
