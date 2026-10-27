@@ -495,6 +495,7 @@ const SettingKey kSettingKeys[] = {
     // Video > Quality, Frame rate and Compatibility rows from MP1 (f1b).
     BoolKey< &sShowShaderCompilation >("show_shader_compilation"),
     BoolKey< &sShowMenuHint >("show_menu_hint"),
+    BoolKey< &sShowCheats >("show_cheats"),
     BoolKey< &sPerPixelLighting >("per_pixel_lighting"),
     BoolKey< &sDynamicRes >("dynamic_res"),
     {"dynamic_res_target",

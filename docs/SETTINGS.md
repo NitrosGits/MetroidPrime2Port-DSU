@@ -11,8 +11,9 @@ for binding examples, lifecycle rules, harness commands and desktop-only limitat
 - F1: the settings overlay (the Prime 1 port's `platform/debug_ui/` layout). Pages: Game,
   Controls (Options, Mouse settings, Controller settings, Touch & gyro, Remap), Video (Display,
   Quality, Frame rate), Randomizer, Cheats, Save states, System, Debug.
-  `MP2_DEBUG_TAB=<page>[/<sub-tab>]` opens the overlay on that page; console `overlay <page>`
-  does the same in a running game.
+  `MP2_DEBUG_TAB=<page>[/<sub-tab>]` opens the overlay on that page at launch; console
+  `overlay <page>` does the same in a running game. `Cheats` (either way) opens Debug with Show
+  cheats on.
 - Settings search: the box at the top of the overlay (Ctrl+F) lists the settings whose name,
   page, section or keywords contain every typed word; picking one opens its page, sub-tab and
   section, scrolls to it and flashes it. The index is `platform/port_settings_index.inc` (one row
@@ -229,6 +230,8 @@ Video > Quality and Frame rate:
 - `show_shader_compilation`, `show_menu_hint`: Quality > Show shader compilation (a toast while
   the startup pipeline queue compiles), Show F1 hint at launch; env `MP2_SHOW_SHADER_COMPILATION`,
   `MP2_SHOW_MENU_HINT`.
+- `show_cheats`: Debug > Show cheats (only reveals the cheat rows; God mode itself is never
+  saved).
 - `per_pixel_lighting`: Quality > Per-pixel lighting (Aurora lights per pixel); env
   `MP2_PER_PIXEL_LIGHTING`.
 - Pipeline memory (env only, not saved; `platform/port_memory_log.cpp`): `MP2_PIPELINE_LAZY=0|1`

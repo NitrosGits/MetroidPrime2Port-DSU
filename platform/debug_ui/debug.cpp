@@ -113,10 +113,10 @@ void DrawFreeCam() {
 }
 
 void DrawDebugTab() {
-  // MP1's gate for the cheat rows. Not saved: a cheat must not persist (see sGodMode).
-  static bool sShowCheats = false;
+  // MP1's gate for the cheat rows. Saved, as MP1 does: it only shows them; the cheats themselves
+  // (sGodMode) still do not persist.
   ImGui::SeparatorText("Cheats");
-  ImGui::Checkbox("Show cheats (items, health, teleport)", &sShowCheats);
+  Changed(ImGui::Checkbox("Show cheats (items, health, teleport)", &sShowCheats));
   if (sShowCheats) {
     DrawCheatsSection();
   }

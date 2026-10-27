@@ -484,6 +484,18 @@ void DrawUI() {
     PortOverlaySettings::SaveSettings();
   }
   UpdateControllerNav();
+  // MP2_DEBUG_TAB=<page> opens the window on its first frame, not just preselects the page.
+  static bool sStartOpenPending = true;
+  if (sStartOpenPending) {
+    sStartOpenPending = false;
+    if (!sVisible && !GetStartTarget().page.empty()) {
+      PortOverlay::Toggle();
+    }
+    // `Cheats` aliases to Debug; show the rows it named (not saved).
+    if (const char* env = port::EnvString("MP2_DEBUG_TAB"); env != nullptr && SDL_strncasecmp(env, "cheats", 6) == 0) {
+      sShowCheats = true;
+    }
+  }
   // While the window is open the cursor belongs to it, not to the game's aim.
   PortSaveState::ResumeInfo promptInfo;
   bool promptYes = true;

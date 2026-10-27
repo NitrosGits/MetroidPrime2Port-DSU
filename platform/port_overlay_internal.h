@@ -117,6 +117,7 @@ extern int sSharpenAmount;      // 0..100
 extern int sFpsCap;             // with the 60 FPS cap off; 0 = unlimited
 extern bool sShowShaderCompilation;
 extern bool sShowMenuHint;
+extern bool sShowCheats;          // Debug > Show cheats: only reveals the cheat rows (MP1 saves it too)
 extern bool sPerPixelLighting;
 extern PortGraphicsBackend::EGraphicsBackend sGraphicsBackend; // renderer choice (Windows, desktop Linux)
 extern PortGraphicsBackend::EGraphicsBackend sGraphicsBackendAtStart;

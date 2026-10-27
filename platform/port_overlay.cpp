@@ -529,7 +529,25 @@ bool ShowPage(const std::string& name) {
     return true;
   }
   const size_t slash = name.find('/');
-  const std::string pageName = name.substr(0, slash);
+  std::string pageName = name.substr(0, slash);
+  // Cheats is a section of the Debug page now (as MP2_DEBUG_TAB=Cheats): open it there, shown.
+  // Only when no page has the prefix, so `overlay c` still opens Controls.
+  const auto pageMatches = [&](const std::string& prefix) {
+    for (int i = 0; i < kDebugPageCount; ++i) {
+      if (SDL_strncasecmp(kDebugPages[i].name, prefix.c_str(), prefix.size()) == 0) {
+        return true;
+      }
+    }
+    return false;
+  };
+  if (!pageName.empty() && SDL_strncasecmp("cheats", pageName.c_str(), pageName.size()) == 0 &&
+      !pageMatches(pageName)) {
+    pageName = "Debug";
+    if (!sShowCheats) {
+      sShowCheats = true;
+      PortOverlaySettings::MarkDirty();
+    }
+  }
   for (int i = 0; i < kDebugPageCount; ++i) {
     const char* page = kDebugPages[i].name;
     if (!pageName.empty() && SDL_strncasecmp(page, pageName.c_str(), pageName.size()) == 0) {
@@ -1584,6 +1602,7 @@ int sSharpenAmount = 50;
 int sFpsCap = 0;
 bool sShowShaderCompilation = true;
 bool sShowMenuHint = true;
+bool sShowCheats = false;
 bool sPerPixelLighting = false;
 PortGraphicsBackend::EGraphicsBackend sGraphicsBackend = PortGraphicsBackend::kGraphicsBackend_Auto;
 PortGraphicsBackend::EGraphicsBackend sGraphicsBackendAtStart = PortGraphicsBackend::kGraphicsBackend_Auto;
