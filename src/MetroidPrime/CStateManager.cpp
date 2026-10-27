@@ -3,7 +3,11 @@
 #ifdef TARGET_PC
 #include <stdlib.h>  // getenv: the port's opt-in diagnostics
 #include <string.h>
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#else
 #include <strings.h> // strcasecmp
+#endif
 #include <cctype>
 #include <string>
 #include <utility>

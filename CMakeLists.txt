@@ -893,9 +893,16 @@ elseif(CMAKE_LINK_GROUP_USING_RESCAN_SUPPORTED OR CMAKE_CXX_LINK_GROUP_USING_RES
         # it from here. Android has no `execinfo`/`backtrace`, so it is desktop-only.
         target_link_options(metroid_prime2_port PRIVATE -rdynamic)
     endif()
+elseif(APPLE)
+    # ld64 searches every archive again until nothing new resolves, so the cycle needs no
+    # group (as in the Prime 1 port). -rdynamic names the crash handler's frames, as above.
+    target_link_libraries(metroid_prime2_port PRIVATE
+        mp_game
+        aurora::main aurora::core aurora::gx)
+    target_link_options(metroid_prime2_port PRIVATE -rdynamic)
 else()
     message(FATAL_ERROR
-        "This port needs an ELF linker with RESCAN support or an MSVC-compatible COFF linker")
+        "This port needs an ELF linker with RESCAN support, Apple ld or an MSVC-compatible COFF linker")
 endif()
 
 # Install rules (desktop only): the executable, and for Linux menus and software centres the desktop
