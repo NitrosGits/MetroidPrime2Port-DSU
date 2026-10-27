@@ -84,6 +84,7 @@ constexpr PromptKey kKeys[] = {
     {PAD_BUTTON_Y, 32, 32, 0xdbcb14f0171b30d3ull, "5"},       // Trilogy gray C, the pause Key
     {PAD_BUTTON_X, 32, 32, 0x4fc1d5a59b4da757ull, "5"},       // Trilogy gray X
     {PAD_TRIGGER_Z, 64, 32, 0x72cef9d70719af16ull, "5"},      // Trilogy blue Z bar
+    {PAD_TRIGGER_Z, 32, 32, 0x86475f276fb14e06ull, "5"},  // Trilogy "1" (RS5 override of 3AA65ECD), the map hint
     // The control stick. The map screen draws the frame for the way the stick
     // is pushed; the diagonals take the stick's own icon.
     {PROMPT_STICK, 64, 32, 0x2d26352b420db007ull, "5"},        // LStickN
