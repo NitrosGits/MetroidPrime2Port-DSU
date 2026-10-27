@@ -42,13 +42,6 @@ ships no disc image, and neither does any package or release built from it.
 - A **debug console** over TCP, and the **F1 overlay**, which has every setting,
   with search
 
-## Randomizer
-
-A shuffle generator built in: visit areas with `MP_RANDO_DUMP=1` to dump the
-pickup locations the game reports, then generate a seed from that list. There is
-no logic, so a seed can be unbeatable, and it only covers areas you dumped. See
-[docs/RANDOMIZER.md](docs/RANDOMIZER.md). There is no Archipelago client.
-
 ## Downloads
 
 Releases are published on the
@@ -136,7 +129,6 @@ with Nintendo and Retro Studios, and ships no game data.
 | `docs/PAL.md` | The PAL disc: what is verified |
 | `docs/TRILOGY.md` | Metroid Prime Trilogy: mount, HUD, radial menus |
 | `docs/MODS.md` | The mods folder, suit colours, texture pack |
-| `docs/RANDOMIZER.md` | The built-in randomizer |
 | `docs/CONSOLE.md` | The debug console (`MP2_CONSOLE`) |
 | `docs/ANDROID.md` | The Android port's status and build |
 | `docs/RELEASING.md` | What a release contains and must carry |
