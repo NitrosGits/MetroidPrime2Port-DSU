@@ -905,6 +905,10 @@ void CGraphics::BeginScene() {
 void CGraphics::BeginScene() { ClearBackAndDepthBuffers(); }
 #endif
 
+#ifdef TARGET_PC
+bool CGraphics::PortSceneOpen() { return s_auroraFrameOpen; }
+#endif
+
 void CGraphics::SwapBuffers() {
   GXDisableBreakPt();
   mFlippingState = 1;
