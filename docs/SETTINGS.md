@@ -89,6 +89,12 @@ Game page:
   loaded save. Needs the in-game hint system on. Show current hint (Cutscenes button; console
   `hintshow`) shows the hint the game would show next: a hint already on screen comes back,
   otherwise the waiting hint due soonest shows now.
+- `unlock_hard_mode`, `unlock_galleries`, `unlock_beam_doors`, `stack_beams`: Unlocks > Hard mode
+  (offered when starting a file, as after finishing the game), Image galleries (all of them), Unlock
+  beam doors (colour-locked doors open to any of the four beams; missile locks stay), Stack beams
+  (each shot also fires the other beams you own, at no extra ammo cost); env
+  `MP2_UNLOCK_HARD_MODE`, `MP2_UNLOCK_GALLERIES`, `MP2_UNLOCK_BEAM_DOORS`, `MP2_STACK_BEAMS`. Not
+  written into the save, and Original experience greys them.
 - `livesplit`, `livesplit_address`, `livesplit_split_upgrades`: Speedrun > LiveSplit, Server
   (host:port), Split on upgrades; the address's env is `MP2_LIVESPLIT_ADDR`.
 - `mods`, `mods_disabled`: Mods > Load mods and one checkbox per mod folder (`mods_disabled` holds
@@ -195,11 +201,11 @@ Video > Display:
 - `hud_wide`, `hud_scale`: HUD and view > Widescreen HUD, HUD scale.
 - `hud_spread_max` (`16:9`, `21:9`, `full`; default `21:9`, env `MP2_HUD_SPREAD_MAX`): HUD and view >
   Widest HUD spread; past that width the HUD stays centred.
-- `scan_spread` (0-100; default 100, 0 on Android, env `MP2_SCAN_SPREAD`): HUD and view > Scan panel
+- `scan_spread` (0-100; default 100, 0 on Android, env `MP2_SCAN_SPREAD`): HUD and view > Scan image
   spread; how far the widescreen HUD moves the scan visor's side panels. Scan text box and bar stay 4:3.
 - `crosshair_style`, `crosshair_opacity`: HUD and view > Crosshair style, Crosshair opacity.
-- `crosshair_color`, `crosshair_custom_color`: the crosshair's colour (env `MP2_CROSSHAIR_COLOR`);
-  no overlay row yet.
+- `crosshair_color`, `crosshair_custom_color`: HUD and view > Custom crosshair colour (off: the
+  game's own), which shows the colour picker; env `MP2_CROSSHAIR_COLOR`.
 - `no_helmet`, `no_visor_fx`: HUD and view > Hide helmet, Hide visor effects; env
   `MP2_NO_HELMET`, `MP2_NO_VISOR_FX`.
 - `cinema_bars` (default on, env `MP2_CINEMA_BARS`): HUD and view > Cutscene black bars; off drops
@@ -299,6 +305,12 @@ System and Debug:
 
 - `overlay_windowed`, `ui_theme`, `ui_scale`: System > Overlay > Overlay as a floating window
   (desktop), Menu theme, UI scale.
+- `emulator_folder`, `share_emulator_card`, `mirror_trilogy_save` (desktop only): System > Memory
+  card > Installed emulators (which Dolphin or PrimeHack install to use; empty = Auto, the first
+  one found), Share memory card with emulator (the port and the emulator use the same saves: never
+  run both at once; takes effect at the front end), Mirror with the Trilogy save.bin (keeps the
+  card and Dolphin's Metroid Prime Trilogy `Wii/title/00010000/52334d45/data/save.bin` in step).
+  No env override.
 - `card_backup`: System > Memory card > Back up the card: copies the save file into
   `save-backups` before each card write (console `save import latest` restores one).
 - `ui_sounds`: System > Overlay > Menu sounds: the game's own pause-screen SFX for opening, closing,
@@ -308,8 +320,14 @@ System and Debug:
   client).
 - System > Disc image > Check disc image (no key): hashes the mounted disc in the background against
   the known G2ME01 chunk table (`tools/disc_chunk_table.py`).
-- System > Memory card: Import file... / Export to folder... (`.gci` of this release through
-  PortSave, current save copied to save-backups first), Import from / Export to Dolphin or
+- `update_check`: System > Updates > Check for updates (default on); env `MP2_UPDATE_CHECK=0` turns
+  it off for a run. Asks GitHub's releases API once at launch whether a newer release is out.
+- `disc_path`: System > Disc image > Replace disc image...: the image to mount at the next start,
+  checked before it is remembered (empty = the one given on the command line or beside the
+  executable). No env of its own: a file on the command line or `MP2_DISC` still wins.
+- System > Memory card: Import file... / Export as (`.gci` or a Wii Trilogy save.bin) / Export to
+  folder... (a `.gci` of this release through PortSave, current save copied to save-backups first),
+  Import from / Export to Dolphin or
   PrimeHack (their GC/USA/Card A folder), Open card folder. System > Data folder: user folder,
   card and backup paths, Open data folder. No keys.
 - `log_file`: System > Log > Write the log to a file.
