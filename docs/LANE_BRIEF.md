@@ -39,7 +39,9 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   clear) are **taken** and `blt`/`bgt`/`beq` are not. Plain C already matches: `if (a > b)` is
   `fcmpo; ble skip`, `if (a <= b)` is `cror eq,lt,eq; bne skip`. So `!(a <= b)` is NOT `a > b`:
   rewrite a compare only when the asm shape differs (a plain `ble` needs `<`/`>`, a `cror` needs
-  `<=`/`>=`). `tools/retail_diff.py --kinds nan` lists suspects.
+  `<=`/`>=`). `tools/retail_diff.py --kinds nan` lists suspects. Before committing a select or
+  clamp fix, trace NaN through the asm: for `fcmpo 0,f; bge L; …; L: fmr f2,f0`, NaN lands on L
+  (gets 0), so `f > 0 ? f : 0` is already right and `0 >= f ? 0 : f` is wrong.
 - `cntlzw; li 1; rlwnm` (or `srwi 5`) tests == 0, but `rlwnm` rotates by the count's low 5
   bits only, so check what a negative value gives.
 - `mulhw` divides signed; `mulhwu` unsigned. `subfc/adde` and `slwi` pairs are MWCC compare
