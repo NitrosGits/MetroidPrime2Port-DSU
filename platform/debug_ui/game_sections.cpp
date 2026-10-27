@@ -17,6 +17,9 @@
 #include "port_savestate.h"
 #include "port_settings.h"
 #include "port_textures.h"
+#include "port_update_check.h"
+#include "port_build_info.h"
+#include "port_env.h"
 
 #include "MetroidPrime/Player/CGameOptions.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
@@ -571,6 +574,69 @@ void DrawDiscordSection() {
   }
   if (sDiscord) {
     ImGui::TextDisabled("Showing: %s", PortDiscord::CurrentText().c_str());
+  }
+}
+
+// MP1's Game > Updates section (port_update_check.h): asks GitHub's releases API for
+// Odrannnn/MetroidPrime2Port once at launch, or on "Check now".
+void ApplyUpdateCheck() {
+  const std::string& file = PortSettings::FilePath();
+  const std::filesystem::path dir = file.empty() ? std::filesystem::path("./") : std::filesystem::path(file).parent_path();
+  PortUpdateCheck::Configure(sUpdateCheck && port::EnvFlag("MP2_UPDATE_CHECK", true), MP_BUILD_VERSION,
+                             (dir / "update-check.txt").string());
+}
+
+void DrawUpdateSection() {
+  ImGui::SeparatorText("Updates");
+  bool check = sUpdateCheck;
+  if (ImGui::Checkbox("Check for updates", &check)) {
+    sUpdateCheck = check;
+    ApplyUpdateCheck();
+    PortUpdateCheck::CheckNow(); // switched on: check now, not next launch
+    Changed(true);
+  }
+  ItemHelp("Asks GitHub (api.github.com) once at launch whether a newer release is out. Nothing "
+           "else is sent, and nothing is installed: the release page opens in your browser.");
+  const PortUpdateCheck::EStatus status = PortUpdateCheck::Status();
+  switch (status) {
+  case PortUpdateCheck::kStatus_Off:
+    ImGui::TextDisabled(sUpdateCheck ? "off (MP2_UPDATE_CHECK=0)" : "off");
+    break;
+  case PortUpdateCheck::kStatus_Checking:
+    ImGui::TextUnformatted("checking...");
+    break;
+  case PortUpdateCheck::kStatus_UpToDate:
+    ImGui::TextColored(ThemeGoodColor(), "up to date");
+    break;
+  case PortUpdateCheck::kStatus_Available:
+    ImGui::TextColored(ThemeGoodColor(), "%s is out", PortUpdateCheck::Latest().version.c_str());
+    break;
+  case PortUpdateCheck::kStatus_Failed:
+    ImGui::TextColored(ThemeBadColor(), "%s", PortUpdateCheck::LastError().c_str());
+    break;
+  }
+  if (status == PortUpdateCheck::kStatus_Off) {
+    return;
+  }
+  ImGui::BeginDisabled(status == PortUpdateCheck::kStatus_Checking);
+  if (ImGui::Button("Check now")) {
+    PortUpdateCheck::CheckNow();
+  }
+  ImGui::EndDisabled();
+  if (status == PortUpdateCheck::kStatus_Available) {
+    ImGui::SameLine();
+    if (ImGui::Button("Open release page")) {
+      SDL_OpenURL(PortUpdateCheck::Latest().url.c_str());
+    }
+  }
+  if (const int64_t checked = PortUpdateCheck::LastChecked(); checked > 0) {
+    const time_t when = static_cast< time_t >(checked);
+    char text[64] = {};
+    if (const std::tm* local = std::localtime(&when)) {
+      std::strftime(text, sizeof(text), "%Y-%m-%d %H:%M", local);
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("last checked %s", text);
   }
 }
 

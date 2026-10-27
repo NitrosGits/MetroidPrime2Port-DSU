@@ -32,6 +32,10 @@ void LoadDiscPath();
 const char* DiscPath();
 void SetDiscPath(const char* path);
 
+// A tap at (x, y), as fractions of the window, on the update toast (Android: TouchControlsView).
+// True when it hit, so the touch is not also a game press.
+bool TapUpdateToast(float x, float y);
+
 // Fast iteration
 bool FastBoot();
 bool SkipCutscenes();

@@ -15,6 +15,7 @@
 #include "port_save.h"
 #include "port_settings.h"
 #include "port_suit_colours.h"
+#include "port_update_check.h"
 #include "port_video.h"
 
 #include "Kyoto/Streams/CBitStreamReader.hpp"
@@ -42,6 +43,10 @@
 #endif
 
 using namespace PortOverlayState;
+
+namespace PortDebug {
+void ApplyUpdateCheck(); // game_sections.cpp
+}
 
 namespace {
 
@@ -453,6 +458,8 @@ const SettingKey kSettingKeys[] = {
     // Discord Rich Presence (port_discord.h): the background thread is started by Configure, here
     // and in LoadSettings, so the saved value is live from the first frame.
     BoolKey< &sDiscord >("discord"),
+    // Update check (port_update_check.h): applied by ApplyUpdateCheck, here and in LoadSettings.
+    BoolKey< &sUpdateCheck >("update_check"),
     BoolKey< &sUiSounds >("ui_sounds"),
     // Mods folder (port_mods.h): read at startup only.
     {"mods", [](const std::string& value) { PortMods::SetEnabled(ParseBool(value)); },
@@ -656,6 +663,8 @@ void LoadSettings() {
   sBaseline = SettingsText();
   // Discord Rich Presence starts with the settings, not with the first F1 visit.
   PortDiscord::Configure(sDiscord);
+  PortDebug::ApplyUpdateCheck();
+  PortUpdateCheck::CheckNow(); // once per launch
   // The settings in effect go to the log from LogSettings, once the log file has started.
 }
 

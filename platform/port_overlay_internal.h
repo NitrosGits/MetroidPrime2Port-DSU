@@ -98,6 +98,7 @@ extern bool sOverlayWindowed;
 extern int sUiTheme;
 extern bool sUiSounds;
 extern bool sDiscord;
+extern bool sUpdateCheck;
 
 } // namespace PortOverlayState
 

@@ -198,6 +198,8 @@ bool sUiSounds = false;
 // MP1's Discord Rich Presence (off by default: it needs the desktop Discord client
 // running). Applied by PortDiscord::Configure from the settings file and the F1 row.
 bool sDiscord = false;
+// MP1's update check (port_update_check.h): on by default, asks api.github.com once at launch.
+bool sUpdateCheck = true;
 } // namespace PortOverlayState
 
 using namespace PortOverlayState;

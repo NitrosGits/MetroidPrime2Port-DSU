@@ -81,7 +81,7 @@ Statuses:
   - Log and disc image inside `game_sections.cpp`.
 - It also dropped rows as "not portable":
   - with a reason that holds: Remastered backends, simulation rate;
-  - with no recorded reason: Unlocks/galleries, Updates, emulator card, randomizer seed UI,
+  - with no recorded reason: Unlocks/galleries, emulator card, randomizer seed UI,
     debug audio and voices.
 - The touch settings stayed in `PortTouch` (`touch.cfg`) rather than MP1's `sInput`. So the
   "Edit layout" row was rewired to `PortTouch::RequestEdit` and lost MP1's `RequestToggle`.
@@ -111,7 +111,7 @@ Statuses:
 | Prime palette and warn/good/bad colours | ui_common.cpp:153-296 | ui_common.cpp:45-110,323-334 | SAME |
 | Menu sounds | ui_common.cpp:320-385 | ui_common.cpp:371-430 | SAME |
 | Pad navigation | ui_common.cpp:465 | ui_common.cpp:269 | SAME |
-| DrawUI: toasts | window.cpp:351-358: stale import, disc read failed, update, note | — | DIFF (f1-frame skipped the disc-read alert and the note toast: Echoes has no `sDiscReadFailedLastSession` flag or note API to feed them, so a toast would never show); the stale-import toast is MP1-ONLY (Remastered); the update toast goes with the Updates section |
+| DrawUI: toasts | window.cpp:351-358: stale import, disc read failed, update, note | — | DIFF (f1-frame skipped the disc-read alert and the note toast: Echoes has no `sDiscReadFailedLastSession` flag or note API to feed them, so a toast would never show); the stale-import toast is MP1-ONLY (Remastered); the update toast is `video.cpp` `DrawUpdateToast` (SAME; 12 s, click or Android tap via `nativeTapUpdateToast`) |
 | DrawUI: resume prompt | window.cpp:360 | window.cpp:305-358,407 | SAME |
 | DrawUI: IGT timer | (speedrun) | window.cpp:363-387 | SAME |
 | DrawUI: card/GPU picks, fullscreen hotkey, setting-change log | window.cpp:313-404 | partly in settings.cpp:693 LogSettingChanges | DIFF |
@@ -137,7 +137,7 @@ Statuses:
 | Flaahgra boss theme | audio.cpp:40 | — | MP1-ONLY: Prime 1 boss |
 | Language | own section, tabs.cpp:202; rows remastered.cpp:131-143 | inside Game section, game_sections.cpp:154 | DIFF: placement |
 | Speedrun | tabs.cpp:203 | tabs.cpp:16 | SAME |
-| Updates (Check for updates, Check now, Open release page) | game_sections.cpp:271,301,307 | — | SKIPPED (package 3): needs `port_update_check` + `port_ws`/`port_json` (HTTPS client) which this tree lacks, and Echoes has no release feed to check |
+| Updates (Check for updates, Check now, Open release page) | game_sections.cpp:271,301,307 | game_sections.cpp `DrawUpdateSection`, `ApplyUpdateCheck`; `port_update_check`, `port_ws`, `port_json` copied from MP1; setting `update_check`, env `MP2_UPDATE_CHECK=0` | SAME (feed: GitHub releases of `Odrannnn/MetroidPrime2Port`; OpenSSL via `find_package` on desktop, built from source on Android; a repo with no release yet shows the HTTP 404 as a failed check) |
 
 ## Controls page
 
@@ -202,7 +202,7 @@ Statuses:
 
 | Item | MP1 | MP2 | Status |
 | --- | --- | --- | --- |
-| Section order | tabs.cpp:261-274: Overlay, Settings, Memory card, Data folder, Log, Disc check, Discord, Update, About | tabs.cpp `DrawSystemTab`: Overlay, Settings, Memory card, Data folder, Log, Disc image, Discord, About (f1-frame) | SAME order; no Update section (see Game page, Updates) |
+| Section order | tabs.cpp:261-274: Overlay, Settings, Memory card, Data folder, Log, Disc check, Discord, Update, About | tabs.cpp `DrawSystemTab`: Overlay, Settings, Memory card, Data folder, Log, Disc image, Discord, Update, About | SAME order |
 | Overlay (floating window, Menu theme, Menu sounds) | game_sections.cpp | game_sections.cpp:415-427 | SAME |
 | Memory card, Import file, Import from Dolphin, Export to Dolphin, Open card folder | file_dialogs.cpp | card_data.cpp | SAME |
 | Emulator card (Choose…, Auto, Installed emulators, Share card, Copy port saves) | file_dialogs.cpp:542-603 | card_data.cpp DrawEmulatorCard; port_save.cpp; DolphinCMemoryCardSys.cpp Initialize | SAME (sharing switches live in the front end via CSaveGameScreen::Update + CMemoryCardSys::PortSwitchCard, never in game; imports remount via PortSave::RemountIfChanged; no Trilogy mirror) |
@@ -211,7 +211,7 @@ Statuses:
 | Log | debug.cpp | game_sections.cpp:631 | SAME |
 | Disc image | debug.cpp | game_sections.cpp:522 | SAME |
 | Replace disc image… | debug.cpp:122 | — | MISSING |
-| Update | tabs.cpp:271 | — | MISSING (see Game › Updates) |
+| Update | tabs.cpp:271 | tabs.cpp `DrawSystemTab` → `DrawUpdateSection` | SAME (see Game › Updates) |
 | About | tabs.cpp:272-273: MP_BUILD_VERSION + MP_BUILD_REVISION | tabs.cpp `DrawSystemTab`: "Version %s, build %s" (MP_BUILD_VERSION from android/app/build.gradle via cmake/BuildRevision.cmake) | SAME (f1-frame) |
 
 ## Debug page
@@ -278,8 +278,8 @@ checks.
    - Depends on: 5, if Cheats moves into Debug.
 3. **Game page rows.**
    - Files: `game_sections.cpp`, new `gallery.cpp`.
-   - Rows: beam doors, stack beams, revision compatibility, Hard mode, image galleries, the
-     Updates section with its toast.
+   - Rows: beam doors, stack beams, revision compatibility, Hard mode, image galleries.
+     (The Updates section with its toast is done.)
    - Size: about 1k lines.
 4. **Video rows.**
    - Files: `video.cpp`, `settings.cpp`.

@@ -81,6 +81,7 @@ void DrawSystemTab() {
   DrawLogSection();
   DrawDiscImageSection();
   DrawDiscordSection();
+  DrawUpdateSection();
   ImGui::SeparatorText("About");
   ImGui::TextDisabled("Version %s, build %s", MP_BUILD_VERSION, MP_BUILD_REVISION);
   ImGui::TextDisabled("Metroid Prime 2: Echoes native port (USA 1.00 code; G2ME01, PAL G2MP01)");
