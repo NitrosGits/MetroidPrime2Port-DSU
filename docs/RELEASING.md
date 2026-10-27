@@ -21,7 +21,7 @@ APK (Gradle's `syncLicenseNotices`).
 
 | Workflow | Trigger | Produces |
 |---|---|---|
-| `linux-build.yml` | push to `port`, PRs, manual | Ubuntu 24.04, gcc-14; build, `ctest -L port`, Aurora `gx_fifo_tests` (`.github/actions/build-and-test`) |
+| `linux-build.yml` | PRs, manual (a push starts nothing) | Ubuntu 24.04, gcc-14; build, `ctest -L port`, Aurora `gx_fifo_tests` (`.github/actions/build-and-test`) |
 | `linux-release.yml` | manual | `almalinux:9` + gcc-toolset-14, x86_64 and aarch64; AppImage + tarball, artifacts `metroid_prime2_port-linux[-aarch64]`; fails if the binary needs glibc > 2.34 or GLIBCXX > 3.4.29 |
 | `android.yml` | manual | release APK signed with this project's key, artifact `android-apk`; fails on any other signer |
 | `cache-prune.yml` | after the build workflows | keeps the newest cache entry per key family |

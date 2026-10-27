@@ -1,13 +1,12 @@
 name: linux-build
 
-# Builds the game binary on Linux and runs the port's tests, on every push to
-# `port` and on pull requests. The release artefacts come from linux-release.yml.
+# Builds the game binary on Linux and runs the port's tests, on pull requests or
+# when started by hand (`gh workflow run linux-build.yml`); a push starts nothing.
+# The release artefacts come from linux-release.yml.
 # build.yml.disable is upstream's matching-decomp build; it needs the retail
 # DOL, which this repository cannot have.
 on:
   workflow_dispatch:
-  push:
-    branches: [port]
   pull_request:
 
 # Pushes often arrive a few minutes apart; only the newest one's result matters.
