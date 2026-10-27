@@ -157,6 +157,8 @@ struct SQueued {
 std::mutex sQueueMutex;
 std::deque< SQueued > sQueue;
 
+#endif // !_WIN32
+
 // `at <update> <command>`: commands waiting for a game update (game thread only, no lock).
 struct SDeferred {
   unsigned update;
@@ -166,6 +168,7 @@ struct SDeferred {
 std::vector< SDeferred > sDeferred;
 unsigned sExecutingGeneration = 0;
 
+#ifndef _WIN32
 // macOS has no MSG_NOSIGNAL; SO_NOSIGPIPE is set on the client socket instead.
 #ifdef MSG_NOSIGNAL
 constexpr int kSendFlags = MSG_NOSIGNAL;

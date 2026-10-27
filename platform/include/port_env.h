@@ -11,6 +11,15 @@ namespace port {
 // The raw value, or nullptr when unset (an empty value is returned as is).
 inline const char* EnvString(const char* name) { return std::getenv(name); }
 
+// setenv(name, value, overwrite = 1); 0 on success. Windows has no setenv.
+inline int SetEnv(const char* name, const char* value) {
+#if defined(_WIN32)
+  return _putenv_s(name, value);
+#else
+  return ::setenv(name, value, 1);
+#endif
+}
+
 inline bool EnvFlag(const char* name, bool fallback = false) {
   const char* value = std::getenv(name);
   if (value == nullptr) {

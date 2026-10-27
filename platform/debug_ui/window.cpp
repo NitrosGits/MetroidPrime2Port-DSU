@@ -334,7 +334,11 @@ void DrawResumePrompt() {
     char when[32] = "";
     const std::time_t t = static_cast< std::time_t >(info.savedAt);
     std::tm local{};
+#if defined(_WIN32)
+    if (localtime_s(&local, &t) == 0) {
+#else
     if (localtime_r(&t, &local) != nullptr) {
+#endif
       std::strftime(when, sizeof(when), "%Y-%m-%d %H:%M", &local);
     }
     ImGui::TextDisabled("%s", info.room.c_str());

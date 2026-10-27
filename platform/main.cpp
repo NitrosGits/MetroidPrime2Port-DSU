@@ -352,7 +352,7 @@ PortPaths ResolveAndroidPaths() {
       // name one, so it overwrites: a value here is meant. An invalid name is left to
       // setenv to reject, and is reported rather than dropped.
       const std::string name = key.substr(4);
-      if (::setenv(name.c_str(), value.c_str(), 1) == 0) {
+      if (port::SetEnv(name.c_str(), value.c_str()) == 0) {
         std::fprintf(stderr, "metroid_prime2_port: port_paths.txt set %s=%s\n", name.c_str(),
                      value.c_str());
       } else {
@@ -372,7 +372,7 @@ PortPaths ResolveAndroidPaths() {
     if (paths.user != base + "user" && (probe || !writable)) {
       std::fprintf(stderr, "metroid_prime2_port: %s is not writable; using app storage\n",
                    paths.user.c_str());
-      ::setenv("MP2_USER_UNAVAILABLE", paths.user.c_str(), 1);
+      port::SetEnv("MP2_USER_UNAVAILABLE", paths.user.c_str());
       paths.user = base + "user";
     } else {
       writable.close();
@@ -963,8 +963,8 @@ int main(int argc, char** argv) {
   // window surface and uses Dawn's Null device (AURORA_HEADLESS), and SDL's offscreen video driver
   // needs no X server, so the run skips the GPU start-up and takes no GPU time.
   if (port::EnvFlag("MP2_HEADLESS")) {
-    ::setenv("AURORA_HEADLESS", "1", 1);
-    ::setenv("SDL_VIDEODRIVER", "offscreen", 1);
+    port::SetEnv("AURORA_HEADLESS", "1");
+    port::SetEnv("SDL_VIDEODRIVER", "offscreen");
   }
 
   // 720p by default, as the Prime 1 port: 16:9 unless the aspect setting is 4:3. The render mode
