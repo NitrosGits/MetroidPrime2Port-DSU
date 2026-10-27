@@ -1,0 +1,182 @@
+name: windows
+
+# Manual, like MP1's: a clang-cl build is the slowest job by far. Start it from
+# the Actions tab or with `gh workflow run windows.yml --ref port` when a Windows
+# zip is wanted. It also runs once a week, so a Windows break shows up within
+# days and its caches are used often enough not to be evicted.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 4 * * 1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Nothing here writes to the repository.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # x64, and arm64 for Windows on Arm machines, each built natively on its own
+    # runner. The x64 entry's suffix is empty so its artifact name stays plain.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-latest
+            suffix: ""
+            target: x86_64-pc-windows-msvc
+          - arch: arm64
+            runner: windows-11-arm
+            suffix: -arm64
+            target: aarch64-pc-windows-msvc
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        with:
+          arch: ${{ matrix.arch }}
+
+      - uses: hendrikmuhs/ccache-action@f09c25b45002a07be2955cbe52e8cee55643f89d # v1.2.24
+        with:
+          key: ${{ runner.os }}-clangcl${{ matrix.suffix }}
+          # Objects this build did not use are dropped before saving.
+          evict-old-files: job
+
+      # The x64 runner has OpenSSL installed; the arm64 one does not. vcpkg
+      # builds it there, as static libraries on the DLL runtime (/MD, CMake's
+      # default), like the x64 runner's. Cached until the vcpkg tree changes.
+      - name: Locate vcpkg
+        if: matrix.arch == 'arm64'
+        id: vcpkg
+        shell: pwsh
+        run: |
+          $root = $env:VCPKG_INSTALLATION_ROOT
+          if (-not $root -or -not (Test-Path "$root/vcpkg.exe")) {
+            $root = "$env:RUNNER_TEMP/vcpkg"
+            git clone --depth 1 https://github.com/microsoft/vcpkg $root
+            & "$root/bootstrap-vcpkg.bat" -disableMetrics
+          }
+          "root=$root" >> $env:GITHUB_OUTPUT
+          "rev=$(git -C $root rev-parse HEAD)" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: matrix.arch == 'arm64'
+        id: openssl
+        with:
+          path: openssl-arm64
+          key: openssl-arm64-windows-static-md-${{ steps.vcpkg.outputs.rev }}
+
+      - name: Build OpenSSL
+        if: matrix.arch == 'arm64' && steps.openssl.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          & "${{ steps.vcpkg.outputs.root }}/vcpkg.exe" install openssl:arm64-windows-static-md --x-install-root=openssl-arm64
+          if ($LASTEXITCODE -ne 0) { throw 'vcpkg failed to build OpenSSL' }
+
+      - name: Point CMake at OpenSSL
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: '"OPENSSL_ROOT_DIR=$env:GITHUB_WORKSPACE/openssl-arm64/arm64-windows-static-md" >> $env:GITHUB_ENV'
+
+      # Configure downloads and unpacks about a dozen dependencies. Keep the
+      # unpacked sources and the stamps that say they are current; the build
+      # directories beside them are left out, since ccache covers those.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            build-win/_deps/*-src
+            build-win/_deps/*-subbuild
+          key: deps-windows${{ matrix.suffix }}-${{ hashFiles('CMakeLists.txt', 'extern/aurora/**/CMakeLists.txt', 'extern/aurora/**/*.cmake') }}
+
+      # No precompiled headers: ccache can hand back a .pch from an earlier run,
+      # which clang then rejects because cmake_pch.c is newer than it. The REL
+      # module scoping step (tools/scope_module.py --format coff) finds
+      # llvm-objcopy and llvm-nm beside clang-cl.
+      - name: Configure
+        run: >
+          cmake -S . -B build-win -G Ninja
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DCMAKE_C_COMPILER=clang-cl
+          -DCMAKE_CXX_COMPILER=clang-cl
+          -DCMAKE_C_COMPILER_TARGET=${{ matrix.target }}
+          -DCMAKE_CXX_COMPILER_TARGET=${{ matrix.target }}
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON
+          -DMP_SDK_HEADERS_ONLY=OFF
+          -DAURORA_ENABLE_TESTS=ON
+          -DBUILD_SHARED_LIBS=OFF
+          -DAURORA_SDL3_PROVIDER=vendor
+          -DAURORA_SDL3_LINKAGE=static
+          -DAURORA_NOD_LINKAGE=static
+          -DOPENSSL_USE_STATIC_LIBS=TRUE
+
+      # Build, the port's tests and the GX FIFO regressions. -k 0 lists every
+      # error in one run while the Windows port is new.
+      - uses: ./.github/actions/build-and-test
+        with:
+          build-dir: build-win
+          jobs: "-j"
+          build-args: "-- -k 0"
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item build-win/metroid_prime2_port.exe dist/
+          Get-ChildItem build-win/*.dll | Copy-Item -Destination dist/
+          if (Test-Path build-win/metroid_prime2_port.pdb) { Copy-Item build-win/metroid_prime2_port.pdb dist/ }
+          # SDL3, zlib, libpng, nod and the runner's OpenSSL are linked into the
+          # exe (see Configure); only Dawn's DLLs, which it loads itself, ship.
+          $include = (Select-String -Path build-win/CMakeCache.txt -Pattern '^OPENSSL_INCLUDE_DIR:[A-Z]+=(.+)$').Matches[0].Groups[1].Value
+          if (-not $include -or $include.EndsWith('-NOTFOUND')) { throw 'OpenSSL not found: the update check would have no TLS' }
+          $root = Split-Path $include
+          New-Item -ItemType Directory -Force -Path dist/licenses | Out-Null
+          Copy-Item README.md dist/README.md
+          Copy-Item docs/SETTINGS.md dist/SETTINGS.md
+          Copy-Item docs/MODS.md dist/MODS.md
+          Copy-Item docs/CONSOLE.md dist/CONSOLE.md
+          # The runner's OpenSSL is linked in, and its licence is not in _deps.
+          $license = @("$root/license.txt", "$root/LICENSE.txt") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if ($license) { Copy-Item $license dist/licenses/openssl.txt }
+          else { Invoke-WebRequest https://raw.githubusercontent.com/openssl/openssl/openssl-3.5/LICENSE.txt -OutFile dist/licenses/openssl.txt }
+
+      # The port's own grant and notice, the vendored snapshots', every fetched
+      # package's and packaging/licenses/, as the Linux packages collect them.
+      - name: Collect licences
+        shell: bash
+        run: bash tools/collect_licenses.sh build-win dist/licenses
+
+      # Fail if a library that should be static is imported as a DLL again.
+      - name: Check the executable's imports
+        shell: pwsh
+        run: |
+          $imports = & dumpbin /dependents dist/metroid_prime2_port.exe
+          $imports
+          $bad = $imports | Select-String -Pattern '^\s*(SDL3|zlib1|zlib-ng\d*|libpng\d*|nod|libssl-3(-x64|-arm64)?|libcrypto-3(-x64|-arm64)?)\.dll' -AllMatches
+          if ($bad) { throw "Executable imports DLLs that should be static: $bad" }
+
+      # Start it with the system directories only, as a player's machine would,
+      # so a DLL missing from the package shows up here.
+      - name: Check packaged startup
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          # With no disc the game would open a file dialog nobody answers.
+          $env:MP2_NO_DISC_DIALOG = "1"
+          $process = Start-Process -FilePath ./dist/metroid_prime2_port.exe -WorkingDirectory ./dist -Wait -PassThru -RedirectStandardError ./startup-error.log
+          Get-Content ./startup-error.log
+          if ($process.ExitCode -ne 1) { throw "Unexpected exit code: $($process.ExitCode)" }
+          if (-not (Select-String -Path ./startup-error.log -Pattern 'no disc image given')) { throw 'Packaged executable did not reach main' }
+          # Ship none of the log and caches the run above left in dist.
+          Remove-Item -Force -ErrorAction SilentlyContinue ./dist/*.log, ./dist/dawn_cache.db*, ./dist/pipeline_cache.db*
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: metroid_prime2_port-windows${{ matrix.suffix }}
+          path: dist
