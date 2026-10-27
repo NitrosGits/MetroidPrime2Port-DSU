@@ -564,7 +564,24 @@ void CPlayer::UpdateOrbitZone() {
   }
 }
 
+#ifdef TARGET_PC
+float CPlayer::PortTriOrbitFade() const {
+  if (!port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    return 0.f;
+  }
+  return PortTriOrbit::FadeRatio(mPortTriOrbitFadeTimer, mOrbitState != kOS_NoOrbit,
+                                 GetTweakPlayer()->GetOrbitModeTimer());
+}
+
+#endif
 void CPlayer::UpdateOrbitModeTimer(float dt) {
+#ifdef TARGET_PC
+  mPortTriOrbitFadeTimer = port::entry::IsTrilogy(port::entry::CurrentDiscVersion())
+                               ? PortTriOrbit::FadeTimerStep(mPortTriOrbitFadeTimer,
+                                                             mOrbitState != kOS_NoOrbit, dt,
+                                                             GetTweakPlayer()->GetOrbitModeTimer())
+                               : 0.f;
+#endif
   if (mOrbitState == kOS_NoOrbit && mOrbitModeTimer > 0.f) {
     mOrbitModeTimer -= dt;
   } else {

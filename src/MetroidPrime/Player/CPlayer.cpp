@@ -467,6 +467,9 @@ CPlayer::CPlayer(TUniqueId uid, const CTransform4f& xf, const CAABox& aabb, CAss
 , mOrbitPoint(0.f, 0.f, 0.f)
 , mOrbitVector(0.f, 0.f, 0.f)
 , mOrbitModeTimer(0.f)
+#ifdef TARGET_PC
+, mPortTriOrbitFadeTimer(0.f)
+#endif
 , mOrbitZoneMode(kZI_Targeting)
 , mOrbitZoneType(kZT_Ellipse)
 , mOrbitScreenBoxType(1)

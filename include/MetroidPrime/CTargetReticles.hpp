@@ -1,6 +1,9 @@
 #ifndef _CTARGETRETICLES
 #define _CTARGETRETICLES
 
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/CColor.hpp"
+#endif
 #include "Kyoto/Math/CQuaternion.hpp"
 #include "Kyoto/TToken.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
@@ -97,6 +100,60 @@ public:
   // MP1's PortPresentGroup: carry a group placed at the tick to where its target is drawn
   // between ticks (CActor::PortPresentedPoint), or an idle group with the presented camera.
   void PortPresentGroup(CTargetReticleRenderState& state, const CStateManager& mgr) const;
+
+  // Trilogy (rs5mp2_p.dol) scan visor ring and target brackets, ported from MP1's PortTriDrawScan
+  // (MP1 bc1332c52..ed42d564a). Echoes' draw is 0x8025de8c; see PortTriDrawScan.
+  void PortTriUpdateScanPointer(const CStateManager& mgr);
+  void PortTriUpdateScan(float dt, const CStateManager& mgr);
+  void PortTriUpdateScanBounds(const CStateManager& mgr);
+  static TUniqueId PortTriResolveScanTarget(TUniqueId id, const CStateManager& mgr);
+  void PortTriDrawScan(const CMatrix3f& rotation, const CStateManager& mgr) const;
+  bool mPortTri = false;
+  TCachedToken< CModel > mPortTriScanRing;
+  TCachedToken< CModel > mPortTriScanBracket;
+  TCachedToken< CModel > mPortTriScanProgress;
+  float mPortTriScanFade = 0.f;
+  float mPortTriScanLerp = 0.f;
+  float mPortTriScanning = 0.f;
+  CVector3f mPortTriScanPrevCentre = CVector3f::Zero();
+  CVector3f mPortTriScanCentre = CVector3f::Zero();
+  CVector3f mPortTriScanPrevSize = CVector3f::Zero();
+  CVector3f mPortTriScanSize = CVector3f::Zero();
+  int mPortTriScanTargetCount = 0;
+  TUniqueId mPortTriScanTargets[1] = {kInvalidUniqueId};
+  TUniqueId mPortTriLastNextTarget = kInvalidUniqueId;
+  TUniqueId mPortTriScanTarget = kInvalidUniqueId;
+  CVector3f mPortTriPointerPos = CVector3f::Zero();
+
+  // Trilogy combat group (MP1 fn_80236A98/8023AC48/8023B228 equivalents; rs5mp2_p.dol loads the
+  // same tokens in the ctor at 0x80259b70). The orbit button is not readable from the reticle, so
+  // a release is "lock ended and not by a damage orbit break".
+  void PortTriUpdateCombat(float dt, const CStateManager& mgr);
+  void PortTriDrawNext(const CMatrix3f& rotation) const;
+  void PortTriDrawLocked(const CMatrix3f& rotation) const;
+  void PortTriDrawLockAt(const CMatrix3f& rotation, const CVector3f& pos, float lockTime,
+                         const CColor& color, float alpha) const;
+  void PortTriDrawAiming(const CMatrix3f& rotation, const CStateManager& mgr) const;
+  void PortTriDrawScanProgress(const CMatrix3f& rotation, const CVector3f& pos, float progress,
+                               const CColor& color) const;
+  CVector3f PortTriProjectNear(const CStateManager& mgr, const CVector3f& world) const;
+  TCachedToken< CModel > mPortTriAimCenter, mPortTriAimArm, mPortTriLockArm, mPortTriLockTech,
+      mPortTriLockBrackets, mPortTriLockBase;
+  TUniqueId mPortTriPointerTarget = kInvalidUniqueId;
+  float mPortTriAimArmScale = 1.f, mPortTriAimCenterScale = 1.f, mPortTriAimTarget = 0.f;
+  CColor mPortTriAimArmColor = CColor::White(), mPortTriAimCenterColor = CColor::White();
+  float mPortTriAimArmAlpha = 0.f, mPortTriAimCenterAlpha = 0.f;
+  CVector3f mPortTriNextPos = CVector3f::Zero(), mPortTriNextWorld = CVector3f::Zero(),
+            mPortTriNextFrom = CVector3f::Zero();
+  TUniqueId mPortTriNext = kInvalidUniqueId;
+  float mPortTriNextAlpha = 0.f, mPortTriNextAngle = 0.f, mPortTriNextTime = 0.f;
+  bool mPortTriNextMoving = false;
+  TUniqueId mPortTriLocked = kInvalidUniqueId;
+  CVector3f mPortTriLockPos = CVector3f::Zero();
+  CColor mPortTriLockColor = CColor::White();
+  float mPortTriLockAlpha = 0.f, mPortTriLockTime = 0.f, mPortTriReleaseAlpha = 0.f;
+  float mPortTriLockFade = 0.f, mPortTriReleaseFade = 0.f, mPortTriPrevYaw = 0.f,
+        mPortTriBracketAngle = 0.f, mPortTriTechAngle = 0.f;
 #endif
   EReticleState GetDesiredReticleState(const CStateManager& mgr) const;
   bool CheckLoadComplete();
