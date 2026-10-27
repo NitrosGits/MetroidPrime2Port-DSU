@@ -33,8 +33,15 @@ compares the port body with the retail body (asm and rodata read through tools/a
 Findings are hints for a human (inlined callees, constants named in another file show up); a clean
 function is a good sign, not proof.
 
+  --coverage: per module, how much was really checked (markers, bodies parsed, retail asm found, shape
+         checked, float-compare sites retail vs port); with --verbose also the unparsed markers
+         (file:line, why: data table, declaration, `= default`, no body found)
+Bodies are parsed by asmcheck.parse_cpp(deep=True): also in-class (header / local-class) inline
+bodies and `extern "C" void f() {}`. Still unparsed: markers on data tables, `= default`,
+declarations, and a marker not directly above its definition.
+
 usage: retail_diff.py [--module M ...] [--fn fn_X ...] [--diff BASE] [--kinds call,const,shape,nan,args]
-                      [--file PATH ...]
+                      [--file PATH ...] [--coverage] [--verbose]
                       [--top N] [--strict]
   no selector: whole port, per-kind totals and the N (default 40) worst functions
   --file PATH: check only the marked bodies of these source files (e.g. an old `git show` copy)
@@ -248,7 +255,7 @@ def port_functions(paths, display=None):
     funcs, helpers, texts = {}, {}, {}
     for p in paths:
         try:
-            defs = ac.parse_cpp(str(p))
+            defs = ac.parse_cpp(str(p), deep=True)
             text = Path(p).read_text(errors="replace")
         except OSError:
             continue
@@ -613,6 +620,110 @@ def changed_since(base, cur_funcs):
             if Path(f.file) in files and (k not in old or norm(old[k].code) != norm(f.code))}
 
 
+def marker_locations(paths):
+    """(mid, off) -> [(file, line)] of every `// @ fn_` marker."""
+    out = {}
+    for p in paths:
+        try:
+            text = Path(p).read_text(errors="replace")
+        except OSError:
+            continue
+        for m in MARKER_FILE.finditer(text):
+            k = norm_id(m.group(0)[m.group(0).index("fn_"):])
+            if k:
+                out.setdefault(k, []).append((Path(p), text.count("\n", 0, m.start()) + 1))
+    return out
+
+
+def why_unparsed(path, line):
+    """What follows a marker that has no parsed body: data table, declaration, `= default`, other."""
+    lines = Path(path).read_text(errors="replace").split("\n")
+    i = line
+    while i < len(lines) and (not lines[i].strip() or lines[i].lstrip().startswith(("//", "#", "/*", "*"))):
+        i += 1
+    txt = ""
+    while i < len(lines) and len(txt) < 400:
+        txt += lines[i] + " "
+        if re.search(r"[{;]", lines[i]):
+            break
+        i += 1
+    head = re.split(r"[{;]", txt)[0]
+    if re.match(r"\s*(?:template\s*<[^>]*>\s*)?(?:class|struct)\b", txt) and not re.search(r"\bclass\s+\w+\s*;", txt[:200]):
+        return "implicit (marker on the class)"
+    if "= default" in txt or "= delete" in txt:
+        return "= default/delete"
+    if re.search(r"\]\s*=|=\s*\{|=\s*&|^\s*(?:static\s+)?(?:const\s+)?[\w:<>]+\s+\w+\s*(?:=|;)", txt) and "(" not in head.split("=")[0]:
+        return "data"
+    if "[" in head.split("(")[0] and "=" in txt:
+        return "data"
+    if txt.rstrip().endswith(";") and "(" in head:
+        return "declaration only"
+    return "other"
+
+
+def shape_checked(f, key):
+    marked_ids = [norm_id(x) for x in f.ids if norm_id(x)]
+    return not (f.short.startswith("~") or key in INBODY or (len(marked_ids) > 1 and key != marked_ids[0]))
+
+
+def coverage(marks, funcs, locs, ids, retail, helpers):
+    """module name -> counter dict (see --coverage)."""
+    cov = {}
+    unparsed = {}
+    for k in sorted(marks):
+        mname = ids.get(k[0], f"mod{k[0]}")
+        c = cov.setdefault(mname, dict(markers=0, bodies=0, inbody=0, asm=0, shape=0, fc_sites=0, fc_cmp=0, fc_fns=0, fc_fns_cmp=0))
+        c["markers"] += 1
+        f = funcs.get(k)
+        if f is None:
+            unparsed.setdefault(mname, []).append(k)
+            continue
+        c["bodies"] += 1
+        if k in INBODY:
+            c["inbody"] += 1
+        m = retail.get(mname)
+        if m is None or k[1] not in m[1]:
+            continue
+        c["asm"] += 1
+        if shape_checked(f, k):
+            c["shape"] += 1
+        fcmps = retail_facts(m[0], m[1][k[1]])[3]
+        if fcmps:
+            body = expand(f.code, helpers, cls=f.cls, file=f.file)
+            s, n, _, _ = port_compares(body)
+            c["fc_fns"] += 1
+            c["fc_sites"] += len(fcmps)
+            seen = min(len(fcmps), s + n)
+            c["fc_cmp"] += seen
+            c["fc_fns_cmp"] += bool(seen)
+    return cov, unparsed
+
+
+def print_coverage(cov, unparsed, locs, only, verbose):
+    cols = ("markers", "bodies", "inbody", "asm", "shape", "fc_fns", "fc_fns_cmp", "fc_sites", "fc_cmp")
+    print("# coverage: markers | bodies parsed | of them a marker inside a bigger body | with retail asm |"
+          " shape-checked | fns with retail float compares | .. of them port compares seen |"
+          " retail float-compare sites | .. matched by a port compare")
+    print(f"{'module':28}" + "".join(f"{c:>11}" for c in cols))
+    tot = dict.fromkeys(cols, 0)
+    for mname in sorted(cov):
+        if only and mname not in only:
+            continue
+        c = cov[mname]
+        for x in cols:
+            tot[x] += c[x]
+        print(f"{mname:28}" + "".join(f"{c[x]:>11}" for x in cols))
+    print(f"{'TOTAL':28}" + "".join(f"{tot[x]:>11}" for x in cols))
+    if verbose:
+        for mname in sorted(unparsed):
+            if only and mname not in only:
+                continue
+            for k in unparsed[mname]:
+                for path, ln in locs.get(k, [(None, 0)])[:1]:
+                    where = f"{rel(path)}:{ln}" if path else "?"
+                    print(f"unparsed {fid(*k)} {mname} {where} ({why_unparsed(path, ln) if path else '?'})")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--module", action="append", default=[], help="only this REL module (repeatable)")
@@ -621,6 +732,8 @@ def main():
     ap.add_argument("--kinds", help="comma list of call,const,shape,nan,args")
     ap.add_argument("--file", action="append", default=[], help="check only the marked bodies in these files")
     ap.add_argument("--top", type=int, default=40, help="whole-port listing: N worst functions")
+    ap.add_argument("--coverage", action="store_true", help="per-module parse coverage table")
+    ap.add_argument("--verbose", action="store_true", help="with --coverage: list unparsed markers")
     ap.add_argument("--strict", action="store_true", help="also show calls to port-model callees")
     args = ap.parse_args()
 
@@ -661,6 +774,11 @@ def main():
         sel &= want
     if args.diff:
         sel &= changed_since(args.diff, funcs)
+    if args.coverage:
+        locs = marker_locations(marker_files() if not args.file else [Path(x).resolve() for x in args.file])
+        cov, unparsed = coverage(marks, funcs, locs, ids, retail, helpers)
+        print_coverage(cov, unparsed, locs, set(args.module), args.verbose)
+        return 0
     kinds = set(args.kinds.split(",")) if args.kinds else None
     totals, rows, hidden = {}, [], 0
     for k in sorted(sel):
@@ -675,7 +793,8 @@ def main():
             totals[x[0]] = totals.get(x[0], 0) + 1
         if found:
             rows.append((k, found))
-    print(f"# {len(sel)} marked function(s) checked ({len(nobody)} markers without a parsed body); findings: "
+    nob = [k for k in nobody if k in sel or ((args.module and ids.get(k[0]) in args.module) or whole)]
+    print(f"# {len(sel)} marked function(s) checked ({len(nob)} markers without a parsed body); findings: "
           + (", ".join(f"{a} {b}" for a, b in sorted(totals.items())) or "none")
           + f"; {hidden} calls to {len(model)} port-model callees hidden (--strict shows them)")
     if whole:
