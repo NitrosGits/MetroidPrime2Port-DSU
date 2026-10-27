@@ -51,8 +51,8 @@ enum : uint32_t {
 // stands for, and the hash identifies the game's own texture under Aurora's
 // name for it. These are Prime 1's prompt art, identified from that disc by the
 // Prime 1 port's tools/extract_textures.py (the comments are its PAK names);
-// Echoes' own prompt textures still have to be found in a dump
-// (MP2_DUMP_TEXTURES=1) and listed here. Until then a key that Echoes does not
+// Trilogy's own are listed further down. Other prompt textures are found in a dump
+// (MP2_DUMP_TEXTURES=1) and listed here. A key that the disc does not
 // share simply never matches, and the game keeps its own art. One action often has several, as
 // the screens draw pressed and released frames and some hints have their own.
 struct PromptKey {
@@ -77,6 +77,13 @@ constexpr PromptKey kKeys[] = {
     {PAD_TRIGGER_R, 32, 32, 0xac602ce1291cbd26ull, "5"},  // RTriggerIn
     {PAD_TRIGGER_R, 32, 32, 0x07165bfca0d0908full, "14"}, // the hints' released R
     {PAD_TRIGGER_Z, 64, 32, 0x0f4cb495c960bcfaull, "14"}, // the map legend's Z
+    // Metroid Prime Trilogy's own prompt art (Wii glyphs), identified from a
+    // dump of R3ME01 against the pause screen's legend: Exit is the "2" button,
+    // Key (Echoes' Y) the gray C, the morph hint X, the map legend's Z.
+    {PAD_BUTTON_START, 32, 32, 0xf26190a488d42e7cull, "5"},   // Trilogy "2", the pause Exit
+    {PAD_BUTTON_Y, 32, 32, 0xdbcb14f0171b30d3ull, "5"},       // Trilogy gray C, the pause Key
+    {PAD_BUTTON_X, 32, 32, 0x4fc1d5a59b4da757ull, "5"},       // Trilogy gray X
+    {PAD_TRIGGER_Z, 64, 32, 0x72cef9d70719af16ull, "5"},      // Trilogy blue Z bar
     // The control stick. The map screen draws the frame for the way the stick
     // is pushed; the diagonals take the stick's own icon.
     {PROMPT_STICK, 64, 32, 0x2d26352b420db007ull, "5"},        // LStickN
