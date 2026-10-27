@@ -37,7 +37,8 @@ MP1's port ships this pipeline; it is the template.
   Aurora's Android support is already vendored here: `extern/aurora/cmake/AuroraSDL3Provider.cmake`
   (:164-176, needs `AURORA_SDL3_PROVIDER=vendor`), `AuroraDawnProvider.cmake` (:83-90 prebuilt
   `android-aarch64` Dawn, `AURORA_DAWN_PROVIDER=auto`).
-  The Gradle build does not download Dawn: it reads `build/android-deps/dawn_prebuilt`, which must
+  The Gradle build reads `build/android-deps/dawn_prebuilt` (or `-PcmakeDependencyCache=<dir>`)
+  when it exists and downloads the pinned package otherwise (a clean CI runner); the cache must
   hold the release `AuroraDependencyVersions.cmake` pins (`dawn-android-aarch64.tar.gz` from
   `Odrannnn/dawn` `v20261026.185535`, sha256 `6a3ac06c...`, unpacked there). The copy
   `tools/android_probe.sh` falls back to (MP1's `build/android-deps`) was still the old
@@ -191,8 +192,9 @@ Native side, both in `platform/main.cpp` and both `#if defined(__ANDROID__)`:
   the app's own files directory - with `user/`, `cache/` and `disc.iso` beneath it, overridden by
   `port_paths.txt`. It prints the three it chose, the way MP1 prints its memory-card path.
 
-**nod is now the real one.** `tools/android_apk.sh :app:assembleDebug -PandroidNodStub=false`
-builds it (Corrosion + the vendored Rust toolchain: this tree's `build/android-rust`, falling back
+**nod is now the real one, and the default** (`-PandroidNodStub=true` selects the stub; the
+Gradle caches are optional, missing ones are fetched, so CI needs only `rustup target add
+aarch64-linux-android`). `tools/android_apk.sh :app:assembleDebug` builds it (Corrosion + the vendored Rust toolchain: this tree's `build/android-rust`, falling back
 to `../MetroidPrimePort/build/android-rust`, `CARGO_NET_OFFLINE=true`, the offline
 `aurora_nod`/`corrosion` FetchContent caches). Verified on the packaged, stripped library:
 19 `T nod_*` symbols including `nod_disc_open_stream`, 522 undefined (all platform), zero

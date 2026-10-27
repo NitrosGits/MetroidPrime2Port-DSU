@@ -9,10 +9,10 @@
 #                      falling back to it (see below)
 #
 # Milestone M1 of docs/ANDROID.md builds :app:assembleDebug; the release variant and its key
-# are wired up here too so M4 does not have to revisit it. android/app/build.gradle still
-# defaults -PandroidNodStub to true, so the plain command builds the nod stub (launches,
-# stops at the disc); an APK that can read a disc needs -PandroidNodStub=false, which also
-# needs the vendored Rust toolchain this script puts on PATH.
+# are wired up here too so M4 does not have to revisit it. android/app/build.gradle
+# defaults to the real nod (needs a Rust toolchain with the aarch64-linux-android target: the
+# vendored one this script puts on PATH, or rustup on CI); -PandroidNodStub=true builds the
+# stub, which launches and stops at the disc.
 set -eu
 
 root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)

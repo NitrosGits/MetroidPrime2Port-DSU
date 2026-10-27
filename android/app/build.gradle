@@ -4,13 +4,14 @@ plugins {
 
 // The nod stub provides only the ABI, and every entry point fails, so a build made with it
 // installs, launches and stops at the disc. It answers "does this cross-build and link for
-// Android" without a Rust toolchain, and until the Rust cross-build of nod lands it is the
-// only nod this tree has - so it defaults to *on* here, unlike ../MetroidPrimePort, where
-// the real one is the default and a probe opts in. The real nod arrives as a flag, not a
-// rewrite: -PandroidNodStub=false.
-def useNodStub = providers.gradleProperty("androidNodStub").getOrElse("true")
-// Everything comes from local caches; there is no network here. Same two as
-// tools/android_probe.sh, which documents where they come from.
+// Android" without a Rust toolchain. Default to the real nod, as ../MetroidPrimePort does,
+// and let a probe opt in: the cost of forgetting -PandroidNodStub=true is the reverse of
+// the cost of forgetting -PandroidNodStub=false, and only the latter ships a broken APK.
+def useNodStub = providers.gradleProperty("androidNodStub").getOrElse("false")
+// Optional local caches (tools/android_probe.sh documents where they come from). With
+// -PcmakeDependencyCache, or the default build/android-deps when it exists, each dependency
+// found there is used as FETCHCONTENT_SOURCE_DIR_*; every other one is downloaded by
+// FetchContent, which is what a clean CI runner does.
 def dependencyCache = providers.gradleProperty("cmakeDependencyCache")
     .getOrElse("${rootProject.projectDir}/../build/android-deps")
 // The module-scoping step *runs* tools/scope_module.py, and CMake's FindPython3 will not look
@@ -34,32 +35,21 @@ def cmakeArguments = [
     "-DAURORA_NOD_LINKAGE=static",
 ]
 
-// prebuilt aarch64 Dawn and the SDL3 sources Aurora pins. Missing ones are an error rather
-// than a silent fetch, because the build has no network.
 ["DAWN_PREBUILT": "dawn_prebuilt", "SDL": "sdl"].each { name, directory ->
     def source = new File(dependencyCache, directory)
-    if (!source.isDirectory()) {
-        throw new GradleException(
-            "${source} is missing.\n" +
-            "  tools/android_probe.sh says where this cache comes from; pass\n" +
-            "  -PcmakeDependencyCache=<dir> to use one somewhere else.")
+    if (source.isDirectory()) {
+        cmakeArguments.add("-DFETCHCONTENT_SOURCE_DIR_${name}=${source}")
     }
-    cmakeArguments.add("-DFETCHCONTENT_SOURCE_DIR_${name}=${source}")
 }
 if (!useNodStub.toBoolean()) {
     cmakeArguments.add("-DRust_CARGO_TARGET=aarch64-linux-android")
     // The two FetchContent packages the vendor nod build would otherwise clone from GitHub
-    // (aurora_nod and Corrosion, the same names tools/android_probe.sh redirects). There is
-    // no network here, so the caches in dependencyCache are the source.
+    // (aurora_nod and Corrosion, the same names tools/android_probe.sh redirects).
     ["AURORA_NOD": "aurora_nod", "CORROSION": "corrosion"].each { name, directory ->
         def source = new File(dependencyCache, directory)
-        if (!source.isDirectory()) {
-            throw new GradleException(
-                "${source} is missing; the real nod cannot be configured without it.\n" +
-                "  tools/android_probe.sh says where this cache comes from; build with\n" +
-                "  -PandroidNodStub=true for the stub instead.")
+        if (source.isDirectory()) {
+            cmakeArguments.add("-DFETCHCONTENT_SOURCE_DIR_${name}=${source}")
         }
-        cmakeArguments.add("-DFETCHCONTENT_SOURCE_DIR_${name}=${source}")
     }
 }
 // ccache when it is installed: the native build is the long part of an APK and the same
