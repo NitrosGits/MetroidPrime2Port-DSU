@@ -31,6 +31,8 @@ EXCLUDED = {
     "FOV": "photo mode panel, not an F1 page",
     "Roll": "photo mode panel, not an F1 page",
     "%dx": "photo mode shot-size radio, not an F1 page",
+    # DrawRandomizerTab: its page is hidden from kDebugPages (search.cpp), so search can't reach it.
+    "Seed name": "hidden Randomizer page",
 }
 
 INDEX = pathlib.Path("platform/port_settings_index.inc")

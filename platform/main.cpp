@@ -43,6 +43,9 @@
 #endif
 #if !defined(_WIN32)
 #include <unistd.h>
+#else
+#include <stdlib.h>
+extern "C" __declspec(dllimport) unsigned int __stdcall SetErrorMode(unsigned int mode);
 #endif
 #include <cstdlib>
 #include <filesystem>
@@ -914,6 +917,13 @@ int main(int argc, char** argv) {
 
   // ctest port_settings_roundtrip: every settings.cfg key reads back as written, then exit.
   if (argc == 2 && std::strcmp(argv[1], "--settings-selftest") == 0) {
+#if defined(_WIN32)
+    // Headless under ctest: an abort or a fault must end the run, not wait on a dialog nobody
+    // clicks until the test times out (SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX).
+    _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+    SetErrorMode(0x0001 | 0x0002);
+    std::fputs("settings self-test: start\n", stderr);
+#endif
     std::string report;
     const int result = PortOverlaySettings::SettingsSelfTest(report);
     std::fputs(report.c_str(), result == 0 ? stdout : stderr);
