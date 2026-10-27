@@ -1,5 +1,38 @@
 # Randomizer
 
+## Decision (2026-10-27): Randovania decides, the port applies
+
+Supersedes the 2026-10-18 decision below in one point: the pickups **can** be enumerated statically.
+Randovania's Echoes logic database names, per location, the region's MLVL, the area's MREA and the
+Pickup's instance id - exactly the port's `WORLD:AREA:ENTITY` key. So the port does not grow logic of
+its own: Randovania generates (logic, tricks, presets, multiworld) and the port applies its seed at
+runtime instead of patching the ISO. Plan, each step checkable on its own:
+
+1. **Location table** - done. `tools/rando_locations.py RANDOVANIA_DIR [--write]` reads
+   `randovania/games/prime2/logic_database/*.json` and checks every row on the user's disc: the MLVL
+   lists the MREA, the MREA holds a `PCKP` with that editor id, and its item is the database's
+   `original_model`. 119 locations, 115 standard, 4 custom (the energy controllers' translators,
+   which have no pickup on disc); 0 failed checks against Randovania `1ec92e8f` (2026-10-26). The
+   output, `platform/include/port_rando_locations.inc`, is compiled into
+   `platform/port_rando_locations.cpp` (`PortRandoLocations::PickupIndexFor`, `ByPickupIndex`);
+   `port_rando_locations_tests` checks its shape. Regenerate when Randovania's database changes.
+2. **Seed import** - read Randovania's Echoes patch data (pickups per index with resources, model,
+   HUD and scan text; starting items; spawn; elevators; translator gates; door weaknesses).
+3. **Pickup presentation** - the placed item's model and acquisition text.
+4. **Non-pickup grants** - the 4 custom locations and any item a script grants.
+5. **Script and layer patches** - Randovania's per-instance edits, applied as areas load.
+6. **Save binding and the F1 page** - seed hash in the save, spoiler.
+
+Findings from step 1:
+
+- Dark-world regions carry no asset id in Randovania; they are areas of their light world's MLVL.
+- The Bomb Guardian's drop (index 38, Agon Temple `081A0074`) is not in any script layer but in the
+  MREA's generated-object section (`SCGN`, header word 19; `tools/echoes_disc.py` `mrea_generated`).
+  `CScriptObjectLoaderHelper::GenerateScriptObject` builds it with its own editor id through the same
+  `LoadPickup`, so the hook keys it like any other pickup.
+- The Energy Transfer Module location gives item 28 (`TranslatorUpgrade_TempETM`), not
+  `EnergyTransferModule` (107). Randovania shows the Echo Visor model for the Dark Visor location.
+
 ## Decision (2026-10-18)
 
 MP2 gets a **no-logic shuffle generator over a dumped location list**, not a port of the MP1

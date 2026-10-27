@@ -262,6 +262,45 @@ def mrea_layers(b):
     return layers
 
 
+def mrea_generated(b):
+    """Return the generated-object (SCGN) section of a version-0x19 MREA, or None.
+
+    Its section index is header word 19 (CGameArea's generated-script section); only the block
+    holding it is inflated. Objects in it are built on demand (boss drops, for one) through the
+    same loaders as layer objects, keeping their editor id.
+    """
+    h = struct.unpack_from(">32I", b, 0)
+    assert h[0] == 0xDEADBEEF and h[1] >= 24, hex(h[1])
+    nsec, want, nblk = h[16], h[19], h[28]
+    pos = 0x80
+    sizes = struct.unpack_from(">%dI" % nsec, b, pos)
+    pos += (nsec * 4 + 31) & ~31
+    blocks = [struct.unpack_from(">4I", b, pos + 16 * i) for i in range(nblk)]
+    pos += (nblk * 16 + 31) & ~31
+    si = 0
+    for buf, dl, cl, sc in blocks:
+        rd = ((cl or buf) + 31) & ~31
+        if si <= want < si + sc:
+            raw = b[pos:pos + rd]
+            data = inflate_chunks(raw[rd - cl:], dl) if cl else raw[:dl]
+            off = sum(sizes[si:want])
+            sec = data[off:off + sizes[want]]
+            return sec if sec[:4] == b"SCGN" else None
+        pos += rd
+        si += sc
+    return None
+
+
+def scgn_objects(sec):
+    """Return [(fourcc, editor_id, property_bytes)] from an SCGN section.
+
+    Layout from CGameArea and CScriptObjectLoaderHelper::LoadGeneratedScriptObjects: u32 'SCGN',
+    u8, u8, u32 count, then objects laid out as in a script layer.
+    """
+    assert sec[:4] == b"SCGN", sec[:8]
+    return scly_objects(b"SCLY" + sec[4:6] + b"\0\0\0\0" + sec[6:])
+
+
 def strg_strings(b):
     """All strings of the first language of a v1 STRG (name table skipped), as str."""
     assert struct.unpack_from(">II", b, 0) == (0x87654321, 1), b[:8].hex()
