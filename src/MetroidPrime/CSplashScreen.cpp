@@ -14,6 +14,7 @@
 #include "math.h"
 
 #ifdef TARGET_PC
+#include "port_entry.h"
 #include "port_harness.h"
 #include "port_overlay.h"
 #include "port_pointer_menu.h"
@@ -171,6 +172,15 @@ CIOWin::EMessageReturn CSplashScreen::OnMessage(const CArchitectureMessage& mess
             next == kSplashScreen_HealthWarning) {
           ++next;
         }
+#ifdef TARGET_PC
+        // Port: Trilogy never shows the health warning (the Wii menu has its own; its DOL names
+        // none of the splash textures), and the TXTR_HealthWarning left in its NoARAM.pak is the
+        // Japanese one.
+        if (next == kSplashScreen_HealthWarning &&
+            port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+          ++next;
+        }
+#endif
         queue.Push(
             MakeMsg::CreateCreateIOWin(kAMT_IOWinManager, 9999, 9999,
                                        rs_new CSplashScreen(static_cast< ESplashScreen >(next))));
@@ -297,9 +307,19 @@ void CSplashScreen::Draw() const {
   } else if (mSplash == kSplashScreen_HealthWarning) {
     gpRender->SetViewportOrtho(false, -4096.f, 4096.f);
     const CViewport viewport = CGraphics::GetViewport();
+#ifdef TARGET_PC
+    // Port: pillarbox the 4:3 warning like the other splashes (its press-start line already is,
+    // through SplashToScreen) instead of stretching it across a wide viewport.
+    const int fourThree = PortOverlay::FourThreeWidth(viewport.mWidth, viewport.mHeight);
+    const int drawWidth = fourThree < viewport.mWidth ? fourThree : viewport.mWidth;
+    const float left = float(viewport.mLeft + (viewport.mWidth - drawWidth) / 2);
+    DrawSplashTexture(*tex, color, left, float(viewport.mTop), left + float(drawWidth),
+                      float(viewport.mTop + viewport.mHeight));
+#else
     DrawSplashTexture(*tex, color, float(viewport.mLeft), float(viewport.mTop),
                       float(viewport.mLeft + viewport.mWidth),
                       float(viewport.mTop + viewport.mHeight));
+#endif
     if (mSplashTimeout < 59.f) {
       const float blink = fmodf(59.f - mSplashTimeout, 1.f);
       const float blinkAlpha = blink < 0.5f ? blink / 0.5f : (1.f - blink) / 0.5f;
