@@ -4,8 +4,6 @@ name: ios
 # (SideStore, AltStore, Sideloadly re-sign it with their own Apple ID).
 on:
   workflow_dispatch:
-  push:
-    branches: [ios]  # TEMPORARY while iterating: dispatch needs the file on the default branch
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
