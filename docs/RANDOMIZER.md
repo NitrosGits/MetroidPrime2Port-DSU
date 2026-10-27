@@ -40,6 +40,30 @@ is no longer the only source of locations. Plan, each step checkable on its own:
    "<ItemName> acquired!" itself. A MEMO behind a timer would still show vanilla text. Scans are
    out of scope: vanilla pickups carry no scan.
 4. **Logic** - from an apworld (port as AP client), or the port's own for offline beatable seeds.
+   **Dock locks from the disc: done (2026-10-27).** `tools/rando_world.py` also writes
+   `PORT_RANDO_DOCK_LOCK` rows, one per `PORT_RANDO_DOCK` edge (`PortRandoWorld::DockLockAt`).
+   - The door is the DOOR that sends INCR to the dock's DOCK. 569 doors are on docks, and 6 are
+     not: cutscene copies and in-room morph doors. 110 edges have no door.
+   - Beam is the set of player weapons the door's vulnerability lets through (multiplier != 0,
+     effect != Immune). Edges: Any 434, Light 60, Dark 48, Annihilator 14, Morph 12.
+   - A shield door is immune until a MemoryRelay sends it RSET (`ResetDoor`). The relay is
+     activated by a health-5 ACTR's DEAD, and that actor's only damaging weapon names the shield:
+     Missile 35, SuperMissile 24, PowerBomb 24. For Seeker (14) it is a relay behind a CNTR that
+     counts 5 seeker-lockable DTRGs.
+   - A translator gate is a CRLY that tests a translator item and activates a scan POIN named
+     "…Gate…". There are 16: Violet 7, Amber 4, Emerald 3, Cobalt 2.
+   - Script lock: LOCK sent to the door, or `isLocked` at load. Temporary (54) when the area also
+     sends ULCK; Permanent (3) otherwise, with `isLocked` counting as Permanent.
+   - The tool fails unless docked doors, shields and gates match the measured counts per world.
+
+   Ambiguities:
+   - Nothing wires a translator gate to a door. It is assigned to the nearest docked door, 6 to 45
+     units away (0u_temple_hall is 44.9).
+   - Ing webs, grapple points and barrier PLATs are not wired to docks and are not read.
+   - Layer state is read only as the MLVL default flags. Which events switch a layer on is not
+     traced: 2 translator checks and roughly half of the LOCK/ULCK senders sit on layers that are
+     off by default.
+   - Temporary locks are fight and cutscene locks, mostly harmless to logic but not proven so.
 5. **Non-pickup grants** - items a script grants (the energy controllers' translators, ...).
 6. **Save binding and the F1 page** - seed hash in the save, spoiler. The F1 Randomizer page is
    hidden (`platform/debug_ui/search.cpp`) until then.

@@ -26,6 +26,24 @@ struct Dock {
   bool isVirtual;     // the area's DOCK object of this number is virtual (no door)
 };
 
+// What passing a dock side needs, read from its door and the scripts around it (the rules are in
+// tools/rando_world.py). Shield doors are Any once the shield is gone.
+enum class DockBeam { NoDoor, Any, Light, Dark, Annihilator, Morph };
+enum class DockShield { None, Missile, SuperMissile, Seeker, PowerBomb };
+enum class DockTranslator { None, Violet, Amber, Emerald, Cobalt };
+enum class DockScriptLock { None, Temporary, Permanent }; // Temporary: the area also sends ULCK
+
+// Parallel to Dock: DockLockAt(i) describes the side DockAt(i) starts from.
+struct DockLock {
+  int area, dock;
+  DockBeam beam;
+  DockShield shield;
+  DockTranslator translator;
+  bool translatorLayered;      // the translator check sits on a layer that is off by default
+  DockScriptLock scriptLock;
+  bool scriptLockDefaultLayer; // a LOCK sender (or the isLocked door) is on a default-on layer
+};
+
 struct Teleporter {
   int area;
   int layer;
@@ -51,6 +69,7 @@ int LocationCount();
 const World* WorldAt(int index);
 const Area* AreaAt(int index);
 const Dock* DockAt(int index);
+const DockLock* DockLockAt(int index); // same index as DockAt
 const Teleporter* TeleporterAt(int index);
 const Location* LocationAt(int index);
 

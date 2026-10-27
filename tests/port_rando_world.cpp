@@ -48,6 +48,44 @@ int main() {
     Check(reverse, "dock edge has its reverse", i);
   }
 
+  // Dock locks, one per dock edge; totals measured from the disc by tools/rando_world.py.
+  int beams[6] = {}, shields[5] = {}, translators[5] = {}, scriptLocks[3] = {}, layered = 0;
+  for (int i = 0; i < DockCount(); ++i) {
+    const DockLock* l = DockLockAt(i);
+    Check(l != nullptr && l->area == DockAt(i)->area && l->dock == DockAt(i)->dock, "dock lock row matches its dock", i);
+    beams[int(l->beam)]++;
+    shields[int(l->shield)]++;
+    translators[int(l->translator)]++;
+    scriptLocks[int(l->scriptLock)]++;
+    layered += l->translatorLayered;
+    Check(l->shield == DockShield::None || l->beam == DockBeam::Any, "shield doors are Any", i);
+  }
+  Check(DockLockAt(DockCount()) == nullptr, "dock lock out of range is null", DockCount());
+  Check(beams[int(DockBeam::NoDoor)] == 110 && beams[int(DockBeam::Any)] == 434, "110 doorless, 434 Any", 0);
+  Check(beams[int(DockBeam::Light)] == 60 && beams[int(DockBeam::Dark)] == 48, "60 Light, 48 Dark", 0);
+  Check(beams[int(DockBeam::Annihilator)] == 14 && beams[int(DockBeam::Morph)] == 12, "14 Annihilator, 12 Morph", 0);
+  Check(shields[int(DockShield::Missile)] == 35 && shields[int(DockShield::SuperMissile)] == 24, "35 Missile, 24 Super", 0);
+  Check(shields[int(DockShield::Seeker)] == 14 && shields[int(DockShield::PowerBomb)] == 24, "14 Seeker, 24 PB", 0);
+  Check(translators[int(DockTranslator::Violet)] == 7 && translators[int(DockTranslator::Amber)] == 4 &&
+            translators[int(DockTranslator::Emerald)] == 3 && translators[int(DockTranslator::Cobalt)] == 2,
+        "16 translator gates", 0);
+  Check(layered == 2, "2 translator checks on default-off layers", layered);
+  Check(scriptLocks[int(DockScriptLock::Temporary)] == 54 && scriptLocks[int(DockScriptLock::Permanent)] == 3,
+        "54 temporary, 3 permanent script locks", 0);
+
+  auto lockOf = [](uint32_t mrea, int dock) -> const DockLock* {
+    for (int i = 0; i < DockCount(); ++i)
+      if (DockLockAt(i)->dock == dock && AreaAt(DockLockAt(i)->area)->mrea == mrea)
+        return DockLockAt(i);
+    return nullptr;
+  };
+  const DockLock* l = lockOf(0xA8391EADu, 1); // Temple Grounds 0o_temple_hall dock 1
+  Check(l && l->shield == DockShield::Missile, "0o_temple_hall missile shield", 0);
+  l = lockOf(0xB1140C24u, 0); // Temple Grounds 0a_temple_hall dock 0
+  Check(l && l->translator == DockTranslator::Violet && !l->translatorLayered, "0a_temple_hall Violet gate", 0);
+  l = lockOf(0x914F1381u, 0); // Sanctuary 04_cliff_contraption dock 0: isLocked at load
+  Check(l && l->scriptLock == DockScriptLock::Permanent && l->scriptLockDefaultLayer, "04_cliff_contraption lock", 0);
+
   for (int i = 0; i < TeleporterCount(); ++i) {
     const Teleporter* t = TeleporterAt(i);
     Check(t->area >= 0 && t->area < AreaCount(), "teleporter area in range", i);

@@ -19,6 +19,16 @@ const Dock kDocks[] = {
 #include "port_rando_world.inc"
 #undef PORT_RANDO_DOCK
 };
+const DockLock kDockLocks[] = {
+#define PORT_RANDO_DOCK_LOCK(area, dock, beam, shield, translator, translatorLayered, scriptLock, \
+                             scriptLockDefaultLayer)                                             \
+  {area, dock, DockBeam::beam, DockShield::shield, DockTranslator::translator, translatorLayered,    \
+   DockScriptLock::scriptLock, scriptLockDefaultLayer},
+#include "port_rando_world.inc"
+#undef PORT_RANDO_DOCK_LOCK
+};
+static_assert(sizeof(kDockLocks) / sizeof(kDockLocks[0]) == sizeof(kDocks) / sizeof(kDocks[0]),
+              "one dock lock per dock edge");
 const Teleporter kTeleporters[] = {
 #define PORT_RANDO_TELEPORTER(area, layer, id, toMlvl, toMrea) {area, layer, id, toMlvl, toMrea},
 #include "port_rando_world.inc"
@@ -51,6 +61,7 @@ int LocationCount() { return CountOf(kLocations); }
 const World* WorldAt(int index) { return At(kWorlds, index); }
 const Area* AreaAt(int index) { return At(kAreas, index); }
 const Dock* DockAt(int index) { return At(kDocks, index); }
+const DockLock* DockLockAt(int index) { return At(kDockLocks, index); }
 const Teleporter* TeleporterAt(int index) { return At(kTeleporters, index); }
 const Location* LocationAt(int index) { return At(kLocations, index); }
 
