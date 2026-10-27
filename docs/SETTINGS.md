@@ -255,9 +255,18 @@ Video > Compatibility (read once, when the GPU starts: a change applies after a 
   offer, warns and keeps the setting). A saved API the platform does not offer asks for Auto. Stored
   everywhere, ignored on Android. A desktop OpenGL start that crashes leaves `opengl_starting` in the
   user folder and the next start goes back to Auto. Debug env: `MP2_GL_VERSION=3.3` asks Dawn for a
-  desktop GL 3.3 context (toggle `gl_force_desktop_gl_33`; MP1's 3.3 fallbacks for vertex-fetch
-  textures and compute are not ported, so device creation may fail), `MP2_GPU_NO_CORE=1` skips the
-  CoreFeaturesAndLimits adapter request (the compatibility-mode path).
+  desktop GL 3.3 context (toggle `gl_force_desktop_gl_33`), `MP2_GPU_NO_CORE=1` skips the
+  CoreFeaturesAndLimits adapter request (the compatibility-mode path). Desktop GL runs on 3.3 or
+  newer; below 4.3 the driver also needs GL_ARB_shading_language_420pack,
+  GL_ARB_explicit_uniform_location, GL_ARB_texture_storage and GL_ARB_texture_view. Without
+  vertex-stage storage buffers or compute shaders (most 3.3 drivers, and any `MP2_GL_VERSION=3.3`
+  run) Aurora reads vertex data from R32Uint textures and draws the volumetric fog and depth peek
+  with render passes instead (same output; MP1 3c238f415, 1b2aaf269, 68a2b4ad3); game.log says
+  `Vertex data from textures` and `No compute shaders`. `AURORA_VERTEX_FETCH_TEXTURE=1` and
+  `AURORA_NO_COMPUTE=1` force either path on any backend. Auto tries desktop GL after the other
+  GPU backends, before the software adapters. Desktop GL compiles pipelines on one thread unless
+  `MP2_PIPELINE_THREADS` is set (MP1 c4db7377a: AMD's Windows driver serialises shared-context
+  links and crashed with four).
 - `opengles`: Use OpenGL ES (shown only where Aurora has the backend); env `MP2_OPENGLES`. A start
   that crashes leaves the marker `opengles_starting` in the user folder and the next start goes
   back to the default backend.
