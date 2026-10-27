@@ -18,7 +18,7 @@ namespace {
 // height * width entries. The region read back can be larger than that (a wider aspect than the
 // console's 4:3 needs more logical pixels to cover the same share of the screen); FillBuffers
 // resamples it down to the game's size, so the staging copy is sized for the larger region.
-constexpr uint32_t kMaxPixels = 128 * 128;
+constexpr uint32_t kMaxPixels = 256 * 256;
 
 // Filled by Aurora's render thread when a read-back completes, read here on the game thread.
 // `sequence` is the seqlock scan_peek.hpp describes: it is odd while the arrays are being
@@ -40,6 +40,7 @@ int sLastLoggedFrom = -1;
 // Size of the region the last Request asked for (game thread only, as is FillBuffers).
 int sRequestWidth = 0;
 int sRequestHeight = 0;
+Pick sPick;
 
 bool DebugScan() {
   static const bool enabled = std::getenv("MP2_DEBUG_SCAN") != nullptr;
@@ -65,6 +66,19 @@ void Request(int left, int top, int width, int height) {
                     sStaging.depthHigh, sStaging.depthLow, &sStaging.sequence);
 }
 
+void SetPick(const Pick& pick) { sPick = pick; }
+
+const Pick& GetPick() { return sPick; }
+
+float LensRadius(int viewportWidth, int viewportHeight) {
+  // The same fit as CPlayerVisor's ScanWindowFit: below 4:3 the lens shrinks with the width.
+  float fit = 1.f;
+  if (viewportHeight > 0 && viewportWidth * 3 < viewportHeight * 4) {
+    fit = static_cast<float>(viewportWidth) * 3.f / (static_cast<float>(viewportHeight) * 4.f);
+  }
+  return 122.f * fit;
+}
+
 void FillBuffers(void* idData, void* depthHighData, void* depthLowData, int width, int height) {
   if (idData == nullptr || depthHighData == nullptr || depthLowData == nullptr || width <= 0 || height <= 0) {
     return;
@@ -83,7 +97,59 @@ void FillBuffers(void* idData, void* depthHighData, void* depthLowData, int widt
     return;
   }
 
-  if (srcWidth == width && srcHeight == height) {
+  if (sPick.radius > 0.f && sPick.regionWidth == srcWidth && sPick.regionHeight == srcHeight) {
+    // A circular pick: pool each grid cell's block of region pixels instead of sampling one, so
+    // a thin or distant scannable cannot fall between samples; the cell takes the id most common
+    // in its block (any hit counts), and the depth of the first pixel that has it. Pixels outside
+    // the circle count for nothing.
+    auto* id = static_cast<uint8_t*>(idData);
+    auto* depthHigh = static_cast<uint16_t*>(depthHighData);
+    auto* depthLow = static_cast<uint8_t*>(depthLowData);
+    const float radiusSquared = sPick.radius * sPick.radius;
+    for (int j = 0; j < height; ++j) {
+      const int y0 = j * srcHeight / height;
+      const int y1 = (j + 1) * srcHeight / height > y0 ? (j + 1) * srcHeight / height : y0 + 1;
+      for (int i = 0; i < width; ++i) {
+        const int x0 = i * srcWidth / width;
+        const int x1 = (i + 1) * srcWidth / width > x0 ? (i + 1) * srcWidth / width : x0 + 1;
+        uint8_t counts[64] = {};
+        int first[64];
+        for (int y = y0; y < y1; ++y) {
+          const float dy = static_cast<float>(y) + 0.5f - sPick.centreY;
+          for (int x = x0; x < x1; ++x) {
+            const float dx = static_cast<float>(x) + 0.5f - sPick.centreX;
+            if (dx * dx + dy * dy > radiusSquared) {
+              continue;
+            }
+            const int from = y * srcWidth + x;
+            const int palette = sStaging.id[from] >> 2;
+            if (palette < 1 || palette > 61) {
+              continue;
+            }
+            if (counts[palette]++ == 0) {
+              first[palette] = from;
+            }
+          }
+        }
+        int best = 0;
+        for (int palette = 1; palette < 62; ++palette) {
+          if (counts[palette] > counts[best]) {
+            best = palette;
+          }
+        }
+        const int to = j * width + i;
+        if (best == 0) {
+          id[to] = 0;
+          depthHigh[to] = 0;
+          depthLow[to] = 0;
+        } else {
+          id[to] = sStaging.id[first[best]];
+          depthHigh[to] = sStaging.depthHigh[first[best]];
+          depthLow[to] = sStaging.depthLow[first[best]];
+        }
+      }
+    }
+  } else if (srcWidth == width && srcHeight == height) {
     std::memcpy(idData, sStaging.id, pixels);
     std::memcpy(depthHighData, sStaging.depthHigh, pixels * sizeof(uint16_t));
     std::memcpy(depthLowData, sStaging.depthLow, pixels);

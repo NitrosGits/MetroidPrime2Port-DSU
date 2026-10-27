@@ -4,6 +4,7 @@
 #include "port_entry.h"
 #include "port_tri_orbit.h"
 #include "port_mouse.h"
+#include "MetroidPrime/PortScanTarget.hpp"
 #include "port_overlay.h"
 #endif
 
@@ -2096,6 +2097,50 @@ TUniqueId CPlayer::FindScanTargetId(const CStateManager& mgr) const {
     }
 
     uint bestCount = 0;
+#ifdef TARGET_PC
+    if (PortScanTarget::GetPick().radius > 0.f) {
+      // Trilogy's lens: any scannable inside it can be picked, and when several qualify the one
+      // nearest the lens centre wins, not the biggest. The grid spans the pick's square region,
+      // pooled so thin things survive; a palette needs two cells (retail's 16 pixels is about
+      // 4x4 screen pixels, one cell here is several), and each is measured by its nearest cell.
+      const PortScanTarget::Pick& pick = PortScanTarget::GetPick();
+      float nearest[62];
+      for (int palette = 0; palette < 62; ++palette) {
+        nearest[palette] = 1.0e30f;
+      }
+      for (uint j = 0; j < height; ++j) {
+        for (uint i = 0; i < width; ++i) {
+          const uint palette = paletteData[j * width + i] >> 2;
+          if (palette < 1 || palette >= 62) {
+            continue;
+          }
+          const float dx = (static_cast< float >(i) + 0.5f) * static_cast< float >(pick.regionWidth) /
+                               static_cast< float >(width) - pick.centreX;
+          const float dy = (static_cast< float >(j) + 0.5f) * static_cast< float >(pick.regionHeight) /
+                               static_cast< float >(height) - pick.centreY;
+          const float distance = dx * dx + dy * dy;
+          if (distance < nearest[palette]) {
+            nearest[palette] = distance;
+          }
+        }
+      }
+      float bestDistance = 1.0e30f;
+      for (int palette = 1; palette < 62; ++palette) {
+        const uint count = histogram[palette];
+        if (count < 2u || nearest[palette] >= bestDistance) {
+          continue;
+        }
+        const TUniqueId id = mTargeting->GetScanTargetId(mgr, palette);
+        const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(id));
+        if (actor && actor->GetMaterialList().HasMaterial(kMT_Scannable)) {
+          bestDistance = nearest[palette];
+          bestCount = count;
+          selectedId = id;
+          selectedPalette = palette;
+        }
+      }
+    } else
+#endif
     for (int palette = 1; palette < 62; ++palette) {
       const uint count = histogram[palette];
       if (count > bestCount && count - bestCount > 16u) {
@@ -2136,8 +2181,16 @@ TUniqueId CPlayer::FindScanTargetId(const CStateManager& mgr) const {
   const uchar* lowDepthData = static_cast< const uchar* >(mDepthLowTextureData.get());
   double totalDepth = 0.;
   uint sampleCount = 0;
+#ifdef TARGET_PC
+  double sumCellX = 0.;
+  double sumCellY = 0.;
+#endif
   for (uint i = 0; i < height * width; ++i) {
     if (paletteData[i] >> 2 == selectedPalette) {
+#ifdef TARGET_PC
+      sumCellX += static_cast< double >(i % width) + 0.5;
+      sumCellY += static_cast< double >(i / width) + 0.5;
+#endif
       const ushort depth = ushort((depthData[i] << 8) | (depthData[i] >> 8));
       totalDepth += 256. * depth + lowDepthData[i];
       ++sampleCount;
@@ -2156,6 +2209,22 @@ TUniqueId CPlayer::FindScanTargetId(const CStateManager& mgr) const {
       CVector3f position = mCameraManager->GetCurrentCamera(mgr, false)->GetTranslation();
       position += float(distance) *
                   mCameraManager->GetCurrentCamera(mgr, false)->GetTransform().GetForward();
+#ifdef TARGET_PC
+      if (sampleCount != 0 && PortScanTarget::GetPick().regionWidth > 0) {
+        // The depth is along the view axis, and the object sits off it where the pick is: step
+            // sideways to the pick's centroid, so the scan line and brackets land on the object.
+        const PortScanTarget::Pick& pick = PortScanTarget::GetPick();
+        const CGameCamera* camera = mCameraManager->GetCurrentCamera(mgr, false);
+        const float regionX = static_cast< float >(sumCellX / sampleCount) * pick.regionWidth / width;
+        const float regionY = static_cast< float >(sumCellY / sampleCount) * pick.regionHeight / height;
+        const float ndcX = (pick.regionLeft + regionX) / (0.5f * static_cast< float >(pick.viewportWidth));
+        const float ndcY = (pick.regionTop + regionY) / (0.5f * static_cast< float >(pick.viewportHeight));
+        const float tanY = tanf(camera->GetRenderFov() * 0.5f * (M_PIF / 180.f));
+        const float tanX = tanY * static_cast< float >(pick.viewportWidth) / static_cast< float >(pick.viewportHeight);
+        const CTransform4f& xf = camera->GetTransform();
+        position += float(distance) * (xf.GetRight() * (ndcX * tanX) - xf.GetUp() * (ndcY * tanY));
+      }
+#endif
       // The const lookup borrows a view of a mutable registered game entity.
       const_cast< CScriptPointOfInterest* >(point)->SetTranslation(position);
     }
