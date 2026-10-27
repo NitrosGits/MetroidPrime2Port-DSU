@@ -16,6 +16,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `warp <slot|id|name>` — load an area of the current world (what MP2_TELEPORT takes)
 - `nextarea | prevarea` — the next or previous existing area of this world (also `prevarea`)
 - `door | dock | station` — stand in front of the nearest door / doorway / save station (also `dock`, `station`)
+- `dimension` — go to this room's Light/Dark Aether twin, keeping the position (the cheats' "Light / Dark world")
 - `heal | kill [id]` — refill energy; kill the player (a respawn test) or an actor (also `kill`)
 - `damage <id> <n> [kb] [w]` — hit an actor for n as a player shot (w = power, missile, cannonball, dark, light, annihilator, powerbomb, bomb, boostball, screwattack, darkburst, sunburst, sonicboom, supermissile; kb = knockback power)
 - `layer <n>` — activate a layer of the current area
