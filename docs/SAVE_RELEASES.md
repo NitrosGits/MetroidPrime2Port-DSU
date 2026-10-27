@@ -32,7 +32,7 @@ The paks and DOLs were extracted read-only, with `dolphin-tool extract`, to `/tm
 | Copy | u32 CRC (bytes 4..end), u32 generation (0/1, newest wins), 0x1ff8 user bytes | same | [M] Same source; `port_save.cpp` header comment |
 | Endianness | Console: big-endian. Port-written: CRC and generation are host-LE. | same | [M] `port_save.cpp` `Inspect()` accepts either |
 
-The `.gci` adds a 0x40 directory entry in front. The rest of the file is the card image.
+The `.gci` adds a 0x40 directory entry in front. The rest of the file is the card image. In a `.gci`, the first copy's CRC is at 0x2040, its generation at 0x2044 and the payload (`SSaveHeader` signature first, big-endian) at 0x2048. The second copy starts at 0x4040 [M, the port save in §5].
 
 The two GC DOLs have different sha1s:
 
@@ -91,7 +91,8 @@ Sources are `CMemoryCardDriver::BuildSaveBuffer`, `SSaveHeader`, `SGameFileSlot`
 
 The signature is `0x5553413e ^ Σxor CWorldSaveGameInfo::CalculateHash()`, taken over every world in MemoryWorlds.
 
-- A mismatch marks the save invalid.
+- A mismatch marks the save invalid (`CMemoryCardDriver::UpdateFileRead` → `kE_FileCorrupted`).
+- The console hashes its big-endian words. The port swaps each 32-bit word before `CCRC32::Calculate` (`CalculateHash(bool consoleOrder = true)`, `TARGET_PC`), so it writes the console value. It also accepts the value older port builds wrote, which hashed host-LE words. At startup it logs both: `[save] console signature 44bfc715` and `[save] legacy port signature 37d0412e` on G2ME01 [M, port run].
 - The hash covers areaCount, then the cinematic, relay, door, layer, scan and unmappable arrays, in that order.
 - It is computed as CRC32 over the **in-memory** words. The CRC is seeded with the CRC of the env-var names, with no final xor.
 
@@ -183,8 +184,8 @@ Summary of the output below [M]:
 
 | Item | G2ME01 | G2MP01 | R3ME01 |
 | --- | --- | --- | --- |
-| Signature, BE (console) | `44bfc715` | `c13c33f1` | `fe44ecfe` |
-| Signature, LE (port in-memory, see §6) | `37d0412e` | `467484b3` | `9c307b43` |
+| Signature, console (BE words; the port writes this) | `44bfc715` | `c13c33f1` | `fe44ecfe` |
+| Signature, legacy port (LE words; older port builds; accepted on read, see §6) | `37d0412e` | `467484b3` | `9c307b43` |
 | Scan union | 815 | 818 | 817 |
 | Cinematic bits | 1064 | 1064 | 1030 |
 | System / game vars | 19 / 1 | 19 / 1 | 19 / 1 |
@@ -220,7 +221,7 @@ Full output of `cd /tmp && python3 -I <worktree>/tools/savw_diff.py`, with the d
     a50a80cc 39f4c4a7 Metroid6.pak        1    5    3    0    0    0    2    0     80 ba64b6d3 c4ab8e3a
     ae171602 32e95269 Metroid6.pak        1    5    3    0    0    0    0    0     80 5009de08 e5da5dad
     e3b0c703 7f4e8368 Metroid6.pak        1    5    3    0    0    0    0    0     81 461e18a1 58b32000
-  signature BE (console) 44bfc715   LE (TARGET_PC in-memory) 37d0412e
+  signature console (BE words; port writes) 44bfc715   legacy port (LE words) 37d0412e
   scan union 815 entries (+4 fixed) -> POWR..SCAN scan bits 1638
   cinematic bits 1064; system vars 19 (29 bits); game vars 1 (1 bits)
   HINT_Hints 2255c7bc v1 count 44 crc 302f9b1d (NoARAM.pak)
@@ -239,7 +240,7 @@ Full output of `cd /tmp && python3 -I <worktree>/tools/savw_diff.py`, with the d
     a50a80cc 39f4c4a7 Metroid6.pak        1    5    3    0    0    0    2    0     80 ba64b6d3 c4ab8e3a
     ae171602 32e95269 Metroid6.pak        1    5    3    0    0    0    0    0     80 5009de08 e5da5dad
     e3b0c703 7f4e8368 Metroid6.pak        1    5    3    0    0    0    0    0     81 461e18a1 58b32000
-  signature BE (console) c13c33f1   LE (TARGET_PC in-memory) 467484b3
+  signature console (BE words; port writes) c13c33f1   legacy port (LE words) 467484b3
   scan union 818 entries (+4 fixed) -> POWR..SCAN scan bits 1644
   cinematic bits 1064; system vars 19 (29 bits); game vars 1 (1 bits)
   HINT_Hints 2255c7bc v1 count 44 crc ab8f7068 (NoARAM.pak)
@@ -258,7 +259,7 @@ Full output of `cd /tmp && python3 -I <worktree>/tools/savw_diff.py`, with the d
     ae171602 32e95269 Metroid6.pak        1    5    3    0    0    0    0    0     80 5009de08 e5da5dad
     daea74a3 461430c8 FrontEnd.pak        1    5    1    0    0    0    0    0     80 44bc9114 b1a24f14
     e3b0c703 7f4e8368 Metroid6.pak        1    5    3    0    0    0    0    0     81 461e18a1 58b32000
-  signature BE (console) fe44ecfe   LE (TARGET_PC in-memory) 9c307b43
+  signature console (BE words; port writes) fe44ecfe   legacy port (LE words) 9c307b43
   scan union 817 entries (+4 fixed) -> POWR..SCAN scan bits 1642
   cinematic bits 1030; system vars 19 (29 bits); game vars 1 (1 bits)
   HINT_Hints e1729bc1 v1 count 42 crc e709f7c0 (NoARAM.pak)
@@ -287,7 +288,7 @@ Full output of `cd /tmp && python3 -I <worktree>/tools/savw_diff.py`, with the d
   world a50a80cc: identical
   world ae171602: identical
   world e3b0c703: identical
-  signature BE 44bfc715 -> c13c33f1
+  signature console 44bfc715 -> c13c33f1
     scan union: 815 -> 818; only base 0, only other 3; common entries keep relative order
     sysvars identical (19)
     gamevars identical (1)
@@ -331,7 +332,7 @@ Full output of `cd /tmp && python3 -I <worktree>/tools/savw_diff.py`, with the d
   world a50a80cc: identical
   world ae171602: identical
   world e3b0c703: identical
-  signature BE 44bfc715 -> fe44ecfe
+  signature console 44bfc715 -> fe44ecfe
     scan union: 815 -> 817; only base 1, only other 3; common entries keep relative order
     sysvars identical (19)
     gamevars identical (1)
@@ -373,7 +374,7 @@ Full output of `cd /tmp && python3 -I <worktree>/tools/savw_diff.py`, with the d
   world a50a80cc: identical
   world ae171602: identical
   world e3b0c703: identical
-  signature BE c13c33f1 -> fe44ecfe
+  signature console c13c33f1 -> fe44ecfe
     scan union: 818 -> 817; only base 1, only other 0; common entries keep relative order
     sysvars identical (19)
     gamevars identical (1)
@@ -418,13 +419,48 @@ Where an ID exists only in the source, the bit is dropped [I]. Within the payloa
 
 ## 5. Round trip
 
-`~/.local/share/Metroid Prime 2: Echoes/USA/Card A` exists and is **empty** [M, `ls`]. There is no EUR folder, and no Dolphin Echoes save was found. Nothing could be decoded, so the CRC, slot count and world checks are untested.
+`~/.local/share/Metroid Prime 2: Echoes/USA/Card A` exists and is **empty** [M, `ls`]. There is no EUR folder, and no Dolphin Echoes save was found, so **no console save has been decoded**.
+
+One save written by an older port build was decoded [M]: `~/.cache/mp2-orch/saves/mi_u/USA/Card A/01-G2ME-MetroidPrime2.gci`.
+
+- Both copies pass the CRC. The stored CRC bytes at 0x2040 are `2b73bc95`, which is the computed `95bc732b` stored LE. Generation 0.
+- The signature at 0x2048 is `37d0412e`, the legacy-port value `savw_diff.py` predicts. Then saveIdx 0, slot-present 1/0/0, and `SAVH`.
+- Slot 0: Temple Grounds `3bfa3eff`, area `62b0d67d`, 0%, 00:00. Slots 1 and 2 are empty.
+- With the word-swap fix the port still loads it. An `MP2_SKIP_FRONTEND=1` run logged `card slots ... 0=3bfa3eff 0% 00:00 1=empty 2=empty` and `booting slot 0`, with no FileBad or corrupt message. That run goes through the same `CMemoryCardDriver` signature check as the file-select screen. The file-select UI itself was not reached: the attract loop did not take console input.
+- A save written now carries `44bfc715`: `CMemoryCardDriver.cpp` builds `SSaveHeader(GetSaveSignature(), mSaveIdx)` with the default console order [code, not run].
 
 ## 6. Unknowns and risks
 
 1. **Trilogy `save.bin` framing.** No Trilogy save is available, and `CSaveGameInterface` is not decompiled.
 2. **Trilogy header and slot layout.** `SAVH` and 0xa38 are absent from the Echoes DOL.
 3. **R3MP01.** There is no disc.
-4. **The port's signature may differ from the console's [I].** `CalculateHash` memcpys host-endian words, and `CWorldSaveGameInfo.cpp` has no `TARGET_PC` swap. On the LE port the expected G2ME signature would then be `37d0412e`, not the console's `44bfc715`. A real console GCI would be refused as invalid even on its own release. Verify this with a Dolphin save before relying on it.
+4. **Port versus console signature — measured and fixed.** Older port builds hashed host-LE words and wrote `37d0412e` on G2ME, so they would have refused a real console GCI (`44bfc715`). `CalculateHash` now swaps to big-endian words under `TARGET_PC`. The port writes the console value and accepts either (§2 Signature). The two logged values equal `savw_diff.py`'s predictions. Still unverified: a real console (Dolphin) save, which none is available to test.
 5. **HINT order.** The G2ME and G2MP lists have the same count but different bytes. Check the names before copying hint states 1:1.
 6. **Untested on real data.** No real save was round-tripped, so the bit layouts in §2 come from the decompiled source and are not checked against data.
+
+## 7. Restore after a disc switch: Prime 1's design mapped onto Echoes
+
+Prime 1 port commit `268ef3b9b` ("saves: offer to restore another release's saves after a disc switch", `../MetroidPrimePort`, read only) solves the problem a converter creates on the user's side [M, `git show`]:
+
+- Each release keeps its own card files, filtered by game code. USA/ holds GM8E and R3ME; EUR/ holds GM8P and R3MP. After a disc switch the new disc's card looks empty.
+- At boot (`OfferRestoreFromOtherRelease()` in `src/Kyoto/DolphinCMemoryCardSys.cpp`), if the mounted card has no saves for this disc but another release's card beside it has some, an SDL message box asks once: "Copy saves" or "Start fresh". A marker file `.restore-offered-<code>` in the card folder records the question. The prompt is skipped under `MP_CONSOLE` / `MP_NO_DISC_DIALOG`.
+- "Copy saves" calls `RestoreFrom()`. It copies the newest release's files through the existing import path, which converts them (`port_save_convert.cpp`, tables generated by `tools/gen_save_layouts.py`). The card's earlier files go to `_replaced`.
+- The overlay's Memory card section gets a "Restore from <release>" button per release found, and the console gets `gci restore [n]`.
+- The API in `platform/include/port_gci.h` is `OtherRelease{folder, code, label, written}`, `OtherReleaseSaves()`, `RestoreFrom()`, `RestoreToOffer()` and `MarkRestoreOffered()`, over a release table `kReleases`.
+
+How each piece maps onto Echoes [I unless marked]:
+
+| Prime 1 piece | Echoes equivalent | State |
+| --- | --- | --- |
+| `kReleases` (GM8E, GM8P, R3ME, R3MP) | G2ME, G2MP, R3ME, R3MP. The USA/EUR folder split is the same: `aurora_card_get_path(GameCode(), …)` gives `<user>/USA/Card A` or `<user>/EUR/Card A` [M, `platform/port_save.cpp:23,144`] | Ready |
+| Release discovery, marker file, the prompt and its skip knobs | Same logic, over `port::entry::CurrentGameCode()`. Skip it under `MP2_CONSOLE` and the gameplay harness. | Not written |
+| Hook at boot in `DolphinCMemoryCardSys.cpp` | Same file exists here; hook it after `CMemoryCardSys::MountCard` [M, line 414] | Not written |
+| Import path (`CopyFiles` → converter) | `port::save::Import()` (`port_save.cpp:443`). It backs up what it replaces (`replaced-<stamp>.gci`), but it **refuses another game code** at line 471 [M]. The restore path must convert before that check, or the check must route a different code through the converter. | Partly there |
+| `gen_save_layouts.py` tables | `tools/savw_diff.py` already extracts every per-world list and size the converter needs. Emit them as a generated table rather than printing them. | Data measured; generator not written |
+| `MapIds` / `Remap` (ID remap, dropped counts) | Rebuild each bit list by stable ID: relay, door and unmappable `TEditorId`s, cinematic IDs, scan asset IDs, and layer names per area (§4). Report the dropped bits, as Prime 1 does. | Not written |
+| `ReadSlot` / `WriteSlot`, `ReadSystem` / `WriteSystem` | The `CGameState::PutTo` and `CPersistentOptions` bitstreams of §2. They are the same on G2ME and G2MP. | Layout from source; not checked on data |
+| `MakeHeader` / `PutComment` / `CardCrc` | Rewrite the `SSaveHeader` signature with the **target release's console value** (§3 table), then the two copy CRCs and the header-block CRC. The comment and banner are the same on both GC releases. | Not written |
+| `ReadUsaContainer` / `ReadPalContainer` | One GCI reader covers both GC releases, because the container is the same (§1). | Exists (`Inspect()`) |
+| `ReadWii` (AES-CBC `save.bin`) | Trilogy R3ME/R3MP: **blocked** until the `save.bin` framing is known (§6 items 1-2). Prime 1's `ReadWii` is the place to start, because Trilogy's front end owns one `save.bin` for all three games. | Blocked |
+
+The first slice worth building is G2ME ↔ G2MP only: both directions are a remap by ID (§4), and the offer, marker and backup flow carries over unchanged.

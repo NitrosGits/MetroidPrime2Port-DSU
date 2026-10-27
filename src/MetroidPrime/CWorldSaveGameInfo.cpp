@@ -1,6 +1,9 @@
 #include "MetroidPrime/CWorldSaveGameInfo.hpp"
 
 #include "Kyoto/Alloc/CMemory.hpp"
+#ifdef TARGET_PC
+#include "Kyoto/Basics/CBasics.hpp"
+#endif
 #include "Kyoto/CCRC32.hpp"
 #include "Kyoto/CFactoryMgr.hpp"
 #include "Kyoto/Streams/CInputStream.hpp"
@@ -39,7 +42,11 @@ int CWorldSaveGameInfo::GetRelayIndex(const TEditorId& id) const {
   return -1;
 }
 
+#ifdef TARGET_PC
+uint CWorldSaveGameInfo::CalculateHash(bool consoleOrder) const {
+#else
 uint CWorldSaveGameInfo::CalculateHash() const { // Guessed name
+#endif
   int size = sizeof(mAreaCount);
   size += (mCinematics.size() + mRelays.size() + mDoors.size() + mUnmappableObjects.size()) *
           sizeof(TEditorId);
@@ -84,6 +91,17 @@ uint CWorldSaveGameInfo::CalculateHash() const { // Guessed name
     hash = CCRC32::CalculateString(it->mName.data(), hash);
   }
 
+#ifdef TARGET_PC
+  // The buffer is all 32-bit words; the console hashed them big-endian.
+  static_assert(sizeof(TEditorId) == 4 && sizeof(SLayerState) == 8 && sizeof(ScanState) == 8,
+                "CalculateHash assumes a buffer of 32-bit words");
+  if (consoleOrder) {
+    uint* words = reinterpret_cast< uint* >(buffer.get());
+    for (int i = 0; i < size / 4; ++i) {
+      words[i] = CBasics::SwapBytes(words[i]);
+    }
+  }
+#endif
   return CCRC32::Calculate(buffer.get(), size, hash);
 }
 

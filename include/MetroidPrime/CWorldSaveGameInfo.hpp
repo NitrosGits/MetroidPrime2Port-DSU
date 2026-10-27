@@ -37,7 +37,13 @@ public:
   int GetCinematicCount() const { return mCinematics.size(); }
   const rstl::vector< TEditorId >& GetCinematics() const { return mCinematics; }
   const rstl::vector< TEditorId >& GetRelays() const { return mRelays; }
+#ifdef TARGET_PC
+  // consoleOrder: hash the words big-endian, as the GameCube does. false gives the hash older port
+  // builds wrote (host-order words), which their saves still carry.
+  uint CalculateHash(bool consoleOrder = true) const;
+#else
   uint CalculateHash() const; // Guessed name
+#endif
   int GetRelayIndex(const TEditorId& id) const;
   const rstl::vector< TEditorId >& GetDoors() const { return mDoors; }
   const rstl::vector< TEditorId >& GetUnmappableObjects() const { return mUnmappableObjects; }

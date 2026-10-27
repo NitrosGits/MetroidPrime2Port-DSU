@@ -16,6 +16,9 @@ number mirrors:
   game variables, unmappable objects; and CalculateHash() over the big-endian (console) and
   little-endian (TARGET_PC host) in-memory images.
 - the save signature, 0x5553413e ^ hash of every world (GetSaveSignature in CMemoryCardDriver).
+  BE is the console value, which the port also writes since CalculateHash swaps its words; LE is
+  what older port builds wrote and still accept ("legacy port"). The G2ME01 values, 44bfc715 and
+  37d0412e, equal the two `[save] ... signature` lines the port logs.
 - per MLVL: the per-area layer counts (CWorldLayers::ReadWorldLayers), which size the
   CWorldLayerState bits.
 - the CWorldState record size in bits as CGameState::PutTo writes it, and the global lists
@@ -225,7 +228,7 @@ def dump(rel):
             print("      !! MLVL areas %d, layer table %d" % (len(m["areas"]), len(m["layerCounts"])))
         if s["trailingNonPad"]:
             print("      !! %d trailing SAVW bytes that are not 00/FF padding" % s["trailing"])
-    print("  signature BE (console) %s   LE (TARGET_PC in-memory) %s" % (
+    print("  signature console (BE words; port writes) %s   legacy port (LE words) %s" % (
         h(rel["sigBE"]), h(rel["sigLE"])))
     print("  scan union %d entries (+4 fixed) -> POWR..SCAN scan bits %d" % (
         len(rel["scanUnion"]), 2 * (len(rel["scanUnion"]) + 4)))
@@ -286,7 +289,7 @@ def diff(base, other):
         print("  world %s: %s" % (h(w), "identical" if not out else ""))
         for line in out:
             print(line)
-    print("  signature BE %s -> %s" % (h(base["sigBE"]), h(other["sigBE"])))
+    print("  signature console %s -> %s" % (h(base["sigBE"]), h(other["sigBE"])))
     out = []
     diff_list("scan union", base["scanUnion"], other["scanUnion"], out)
     for line in out or ["    scan union identical (%d)" % len(base["scanUnion"])]:
