@@ -14,6 +14,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdio>
+#include <mutex>
 
 namespace PortPointer {
 namespace {
@@ -486,6 +487,10 @@ std::string Describe(float gx, float gy) {
 
 namespace PortMinimap {
 namespace {
+// The frame being drawn, and the last whole frame (what readers see).
+float sPendingRect[4] = {};
+bool sPendingValid = false;
+std::mutex sMutex;
 float sRect[4] = {};
 bool sValid = false;
 int sRequested = 0;
@@ -495,15 +500,25 @@ bool Enabled() { return PortOverlay::MinimapTap(); }
 
 void SetEnabled(bool enabled) { PortOverlay::SetMinimapTap(enabled); }
 
+void BeginFrame() { sPendingValid = false; }
+
 void SetRect(bool valid, float x0, float y0, float x1, float y1) {
-  sValid = valid && std::isfinite(x0) && std::isfinite(y0) && std::isfinite(x1) && std::isfinite(y1);
-  sRect[0] = x0;
-  sRect[1] = y0;
-  sRect[2] = x1;
-  sRect[3] = y1;
+  sPendingValid =
+      valid && std::isfinite(x0) && std::isfinite(y0) && std::isfinite(x1) && std::isfinite(y1);
+  sPendingRect[0] = x0;
+  sPendingRect[1] = y0;
+  sPendingRect[2] = x1;
+  sPendingRect[3] = y1;
+}
+
+void EndFrame() {
+  std::lock_guard< std::mutex > lock(sMutex);
+  sValid = sPendingValid;
+  std::copy(sPendingRect, sPendingRect + 4, sRect);
 }
 
 bool Rect(float out4[4]) {
+  std::lock_guard< std::mutex > lock(sMutex);
   if (!sValid) {
     return false;
   }
@@ -513,13 +528,14 @@ bool Rect(float out4[4]) {
 
 bool RectFraction(float out4[4]) {
   const GXRenderModeObj& mode = CGraphics::GetRenderMode();
-  if (!sValid || mode.fbWidth == 0 || mode.efbHeight == 0) {
+  float rect[4];
+  if (mode.fbWidth == 0 || mode.efbHeight == 0 || !Rect(rect)) {
     return false;
   }
-  out4[0] = sRect[0] / static_cast< float >(mode.fbWidth);
-  out4[1] = sRect[1] / static_cast< float >(mode.efbHeight);
-  out4[2] = sRect[2] / static_cast< float >(mode.fbWidth);
-  out4[3] = sRect[3] / static_cast< float >(mode.efbHeight);
+  out4[0] = rect[0] / static_cast< float >(mode.fbWidth);
+  out4[1] = rect[1] / static_cast< float >(mode.efbHeight);
+  out4[2] = rect[2] / static_cast< float >(mode.fbWidth);
+  out4[3] = rect[3] / static_cast< float >(mode.efbHeight);
   return true;
 }
 

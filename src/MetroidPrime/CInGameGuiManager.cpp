@@ -260,7 +260,11 @@ void PortPublishMinimapRect(const CGuiWidget* widget, const CTransform4f& world)
 #endif
 void CInGameGuiManager::Draw(const CStateManager& mgr) const {
 #ifdef TARGET_PC
-  PortMinimap::SetRect(false, 0.f, 0.f, 0.f, 0.f);
+  // The minimap rect is published whole when the draw ends (readers on other threads).
+  struct MinimapFrameScope {
+    MinimapFrameScope() { PortMinimap::BeginFrame(); }
+    ~MinimapFrameScope() { PortMinimap::EndFrame(); }
+  } minimapFrameScope;
 #endif
   const bool notInCine = !mgr.GetCameraManager(mPlayerIndex)->IsInCinematicCamera();
   float staticAlpha = 0.f;

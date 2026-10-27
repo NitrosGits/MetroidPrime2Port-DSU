@@ -75,9 +75,14 @@ namespace PortMinimap {
 // manager takes a pointer click inside it as the map button.
 bool Enabled();
 void SetEnabled(bool enabled);
-// Game thread, once per HUD draw. valid is false when the minimap isn't shown (morph ball, other
-// visors, cutscenes, the map screen), which also clears the rect.
+// Game thread, once per HUD draw: BeginFrame clears the frame's rect, SetRect sets it when the
+// minimap is shown (not in morph ball, other visors, cutscenes, the map screen), EndFrame
+// publishes it. Readers only see whole frames: the Android overlay reads from the UI thread, and a
+// read between the clear and the set hid its map button (it flickered while looking around, as
+// every look drag redraws the overlay).
+void BeginFrame();
 void SetRect(bool valid, float x0, float y0, float x1, float y1);
+void EndFrame();
 bool Rect(float out4[4]);
 // The same as fractions of the EFB (0..1), for the Android overlay.
 bool RectFraction(float out4[4]);
