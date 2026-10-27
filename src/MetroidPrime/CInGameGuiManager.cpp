@@ -44,6 +44,7 @@
 
 #include <limits.h>
 #ifdef TARGET_PC
+#include "port_entry.h"
 #include "port_freecam.h"
 #include "port_overlay.h"
 #include "port_pointer.h"
@@ -214,7 +215,17 @@ void CInGameGuiManager::DrawScanVisor(float time, const CStateManager& mgr, cons
                                       const CColor* palette, int paletteSize,
                                       const CVector3f& direction) const {
   if (!mPlayerVisor.null()) {
+#ifdef TARGET_PC
+    // Trilogy (rs5mp2_p): the scan visor has no rectangular window, the lens round the pointer
+    // takes its place (CPlayerVisor::DrawScanEffect), so the whole view is the "inside".
+    const CViewport& viewport = CGraphics::GetViewport();
+    const CVector2i size =
+        port::entry::IsTrilogy(port::entry::CurrentDiscVersion())
+            ? CVector2i(viewport.mWidth, viewport.mHeight)
+            : mPlayerVisor->GetScanWindowViewportSize(mgr);
+#else
     const CVector2i size = mPlayerVisor->GetScanWindowViewportSize(mgr);
+#endif
     gpRender->DrawScanVisor(time, float(size.GetX()), float(size.GetY()), sweepColor, inactiveColor,
                              inactiveExternalColor, palette, paletteSize, direction);
   }
