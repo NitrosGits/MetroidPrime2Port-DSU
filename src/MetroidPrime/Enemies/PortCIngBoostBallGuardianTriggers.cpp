@@ -259,7 +259,7 @@ void CIngBoostBallGuardian::SpawnSpotHitEffect(CStateManager& mgr, float damage)
     }
   }
   CEntity* explosion = nullptr;
-  const bool heavy = !(damage < 25.f); // 0x00003D40: rodata_BC
+  const bool heavy = damage >= 25.f; // 0x00003D40 fcmpo, cror eq,gt,eq: NaN is not heavy
   const rstl::optional_object< TLockedToken< CGenDescription > >& effect =
       heavy ? (emitting ? mHeavyHitEffect : mBoostHeavyHitEffect)
             : (emitting ? mNormalHitEffect : mBoostNormalHitEffect);

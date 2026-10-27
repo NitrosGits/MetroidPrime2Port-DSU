@@ -177,7 +177,7 @@ CBoostBallGuardianBall::CBoostBallGuardianBall(
   if (knots >= 6) {
     mSplineEndTime = mData.mSpeed.GetKnots()[knots - 3].GetTime();
     const float latest = mData.mSpeed.GetDuration() - 0.4f - 0.5f;
-    if (mSplineEndTime >= latest) {
+    if (!(mSplineEndTime < latest)) { // 0x15F18 fcmpo; bge
       mSplineEndTime = latest;
     }
   }
@@ -306,7 +306,7 @@ void CBoostBallGuardianBall::Think(float dt, CStateManager& mgr) {
     // 0x00015550: below the damage speed or past the spline's end the shield fades out.
     if ((GetVelocityWR().Magnitude() < mData.mMinDamageSpeed || mSplineTime > mSplineEndTime) &&
         mShieldGen.get() != nullptr) {
-      mShieldTime = 0.f >= mShieldTime - dt ? 0.f : mShieldTime - dt;
+      mShieldTime = mShieldTime - dt > 0.f ? mShieldTime - dt : 0.f; // 0x15590 fcmpo 0,v; bge
       if (mShieldGen.get() != nullptr) {
         mShieldGen->SetModulationColor(CColor::White().WithAlphaOf(mShieldTime / 0.4f));
       }
@@ -950,7 +950,7 @@ bool CBoostBallGuardianBall::TurnWithinCone(const CVector3f& cur, const CVector3
   const bool curLeft = CVector3f::Cross(mLastVelocity, cur).GetZ() < 0.f;
   float lim = mData.mSearchConeAngle;
   const float half = 57.295776f * CVector3f::GetAngleDiff(cur, -mLastVelocity) * 0.5f;
-  if (lim >= half) {
+  if (!(lim < half)) { // 0x12474 fcmpo; bge
     lim = half;
   }
   const bool targetLeft = CVector3f::Cross(mLastVelocity, target).GetZ() < 0.f;
@@ -1133,13 +1133,13 @@ void CBoostBallGuardianBall::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
     const float pick = mgr.Random()->Range(0.f, 100.f);
     int special = 0;
     float sum = 0.f + odds[0];
-    if (pick > sum) {
+    if (!(pick <= sum)) {
       special = 1;
       sum += odds[1];
-      if (pick > sum) {
+      if (!(pick <= sum)) {
         special = 2;
         sum += odds[2];
-        if (pick > sum) {
+        if (!(pick <= sum)) {
           special = 3;
         }
       }
