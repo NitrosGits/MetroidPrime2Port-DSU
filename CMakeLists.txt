@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.25)
 project(metroid_prime2_port LANGUAGES C CXX)
+if(IOS)
+    enable_language(OBJCXX)  # platform/port_ios.mm (disc picker, Documents folder)
+endif()
 
 # Native-PC port scaffold for Metroid Prime 2: Echoes (`G2ME01`), a fork of the
 # PrimeDecomp/echoes matching decompilation, built the same way as the Metroid
@@ -863,6 +866,25 @@ endif()
 mp_scope_modules(mp_game mp_platform mp_port_entry mp_port_audio)
 if(ANDROID)
     add_library(metroid_prime2_port SHARED)
+elseif(IOS)
+    # A flat .app: the executable, Info.plist and the textures folder in one directory.
+    # tools/ios_package.sh adds the icons, licences and signature (docs/IOS.md).
+    file(STRINGS android/app/build.gradle _mp_version_line REGEX "versionName \"[^\"]+\"" LIMIT_COUNT 1)
+    string(REGEX REPLACE ".*versionName \"([^\"]+)\".*" "\\1" MP_APP_VERSION "${_mp_version_line}")
+    add_executable(metroid_prime2_port MACOSX_BUNDLE platform/port_ios.mm)
+    set_source_files_properties(platform/port_ios.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    target_include_directories(metroid_prime2_port PRIVATE platform/include
+        $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)
+    target_link_libraries(metroid_prime2_port PRIVATE
+        ${AURORA_SDL3_TARGET} "-framework UIKit" "-framework UniformTypeIdentifiers")
+    set_target_properties(metroid_prime2_port PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/packaging/ios/Info.plist.in"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "io.github.odrannnn.metroidprime2port"
+        MACOSX_BUNDLE_BUNDLE_NAME "Metroid Prime 2 Port"
+        MACOSX_BUNDLE_EXECUTABLE_NAME "metroid_prime2_port"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${MP_APP_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${MP_APP_VERSION}"
+        MACOSX_BUNDLE_LONG_VERSION_STRING "${MP_APP_VERSION}")
 else()
     add_executable(metroid_prime2_port)
 endif()
@@ -966,7 +988,7 @@ endif()
 
 # Install rules (desktop only): the executable, and for Linux menus and software centres the desktop
 # entry (Categories=Game), its icon under the app id, and the AppStream metainfo (category Game).
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT IOS)
     include(GNUInstallDirs)
     install(TARGETS metroid_prime2_port RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/textures DESTINATION ${CMAKE_INSTALL_BINDIR})

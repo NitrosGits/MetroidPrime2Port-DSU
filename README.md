@@ -4,7 +4,7 @@
 
 [![Linux build](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml/badge.svg?branch=port)](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml)
 
-A native build of **Metroid Prime 2: Echoes** for Linux, Windows, macOS and Android, compiled from
+A native build of **Metroid Prime 2: Echoes** for Linux, Windows, macOS, Android and (experimentally) iOS, compiled from
 the [PrimeDecomp/echoes](https://github.com/PrimeDecomp/echoes) decompilation and
 rendered through Aurora (SDL3/WebGPU). There's no emulator involved. Supported
 discs: the USA GameCube release (`G2ME01`), the PAL release (`G2MP01`, experimental) and
@@ -56,6 +56,7 @@ Every build needs your own disc image; none of them contains one.
 | Windows x86_64 / arm64 | `metroid-prime2-port-X-windows-{x86_64,arm64}.zip` |
 | macOS (Apple silicon) | `metroid-prime2-port-X-macos-arm64.zip` |
 | Android (arm64) | `metroid-prime2-port-X-android-arm64.apk` |
+| iPhone / iPad (experimental) | `MetroidPrime2Port.ipa`, unsigned: sign it yourself and sideload it ([docs/IOS.md](docs/IOS.md)) |
 
 **Quick start:** download the build for your platform, start it, and pick your disc
 image when it asks (Android shows a file picker and copies the image into the

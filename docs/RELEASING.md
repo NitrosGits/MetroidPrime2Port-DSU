@@ -2,7 +2,7 @@
 
 How a release of the port is built, what it may contain, and what has to travel with it. Mirrors
 `../MetroidPrimePort/docs/RELEASING.md`, for the platforms this tree builds: Linux, Windows
-(x64, arm64), macOS (arm64, experimental) and Android. iOS and Flatpak come later.
+(x64, arm64), macOS (arm64, experimental), Android and iOS (unsigned, experimental). Flatpak comes later.
 
 ## What may ship
 
@@ -30,6 +30,7 @@ Every package also carries `textures/` (button glyphs and binding icons, generat
 | `linux-release.yml` | manual | `almalinux:9` + gcc-toolset-14, x86_64 and aarch64; AppImage + tarball, artifacts `metroid_prime2_port-linux[-aarch64]`; fails if the binary needs glibc > 2.34 or GLIBCXX > 3.4.29 |
 | `windows.yml` | manual | clang-cl, x64 and arm64 (`windows-11-arm`); artifacts `metroid_prime2_port-windows[-arm64]` (`dist/`) |
 | `macos.yml` | manual | arm64, ad-hoc signed `Metroid Prime 2 Port.app` + `licenses/`, artifact `metroid_prime2_port-macos`; checks system-only dylibs, codesign and the packaged no-disc startup |
+| `ios.yml` | manual | unsigned `MetroidPrime2Port.ipa` (iphoneos, ad hoc signed inside; users sideload it), artifact `metroid_prime2_port-ios`; checks system-only libraries |
 | `android.yml` | manual | release APK signed with this project's key, artifact `android-apk`; fails on any other signer |
 | `cache-prune.yml` | after the build workflows | keeps the newest cache entry per key family |
 | `build.yml.disable` | never | upstream's matching-decomp CI; needs the retail DOL, which this repository cannot have |
@@ -72,6 +73,8 @@ entry (newest first) in `packaging/io.github.odrannnn.metroidprime2port.metainfo
      the `.app` and `licenses/` as `metroid-prime2-port-X-macos-arm64.zip`.
    - Android: `gh workflow run android.yml --ref port -R Odrannnn/MetroidPrime2Port`, download
      `android-apk`, ship as `metroid-prime2-port-X-android-arm64.apk`.
+   - iOS: `gh workflow run ios.yml --ref port -R Odrannnn/MetroidPrime2Port`, download
+     `metroid_prime2_port-ios`, ship `MetroidPrime2Port.ipa` as is (unsigned, experimental).
 3. Crash soak the release commit: `python3 tools/mpsoak.py --evidence-dir build/s-release-<date>/soak`;
    every row of `summary.tsv` `ok`, exit 0.
 4. Check each artefact's version and that none holds game data (`unzip -l`, `--appimage-extract`),

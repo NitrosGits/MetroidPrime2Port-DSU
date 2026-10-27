@@ -57,6 +57,9 @@ extern "C" __declspec(dllimport) unsigned int __stdcall SetErrorMode(unsigned in
 // attached to this target in CMakeLists.txt, in the AURORA_SDL3_TARGET block.
 #include <SDL3/SDL.h>
 #include <atomic>
+#if defined(SDL_PLATFORM_IOS)
+#include "port_ios.h"
+#endif
 #if defined(__ANDROID__)
 #include <cerrno>
 #include <fstream>
@@ -194,6 +197,10 @@ std::string DesktopUserFolder() {
   if (const char* appdata = std::getenv("APPDATA"); appdata != nullptr && appdata[0] != '\0') {
     dir = appdata;
   }
+#elif defined(SDL_PLATFORM_IOS)
+  // The Documents folder, which the Files app shows: settings, saves, logs and the disc image
+  // are all there (docs/IOS.md). No app-name folder below it, unlike the other platforms.
+  return PortIos::DocumentsFolder();
 #elif defined(__APPLE__)
   if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != '\0') {
     dir = std::string(home) + "/Library/Application Support";
@@ -861,15 +868,18 @@ std::string PickDiscImage() {
   SDL_SetPointerProperty(props, SDL_PROP_FILE_DIALOG_WINDOW_POINTER, window);
   SDL_SetStringProperty(props, SDL_PROP_FILE_DIALOG_TITLE_STRING,
                         "Select your Metroid Prime 2: Echoes disc image (GameCube, USA v1.00)");
-  SDL_ShowFileDialogWithProperties(
-      SDL_FILEDIALOG_OPENFILE,
-      [](void*, const char* const* files, int) {
-        if (files != nullptr && files[0] != nullptr) {
-          chosen = files[0];
-        }
-        answered.store(true);
-      },
-      nullptr, props);
+  const SDL_DialogFileCallback onAnswer = [](void*, const char* const* files, int) {
+    if (files != nullptr && files[0] != nullptr) {
+      chosen = files[0];
+    }
+    answered.store(true);
+  };
+#if defined(SDL_PLATFORM_IOS)
+  // SDL has no file dialog on iOS.
+  PortIos::ShowDiscPicker(window, onAnswer, nullptr);
+#else
+  SDL_ShowFileDialogWithProperties(SDL_FILEDIALOG_OPENFILE, onAnswer, nullptr, props);
+#endif
   SDL_DestroyProperties(props);
   const Uint64 deadline = SDL_GetTicks() + 5 * 60 * 1000;
   while (!answered.load()) {
@@ -965,6 +975,9 @@ int main(int argc, char** argv) {
 #else
   appPaths.user = DesktopUserFolder();
   appPaths.cache = appPaths.user;  // Aurora's own fallback is this folder too, but can come back null
+#if defined(SDL_PLATFORM_IOS)
+  appPaths.cache = PortIos::CachesFolder();  // hidden from the Files app; iOS may clear it
+#endif
   if (!appPaths.user.empty()) {
     std::printf("metroid_prime2_port: user folder %s\n", appPaths.user.c_str());
   } else {
@@ -1219,7 +1232,21 @@ int main(int argc, char** argv) {
       androidDiscImage;
 #else
       port::entry::ResolveDiscPath(argc, argv, DesktopDiscFallback(appPaths.disc).c_str(),
+#if defined(SDL_PLATFORM_IOS)
+                                   // The app bundle is signed and read-only: an image copied into
+                                   // Documents (Files app) starts without asking.
+                                   appPaths.user);
+#else
                                    ExecutableDir(argc > 0 ? argv[0] : nullptr));
+#endif
+#endif
+#if defined(SDL_PLATFORM_IOS)
+  if (discImage.empty()) {
+    // First start: the system document picker (nothing answers it in a scripted run, see
+    // DiscDialogWindow, which then falls through to the message below).
+    std::fprintf(stderr, "metroid_prime2_port: no disc image found; asking for one\n");
+    discImage = PickDiscImage();
+  }
 #endif
   if (discImage.empty()) {
     ReportNoDisc(argc > 0 ? argv[0] : nullptr);
