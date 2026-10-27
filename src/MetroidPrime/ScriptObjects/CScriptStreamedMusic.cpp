@@ -88,11 +88,16 @@ rstl::basic_string< char >::basic_string(rstl::basic_string< char >::const_itera
   mSize = len;
 }
 
+#if defined(TARGET_PC) && defined(_MSC_VER)
+// Port: other units implicitly instantiate string.hpp's substr; lld-link rejects this explicit
+// specialization next to those COMDATs (ELF linkers take the strong one), and both are the same.
+#else
 template <>
 rstl::string rstl::basic_string< char >::substr(int pos, int count) const {
   const pair< const_iterator, const_iterator > range = range_iterator(pos, count);
   return basic_string(range.first, range.second);
 }
+#endif
 
 void CScriptStreamedMusic::PreloadMemoryAudio() {
   if (mPreload) {

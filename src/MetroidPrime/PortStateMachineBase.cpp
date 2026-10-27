@@ -6,6 +6,9 @@
 
 #include "MetroidPrime/TStateMachineState.hpp"
 
+#ifndef _MSC_VER
+// MSVC: the units using these instantiate the header's template definition as COMDATs, which
+// lld-link will not let an explicit specialization sit beside (ELF linkers take the strong one).
 class CPatterned;
 class CPlayerGun;
 class CGrappleArm;
@@ -19,3 +22,4 @@ template <>
 TStateMachineStateBase< CGrappleArm >::~TStateMachineStateBase() {}
 template <>
 TStateMachineStateBase< CPlayerBodyController >::~TStateMachineStateBase() {}
+#endif

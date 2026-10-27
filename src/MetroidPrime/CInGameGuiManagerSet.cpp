@@ -49,7 +49,11 @@ bool CInGameGuiManagerSet::CheckPlayerGuiLoadComplete(const CStateManager& mgr) 
 
 inline CMultiplayerGui::~CMultiplayerGui() {}
 
+#if defined(TARGET_PC) && defined(_MSC_VER)
+// Port: CSamusFaceReflection.cpp defines this destructor; lld-link rejects the inline copy too.
+#else
 inline CSamusFaceReflection::~CSamusFaceReflection() {}
+#endif
 
 inline CInGameGuiManager::~CInGameGuiManager() {}
 
