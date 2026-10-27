@@ -7,6 +7,7 @@
 
 #include "port_dynamic_res.h"
 #include "port_env.h"
+#include "port_gpu_driver.h"
 #include "port_overlay.h"
 #include "port_overlay_internal.h"
 #include "port_photo.h"
@@ -60,6 +61,10 @@ bool sDriverWorkaroundsCleared = false;
 std::filesystem::path sDriverWorkaroundsMarker;
 std::filesystem::path sGlesMarker;
 bool sGlesStarting = false;
+// The same for a custom Vulkan driver (port_gpu_driver.h), and MP2_GPU_DRIVER when it overrides
+// the setting.
+std::filesystem::path sGpuDriverMarker;
+const char* sGpuDriverEnv = nullptr;
 
 std::atomic< bool > sGpuSelfTestRequested{false};
 
@@ -220,6 +225,34 @@ void BeginGpuStart(const std::string& userFolder, AuroraConfig& config) {
     }
   }
 
+  // A custom Vulkan driver (Turnip, Android only) can crash while it starts, just like OpenGL ES
+  // above; the same kind of marker sends the next start back to the system driver. MP1's main.cpp
+  // block. MP2_GPU_DRIVER=<id> (empty = the system's) overrides the setting for one run.
+  sGpuDriverAtStart = sGpuDriver;
+  sGpuDriverMarker = folder / "gpu_driver_starting";
+  sGpuDriverEnv = port::EnvString("MP2_GPU_DRIVER");
+  {
+    const std::string driver = sGpuDriverEnv != nullptr ? sGpuDriverEnv : sGpuDriver;
+    if (!driver.empty() && config.desiredBackend != BACKEND_OPENGLES && PortGpuDriver::Supported()) {
+      if (std::filesystem::exists(sGpuDriverMarker, ec)) {
+        std::fprintf(stderr, "[video] the last start with GPU driver %s crashed; using the system driver\n",
+                     driver.c_str());
+        sGpuDriver.clear();
+        PortOverlaySettings::MarkDirty();
+        PortGpuDriver::SetLoadError("it crashed last time; switched back to the system driver");
+        std::filesystem::remove(sGpuDriverMarker, ec);
+      } else {
+        std::ofstream(sGpuDriverMarker) << driver << '\n';
+        static std::string vulkanLibraryDir;
+        vulkanLibraryDir = PortGpuDriver::Prepare(driver);
+        config.vulkanLibraryDir = vulkanLibraryDir.empty() ? nullptr : vulkanLibraryDir.c_str();
+      }
+    } else {
+      // Left by a crash before the user switched back to System: don't hold it against the next driver.
+      std::filesystem::remove(sGpuDriverMarker, ec);
+    }
+  }
+
   // The Adreno storage clamp: Aurora reads MP2_STORAGE_CLAMP, so a user's own variable wins.
   if (sStorageClamp >= 0 && port::EnvString("MP2_STORAGE_CLAMP") == nullptr) {
     ::setenv("MP2_STORAGE_CLAMP", sStorageClamp > 0 ? "1" : "0", 1);
@@ -290,10 +323,24 @@ void BeginGpuStart(const std::string& userFolder, AuroraConfig& config) {
 }
 
 void GpuStarted() {
+  std::error_code ec;
   if (sGlesStarting) {
-    std::error_code ec;
     std::filesystem::remove(sGlesMarker, ec);
     sGlesStarting = false;
+  }
+  // Aurora went back to the system driver when Vulkan failed with the custom one.
+  if (aurora_vulkan_library_failed() && !PortGpuDriver::Active().empty()) {
+    std::fprintf(stderr, "[video] Vulkan failed with GPU driver %s; using the system driver\n",
+                 PortGpuDriver::Active().c_str());
+    if (sGpuDriverEnv == nullptr) {
+      sGpuDriver.clear();
+      PortOverlaySettings::MarkDirty();
+    }
+    PortGpuDriver::SetLoadError("Vulkan failed to start with it; switched back to the system driver");
+  }
+  // The driver started: only a crash before this point reverts it.
+  if (!sGpuDriverMarker.empty()) {
+    std::filesystem::remove(sGpuDriverMarker, ec);
   }
 }
 

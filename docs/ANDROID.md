@@ -444,6 +444,37 @@ bits (`PortInput::kTouchCount`; stock controls 0..35, ball page 40..44, added bu
 (`PortInput::BindTouchButtons`) and the ball page rows. JNI: `nativeTouchControl`,
 `nativeTouchControlBound`, `nativeTouchBallLabel`, `nativeTouchButtonActions`.
 
+### Custom Vulkan drivers (2026-10-27, from MP1)
+
+On arm64 the port can load a custom Vulkan driver such as Mesa Turnip for Adreno GPUs through
+[libadrenotools](https://github.com/bylaws/libadrenotools) (`extern/adrenotools`,
+`platform/port_gpu_driver.cpp`), the same way Android emulators do, and takes the same driver zips
+(a `meta.json` naming the library, plus that library). None is bundled.
+
+F1 > Video > Compatibility > "Install driver (.zip)..." unpacks a zip into the app's internal
+storage (`gpu_drivers/<id>/`; dlopen refuses shared storage) and selects it. The "Vulkan driver"
+combo switches between installed drivers and System; `gpu_driver=<id>` (empty = System) takes
+effect at the next start, and `MP2_GPU_DRIVER=<id>` overrides it for one run. "Running:" shows what
+the GPU reports (e.g. `Mesa Turnip ...`), since adrenotools quietly falls back to the system driver
+when its hooks fail. The OpenGL ES backend always uses the system driver.
+
+While the GPU starts, `gpu_driver_starting` stays in the user folder, so a crash there reverts to
+System at the next start, like the OpenGL ES toggle. If Vulkan does not start with the chosen
+driver, Aurora retries with the system driver in the same run (`aurora_vulkan_library_failed`), and
+`PortVideo::GpuStarted` switches the setting back to System and shows the error under the combo. A
+driver that starts but draws garbage has to be switched back by hand.
+
+A library named `vulkan.*` is installed as `mportv.*` with its `vulkan.*` SONAME patched to match:
+Android's linker would otherwise return the system `vulkan.adreno.so` HWUI already loaded.
+
+How it reaches Dawn: Dawn opens `libvulkan.so` by name from its search paths only. The port copies
+`libmp2_vkshim.so` (exports only `vkGetInstanceProcAddr`, forwarding to the custom driver's) to
+`<internal>/vkshim/libvulkan.so`, loads it, points it at the driver adrenotools opened, and puts that
+folder first in Dawn's `additionalRuntimeSearchPaths` (`AuroraConfig::vulkanLibraryDir`). The shim
+and adrenotools' hook libraries (`libhook_impl.so`, `libmain_hook.so`, `libfile_redirect_hook.so`,
+`libgsl_alloc_hook.so`) are extra CMake targets in `android/app/build.gradle` and are loaded by path
+from the native library dir (`useLegacyPackaging`). Not yet run on a device.
+
 ## 5. Risks, worst first
 
 - **REL arena placement** (M0): the thing that could have made the whole plan collapse. **Resolved**

@@ -465,7 +465,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_radial.cpp
         platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp
         platform/port_gyro_motion.cpp
-        platform/port_dynamic_res.cpp platform/port_video.cpp
+        platform/port_dynamic_res.cpp platform/port_video.cpp platform/port_gpu_driver.cpp
         platform/debug_ui/card_data.cpp platform/debug_ui/cheats.cpp platform/debug_ui/controls.cpp platform/debug_ui/debug.cpp
         platform/debug_ui/game_sections.cpp platform/debug_ui/performance.cpp platform/debug_ui/randomizer.cpp
         platform/debug_ui/savestates.cpp platform/debug_ui/search.cpp platform/debug_ui/settings.cpp
@@ -730,6 +730,17 @@ elseif(CMAKE_LINK_GROUP_USING_RESCAN_SUPPORTED OR CMAKE_CXX_LINK_GROUP_USING_RES
         # SDL's Java activity looks the entry point up by name (dlsym "SDL_main"), which
         # the linker cannot see from inside the library, so keep it against -O2's GC.
         target_link_options(metroid_prime2_port PRIVATE "-Wl,-u,SDL_main")
+        # Custom Vulkan drivers (Turnip) through libadrenotools (port_gpu_driver.cpp). Its
+        # hook libraries and the shim Dawn loads as libvulkan.so are separate shared
+        # libraries, loaded by path: android/app/build.gradle lists them as targets.
+        if(ANDROID_ABI STREQUAL "arm64-v8a")
+            add_subdirectory(extern/adrenotools EXCLUDE_FROM_ALL)
+            add_library(mp2_vkshim SHARED platform/android/vkshim.c)
+            set_target_properties(mp2_vkshim PROPERTIES C_VISIBILITY_PRESET hidden)
+            target_link_libraries(metroid_prime2_port PRIVATE adrenotools)
+            # port_gpu_driver.cpp is compiled in mp_port_audio: it needs the headers.
+            target_link_libraries(mp_port_audio PRIVATE adrenotools)
+        endif()
     else()
         # `platform/main.cpp` installs a SIGSEGV/SIGBUS/SIGILL/SIGFPE handler that calls
         # `backtrace_symbols_fd`, and **without -rdynamic the frames come back as bare
