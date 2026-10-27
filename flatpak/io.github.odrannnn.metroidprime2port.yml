@@ -15,7 +15,7 @@ command: metroid_prime2_port
 
 finish-args:
   # Vulkan goes through the DRM device; controllers need /dev/input and, for
-  # SDL's HIDAPI drivers (gyro, rumble, issue #82), /dev/hidraw*. Only
+  # SDL's HIDAPI drivers (gyro, rumble), /dev/hidraw*. Only
   # --device=all covers hidraw.
   - --device=all
   - --share=ipc
