@@ -2212,7 +2212,7 @@ TUniqueId CPlayer::FindScanTargetId(const CStateManager& mgr) const {
 #ifdef TARGET_PC
       if (sampleCount != 0 && PortScanTarget::GetPick().regionWidth > 0) {
         // The depth is along the view axis, and the object sits off it where the pick is: step
-            // sideways to the pick's centroid, so the scan line and brackets land on the object.
+        // sideways to the pick's centroid, so the scan line and brackets land on the object.
         const PortScanTarget::Pick& pick = PortScanTarget::GetPick();
         const CGameCamera* camera = mCameraManager->GetCurrentCamera(mgr, false);
         const float regionX = static_cast< float >(sumCellX / sampleCount) * pick.regionWidth / width;
