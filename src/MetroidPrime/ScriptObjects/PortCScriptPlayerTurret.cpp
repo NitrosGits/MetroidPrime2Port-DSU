@@ -210,7 +210,8 @@ void CScriptPlayerTurret::Think(float dt, CStateManager& mgr) {
     const CVector3f current(baseFlat.GetX(), baseFlat.GetY(), 0.f);
     CVector3f aim = current;
     // 0x2518: a yaw input (lbl_63_rodata_24 = 1e-05) turns the base actor's direction.
-    if (fabs(mYawTarget - 0.f) >= 1e-05f) {
+    // 0x251C blt skips on |yaw| < 1e-05 only, so a NaN yaw turns (`!(a < b)`, not `a >= b`).
+    if (!(fabs(mYawTarget - 0.f) < 1e-05f)) {
       // 0x252C
       aim = yawStep.Transform(current);
     }
@@ -275,7 +276,8 @@ void CScriptPlayerTurret::Think(float dt, CStateManager& mgr) {
   }
   // 0x27D8: the distance to the pitch the input asks for (lbl_63_rodata_2C = 0.0017453292).
   const float pitchDelta = mPitchTarget - mPitch;
-  if (fabs(pitchDelta) >= 0.0017453292f) {
+  // 0x27E8 blt skips on |delta| < eps only, so a NaN delta takes the move arm.
+  if (!(fabs(pitchDelta) < 0.0017453292f)) {
     // 0x27FC: the distance over a quarter turn (lbl_63_rodata_30 = 1.5707964), clamped to 0..1.
     const float t = CMath::Clamp(0.f, static_cast< float >(fabs(pitchDelta / 1.5707964f)), 1.f);
     // 0x2834: the ease-out, PhongBlob with the exponent 8 (lbl_63_rodata_34).
@@ -387,7 +389,8 @@ void CScriptPlayerTurret::Think(float dt, CStateManager& mgr) {
     } else if (mUnknown1BC < 0.05f) {
       // 0x2BE8: the debounce (lbl_63_rodata_48 = 0.05) runs up to its end.
       float timer = mUnknown1BC + dt;
-      if (timer >= 0.05f) {
+      // 0x2BF0 bge L: timer >= 0.05 or NaN gives 0.05.
+      if (!(timer < 0.05f)) {
         timer = 0.05f;
       }
       // 0x2BFC
@@ -757,18 +760,20 @@ void CScriptPlayerTurret::PreRender(CStateManager& mgr) {
   // the copy fn_63_15B0 took from the base actor at the area load), not the base actor's flags as
   // they are now.
   CModelFlags flags = mModelFlags;
-  // 0x2DB4: the player in the turret (0x188).
+  // 0x2DB4: the player in the turret (0x188).  The guest has two flash arms: 0x2E9C (reached
+  // once the id is valid and the index is the rendered player's, whatever the player's state is)
+  // and 0x2EFC (reached when either test fails).
+  bool renderedPlayer = false;
   if (mPlayerId != kInvalidUniqueId) {
     // 0x2DE4: the player; 0x2DF4: the player's index has to be the player being rendered - the
     // guest's mgr + 0x24DC is CStateManager::mCurrentRenderPlayerIndex (CFrustumPlanes is 0x64
     // bytes at 0x2478, so the index lands on 0x24DC) - and 0x2E24: its turret state (the guest's
     // player + 0x12F8) must not be 2 (kTS_Exiting).  The null test is the guest's own (0x2E1C:
     // the TCastToPtr<CPlayer> result is tested before the turret state is read).
+    renderedPlayer = mgr.GetCurrentRenderPlayerIndex() ==
+                     static_cast< int >(mgr.MaskUIdNumPlayers(mPlayerId));
     const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mPlayerId));
-    if (player != nullptr &&
-        mgr.GetCurrentRenderPlayerIndex() ==
-            static_cast< int >(mgr.MaskUIdNumPlayers(mPlayerId)) &&
-        player->GetTurretState() != CPlayer::kTS_Exiting) {
+    if (renderedPlayer && player != nullptr && player->GetTurretState() != CPlayer::kTS_Exiting) {
       // 0x2E30: white with the alpha 0.25 (lbl_63_rodata_54) and the blend mode 5 (kT_Blend).
       flags.SetTrans(CModelFlags::kT_Blend);
       flags.SetMatSetIdx(0);
@@ -779,25 +784,35 @@ void CScriptPlayerTurret::PreRender(CStateManager& mgr) {
       flags.SetColor(CColor(1.f, 1.f, 1.f, 0.25f));
     }
   }
-  // 0x2E9C: while the damage flash timer (0x20C) runs the colour goes from black to red.  This
+  // 0x2EA8 / 0x2F0C: while the damage flash timer (0x20C) runs the colour changes.  This
   // arm needs a kSM_Damage message, and nothing in the shipped game sends one to a turret (the
   // turret has no health info, so the damage path never targets it, and the DOL's CScriptActor
   // does not forward damage to its attachments) - see the kSM_Damage case of AcceptScriptMsg.
   if (mUnknown20C > 0.f) {
-    // 0x2F20: the factor is the timer over 0.33 (lbl_63_rodata_58), clamped to 0..1.
-    float factor = mUnknown20C / 0.33f;
-    if (factor < 0.f) {
-      factor = 0.f;
-    } else if (factor > 1.f) {
-      factor = 1.f;
+    if (renderedPlayer) {
+      // 0x2EB0..0x2EF4: the rendered player's turret flashes the fixed colour (1, 0, 0, 0.25)
+      // (f1 = rodata_10, f2 = f3 = rodata_8, f4 = rodata_54) with the blend mode 5, the flags
+      // half 3, and no lerp.
+      flags.SetTrans(CModelFlags::kT_Blend);
+      flags.SetMatSetIdx(0);
+      flags.SetFlags(static_cast< CModelFlags::EFlags >(3));
+      flags.SetColor(CColor(1.f, 0.f, 0.f, 0.25f));
+    } else {
+      // 0x2F20: the factor is the timer over 0.33 (lbl_63_rodata_58), clamped to 0..1.
+      float factor = mUnknown20C / 0.33f;
+      if (factor < 0.f) {
+        factor = 0.f;
+      } else if (factor > 1.f) {
+        factor = 1.f;
+      }
+      // 0x2F48: Lerp(black, red, factor) with the blend mode 2 (kT_Two). The red is the
+      // module's own colour lbl_63_bss_1C, which the module's initializer fn_63_376C builds as
+      // CColor(0.5, 0, 0, 1) (0x000037A4) - not CColor::Red(), which is twice as bright.
+      flags.SetTrans(CModelFlags::kT_Two);
+      flags.SetMatSetIdx(0);
+      flags.SetFlags(static_cast< CModelFlags::EFlags >(3));
+      flags.SetColor(CColor::Lerp(CColor::Black(), kTurretFlashColor, factor));
     }
-    // 0x2F48: Lerp(black, red, factor) with the blend mode 2 (kT_Two). The red is the module's
-    // own colour lbl_63_bss_1C, which the module's initializer fn_63_376C builds as
-    // CColor(0.5, 0, 0, 1) (0x000037A4) - not CColor::Red(), which is twice as bright.
-    flags.SetTrans(CModelFlags::kT_Two);
-    flags.SetMatSetIdx(0);
-    flags.SetFlags(static_cast< CModelFlags::EFlags >(3));
-    flags.SetColor(CColor::Lerp(CColor::Black(), kTurretFlashColor, factor));
   }
   // 0x2F8C: the flags go back into the base actor.
   base->SetModelFlags(flags);
