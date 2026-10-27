@@ -107,6 +107,7 @@
 #include "port_freecam.h"
 #include "port_overlay.h"
 #include "port_photo.h"
+#include "port_touch.h"
 #endif
 
 // NonMatching structure pass; incomplete behavior is explicit below.
@@ -1129,6 +1130,12 @@ void CPlayer::ForceGunOrientation(const CTransform4f& transform, CStateManager& 
 void CPlayer::UpdateDebugCamera(CStateManager& mgr) {}
 
 void CPlayer::Update(float dt, CStateManager& mgr) {
+#ifdef TARGET_PC
+  // port: the touch overlay's Ball page follows player 0's morph state (MP1's PublishWheelState).
+  if (mgr.GetPlayer(0) == this) {
+    PortTouch::SetMorphed(GetMorphballTransitionState() != kMS_Unmorphed);
+  }
+#endif
   if (!mBeamParticleDescriptionsInitialized && NWeaponTypes::are_tokens_ready(mBeamEffectTokens)) {
     mBeamParticleDescriptionsInitialized = true;
     mBeamParticleDescriptions.reserve(4);

@@ -258,7 +258,9 @@ void DrawControlsTouchGyro() {
   ImGui::SeparatorText("Touch controls");
   // First on the page: the layout is what touch players come here to change.
   if (ImGui::Button("Edit layout")) {
+    // The touch overlay takes the request and opens its editor once this closes (MP1).
     PortTouch::RequestEdit();
+    PortOverlay::ShowPage("off");
   }
   ImGui::SameLine();
   if (ImGui::Button("Reset margins")) {

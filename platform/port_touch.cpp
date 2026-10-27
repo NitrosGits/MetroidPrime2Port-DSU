@@ -87,6 +87,7 @@ std::atomic< bool > sDeviceXbox{false};
 
 // What the UI thread asks of the game; BeginFrame applies it on the game thread.
 std::atomic< int > sWheelState{0};
+std::atomic< bool > sMorphed{false};
 std::atomic<bool> sRadialTouchForeground{true};
 std::atomic< int > sPendingVisor{-1};
 std::atomic< int > sPendingBeam{-1};
@@ -416,8 +417,10 @@ int BuildWheelState(CPlayerState* state) {
   const int beam = static_cast< int >(state->GetCurrentBeam());
   bits |= (visor >= 0 && visor < 4 ? visor : 0) << 8;
   bits |= (beam >= 0 && beam < 4 ? beam : 0) << 10;
-  // Bit 13 (morphed) stays clear: the morph state is CPlayer's, out of reach without the
-  // CStateManager, so the overlay keeps the on-foot labels in the ball.
+  // Bit 13: morphed (published by CPlayer::Update); the Java view swaps to its Ball page.
+  if (sMorphed.load(std::memory_order_acquire)) {
+    bits |= 1 << 13;
+  }
   return bits;
 }
 
@@ -674,6 +677,8 @@ void SetButtonInsetDp(float dp) { SetNumber(&Settings::buttonInset, dp, 0.f, 300
 void SetOpacity(float percent) { SetNumber(&Settings::opacity, percent, 10.f, 100.f); }
 void SetAimSpeed(float pxPerDp) { SetNumber(&Settings::aimSpeed, pxPerDp, 0.5f, 6.f); }
 void SetAimSpeedY(float pxPerDp) { SetNumber(&Settings::aimSpeedY, pxPerDp, 0.5f, 6.f); }
+
+void SetMorphed(bool morphed) { sMorphed.store(morphed, std::memory_order_release); }
 
 void RequestEdit() {
   PortRadial::CancelAllTouches();
