@@ -38,6 +38,22 @@ private:
   uint64_t mCancellationEpoch = 0;
 };
 
+// Trilogy hold-to-open gate for the keyboard/pad buttons: a wheel latches only after the button
+// has been held kLatchSeconds and while Eligible() (first-person, unmorphed, gun idle; the beam
+// wheel not in Scan). Touch sessions and the console's Force are not gated.
+constexpr double kLatchSeconds = 0.175;
+struct Latch {
+  double heldSince[2] = {-1., -1.}; // kBeam, kVisor
+  int active = -1;
+  // Returns true when a latched wheel was dropped for losing eligibility (caller cancels).
+  bool Tick(bool beam, bool visor, double nowSec, const bool eligible[2]);
+  bool Latched(Kind kind) const { return active == kind; }
+};
+void SetEligible(bool beam, bool visor); // from the HUD update; false-initialized
+bool Eligible(Kind kind);
+// Game thread: raw buttons -> latched buttons for Poll (cancels on lost eligibility).
+void GateButtons(bool& beam, bool& visor, double nowSec);
+
 State& Transport();
 bool Capturing();
 void Cancel();

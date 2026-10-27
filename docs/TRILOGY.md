@@ -100,6 +100,16 @@ the native Echoes RS5 selector frames. Default **off**. F1 > Controls > Options 
 the existing combat/helmet/passive HUD is not replaced. Missing frames, declared textures,
 required widgets or incomplete loading disable capture and log `[radial] ... unavailable`.
 
+**Latch rules (keyboard/pad buttons; MP1 `d7239a04e` radial half).** A wheel opens only after its
+button has been held 0.175 s (wall clock, `PortRadial::Latch`), and only while eligible
+(`SetEligible`, from `PortRadialHud.cpp`): first-person camera, unmorphed, not in a turret or
+cinematic, and `CPlayerGun::PortRadialReady()` (morph wipe done, no beam change, no damage or strike
+reaction); the beam wheel also not in the Scan visor. A latched wheel that turns ineligible is
+cancelled without selecting, and re-latches if the button is still held once eligible again (as MP1).
+A shorter tap opens nothing. Touch sessions and console `radial beam|visor` bypass the delay.
+Centre release still selects Power Beam / Combat Visor. Not confirmed in the Echoes Trilogy DOL
+(`/tmp/opencode/reports/radlatch.md`): it is MP1's rule applied to MP2's own state.
+
 Bind **Beam menu (hold)** and **Visor menu (hold)** in F1 > Controls > Remap, under Beams/Visors,
 for keyboard or gamepad. They are deliberately unbound by default: no custom binding is replaced.
 Use the normal Press (while-held) trigger, not Tap/Toggle. Choose an unused key/button, or explicitly
@@ -159,7 +169,7 @@ view interpolation, normal C-stick and direct/cycle item actions are suppressed 
 
 With the setting enabled and `MP2_CONSOLE=<port>`:
 
-* `radial` reports capture, active kind (0 beam / 1 visor / -1 none), vector and fade fractions.
+* `radial` reports capture, eligibility, active kind (0 beam / 1 visor / -1 none), vector and fade fractions.
 * `radial beam <x> <y>` / `radial visor <x> <y>` holds a normalized selection (X right / Y up).
 * `radial release` releases that hold; `radial cancel` tears it down without selection.
   Cancel also invalidates released-but-unaccepted radial retries and queued gameplay requests;

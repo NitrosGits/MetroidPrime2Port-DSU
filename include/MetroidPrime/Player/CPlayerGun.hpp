@@ -157,6 +157,7 @@ public:
   void UpdateNormalShotCycle(float dt, CStateManager& mgr);
   void UpdateChargeState(float dt, CStateManager& mgr);
 #ifdef TARGET_PC
+  bool PortRadialReady() const;
   void PortStartRapidCharge();
   bool PortRapidChargeShot(float dt, CStateManager& mgr);
   bool PortScopedRapidCharge() const;

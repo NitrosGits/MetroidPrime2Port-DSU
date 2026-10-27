@@ -309,6 +309,14 @@ void CPlayerGun::PortStartRapidCharge() {
   mPortRapidTimer = 0.f;
 }
 
+// Trilogy radial latch gate (docs/TRILOGY.md): the gun is up and idle - morph wipe done, no
+// beam change, no damage reaction or strike. Echoes' own fields, not MP1's offsets.
+bool CPlayerGun::PortRadialReady() const {
+  return mGunMorph.mGunState == CGunMorph::kGS_OutWipeDone && !mGunMorph.mMorphing &&
+         mBeamChangeState == kBCS_Idle && !(mDamageAmount > 0.f) && !(mGunStrikeCooldownTimer > 0.f) &&
+         mGunMotionState != SamusGun::kAS_Struck && !mGunMotionReturningFromStrike;
+}
+
 // Fires the beam's next quick shot when it is due. True while shots remain, so the charge waits
 // for them (CPlayerGunMP1::UpdateChargeState's rapid-fire state).
 bool CPlayerGun::PortRapidChargeShot(float dt, CStateManager& mgr) {
