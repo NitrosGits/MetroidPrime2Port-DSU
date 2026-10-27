@@ -143,7 +143,8 @@ void DrawCutscenesSection() {
   ImGui::BeginDisabled(locked);
   // The game reads this every frame in its cinematic flow state.
   Changed(ImGui::Checkbox("Skippable cutscenes", &sSkipCinematics));
-  ItemHelp("START or A skips any cutscene, seen or not. Off: START skips only the ones already seen.");
+  ItemHelp("START or A skips any cutscene and the new game's intro text, seen or not. Off: START skips "
+           "only the ones already seen.");
   ImGui::EndDisabled();
   // Read by CSplashScreen, so a change applies from the next launch.
   int bootLogos = sBootLogos;
@@ -160,8 +161,8 @@ void DrawCutscenesSection() {
     sWorldNameCard = std::clamp(worldName, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off);
     Changed(true);
   }
-  ItemHelp("The world's name typed out while a save loads. The first boot's intro text is not "
-           "affected.");
+  ItemHelp("The world's name typed out while a save loads. The new game's intro text follows "
+           "Skippable cutscenes.");
   ImGui::EndDisabled();
   ImGui::BeginDisabled(locked);
   int walkSpeed = sWalkSpeed;

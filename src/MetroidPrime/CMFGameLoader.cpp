@@ -104,6 +104,12 @@ CIOWin::EMessageReturn CMFGameLoader::OnMessage(const CArchitectureMessage& mess
         PortOverlay::WorldNameCard() == PortOverlay::kScreen_Skippable) {
       transition->PortSkipText();
     }
+    // Port: with skippable cutscenes on, A or Start also ends the intro text, seen or not.
+    if (input.ControllerNumber() == 0 && (input.PA() || input.PStart()) && !transition.IsNull() &&
+        transition->IsIntroText() && PortOverlay::SkipCinematics() && !mStateManager.IsNull() &&
+        mStateManager->IsFullyInitialized()) {
+      transition->PortSkipIntroText();
+    }
 #endif
   } else if (type == kAM_TimerTick) {
     const float dt = MakeMsg::GetParmTimerTick(message).GetReal();

@@ -57,6 +57,9 @@ public:
   // Port: types the world-name card out at once, so it fades as soon as the load is done
   // (CMFGameLoader, PortOverlay::WorldNameCard). Not for the intro text.
   void PortSkipText();
+  // Port: ends the first boot's intro text as if already seen: no further pages, the current one
+  // typed out, so it fades once the load is done (PortOverlay::SkipCinematics).
+  void PortSkipIntroText();
 #endif
   ETransType GetTransType() const { return mTransType; }
 

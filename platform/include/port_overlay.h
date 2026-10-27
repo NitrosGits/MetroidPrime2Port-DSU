@@ -65,7 +65,7 @@ void SetBootLogos(int mode);
 // The world-name card while a game loads (CMFGameLoader/CWorldTransManager,
 // `MP2_WORLD_NAME=show|skip|off`): Skippable types it out at once on A or Start, so it fades as
 // soon as the load is done; Off loads behind the plain black transition. The first boot's intro
-// text keeps the game's own rule (Start skips it once seen).
+// text follows SkipCinematics (A or Start, seen or not), else the game's rule (Start once seen).
 int WorldNameCard();
 void SetWorldNameCard(int mode);
 // Cheat (`MP2_GODMODE=1`, F1 > Cheats): the player takes no damage, so a hazard cannot end a

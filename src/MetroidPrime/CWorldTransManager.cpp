@@ -909,6 +909,21 @@ void CWorldTransManager::PortSkipText() {
   mTextData->Update(total + 0.1f);
   mTextElapsedTime = rstl::max_val(mTextElapsedTime, mTextEndDelay + 1.f + total + 0.01f);
 }
+
+void CWorldTransManager::PortSkipIntroText() {
+  if (mTransType != kTT_Text || !mIntroText || mTextData.null()) {
+    return;
+  }
+  // UpdateText stops paging once the text counts as seen; the page on screen still has to finish.
+  mIntroTextSeen = true;
+  mIntroTextFadeTimer = 0.f;
+  if (!mTextDirty) {
+    const float total = mTextData->GetTotalAnimationTime();
+    mTextStartTime = rstl::min_val(mTextStartTime, mCurTime);
+    mTextData->Update(total + 0.1f);
+    mTextElapsedTime = rstl::max_val(mTextElapsedTime, mTextEndDelay + 1.f + total + 0.01f);
+  }
+}
 #endif
 
 void CWorldTransManager::CheckIntroTextSeen() {
