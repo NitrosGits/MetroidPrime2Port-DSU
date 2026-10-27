@@ -644,6 +644,10 @@ public:
   void AddOrbitDisableSource(CStateManager& mgr, TUniqueId id);
   void UpdateOrbitPreventionTimer(float dt);
   void UpdateOrbitModeTimer(float dt);
+#ifdef TARGET_PC
+  // Trilogy's lock fade in [0, 1] (player +0x11A4): 0 free, 1 fully locked.
+  float PortTriOrbitFade() const;
+#endif
   void UpdateOrbitZone();
   void UpdateOrbitInput(const CFinalInput& input, float dt, CStateManager& mgr);
   void ActivateOrbitSource(CStateManager& mgr);
@@ -740,6 +744,11 @@ private:
   CVector3f mOrbitPoint;                                         // 0x3b4
   CVector3f mOrbitVector;                                        // 0x3c0
   float mOrbitModeTimer;                                         // 0x3cc
+#ifdef TARGET_PC
+  // Port: Trilogy's lock fade timer (fn_8019BDFC analogue). Not mOrbitModeTimer, which is the
+  // retail decay-only cooldown.
+  float mPortTriOrbitFadeTimer;
+#endif
   EPlayerZoneInfo mOrbitZoneMode;                                // 0x3d0
   EPlayerZoneType mOrbitZoneType;                                // 0x3d4
   int mOrbitScreenBoxType;                                       // 0x3d8

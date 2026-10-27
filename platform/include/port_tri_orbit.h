@@ -17,4 +17,27 @@ inline int PointerCentre(float ndc, float viewport) {
   return static_cast< int >((ndc * 0.5f + 0.5f) * viewport);
 }
 
+// MP1 fn_8019BDFC: ramps while orbiting (clamped to the tweak duration), decays to 0 otherwise.
+// A duration <= 0 is an instant lock: the timer stays 0 and Ratio is 1 when orbiting.
+// Not confirmed in rs5mp2_p.dol (see docs); follows MP1's Trilogy.
+inline float FadeTimerStep(float timer, bool orbiting, float dt, float duration) {
+  if (!(duration > 0.f)) {
+    return 0.f;
+  }
+  if (!orbiting) {
+    return timer > 0.f ? (timer - dt > 0.f ? timer - dt : 0.f) : 0.f;
+  }
+  timer += dt;
+  return timer > duration ? duration : timer;
+}
+
+// The ring and brackets scale by 1 - this.
+inline float FadeRatio(float timer, bool orbiting, float duration) {
+  if (!(duration > 0.f)) {
+    return orbiting ? 1.f : 0.f;
+  }
+  const float r = timer / duration;
+  return r < 0.f ? 0.f : (r > 1.f ? 1.f : r);
+}
+
 } // namespace PortTriOrbit
