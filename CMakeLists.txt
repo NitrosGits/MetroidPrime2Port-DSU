@@ -647,7 +647,7 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_tri_reticle_tests PRIVATE platform/include)
     add_test(NAME port_tri_reticle_tests COMMAND port_tri_reticle_tests)
     set_tests_properties(port_tri_reticle_tests PROPERTIES TIMEOUT 30 LABELS port)
-    # The Windows renderer picker's pure logic (platform/include/port_graphics_backend.h).
+    # The renderer picker's pure logic (platform/include/port_graphics_backend.h).
     add_executable(port_graphics_backend_tests tests/port_graphics_backend.cpp)
     target_include_directories(port_graphics_backend_tests PRIVATE platform/include extern/aurora/include)
     add_test(NAME port_graphics_backend_tests COMMAND port_graphics_backend_tests)

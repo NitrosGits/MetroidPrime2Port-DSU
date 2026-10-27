@@ -246,11 +246,18 @@ Video > Quality and Frame rate:
 
 Video > Compatibility (read once, when the GPU starts: a change applies after a restart):
 
-- `graphics_backend` (`auto`, `d3d12`, `vulkan`, `d3d11`; Windows only, MP1 sync 17): Renderer.
-  Auto leaves the choice to Aurora (Direct3D 12, then Vulkan, then Direct3D 11); an explicit API is
+- `graphics_backend` (`auto`, `d3d12`, `vulkan`, `d3d11`, `opengl`; Windows and desktop Linux, MP1
+  sync 17, OpenGL since the Dawn fork switch): Renderer. Windows offers Auto, Direct3D 12,
+  Vulkan, Direct3D 11 and OpenGL; Linux offers Auto, Vulkan and OpenGL. Auto leaves the choice to
+  Aurora (Direct3D 12, then Vulkan, then Direct3D 11 on Windows; Vulkan on Linux); an explicit API is
   tried first and falls back to that order when it cannot start, leaving the setting alone. Env
-  `MP2_GRAPHICS_BACKEND` overrides it for one run (an unknown value warns and keeps the setting).
-  Stored everywhere, ignored off Windows.
+  `MP2_GRAPHICS_BACKEND` overrides it for one run (an unknown value, or one this platform does not
+  offer, warns and keeps the setting). A saved API the platform does not offer asks for Auto. Stored
+  everywhere, ignored on Android. A desktop OpenGL start that crashes leaves `opengl_starting` in the
+  user folder and the next start goes back to Auto. Debug env: `MP2_GL_VERSION=3.3` asks Dawn for a
+  desktop GL 3.3 context (toggle `gl_force_desktop_gl_33`; MP1's 3.3 fallbacks for vertex-fetch
+  textures and compute are not ported, so device creation may fail), `MP2_GPU_NO_CORE=1` skips the
+  CoreFeaturesAndLimits adapter request (the compatibility-mode path).
 - `opengles`: Use OpenGL ES (shown only where Aurora has the backend); env `MP2_OPENGLES`. A start
   that crashes leaves the marker `opengles_starting` in the user folder and the next start goes
   back to the default backend.

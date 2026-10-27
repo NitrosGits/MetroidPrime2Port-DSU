@@ -21,6 +21,7 @@
 #include <cstdio>
 #include <optional>
 #include <random>
+#include <span>
 #include <string>
 
 namespace PortDebug {
@@ -390,28 +391,58 @@ void DrawVideoQuality() {
 }
 
 // What PortVideo::BeginGpuStart sets up before the GPU device is made (so after a restart), and the
-// GPU self-test. The Renderer combo is Windows only; MP1's Vulkan driver picker (Android, libadrenotools) is not here.
+// GPU self-test. The Renderer combo is Windows and desktop Linux; MP1's Vulkan driver picker (Android, libadrenotools) is not here.
 void DrawVideoCompatibility() {
   ImGui::SeparatorText("Compatibility");
   ImGui::PushTextWrapPos(0.f);
   ImGui::TextDisabled("For GPU driver problems, such as a black world or a crash at start. Most of "
                       "these take effect after a restart.");
   ImGui::PopTextWrapPos();
-#if defined(_WIN32)
+#if defined(_WIN32) || (defined(__linux__) && !defined(__ANDROID__))
   // Which API to ask Aurora for. Read at window creation, so it takes a restart: Aurora tries the
   // choice first and falls back to its own order if it won't start, and the setting is left alone.
+  // Only this build's choices are listed, so an API it can't start is never offered.
   {
-    static const char* const kBackendNames[] = {"Auto", "Direct3D 12", "Vulkan", "Direct3D 11"};
-    int choice = static_cast< int >(sGraphicsBackend);
+    const std::span<const PortGraphicsBackend::EGraphicsBackend> choices = PortGraphicsBackend::Choices();
+    // The labels in Choices() order, NUL-separated as ImGui wants them, built from the choices so
+    // the list cannot drift from the span. Auto asks for nothing, so it is named as such.
+    static const std::string kBackendLabels = [] {
+      std::string labels;
+      for (const PortGraphicsBackend::EGraphicsBackend choice : PortGraphicsBackend::Choices()) {
+        labels += choice == PortGraphicsBackend::kGraphicsBackend_Auto
+                      ? "Auto"
+                      : PortGraphicsBackend::DisplayName(PortGraphicsBackend::ToAurora(choice));
+        labels.push_back('\0');
+      }
+      labels.push_back('\0');
+      return labels;
+    }();
+    // The combo's index is a position in Choices(), never an enum value. A saved choice this build
+    // doesn't offer (a file from another platform) shows as Auto and is kept until changed here.
+    int choice = 0;
+    for (size_t i = 0; i < choices.size(); ++i) {
+      if (choices[i] == sGraphicsBackend) {
+        choice = static_cast< int >(i);
+        break;
+      }
+    }
     ImGui::SetNextItemWidth(ImGui::GetFontSize() * 11.f);
-    if (ImGui::Combo("Renderer", &choice, kBackendNames, PortGraphicsBackend::kGraphicsBackendCount)) {
-      sGraphicsBackend = static_cast< PortGraphicsBackend::EGraphicsBackend >(choice);
+    if (ImGui::Combo("Renderer", &choice, kBackendLabels.c_str(), static_cast< int >(choices.size()))) {
+      sGraphicsBackend = choices[static_cast< size_t >(choice)];
       Changed(true);
     }
+#if defined(_WIN32)
     ImGui::SetItemTooltip("Which graphics API to start on. Auto tries Direct3D 12, then Vulkan, then\n"
-                          "Direct3D 11. Takes effect after a restart. If the driver can't start the chosen\n"
-                          "API, this run falls back to Auto and the setting is kept, so it can be changed\n"
-                          "here. MP2_GRAPHICS_BACKEND=auto|d3d12|vulkan|d3d11 overrides it for one run.");
+                          "Direct3D 11. OpenGL is Dawn's desktop GL (4.4 or newer). Takes effect after a\n"
+                          "restart. If the driver can't start the chosen API, this run falls back to Auto\n"
+                          "and the setting is kept, so it can be changed here.\n"
+                          "MP2_GRAPHICS_BACKEND=auto|d3d12|vulkan|d3d11|opengl overrides it for one run.");
+#else
+    ImGui::SetItemTooltip("Which graphics API to start on. Auto uses Vulkan. OpenGL (4.4 or newer) is for\n"
+                          "GPUs whose Vulkan driver is missing or draws wrong. Takes effect after a restart.\n"
+                          "If the driver can't start the chosen API, this run falls back to Auto and the\n"
+                          "setting is kept. MP2_GRAPHICS_BACKEND=auto|vulkan|opengl overrides it for one run.");
+#endif
     // What this run asked for is the resolution of the STARTUP selection, not the setting:
     // MP2_GRAPHICS_BACKEND outranks the file, and changing the combo must not pretend the API this
     // run started on was the one asked for.

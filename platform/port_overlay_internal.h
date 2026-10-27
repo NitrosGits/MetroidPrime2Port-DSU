@@ -113,7 +113,7 @@ extern int sFpsCap;             // with the 60 FPS cap off; 0 = unlimited
 extern bool sShowShaderCompilation;
 extern bool sShowMenuHint;
 extern bool sPerPixelLighting;
-extern PortGraphicsBackend::EGraphicsBackend sGraphicsBackend; // Windows renderer choice
+extern PortGraphicsBackend::EGraphicsBackend sGraphicsBackend; // renderer choice (Windows, desktop Linux)
 extern PortGraphicsBackend::EGraphicsBackend sGraphicsBackendAtStart;
 extern bool sOpenGles;
 extern bool sOpenGlesAtStart;

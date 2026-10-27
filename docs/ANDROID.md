@@ -37,6 +37,11 @@ MP1's port ships this pipeline; it is the template.
   Aurora's Android support is already vendored here: `extern/aurora/cmake/AuroraSDL3Provider.cmake`
   (:164-176, needs `AURORA_SDL3_PROVIDER=vendor`), `AuroraDawnProvider.cmake` (:83-90 prebuilt
   `android-aarch64` Dawn, `AURORA_DAWN_PROVIDER=auto`).
+  The Gradle build does not download Dawn: it reads `build/android-deps/dawn_prebuilt`, which must
+  hold the release `AuroraDependencyVersions.cmake` pins (`dawn-android-aarch64.tar.gz` from
+  `Odrannnn/dawn` `v20261026.185535`, sha256 `6a3ac06c...`, unpacked there). The copy
+  `tools/android_probe.sh` falls back to (MP1's `build/android-deps`) was still the old
+  encounter/dawn build on 2026-10-27, so replace it by hand after a Dawn bump.
 - **Touch controls** (all Java + JNI, no assets): `TouchControlsView.java` (3148 lines, drawn in
   code) over the SDL surface; JNI glue `platform/debug_ui/android_jni.inc` -> a real SDL virtual
   gamepad (`platform/touch_pad.cpp`) plus the port's own input layer; layouts persisted as

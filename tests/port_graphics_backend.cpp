@@ -1,4 +1,4 @@
-// The Windows renderer choice (issue #135): the names the settings file and
+// The renderer choice (issue #135): the names the settings file and
 // MP2_GRAPHICS_BACKEND carry, the per-run override that outranks the file, and the
 // status the F1 Video page draws from them. port_graphics_backend.h owns the mapping
 // main.cpp starts from and the page describes, so this drives the same code both do.
@@ -20,11 +20,18 @@
 #include "port_test.h"
 
 #include <cstdio>
+#include <span>
 #include <string>
 
 namespace {
 
 using PortGraphicsBackend::EGraphicsBackend;
+
+// Every value, offered: the resolution cases below test precedence, not which platform offers what.
+constexpr EGraphicsBackend kAllChoices[] = {
+    PortGraphicsBackend::kGraphicsBackend_Auto, PortGraphicsBackend::kGraphicsBackend_D3D12,
+    PortGraphicsBackend::kGraphicsBackend_Vulkan, PortGraphicsBackend::kGraphicsBackend_D3D11,
+    PortGraphicsBackend::kGraphicsBackend_OpenGL};
 using PortGraphicsBackend::Request;
 using PortGraphicsBackend::Status;
 
@@ -61,7 +68,7 @@ void CheckRefused(const char* value) {
 // One resolution case: the saved selection, the environment, and what must come out.
 void CheckResolve(EGraphicsBackend saved, const char* env, EGraphicsBackend expectBackend, bool expectOverridden,
                   bool expectRejected, const char* what) {
-  const Request request = PortGraphicsBackend::Resolve(saved, env);
+  const Request request = PortGraphicsBackend::Resolve(saved, env, kAllChoices);
   if (request.backend != expectBackend || request.overridden != expectOverridden ||
       request.rejected != expectRejected) {
     std::fprintf(stderr, "FAIL: %s: resolved %s overridden=%d rejected=%d\n", what, Name(request.backend),
@@ -73,7 +80,7 @@ void CheckResolve(EGraphicsBackend saved, const char* env, EGraphicsBackend expe
 // One status case: what this run asked for, what started, and what the page must say.
 void CheckStatus(EGraphicsBackend saved, EGraphicsBackend savedAtStart, const char* env, AuroraBackend actual,
                  bool expectRestartPending, bool expectOverridden, bool expectFellBack, const char* what) {
-  const Request request = PortGraphicsBackend::Resolve(savedAtStart, env);
+  const Request request = PortGraphicsBackend::Resolve(savedAtStart, env, kAllChoices);
   const Status status = PortGraphicsBackend::Describe(saved, savedAtStart, request, actual);
   if (status.restartPending != expectRestartPending || status.overridden != expectOverridden ||
       status.fellBack != expectFellBack) {
@@ -94,6 +101,7 @@ int main() {
   constexpr EGraphicsBackend kD3D12 = PortGraphicsBackend::kGraphicsBackend_D3D12;
   constexpr EGraphicsBackend kVulkan = PortGraphicsBackend::kGraphicsBackend_Vulkan;
   constexpr EGraphicsBackend kD3D11 = PortGraphicsBackend::kGraphicsBackend_D3D11;
+  constexpr EGraphicsBackend kOpenGL = PortGraphicsBackend::kGraphicsBackend_OpenGL;
 
   // The stored names, and their order in the Video page's list. Both are in the
   // config file: reordering or renaming them changes what a user's file means.
@@ -101,13 +109,15 @@ int main() {
   CHECK_MSG(std::string(Name(kD3D12)) == "d3d12", "d3d12's name");
   CHECK_MSG(std::string(Name(kVulkan)) == "vulkan", "vulkan's name");
   CHECK_MSG(std::string(Name(kD3D11)) == "d3d11", "d3d11's name");
+  CHECK_MSG(std::string(Name(kOpenGL)) == "opengl", "opengl's name");
   CHECK_MSG(kAuto == 0, "auto is 0");
   CHECK_MSG(kD3D12 == 1, "d3d12 is 1");
   CHECK_MSG(kVulkan == 2, "vulkan is 2");
   CHECK_MSG(kD3D11 == 3, "d3d11 is 3");
-  CHECK_MSG(PortGraphicsBackend::kGraphicsBackendCount == 4, "four choices");
+  CHECK_MSG(kOpenGL == 4, "opengl is 4");
+  CHECK_MSG(PortGraphicsBackend::kGraphicsBackendCount == 5, "five values");
 
-  for (const EGraphicsBackend backend : {kAuto, kD3D12, kVulkan, kD3D11}) {
+  for (const EGraphicsBackend backend : {kAuto, kD3D12, kVulkan, kD3D11, kOpenGL}) {
     CheckRoundTrip(backend);
   }
 
@@ -127,7 +137,8 @@ int main() {
   CheckRefused("d3d");
   CheckRefused("vk");
   CheckRefused("vulkan1");
-  CheckRefused("opengl");
+  CheckRefused("OpenGL");
+  CheckRefused("gl");
   CheckRefused("opengles");
   CheckRefused("none");
   CheckRefused("1");
@@ -146,7 +157,8 @@ int main() {
   CHECK_MSG(PortGraphicsBackend::ToAurora(kD3D12) == BACKEND_D3D12, "d3d12 asks for D3D12");
   CHECK_MSG(PortGraphicsBackend::ToAurora(kVulkan) == BACKEND_VULKAN, "vulkan asks for Vulkan");
   CHECK_MSG(PortGraphicsBackend::ToAurora(kD3D11) == BACKEND_D3D11, "d3d11 asks for D3D11");
-  for (const EGraphicsBackend backend : {kD3D12, kVulkan, kD3D11}) {
+  CHECK_MSG(PortGraphicsBackend::ToAurora(kOpenGL) == BACKEND_OPENGL, "opengl asks for OpenGL");
+  for (const EGraphicsBackend backend : {kD3D12, kVulkan, kD3D11, kOpenGL}) {
     CHECK_MSG(PortGraphicsBackend::FromAurora(PortGraphicsBackend::ToAurora(backend)) == backend, "mapping round trip");
   }
   CHECK_MSG(PortGraphicsBackend::FromAurora(BACKEND_METAL) == kAuto, "Metal is not a named choice");
@@ -156,7 +168,36 @@ int main() {
   CHECK_MSG(std::string(PortGraphicsBackend::DisplayName(BACKEND_D3D12)) == "Direct3D 12", "d3d12's display name");
   CHECK_MSG(std::string(PortGraphicsBackend::DisplayName(BACKEND_VULKAN)) == "Vulkan", "vulkan's display name");
   CHECK_MSG(std::string(PortGraphicsBackend::DisplayName(BACKEND_D3D11)) == "Direct3D 11", "d3d11's display name");
+  CHECK_MSG(std::string(PortGraphicsBackend::DisplayName(BACKEND_OPENGL)) == "OpenGL", "opengl's display name");
   CHECK_MSG(std::string(PortGraphicsBackend::DisplayName(BACKEND_NULL)) == "no graphics device", "no device's name");
+
+  // What this build offers, Auto first, in the Video page's order.
+  const std::span<const EGraphicsBackend> choices = PortGraphicsBackend::Choices();
+  CHECK_MSG(!choices.empty() && choices[0] == kAuto, "auto is offered first");
+#if defined(_WIN32)
+  CHECK_MSG(choices.size() == 5, "windows offers five choices");
+  CHECK_MSG(choices.size() == 5 && choices[1] == kD3D12 && choices[2] == kVulkan && choices[3] == kD3D11 &&
+                choices[4] == kOpenGL,
+            "windows offers D3D12, Vulkan, D3D11, OpenGL");
+#elif defined(__linux__) && !defined(__ANDROID__)
+  CHECK_MSG(choices.size() == 3, "linux offers three choices");
+  CHECK_MSG(choices.size() == 3 && choices[1] == kVulkan && choices[2] == kOpenGL, "linux offers Vulkan, then OpenGL");
+#else
+  CHECK_MSG(choices.size() == 1, "elsewhere only auto");
+#endif
+  // Only offered choices count: another platform's API is refused as an override, and
+  // asks for Auto when saved.
+  constexpr EGraphicsBackend kVulkanOnly[] = {kAuto, kVulkan};
+  {
+    const Request request = PortGraphicsBackend::Resolve(kVulkan, "d3d12", kVulkanOnly);
+    CHECK_MSG(request.backend == kVulkan && !request.overridden && request.rejected,
+              "an override this build doesn't offer is refused");
+  }
+  {
+    const Request request = PortGraphicsBackend::Resolve(kD3D12, nullptr, kVulkanOnly);
+    CHECK_MSG(request.backend == kAuto && !request.overridden && !request.rejected,
+              "a saved choice this build doesn't offer asks for auto");
+  }
 
   // MP2_GRAPHICS_BACKEND precedence: the environment wins when it names a choice; a
   // value that names nothing is refused and leaves the saved selection in charge.
