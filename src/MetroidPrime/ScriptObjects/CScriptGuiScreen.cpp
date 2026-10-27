@@ -415,9 +415,34 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
   }
 }
 
+#ifdef TARGET_PC
+namespace {
+// Port: Trilogy's slot details panes (see UpdateSaveSlots), per slot, with the title they follow.
+TUniqueId sPortDetails[3] = {kInvalidUniqueId, kInvalidUniqueId, kInvalidUniqueId};
+TUniqueId sPortDetailsOwner[3] = {kInvalidUniqueId, kInvalidUniqueId, kInvalidUniqueId};
+const float kPortDetailsOffset = 2.f;
+const float kPortDetailsScale = 0.5f;
+} // namespace
+#endif
+
 // @ fn_60_4544
 void CScriptGuiFrontEndScreen::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
+#ifdef TARGET_PC
+  for (int i = 0; i < 3; ++i) {
+    CScriptTextPane* title = mSaveSlots[i].mTitle;
+    CScriptTextPane* details = nullptr;
+    if (title != nullptr && sPortDetailsOwner[i] == title->GetUniqueId()) {
+      details = TCastToPtr< CScriptTextPane >(mgr.ObjectById(sPortDetails[i]));
+    }
+    if (details != nullptr) {
+      details->PortFollow(*title, kPortDetailsOffset);
+      if (details->GetActive() != title->GetActive()) {
+        details->SetActive(title->GetActive());
+      }
+    }
+  }
+#endif
 
   CSaveGameScreen* saveScreen = mgr.mSaveGameScreen.get();
   if (saveScreen != nullptr && saveScreen->PumpLoad()) {
@@ -753,7 +778,43 @@ void CScriptGuiFrontEndScreen::UpdateSaveSlots(CStateManager& mgr) {
     }
 
 #ifdef TARGET_PC
-    // Trilogy's FrontEnd.pak lays the slots out with fewer text panes.
+    // Trilogy's FrontEnd.pak lays the slots out with fewer text panes: it has no world-name or
+    // play-time pane, so a used slot's details go under the title in the one pane it has.
+    if (mSaveSlots[i].mTitle != nullptr && mSaveSlots[i].mWorldName == nullptr &&
+        mSaveSlots[i].mPlayTime == nullptr) {
+      // The title pane stays as it is; the details are a smaller pane added below it.
+      if (sPortDetailsOwner[i] != mSaveSlots[i].mTitle->GetUniqueId() ||
+          mgr.ObjectById(sPortDetails[i]) == nullptr) {
+        sPortDetailsOwner[i] = mSaveSlots[i].mTitle->GetUniqueId();
+        sPortDetails[i] = mSaveSlots[i].mTitle->PortAddDetailsPane(mgr, kPortDetailsOffset,
+                                                                    kPortDetailsScale);
+      }
+      rstl::wstring text;
+      if (data != nullptr) {
+        // The world name carries its own two-line layout ("&line-spacing=75;Temple\nGrounds"):
+        // flatten it to one line.
+        rstl::wstring oneLine;
+        for (const wchar_t* c = worldName.c_str(); *c != 0; ++c) {
+          if (*c == L'&') {
+            while (*c != 0 && *c != L';') {
+              ++c;
+            }
+            if (*c == 0) {
+              break;
+            }
+            continue;
+          }
+          oneLine.append(*c == L'\n' ? L" " : c, 1);
+        }
+        text.append(L"&just=center;", -1);
+        text.append(playTime.c_str(), -1);
+        text.append(L"\n", -1);
+        text.append(oneLine.c_str(), -1);
+      }
+      if (CScriptTextPane* details = TCastToPtr< CScriptTextPane >(mgr.ObjectById(sPortDetails[i]))) {
+        details->TextSupport().SetText(text);
+      }
+    }
     if (mSaveSlots[i].mTitle != nullptr) {
       mSaveSlots[i].mTitle->TextSupport().SetText(title);
     }
