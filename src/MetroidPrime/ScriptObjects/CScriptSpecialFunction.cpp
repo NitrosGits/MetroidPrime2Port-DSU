@@ -38,6 +38,9 @@
 #include "MetroidPrime/Player/CGMSinglePlayer.hpp"
 #include "MetroidPrime/Player/CGameMode.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/CMFGame.hpp"
+#endif
 #include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CWorldTransManager.hpp"
@@ -506,6 +509,7 @@ void CScriptSpecialFunction::AcceptEndGame(CStateManager& mgr, const CScriptMsg&
   if (msg.GetMessage() == kSM_Action) {
 #ifdef TARGET_PC
     PortLiveSplit::GameEnd(gpGameState->GetTotalPlayTime());
+    CMFGame::PortMarkGameEnded();
 #endif
     static_cast< const CGameState* >(gpGameState)->GetGameMode().EndGame(mIntParm1, mgr);
   }
@@ -1080,6 +1084,9 @@ void CScriptSpecialFunction::AcceptCredits(CStateManager& mgr, const CScriptMsg&
     // runs, so a log that ends here reads as the game having stopped. Name the window as it goes on
     // the stack - `tools/sweep_report.py`'s `CREDITS` verdict and `tools/sweep_areas.sh` key on it.
     std::fprintf(stderr, "[end] the credits are rolling\n");
+    // A port skip still running ends here, and none starts again: the credits and the results
+    // after them run at normal speed (max speed draws once a second, CMain).
+    CMFGame::PortMarkGameEnded();
 #endif
   }
 }
