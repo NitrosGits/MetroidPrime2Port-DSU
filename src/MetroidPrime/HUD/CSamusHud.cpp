@@ -340,9 +340,13 @@ void CSamusHud::InitializeFrameGlueMutable(const CStateManager& mgr) {
   }
   // The Dark Visor's red reticle shape reaches both outer quarters of the authored view, so the
   // spread took it for a screen-wide frame and stretched it sideways. It is a centred reticle:
-  // keep its shape (anchored at its own origin, it stays centred).
+  // keep its shape (anchored at its own origin, it stays centred). model_darkvisor_black, the pale
+  // glass fill behind it, is the same size and gets the same treatment.
   if (mDarkVisor != nullptr) {
     mLoadedHudFrame->SetSpreadAnchorTree(mDarkVisor);
+  }
+  if (mDarkVisorBacking != nullptr) {
+    mLoadedHudFrame->SetSpreadAnchorTree(mDarkVisorBacking);
   }
 #endif
   if (mEnergyBracket != nullptr) {
