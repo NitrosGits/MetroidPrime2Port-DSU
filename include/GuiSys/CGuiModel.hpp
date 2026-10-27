@@ -6,6 +6,7 @@
 class CModelFlags;
 #ifdef TARGET_PC
 class CAABox;
+class CTexture;
 #endif
 
 class CGuiModel : public CGuiWidget {
@@ -24,6 +25,9 @@ public:
 #ifdef TARGET_PC
   // Port: the model's local bounds, for the widescreen HUD spread. False until the frame has loaded.
   bool PortGetBounds(CAABox& out) const;
+  // Port: the first texture of the model's first surface and the box its texture coordinates
+  // span, {umin, vmin, umax, vmax} (the touch wheels' HUD icons); null until the frame has loaded it.
+  const CTexture* PortFirstTexture(float uv[4]) const;
 #endif
   static void BeginDraw();                        // Guessed name
   static void EndDraw();                          // Guessed name

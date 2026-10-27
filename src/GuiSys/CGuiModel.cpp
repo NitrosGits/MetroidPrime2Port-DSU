@@ -10,6 +10,8 @@
 #include "Kyoto/Graphics/CModelFlags.hpp"
 #include "Kyoto/Streams/CInputStream.hpp"
 #ifdef TARGET_PC
+#include "Kyoto/Basics/CBasics.hpp"
+#include "Kyoto/Graphics/CTexture.hpp"
 #include "port_pointer.h"
 #endif
 #ifdef TARGET_PC
@@ -207,6 +209,63 @@ void CGuiModel::DrawModel(const CModelFlags& flags) const {
 }
 
 #ifdef TARGET_PC
+const CTexture* CGuiModel::PortFirstTexture(float uv[4]) const {
+  const CGuiFrameModelDatabase* db = GetParentFrame()->GetModelDatabase();
+  const CCubeModel* model = db != nullptr ? db->GetModel(mModelIndex) : nullptr;
+  if (model == nullptr) {
+    return nullptr;
+  }
+  CCubeSurface surface = model->GetNormalSurfaces();
+  if (!surface.IsValid()) {
+    surface = model->GetAlphaSurfaces();
+  }
+  if (!surface.IsValid()) {
+    return nullptr;
+  }
+  const uint* mat = reinterpret_cast< const uint* >(model->GetMaterial(surface).GetData());
+  if (CBasics::SwapBytes(mat[1]) == 0) {
+    return nullptr;
+  }
+  // The frame's icons share one atlas: the model's texture coordinates (big-endian F32 UV pairs)
+  // pick its cell (the first four pairs are the quad; the array is padded with zeros).
+  const CCubeModel::ModelInstance& instance = model->GetModelInstance();
+  const uint* coords = static_cast< const uint* >(instance.GetTCPointer());
+  uint pairs = instance.GetTCSize() / (2 * sizeof(uint));
+  if (pairs > 4) {
+    pairs = 4;
+  }
+  if (coords == nullptr || pairs == 0) {
+    return nullptr;
+  }
+  for (uint i = 0; i < pairs; ++i) {
+    for (int axis = 0; axis < 2; ++axis) {
+      union {
+        uint u;
+        float f;
+      } value;
+      value.u = CBasics::SwapBytes(coords[i * 2 + axis]);
+      if (i == 0 || value.f < uv[axis]) {
+        uv[axis] = value.f;
+      }
+      if (i == 0 || value.f > uv[2 + axis]) {
+        uv[2 + axis] = value.f;
+      }
+    }
+  }
+  const uint index = CBasics::SwapBytes(mat[2]);
+  const rstl::vector< TCachedToken< CTexture > >& textures = model->GetTextures();
+  if (index >= textures.size()) {
+    return nullptr;
+  }
+  // Not drawn yet (an icon the player doesn't own): load it now, it is tiny.
+  TCachedToken< CTexture >& token = const_cast< TCachedToken< CTexture >& >(textures[index]);
+  if (!token.TryCache()) {
+    token.Lock();
+    token.ForceCache();
+  }
+  return token.GetObject();
+}
+
 bool CGuiModel::PortGetBounds(CAABox& out) const {
   const CGuiFrameModelDatabase* db = GetParentFrame()->GetModelDatabase();
   const CCubeModel* model = db != nullptr ? db->GetModel(mModelIndex) : nullptr;
