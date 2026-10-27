@@ -3,6 +3,7 @@
 #include "port_entry.h"
 #include "port_env.h"
 #include "port_overlay.h"
+#include "port_save_convert.h"
 
 #include "Kyoto/CCrc32.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
@@ -606,12 +607,24 @@ bool Import(const std::string& source, std::string& message) {
     message = error;
     return false;
   }
+  std::string converted;
   if (info.game != GameCode()) {
-    // The card is mounted for one game code (CARDInit's), and MP2's save carries the world table's
-    // SAVW hashes and area data of its own release: a converted save is not something to guess at.
-    message = path + " is a " + info.game + " save; this card is " + GameCode() +
-              ", and region conversion is not supported";
-    return false;
+    // The card is mounted for one game code (CARDInit's), and the save carries its release's SAVW
+    // layout. G2ME and G2MP are converted (PortSave::Convert, docs/SAVE_RELEASES.md); Trilogy's
+    // saves are a different format and stay refused.
+    if (!Convert::CanConvert(info.game, GameCode())) {
+      message = path + " is a " + info.game + " save; this card is " + GameCode() +
+                ", and only G2ME and G2MP saves convert";
+      return false;
+    }
+    Convert::Report report;
+    std::vector<uint8_t> out;
+    if (!Convert::Gci(bytes, GameCode(), out, report, error)) {
+      message = path + ": cannot convert " + info.game + " to " + GameCode() + ": " + error;
+      return false;
+    }
+    bytes.swap(out);
+    converted = " (converted: " + report.Summary() + ")";
   }
 
   if (IsImage()) {
@@ -625,7 +638,7 @@ bool Import(const std::string& source, std::string& message) {
       return false;
     }
     aurora_card_remount(0);
-    message = "imported " + path + " into " + image;
+    message = "imported " + path + " into " + image + converted;
     return true;
   }
 
@@ -639,7 +652,7 @@ bool Import(const std::string& source, std::string& message) {
   // Whatever is there now is copied into the backups folder first, never deleted: an import that
   // replaces the wrong save is recoverable.
   const std::vector<std::string> existing = Files();
-  std::string target = dir + "/01-" + info.game + "-" + kSaveFileName + ".gci";
+  std::string target = dir + "/01-" + GameCode() + "-" + kSaveFileName + ".gci";
   std::string kept;
   if (!existing.empty()) {
     target = existing.front();
@@ -659,7 +672,7 @@ bool Import(const std::string& source, std::string& message) {
     return false;
   }
   aurora_card_remount(0);
-  message = "imported " + path + " as " + target;
+  message = "imported " + path + " as " + target + converted;
   if (!kept.empty()) {
     message += " (the file it replaced is " + kept + ")";
   }
