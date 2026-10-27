@@ -180,12 +180,23 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
     rstl::vector< TUniqueId > usedIds = FindConnectedObjects(mgr, kSS_APRC, kSM_None);
     rstl::vector< TUniqueId > newIds = FindConnectedObjects(mgr, kSS_ScrewAttackDamage, kSM_None);
     rstl::vector< TUniqueId > difficultyIds = FindConnectedObjects(mgr, kSS_PhazonDamage, kSM_None);
+#ifdef TARGET_PC
+    // Trilogy's front end wires one text pane per slot (3 kSS_Modify links, not 9): stride 1,
+    // title only. GC's stride of 3 left slots 1-2 null there.
+    const int textStride = textIds.size() < 9 ? 1 : 3;
+#endif
     for (int i = 0; i < 3; ++i) {
       SSaveSlot slot;
 #ifdef TARGET_PC
-      slot.mTitle = TCastToPtr< CScriptTextPane >(mgr.ObjectById(PortIdAt(textIds, i * 3)));
-      slot.mWorldName = TCastToPtr< CScriptTextPane >(mgr.ObjectById(PortIdAt(textIds, i * 3 + 1)));
-      slot.mPlayTime = TCastToPtr< CScriptTextPane >(mgr.ObjectById(PortIdAt(textIds, i * 3 + 2)));
+      slot.mTitle = TCastToPtr< CScriptTextPane >(mgr.ObjectById(PortIdAt(textIds, i * textStride)));
+      slot.mWorldName =
+          textStride == 3
+              ? TCastToPtr< CScriptTextPane >(mgr.ObjectById(PortIdAt(textIds, i * 3 + 1)))
+              : TCastToPtr< CScriptTextPane >(mgr.ObjectById(kInvalidUniqueId));
+      slot.mPlayTime =
+          textStride == 3
+              ? TCastToPtr< CScriptTextPane >(mgr.ObjectById(PortIdAt(textIds, i * 3 + 2)))
+              : TCastToPtr< CScriptTextPane >(mgr.ObjectById(kInvalidUniqueId));
       slot.mSlotEntity = TCastToPtr< CScriptFrontEndDataNetwork >(mgr.ObjectById(PortIdAt(slotIds, i)));
       slot.mUsedSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(PortIdAt(usedIds, i)));
       slot.mNewGameSwitch = TCastToPtr< CScriptSwitch >(mgr.ObjectById(PortIdAt(newIds, i)));
