@@ -1893,14 +1893,15 @@ final class TouchControlsView extends View {
                y > cy - (baseCy - baseTop) * scale && y <= cy + (height - baseCy) * scale;
     }
 
-    // Fire, Jump and Turbo face buttons aim when slid (see startButtonAim). Pills
-    // and the D-pad don't: their targets carry no start point.
+    // Fire, Jump, Missile and Turbo face buttons aim when slid (see startButtonAim).
+    // Pills and the D-pad don't: their targets carry no start point.
     private static boolean aimsWhileHeld(TouchTarget target) {
         return target.control instanceof ControlButton &&
-               (target.id == BTN_SOUTH || target.id == BTN_EAST || target.id == TURBO_FIRE);
+               (target.id == BTN_SOUTH || target.id == BTN_EAST || target.id == BTN_NORTH ||
+                target.id == TURBO_FIRE);
     }
 
-    // A held Fire (charging), Jump or Turbo that slides past the tap slop aims
+    // A held Fire (charging), Jump, Missile or Turbo that slides past the tap slop aims
     // too, so one thumb can press and aim; the button stays held until the
     // finger lifts.
     private void startButtonAim(int pointerId, TouchTarget target, MotionEvent event, int index) {
