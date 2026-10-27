@@ -139,7 +139,7 @@ void DrawControlsKeyboardMouse() {
   // Shown on the Quake/Source/Apex scale (0.022 degrees a count per unit), stored in radians.
   float sourceSensitivity = PortMouse::SourceFromRadians(PortMouse::Sensitivity());
   if (ImGui::SliderFloat("Sensitivity", &sourceSensitivity, 0.05f, 30.f, "%.3f",
-                         ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_NoRoundToFormat)) {
+                         ImGuiSliderFlags_NoRoundToFormat)) {
     PortMouse::SetSensitivity(PortMouse::RadiansFromSource(sourceSensitivity));
     Changed(true);
   }
@@ -155,7 +155,7 @@ void DrawControlsKeyboardMouse() {
   if (PortMouse::SensitivitySplit()) {
     float sourceSensitivityY = PortMouse::SourceFromRadians(PortMouse::SensitivityY());
     if (ImGui::SliderFloat("Vertical sensitivity", &sourceSensitivityY, 0.05f, 30.f, "%.3f",
-                           ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_NoRoundToFormat)) {
+                           ImGuiSliderFlags_NoRoundToFormat)) {
       PortMouse::SetSensitivityY(PortMouse::RadiansFromSource(sourceSensitivityY));
       Changed(true);
     }
@@ -212,7 +212,7 @@ void DrawControlsController() {
   // Shown only with twin stick on, as MP1 does.
   if (PortMouse::StickEnabled()) {
     float rate = PortMouse::StickAimRate();
-    if (ImGui::SliderFloat("Stick aim speed", &rate, 100.f, 8100.f, "%.0f px/s", ImGuiSliderFlags_Logarithmic)) {
+    if (ImGui::SliderFloat("Stick aim speed", &rate, 100.f, 8100.f, "%.0f px/s")) {
       PortMouse::SetStickAimRate(rate);
       Changed(true);
     }
@@ -228,8 +228,7 @@ void DrawControlsController() {
     ItemHelp("Own speed for looking up and down; Stick aim speed then sets left and right only.");
     if (PortMouse::StickAimSplit()) {
       float rateY = PortMouse::StickAimRateY();
-      if (ImGui::SliderFloat("Vertical stick aim speed", &rateY, 100.f, 8100.f, "%.0f px/s",
-                             ImGuiSliderFlags_Logarithmic)) {
+      if (ImGui::SliderFloat("Vertical stick aim speed", &rateY, 100.f, 8100.f, "%.0f px/s")) {
         PortMouse::SetStickAimRateY(rateY);
         Changed(true);
       }
@@ -334,7 +333,7 @@ void DrawControlsTouchGyro() {
   ItemHelp("A quick tap on Visor switches to the Scan Visor.");
   ImGui::EndDisabled();
   float speed = PortTouch::AimSpeed();
-  if (ImGui::SliderFloat("Touch aim speed", &speed, 0.5f, 6.f, "%.2f px/dp", ImGuiSliderFlags_Logarithmic)) {
+  if (ImGui::SliderFloat("Touch aim speed", &speed, 0.5f, 6.f, "%.2f px/dp")) {
     PortTouch::SetAimSpeed(speed);
   }
   b = PortTouch::AimSplit();
@@ -344,8 +343,7 @@ void DrawControlsTouchGyro() {
   }
   if (PortTouch::AimSplit()) {
     float speedY = PortTouch::AimSpeedY();
-    if (ImGui::SliderFloat("Vertical touch aim speed", &speedY, 0.5f, 6.f, "%.2f px/dp",
-                           ImGuiSliderFlags_Logarithmic)) {
+    if (ImGui::SliderFloat("Vertical touch aim speed", &speedY, 0.5f, 6.f, "%.2f px/dp")) {
       PortTouch::SetAimSpeedY(speedY);
     }
   }
@@ -433,7 +431,7 @@ void DrawControlsTouchGyro() {
   ImGui::BeginDisabled(gyroPointer && !sGyroCursorCamera);
   // The ## suffix keeps its ImGui id apart from the mouse Sensitivity slider.
   if (ImGui::SliderFloat("Sensitivity##gyro", &sGyroSensitivity, PortOverlay::kGyroSensitivityMin,
-                         PortOverlay::kGyroSensitivityMax, "%.2fx", ImGuiSliderFlags_Logarithmic)) {
+                         PortOverlay::kGyroSensitivityMax, "%.2fx")) {
     sGyroSensitivity =
         std::clamp(sGyroSensitivity, PortOverlay::kGyroSensitivityMin, PortOverlay::kGyroSensitivityMax);
     Changed(true);
@@ -448,7 +446,7 @@ void DrawControlsTouchGyro() {
            "With pointer aim it scales the pointer's vertical travel.");
   if (sGyroSplit) {
     if (ImGui::SliderFloat("Vertical sensitivity##gyro", &sGyroSensitivityY, PortOverlay::kGyroSensitivityMin,
-                           PortOverlay::kGyroSensitivityMax, "%.2fx", ImGuiSliderFlags_Logarithmic)) {
+                           PortOverlay::kGyroSensitivityMax, "%.2fx")) {
       sGyroSensitivityY =
           std::clamp(sGyroSensitivityY, PortOverlay::kGyroSensitivityMin, PortOverlay::kGyroSensitivityMax);
       Changed(true);

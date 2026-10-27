@@ -256,7 +256,7 @@ void DrawPhotoUI() {
       PortPhoto::SetShowSamus(samus);
     }
     float speed = PortPhoto::Speed();
-    if (ImGui::SliderFloat("Speed", &speed, 1.f, 100.f, "%.0f m/s", ImGuiSliderFlags_Logarithmic)) {
+    if (ImGui::SliderFloat("Speed", &speed, 1.f, 100.f, "%.0f m/s")) {
       PortPhoto::SetSpeed(speed);
       PortOverlaySettings::MarkDirty();
     }
