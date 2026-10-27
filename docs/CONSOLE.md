@@ -105,6 +105,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `scan <id> [d] [updates]` — scan an actor: d (40) units away, orbit locked, L held (alone: progress)
 - `stick <x> <y> [updates]` — hold the main stick, -127..127
 - `cstick <x> <y> [updates]` — hold the C-stick (Spring Ball in Morph Ball), -127..127
+- `credits [1|2]` — end the game into the credits (1: the <75% route, 2: the <100% route)
 - `screenshot` — the F12 capture; the log names the file it wrote
 - `at <update> <command>` — run one command on that game update (`frame`), not on arrival, so runs at different speeds act on the same tick
 - `gallery [mask]` — the slideshow gallery unlock mask (0..63): print, or set via PercentScans/mode flags

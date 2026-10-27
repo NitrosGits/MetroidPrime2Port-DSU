@@ -237,3 +237,7 @@ On a Trilogy disc the combat HUD is `RS5_SamusHud{1,2,4}Combat`, the memo frame 
 (all in RS5.PAK, names from rs5mp2_p.dol). Ball HUD, scan HUD and boss frames stay GC. MP1's STRG_Hud text,
 energy-word and instant-fill commits do not apply: Echoes looks strings up by name, has no energy-word pane,
 and `UpdateEnergy` (0x80199774) picks Instant only for |delta|<1e-5. Combat shot: `/tmp/opencode/reports/trihud-combat.png`.
+
+## Trilogy reticles (2026-10-27)
+
+`CTargetReticles` (`mPortTri`, TARGET_PC + IsTrilogy) draws Trilogy's reticles from RS5.PAK: scan ring and brackets that follow the pointer (no GC scan box), lock fade timer (`CPlayer`), aiming arms, locked and next-target brackets, a locked reticle on every Seeker lock, and the 6-segment scan progress. Pure math is in `platform/include/port_tri_reticle.h` (`tests/port_tri_reticle.cpp`). Confirmed in `rs5mp2_p.dol`: 7 combat CMDLs, 3 arms at 120°, the -60° progress loop (0x8025e438). MP1-derived: colours, 0.15 s fade, arm/centre curves, segment colour/blend. Off-screen targets draw nothing. Shots: /tmp/opencode/reports/tricombat-*.png; console `lock <id>` gives a real lock-on press.
