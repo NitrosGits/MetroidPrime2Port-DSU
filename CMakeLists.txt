@@ -609,7 +609,7 @@ endif()
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_controls.cpp
         platform/port_save.cpp platform/port_save_convert.cpp platform/port_save_trilogy.cpp platform/port_save_trilogy_payload.cpp platform/port_savestate.cpp platform/port_savestate_room.cpp platform/port_savestate_format.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_rando_models.cpp platform/port_rando_world.cpp platform/port_rando_logic.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
-        platform/port_crash.cpp platform/port_watchdog.cpp platform/port_memory_log.cpp platform/port_storage_report.cpp
+        platform/port_crash.cpp platform/port_parent_console.cpp platform/port_watchdog.cpp platform/port_memory_log.cpp platform/port_storage_report.cpp
         platform/port_pointer.cpp platform/port_pointer_menu.cpp
         platform/port_events.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp
         platform/port_radial.cpp
@@ -867,6 +867,14 @@ else()
     add_executable(metroid_prime2_port)
 endif()
 if(WIN32)
+    # A GUI program, so Windows opens no console window next to the game (SDL_main supplies
+    # WinMain). main() attaches to the parent terminal's console, if any.
+    set_target_properties(metroid_prime2_port PROPERTIES WIN32_EXECUTABLE ON)
+    # shell32/ole32/advapi32: finding Dolphin's folder (port_save.cpp).
+    # dbghelp: the crash report's stack and dump (port_crash.cpp).
+    target_link_libraries(metroid_prime2_port PRIVATE shell32 ole32 advapi32 dbghelp)
+    # UTF-8 as the ANSI code page, so the UTF-8 paths SDL returns work with the narrow file APIs.
+    target_sources(metroid_prime2_port PRIVATE packaging/metroid_prime2_port.manifest)
     # The icon Explorer and the window show.
     target_sources(metroid_prime2_port PRIVATE packaging/metroid_prime2_port.rc)
     # The DLLs the exe imports (Dawn's) go next to it, so ctest can start it from the build tree.

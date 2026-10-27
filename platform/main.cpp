@@ -919,7 +919,18 @@ static void PortCrashAfterReport(int sig, const void* faultAddress) {
 }
 #endif
 
+#if defined(_WIN32)
+void PortAttachParentConsole(); // platform/port_parent_console.cpp
+#endif
+
 int main(int argc, char** argv) {
+#if defined(_WIN32)
+  PortAttachParentConsole();
+#endif
+  if (argc == 2 && std::strcmp(argv[1], "--version") == 0) {
+    std::printf("Metroid Prime 2 native port %s (%s)\n", MP_BUILD_VERSION, MP_BUILD_REVISION);
+    return 0;
+  }
   // Android first, before anything can print: from here on fd 1 and fd 2 reach logcat, which
   // is the only place a device run leaves a record. A no-op on the desktop.
   PortLogBegin();
@@ -1019,7 +1030,7 @@ int main(int argc, char** argv) {
 #if defined(__ANDROID__)
   PortCrash::SetAfterReport(PortCrashAfterReport);
 #endif
-  PortCrash::Install();
+  PortCrash::Install(touchUser != nullptr ? touchUser : std::string());
   // Into that log, as MP1 does: every setting in effect and the MP2_* variables, then (from a
   // background thread) how much space each folder the port writes to takes.
   PortOverlaySettings::LogSettings();
@@ -1062,6 +1073,8 @@ int main(int argc, char** argv) {
       // MP2_DUMP_TEXTURES=1 writes every texture the game loads to <cache>/texture_dumps, named
       // as a replacement pack must name it.
       .allowTextureDumps = port::EnvFlag("MP2_DUMP_TEXTURES"),
+      .windowPosX = -1, // centred, as the Prime 1 port
+      .windowPosY = -1,
       .windowWidth = static_cast< uint32_t >(widescreen ? 1280 : 960),
       .windowHeight = 720u,
       .mem1Size = MEM1_DEFAULT_SIZE,
@@ -1143,7 +1156,7 @@ int main(int argc, char** argv) {
   // that, so whenever an X display is available ask for the X11 backend instead. SDL_VIDEODRIVER
   // still wins, which is also how anyone who wants Wayland opts back in, and MP2_HEADLESS's
   // "offscreen" above is honoured the same way.
-#if !defined(__ANDROID__)
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__APPLE__)
   {
     const char* requested = SDL_GetHint(SDL_HINT_VIDEO_DRIVER);
     const char* x11 = std::getenv("DISPLAY");
