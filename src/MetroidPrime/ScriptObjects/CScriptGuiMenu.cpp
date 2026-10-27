@@ -132,8 +132,10 @@ void CScriptGuiMenu::PortPointerInput(CStateManager& mgr) {
   }
   float gx, gy;
   int count;
+  // Hover is the mouse's; a finger selects with a tap and confirms with a tap on the selection,
+  // so a slide across the items neither selects nor confirms.
   bool clicked = PortPointerMenu::PeekClickPoint(gx, gy);
-  if (!clicked && !PortPointer::Position(gx, gy)) {
+  if (!clicked && (!PortPointer::MouseIsLast() || !PortPointer::Position(gx, gy))) {
     return;
   }
   for (int i = 0; i < mItems.size(); ++i) {
@@ -141,8 +143,10 @@ void CScriptGuiMenu::PortPointerInput(CStateManager& mgr) {
     if (item == nullptr || IsItemLocked(i, mgr) || !PortItemContains(mgr, item, gx, gy, 1)) {
       continue;
     }
+    const bool wasSelected = i == mSelection;
     SetSelection(i, mgr);
-    if (clicked && PortPointerMenu::TakeClickPoint(gx, gy, count)) {
+    if (clicked && PortPointerMenu::TakeClickPoint(gx, gy, count) &&
+        (wasSelected || PortPointer::MouseIsLast())) {
       PortPointerMenu::PressA(input);
     }
     return;
