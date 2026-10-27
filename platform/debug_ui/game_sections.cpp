@@ -2,6 +2,7 @@
 // settings, memory card, log). State and helpers shared with the other parts are in
 // debug_ui_internal.h.
 
+#include "port_mobile.h"
 #include "debug_ui_internal.h"
 
 #include "port_config_reset.h"
@@ -393,7 +394,7 @@ void DrawTexturesSection() {
 // The look of this overlay: the floating window, the theme and the size.
 void DrawOverlaySection() {
   ImGui::SeparatorText("Overlay");
-#if !defined(__ANDROID__)
+#if !defined(PORT_MOBILE)
   Changed(ImGui::Checkbox("Overlay as a floating window", &sOverlayWindowed));
 #endif
   int theme = sUiTheme;

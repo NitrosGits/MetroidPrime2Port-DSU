@@ -2,6 +2,7 @@
 // src/MetroidPrime/main.cpp because aurora/event.h includes SDL3, which only the
 // full build (mp_port_audio) has on its include path.
 
+#include "port_mobile.h"
 #include <SDL3/SDL.h>
 #include <aurora/aurora.h>
 #include <aurora/event.h>
@@ -472,7 +473,7 @@ bool PortPumpEvents() {
       std::fprintf(stderr, "Frame limit: %s\n", PortOverlay::FrameLimit() ? "60 FPS" : "unlimited");
     }
     // F11 toggles the Fullscreen setting on desktop; Android has the Video > Display checkbox.
-#if !defined(__ANDROID__)
+#if !defined(PORT_MOBILE)
     if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_KEY_DOWN &&
         !event->sdl.key.repeat && event->sdl.key.scancode == SDL_SCANCODE_F11) {
       SDL_Window* window = SDL_GetWindowFromID(event->sdl.key.windowID);

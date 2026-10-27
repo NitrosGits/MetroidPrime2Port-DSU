@@ -8,8 +8,13 @@ port's (`../MetroidPrimePort/docs/IOS.md`), which starts in the iOS Simulator. P
 issue and attach the log (see [Where things are](#where-things-are)).
 
 - iOS / iPadOS 16.0 or newer, 64-bit (arm64). Metal through Dawn, like desktop.
-- **No on-screen touch controls yet** (Android's are Java and the Prime 1 iOS overlay is not
-  ported). Play with a paired controller (Bluetooth, MFi or USB).
+- **Touch controls** are drawn in C++ (`platform/debug_ui/touch_overlay.cpp`, the Prime 1 iOS
+  overlay adapted to MP2: Visor/Beam wheels, Default/Classic/Twin stick layouts, radial menus, minimap
+  tap) and feed the same virtual gamepad as Android (`touch_pad.cpp`). Not yet checked on a device;
+  the in-overlay Edit button and Menu-only pause mode of Android's `TouchControlsView` are not ported
+  (F1 > Controls > Edit layout works). A paired controller works too.
+- Mobile UI gates use `PORT_MOBILE` (`platform/include/port_mobile.h`: Android or iOS); Android-only
+  APIs (JNI, storage picker, gallery export, texture-pack picker) stay on `__ANDROID__`.
 - All REL modules are linked into the executable, so nothing maps executable code at run time.
 - A phone with 4 GB of RAM or less may run out of memory.
 

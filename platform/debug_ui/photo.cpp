@@ -1,5 +1,6 @@
 // Photo mode's panel, compact bar and toasts (MP1's overlays.cpp photo part), and the touch
 // handling that flies the camera on Android. The logic is platform/port_photo.cpp.
+#include "port_mobile.h"
 #include "debug_ui_internal.h"
 
 #include "port_freecam.h"
@@ -18,7 +19,7 @@
 
 namespace PortDebug {
 namespace {
-#if defined(__ANDROID__)
+#if defined(PORT_MOBILE)
 constexpr bool kTouchDevice = true;
 #else
 constexpr bool kTouchDevice = false;

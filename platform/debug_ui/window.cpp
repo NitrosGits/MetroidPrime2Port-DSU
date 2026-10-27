@@ -1,6 +1,7 @@
 // F1 overlay: Touch scrolling, the page and desktop windows, and DrawUI. State and helpers shared
 // with the other parts are in debug_ui_internal.h.
 
+#include "port_mobile.h"
 #include "debug_ui_internal.h"
 
 #include "port_build_info.h"
@@ -177,7 +178,7 @@ bool DrawPageWindow() {
       ImGui::SameLine(0.f, style.ItemSpacing.x * 2.f);
       ImGui::TextDisabled("%s", kBuild);
     }
-#if !defined(__ANDROID__)
+#if !defined(PORT_MOBILE)
     // Only when it fits beside the title, the build and the Close button.
     const std::string keyHint = HotkeyHint();
     const char* const kKeys = keyHint.c_str();
@@ -520,6 +521,9 @@ void DrawUI() {
   DrawUpdateToast();
   DrawNoteToast();
   DrawPhotoUI();
+#if defined(PORT_TOUCH_OVERLAY)
+  DrawTouchOverlay();
+#endif
   if (!sVisible) {
     sTouchScroll = TouchScroll{};
     UpdateMenuSounds(false);

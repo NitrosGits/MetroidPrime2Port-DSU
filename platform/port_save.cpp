@@ -1,3 +1,4 @@
+#include "port_mobile.h"
 #include "port_save.h"
 
 #include "port_save_trilogy.h"
@@ -256,7 +257,7 @@ const char* CardRegion() { return port::entry::IsPalRegion(port::entry::CurrentD
 std::vector< std::filesystem::path > AutoEmulatorRoots() {
   namespace fs = std::filesystem;
   std::vector< fs::path > roots;
-#if defined(__ANDROID__)
+#if defined(PORT_MOBILE)
   // No emulator to find.
 #else
   const char* appdata = std::getenv("APPDATA");
@@ -347,7 +348,7 @@ std::string EmulatorCardFolder() {
 }
 
 void SetShareEmulatorCard(bool share) {
-#if defined(__ANDROID__)
+#if defined(PORT_MOBILE)
   share = false; // no emulator to share with
 #endif
   std::lock_guard< std::mutex > lock(sEmulatorMutex);
@@ -882,7 +883,7 @@ std::vector<std::string> GameFilesNewest() {
 } // namespace
 
 void SetMirrorTrilogy(bool mirror) {
-#if defined(__ANDROID__)
+#if defined(PORT_MOBILE)
   mirror = false;
 #endif
   std::lock_guard<std::mutex> lock(sEmulatorMutex);

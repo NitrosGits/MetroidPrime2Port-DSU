@@ -437,6 +437,20 @@ target_include_directories(mp_platform PRIVATE
 target_compile_definitions(mp_platform PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC
     MUSY_VERSION_MAJOR=2 MUSY_VERSION_MINOR=0 MUSY_VERSION_PATCH=3)
 
+# Touch controls: Android draws them in Java (TouchControlsView); iOS draws them in C++
+# (platform/debug_ui/touch_overlay.cpp). The desktop switch builds that overlay on a host build so
+# it can be tried without a device; the console's `finger` command sends the touches.
+option(MP_TOUCH_OVERLAY_DESKTOP "Draw the touch controls on a desktop build (testing)" OFF)
+if(ANDROID OR IOS)
+    target_compile_definitions(mp_platform PRIVATE PORT_TOUCH_CONTROLS)
+endif()
+if(IOS)
+    target_compile_definitions(mp_platform PRIVATE PORT_TOUCH_OVERLAY)
+endif()
+if(MP_TOUCH_OVERLAY_DESKTOP AND NOT ANDROID)
+    target_compile_definitions(mp_platform PRIVATE PORT_TOUCH_CONTROLS PORT_TOUCH_OVERLAY)
+endif()
+
 # The gcov flush hook of a coverage build: a run must leave its .gcda behind however it ends (a
 # clean quit, the harness's SIGTERM, a Ctrl-C). It is compiled only into a coverage build, so
 # the normal build does not even see the file. See platform/port_coverage.cpp.
@@ -625,7 +639,7 @@ if(AURORA_SDL3_TARGET)
         platform/debug_ui/game_sections.cpp platform/debug_ui/mods.cpp platform/debug_ui/performance.cpp platform/debug_ui/randomizer.cpp
         platform/debug_ui/savestates.cpp platform/debug_ui/search.cpp platform/debug_ui/settings.cpp
         platform/debug_ui/photo.cpp platform/debug_ui/tabs.cpp platform/debug_ui/ui_common.cpp platform/debug_ui/video.cpp
-        platform/debug_ui/window.cpp
+        platform/debug_ui/window.cpp platform/debug_ui/touch_overlay.cpp
         platform/port_touch.cpp platform/port_touch_jni.cpp platform/touch_pad.cpp
         platform/input/port_input_remap_ui.cpp
         platform/input/port_input_devices.cpp

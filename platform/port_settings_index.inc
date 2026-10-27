@@ -194,7 +194,7 @@
 {"Save states", "", "", "Undo last load", "save state undo"},
 {"Save states", "", "", "Quick resume", "quick resume background quit continue"},
 {"Save states", "", "", "Keep enemies and room objects", "save state room enemies doors objects"},
-#if !defined(__ANDROID__)
+#if !defined(PORT_MOBILE)
 {"System", "", "Overlay", "Overlay as a floating window", "window detach float desktop"},
 #endif
 {"System", "", "Overlay", "Menu theme", "look style plain prime imgui"},
@@ -203,7 +203,7 @@
 {"System", "", "Settings", "Save settings now", "settings file unsaved write persist"},
 {"System", "", "Settings", "Reset configuration...", "reset defaults configuration factory"},
 {"System", "", "Memory card", "Back up the card", "save memory card backup"},
-#if !defined(__ANDROID__)
+#if !defined(PORT_MOBILE)
 {"System", "", "Memory card", "Installed emulators", "dolphin primehack emulator folder install detected"},
 {"System", "", "Memory card", "Share memory card with emulator", "dolphin primehack share saves card"},
 {"System", "", "Memory card", "Mirror with the Trilogy save.bin", "trilogy wii save.bin mirror sync"},

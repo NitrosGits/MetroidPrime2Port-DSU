@@ -10,6 +10,7 @@
 // UI thread raises and `BeginFrame` applies, so the player state is only ever touched on the
 // game thread.
 
+#include "port_mobile.h"
 #include "port_touch.h"
 #include "port_photo.h"
 
@@ -53,7 +54,7 @@ struct Settings {
   // On only where the overlay exists: an enabled touch source makes PortMouse track the camera
   // every tick, which a desktop run (no overlay, no fingers) has no use for. MP2_TOUCH_AIM=1
   // still turns it on there.
-#if defined(__ANDROID__)
+#if defined(PORT_MOBILE)
   bool aim = true;
 #else
   bool aim = false;
