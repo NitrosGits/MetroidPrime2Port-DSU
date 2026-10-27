@@ -507,7 +507,7 @@ void Install(const std::string& dumpFolder) {
   int frames = 0;
   _Unwind_Backtrace(CountFrame, &frames);
   Dl_info info{};
-  dladdr(reinterpret_cast< void* >(&Install), &info);
+  dladdr(reinterpret_cast< void* >(static_cast< void (*)(const std::string&) >(&Install)), &info);
   struct sigaction stackAction {};
   stackAction.sa_sigaction = OnStackSignal;
   stackAction.sa_flags = SA_SIGINFO | SA_RESTART;

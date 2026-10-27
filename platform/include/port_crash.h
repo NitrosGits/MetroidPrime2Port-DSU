@@ -1,6 +1,8 @@
 #ifndef METROID_PRIME2_PORT_PORT_CRASH_H
 #define METROID_PRIME2_PORT_PORT_CRASH_H
 
+#include <string>
+
 // Writes a crash report into the log: what went wrong, where (module + offset,
 // which a symbolizer turns back into a line of code), the build, and the stack.
 // The breadcrumbs (PortBreadcrumb) follow. Nothing else changes about the crash,

@@ -920,24 +920,12 @@ static void PortCrashAfterReport(int sig, const void* faultAddress) {
 #endif
 
 #if defined(_WIN32)
-// A GUI-subsystem exe has no console; when started from a terminal, print to that one (as MP1's
-// PortLogFile::AttachParentConsole). Left alone when stderr already goes somewhere.
-static void AttachParentConsole() {
-  const HANDLE error = GetStdHandle(STD_ERROR_HANDLE);
-  if ((error != nullptr && error != INVALID_HANDLE_VALUE) || !AttachConsole(ATTACH_PARENT_PROCESS)) {
-    return;
-  }
-  FILE* reopened = nullptr;
-  freopen_s(&reopened, "CONOUT$", "w", stdout);
-  freopen_s(&reopened, "CONOUT$", "w", stderr);
-  SetStdHandle(STD_OUTPUT_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stdout))));
-  SetStdHandle(STD_ERROR_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stderr))));
-}
+void PortAttachParentConsole(); // platform/port_parent_console.cpp
 #endif
 
 int main(int argc, char** argv) {
 #if defined(_WIN32)
-  AttachParentConsole();
+  PortAttachParentConsole();
 #endif
   if (argc == 2 && std::strcmp(argv[1], "--version") == 0) {
     std::printf("Metroid Prime 2 native port %s (%s)\n", MP_BUILD_VERSION, MP_BUILD_REVISION);
@@ -1085,10 +1073,10 @@ int main(int argc, char** argv) {
       // MP2_DUMP_TEXTURES=1 writes every texture the game loads to <cache>/texture_dumps, named
       // as a replacement pack must name it.
       .allowTextureDumps = port::EnvFlag("MP2_DUMP_TEXTURES"),
-      .windowWidth = static_cast< uint32_t >(widescreen ? 1280 : 960),
-      .windowHeight = 720u,
       .windowPosX = -1, // centred, as the Prime 1 port
       .windowPosY = -1,
+      .windowWidth = static_cast< uint32_t >(widescreen ? 1280 : 960),
+      .windowHeight = 720u,
       .mem1Size = MEM1_DEFAULT_SIZE,
       .mem2Size = ARAM_DEFAULT_SIZE,
   };
