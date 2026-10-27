@@ -439,6 +439,22 @@ bits (`PortInput::kTouchCount`; stock controls 0..35, ball page 40..44, added bu
 (`PortInput::BindTouchButtons`) and the ball page rows. JNI: `nativeTouchControl`,
 `nativeTouchControlBound`, `nativeTouchBallLabel`, `nativeTouchButtonActions`.
 
+### Data folder move to shared storage (MP1 sync, gpu-misc)
+
+F1 > System > Data folder (`platform/port_data_folder.cpp`, Android only) moves `user/` (settings,
+memory card, save backups, mods, save states, texture pack) from app storage to
+`/storage/emulated/0/MetroidPrime2/`, and back. The cache folder and `disc.iso` stay in app storage.
+Flow: ask for "All files access" (`MANAGE_EXTERNAL_STORAGE`, Android 11+; the legacy storage permission
+on 9/10) through `MetroidPrime2Activity.hasStorageAccess/requestStorageAccess`, copy with a progress bar
+(each file under a `.mpcopy` name, renamed when complete; `.mpcopy_incomplete` marks a cut-short copy),
+offer "Use the data already there" when the target holds data, write the choice as the `user=` line of
+`port_paths.txt` (other lines kept; `WriteUserLine`), then `restartApp` (`RestartActivity`, own process).
+"Delete the old copy" frees app storage afterwards. If the chosen folder is unwritable at the next start
+(access revoked, reinstall), `ResolveAndroidPaths` (`platform/main.cpp`) runs from app storage that once and
+sets `MP2_USER_UNAVAILABLE`, which the panel reports with buttons to grant access again or stay. Unlike MP1 there is no
+startup dialog for that case and no `data_folder.txt`: `port_paths.txt` is the only marker. Engine test:
+`port_data_folder_tests`. Not run on a device (no installs from this lane).
+
 ## 5. Risks, worst first
 
 - **REL arena placement** (M0): the thing that could have made the whole plan collapse. **Resolved**

@@ -5,6 +5,7 @@
 // on another thread, so a pick waits in sPicks until the next frame.
 #include "debug_ui_internal.h"
 
+#include "port_data_folder.h"
 #include "port_entry.h"
 #include "port_save.h"
 
@@ -208,8 +209,8 @@ void DrawCardTransfer() {
   }
 }
 
-// MP1's Data folder panel is Android's (moving the data to shared storage); on the desktop the
-// useful part is where everything is and a way to open it.
+// Where everything is; on Android also the move to shared storage (port_data_folder.cpp), on the
+// desktop a way to open the folder.
 void DrawDataFolder() {
   ImGui::SeparatorText("Data folder");
   const std::string backups = PortSave::BackupsDirectory();
@@ -218,9 +219,13 @@ void DrawDataFolder() {
   PathRow("User folder", user);
   PathRow("Memory card", PortSave::Directory());
   PathRow("Save backups", backups);
+#if defined(__ANDROID__)
+  PortDataFolder::DrawPanel();
+#else
   if (!user.empty() && ImGui::Button("Open data folder")) {
     OpenFolder(user);
   }
+#endif
   ItemHelp("Settings, memory card, save backups, save states and mods live in the user folder "
            "(`MP2_USER_PATH` overrides it).");
 }
