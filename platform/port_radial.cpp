@@ -23,6 +23,8 @@ uint64_t sTouchSession = 0, sTouchCancellation = 0;
 uint64_t sTouchLifecycleCancellation = 0;
 bool sTouchBlockedButtons[2] = {};
 bool sTouchContext = true;
+Latch sLatch;
+bool sEligible[2] = {};
 TouchMailbox& Touches() { static TouchMailbox mailbox; return mailbox; }
 void PublishTouchState() {
   Touches().Publish(sState.Available() && sTouchContext, sState.CancellationEpoch(),
@@ -139,6 +141,29 @@ void State::Animate(float dt) {
   }
 }
 
+bool Latch::Tick(bool beam, bool visor, double nowSec, const bool eligible[2]) {
+  const bool now[2] = {beam, visor};
+  bool dropped = false;
+  for (int i = 0; i < 2; ++i) {
+    if (!now[i]) heldSince[i] = -1.;
+    else if (heldSince[i] < 0.) heldSince[i] = nowSec;
+  }
+  for (int i = 0; i < 2; ++i) {
+    if (active == i && !eligible[i]) { active = -1; dropped = true; continue; }
+    if (active == i && !now[i]) active = -1;
+    else if (active == -1 && now[i] && nowSec - heldSince[i] > kLatchSeconds && eligible[i]) active = i;
+  }
+  return dropped;
+}
+void SetEligible(bool beam, bool visor) { sEligible[kBeam] = beam; sEligible[kVisor] = visor; }
+bool Eligible(Kind kind) { return sEligible[kind]; }
+void GateButtons(bool& beam, bool& visor, double nowSec) {
+  const bool eligible[2] = {sEligible[kBeam], sEligible[kVisor]};
+  const bool wasCapturing = sState.Capturing();
+  if (sLatch.Tick(beam, visor, nowSec, eligible) && wasCapturing && !sTouchSession) Cancel();
+  beam = sLatch.Latched(kBeam);
+  visor = sLatch.Latched(kVisor);
+}
 State& Transport() { return sState; }
 void SetApplied(int beam, int visor) { sApplied[kBeam] = beam; sApplied[kVisor] = visor; }
 int Applied(Kind kind) { return sApplied[kind]; }

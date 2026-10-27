@@ -108,6 +108,7 @@ bool GameplayAllowed(const CStateManager& mgr) {
 void UpdateHud(float dt, const CStateManager& mgr, int player) {
   if (player != 0) return;
   if (!GameplayAllowed(mgr)) {
+    SetEligible(false, false);
     Transport().SetAvailable(false);
     Cancel();
     return;
@@ -119,6 +120,9 @@ void UpdateHud(float dt, const CStateManager& mgr, int player) {
   if (!beam || !visor) return;
   const CPlayerState& ps = *mgr.GetPlayer(0)->GetPlayerState();
   const CPlayerGun* gun = mgr.GetPlayer(0)->GetPlayerGun();
+  // Latch gate: gun idle; the beam wheel also not in the Scan visor.
+  const bool ready = gun && gun->PortRadialReady();
+  SetEligible(ready && ps.GetCurrentVisor() != CPlayerState::kPV_Scan, ready);
   SetApplied(gun ? int(gun->GetPrimaryWeaponId()) : -1, int(ps.GetCurrentVisor()));
   for (int k = 0; k < 2; ++k) {
     Frame& f = sFrames[k];
@@ -159,6 +163,7 @@ void DrawHud(int player) {
 
 void DestroyHud(int player) {
   if (player != 0) return;
+  SetEligible(false, false);
   Transport().SetAvailable(false);
   SetApplied(-1, -1);
   Cancel();

@@ -660,7 +660,7 @@ void PushCyclePick(bool beam, int target, bool radial = false) {
 
 // The actions that aren't pad inputs go straight to the code that does them.
 bool sConsumeRadialPoll = false;
-void RouteDirectActions(const PortInput::Output& out) {
+void RouteDirectActions(const PortInput::Output& out, double nowSec) {
   const bool wasCapturing = PortRadial::Capturing();
   if (!PortOverlay::TrilogyRadialSelectors() || PortOverlay::PointerBlocked() ||
       PlayerInPlay() == nullptr || PortTouch::PauseScreenOpen()) {
@@ -673,7 +673,9 @@ void RouteDirectActions(const PortInput::Output& out) {
     PortRadial::Transport().SetAvailable(false);
     PortRadial::Cancel();
   }
-  PortRadial::Poll(out.Held(Action::BeamMenu), out.Held(Action::VisorMenu),
+  bool beamHeld = out.Held(Action::BeamMenu), visorHeld = out.Held(Action::VisorMenu);
+  PortRadial::GateButtons(beamHeld, visorHeld, nowSec);
+  PortRadial::Poll(beamHeld, visorHeld,
                    out.Value(Action::CRight) - out.Value(Action::CLeft),
                    out.Value(Action::CUp) - out.Value(Action::CDown));
   const bool capture = PortRadial::Capturing();
@@ -1269,7 +1271,7 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
     // PortMenu would close the page mid-capture). The pad still reads it, as before the engine.
     r.status = Synthesize(out);
   } else {
-    RouteDirectActions(out);
+    RouteDirectActions(out, nowMs / 1000.0);
     r.status = Synthesize(out);
   }
   // Aurora's extended buttons, which have no engine action (nothing in the game reads them).
