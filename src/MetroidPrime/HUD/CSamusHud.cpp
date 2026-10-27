@@ -139,7 +139,8 @@ const char* CSamusHud::GetHudFrameName(int viewportLayout) {
       "RS5_SamusHud2Combat",
       "RS5_SamusHud4Combat",
   };
-  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion()) &&
+      gpResourceFactory->GetResourceIdByName(sTrilogyCombatHudNames[viewportLayout]) != nullptr) {
     return sTrilogyCombatHudNames[viewportLayout];
   }
 #endif

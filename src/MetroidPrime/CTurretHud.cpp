@@ -28,6 +28,17 @@ static const char* const skTurretFrameNames[] = {"FRME_TurretHud4Combat", "FRME_
 // Trilogy's own turret HUD frames (RS5.PAK).
 static const char* const skTrilogyTurretFrameNames[] = {
     "RS5_TurretHud4Combat", "RS5_TurretHud2Combat", "RS5_TurretHud4Combat"};
+
+static const SObjectTag* PortTurretFrameTag(const CStateManager& mgr) {
+  const int layout = mgr.GetViewportLayoutIndex();
+  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    if (const SObjectTag* tag =
+            gpResourceFactory->GetResourceIdByName(skTrilogyTurretFrameNames[layout])) {
+      return tag;
+    }
+  }
+  return gpResourceFactory->GetResourceIdByName(skTurretFrameNames[layout]);
+}
 #endif
 
 rstl::pair< CVector3f, CVector3f > CTurretHud::GetEnergyBarCoords(float t) {
@@ -37,17 +48,14 @@ rstl::pair< CVector3f, CVector3f > CTurretHud::GetEnergyBarCoords(float t) {
 
 CTurretHud::CTurretHud(const CStateManager& mgr, int playerIndex)
 : mPlayerIndex(playerIndex)
-, mFrameLoader(rs_new CGuiFrameLoader(
-      gpResourceFactory
-          ->GetResourceIdByName(
 #ifdef TARGET_PC
-              port::entry::IsTrilogy(port::entry::CurrentDiscVersion())
-                  ? skTrilogyTurretFrameNames[mgr.GetViewportLayoutIndex()]
-                  :
-#endif
-                  skTurretFrameNames[mgr.GetViewportLayoutIndex()])
-          ->id,
+, mFrameLoader(rs_new CGuiFrameLoader(PortTurretFrameTag(mgr)->id, *gpResourceFactory,
+                                      *gpSimplePool))
+#else
+, mFrameLoader(rs_new CGuiFrameLoader(
+      gpResourceFactory->GetResourceIdByName(skTurretFrameNames[mgr.GetViewportLayoutIndex()])->id,
       *gpResourceFactory, *gpSimplePool))
+#endif
 , mFrame(nullptr)
 , mHullEnergy(nullptr) {}
 
