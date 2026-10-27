@@ -1735,7 +1735,17 @@ def drop_non_pc_arms(code):
     return '\n'.join(out)
 
 
-def parse_cpp(path):
+def _marker_in_if(lines, k):
+    """lines[k] is an `#endif`: only comments sit between it and the `#if` that opens it."""
+    j = k - 1
+    while j >= 0 and (lines[j].strip().startswith(('//', '/*', '*')) or not lines[j].strip()):
+        j -= 1
+    return j >= 0 and re.match(r'^\s*#\s*if', lines[j]) is not None
+
+
+def parse_cpp(path, deep=False):
+    """Function definitions of a C++ file. deep=True (retail_diff): also bodies defined inside a class
+    (named Class::name; access labels skipped) and `extern "C" void f() {...}` (not a linkage block)."""
     text = open(path, errors='replace').read()
     code = strip_comments_keep(drop_non_pc_arms(text))
     dbg_lines = debug_pp_lines(text.split('\n'))
@@ -1754,13 +1764,18 @@ def parse_cpp(path):
         elif c == '{':
             head = code[stmt_start:i]
             eff = sum(1 for t in stack if t != 'ns')
-            if eff == 0 and re.search(r'\bnamespace\b|\bextern\s*"\s*"', head):
+            clsnames = [t[4:] for t in stack if t != 'ns']
+            incls = deep and eff > 0 and all(t.startswith('cls:') for t in stack if t != 'ns')
+            if deep:
+                head = re.sub(r'^(\s*)extern\s*"[^"]*"(?=\s*[\w])', lambda m: m.group(1) + ' ' * (len(m.group(0)) - len(m.group(1))), head)
+                head = re.sub(r'(?<![\w:])(?:public|private|protected)\s*:(?!:)', lambda m: ' ' * len(m.group(0)), head)
+            if eff == 0 and re.search(r'\bnamespace\b|\bextern\s*"\s*"', head) and not (deep and '(' in head):
                 stack.append('ns')
                 stmt_start = i + 1
                 i += 1
                 continue
             is_fn = False
-            if eff == 0:
+            if eff == 0 or incls:
                 h = head.strip()
                 mm = re.match(r'^(?:template\s*<[^>]*>\s*)?(?:[\w:<>,\s\*&~]+?\s+|)\**&?((?:\w+::)*~?\w+|(?:\w+::)*operator\s*[^\s(]+)\s*\(',
                               h, re.S)
@@ -1779,6 +1794,8 @@ def parse_cpp(path):
                 f = CppFunc()
                 f.file = path
                 f.name = mm.group(1).replace(' ', '')
+                if incls:
+                    f.name = '::'.join(clsnames) + '::' + f.name
                 parts = f.name.split('::')
                 f.short = parts[-1]
                 rt = re.sub(r'\b(static|inline|virtual|const|explicit|extern|template\s*<[^>]*>)\b', ' ', h[:mm.start(1)]).strip()
@@ -1801,6 +1818,8 @@ def parse_cpp(path):
                         k -= 1
                     elif s.startswith('template') or (s.startswith('#') and 'TARGET_PC' not in s and False):
                         k -= 1
+                    elif deep and re.match(r'^#\s*endif\b', s) and _marker_in_if(lines, k):
+                        k -= 1      # `#ifdef TARGET_PC / // @ fn_X / #endif` right above the definition
                     else:
                         break
                 block.reverse()
@@ -1868,7 +1887,9 @@ def parse_cpp(path):
                 i = j
                 stmt_start = j
                 continue
-            stack.append('blk')
+            cm = deep and (eff == 0 or incls) and re.match(
+                r'^\s*(?:template\s*<[^>]*>\s*)?(?:class|struct)\s+(?:[A-Za-z_]\w*\s+)*?(\w+)\s*(?:final\s*)?(?::[^{;()]*)?$', head)
+            stack.append('cls:' + cm.group(1) if cm else 'blk')
             stmt_start = i + 1
         elif c == '}':
             if stack:
