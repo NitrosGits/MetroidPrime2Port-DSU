@@ -12,6 +12,21 @@
 #include <mutex>
 #endif
 
+#if defined(_WIN32)
+#include <fcntl.h>
+#include <io.h>
+
+#include <string>
+#include <thread>
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 #if !defined(_WIN32)
 #include <fcntl.h>
 #include <unistd.h>
@@ -180,14 +195,80 @@ int OpenTerminal(bool& socket) {
 }
 #endif
 
-#if !defined(_WIN32)
+#if defined(_WIN32)
+// The Windows copier is a thread of this process (MP1 starts a second copy of the program, which
+// needs a hook at the top of main): the standard streams point at a pipe, and the thread copies it
+// to the log file and to wherever stderr went before (the console, or a file a script redirected
+// it to). The file is written by lines landing in the pipe, so a crash loses at most what the
+// thread has not read yet; the exit hook below waits for the pipe to drain.
+HANDLE sPipeRead = nullptr;
+
+void ToHandle(HANDLE handle, const char* data, size_t size) {
+  while (size > 0) {
+    DWORD wrote = 0;
+    if (!WriteFile(handle, data, static_cast< DWORD >(size), &wrote, nullptr) || wrote == 0) {
+      return;
+    }
+    data += wrote;
+    size -= wrote;
+  }
+}
+
+struct CopyArgs {
+  HANDLE in;
+  HANDLE file;
+  HANDLE terminal; // may be null
+};
+
+void CopyThread(CopyArgs args) {
+  long long written = 0;
+  bool truncated = false;
+  char buffer[8192];
+  DWORD n = 0;
+  while (ReadFile(args.in, buffer, sizeof(buffer), &n, nullptr) && n > 0) {
+    if (args.terminal != nullptr) {
+      ToHandle(args.terminal, buffer, n);
+    }
+    // Past the cap the pipe is still drained - the game must never block on it - but the file
+    // stops growing.
+    if (written + static_cast< long long >(n) <= kMaxLogBytes) {
+      ToHandle(args.file, buffer, n);
+      written += n;
+    } else if (!truncated) {
+      truncated = true;
+      static const char kNote[] =
+          "port: the log reached 64 MiB and was truncated; the next run starts a fresh log\n";
+      ToHandle(args.file, kNote, sizeof(kNote) - 1);
+    }
+  }
+}
+
+// At exit: give the copier up to a second to take what is still in the pipe.
+void DrainAtExit() {
+  std::fflush(stdout);
+  std::fflush(stderr);
+  for (int i = 0; i < 100 && sPipeRead != nullptr; ++i) {
+    DWORD available = 0;
+    if (!PeekNamedPipe(sPipeRead, nullptr, 0, nullptr, &available, nullptr) || available == 0) {
+      break;
+    }
+    Sleep(10);
+  }
+}
+
+// UTF-8 to a wide path, as the rest of the port keeps paths.
+std::filesystem::path Utf8Path(const std::string& text) {
+  return std::filesystem::path(std::u8string(text.begin(), text.end()));
+}
+#endif
+
 // Rotates the previous run's log aside, and makes the directory it lives in.
 void PreparePath(const std::string& path) {
   if (path.empty()) {
     return;
   }
   std::error_code ec;
-  const std::filesystem::path file(path);
+  const std::filesystem::path file(std::u8string(path.begin(), path.end()));
   // On a first start the user folder may not exist yet, and that run is the one most likely to
   // need a log.
   std::filesystem::create_directories(file.parent_path(), ec);
@@ -197,7 +278,6 @@ void PreparePath(const std::string& path) {
     std::filesystem::rename(file, old, ec);
   }
 }
-#endif
 
 } // namespace
 
@@ -211,9 +291,73 @@ void Start(const std::string& userDirectory) {
     return;
   }
 #if defined(_WIN32)
-  // This tree builds the port on Linux and Android only; the file stays compilable here.
-  std::fprintf(stderr, "port: the log file is not written on Windows in this build\n");
-  sEnabled = false;
+  sPath = userDirectory.empty() ? std::string() : userDirectory + "/" + kFileName;
+  if (sPath.empty()) {
+    return; // no user directory to write into
+  }
+  PreparePath(sPath);
+  const HANDLE file = CreateFileW(Utf8Path(sPath).c_str(), GENERIC_WRITE,
+                                  FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+                                  CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if (file == INVALID_HANDLE_VALUE) {
+    std::fprintf(stderr, "port: cannot write the log file %s; the streams are unchanged\n",
+                 sPath.c_str());
+    sPath.clear();
+    sEnabled = false;
+    return;
+  }
+  HANDLE readEnd = nullptr;
+  HANDLE writeEnd = nullptr;
+  if (!CreatePipe(&readEnd, &writeEnd, nullptr, 1 << 16)) {
+    std::fprintf(stderr, "port: cannot make the log pipe; the streams are unchanged\n");
+    CloseHandle(file);
+    sPath.clear();
+    sEnabled = false;
+    return;
+  }
+  // Where stderr went before the redirect, so the output still shows up there as well as in the
+  // file. Duplicated first: the redirect below replaces the standard handle.
+  HANDLE terminal = nullptr;
+  const HANDLE oldError = GetStdHandle(STD_ERROR_HANDLE);
+  if (oldError != nullptr && oldError != INVALID_HANDLE_VALUE &&
+      !DuplicateHandle(GetCurrentProcess(), oldError, GetCurrentProcess(), &terminal, 0, FALSE,
+                       DUPLICATE_SAME_ACCESS)) {
+    terminal = nullptr;
+  }
+  std::fflush(stdout);
+  std::fflush(stderr);
+  const int pipeFd = _open_osfhandle(reinterpret_cast< intptr_t >(writeEnd), _O_WRONLY | _O_BINARY);
+  if (pipeFd < 0) {
+    std::fprintf(stderr, "port: cannot attach the log pipe; the streams are unchanged\n");
+    CloseHandle(writeEnd);
+    CloseHandle(readEnd);
+    CloseHandle(file);
+    if (terminal != nullptr) {
+      CloseHandle(terminal);
+    }
+    sPath.clear();
+    sEnabled = false;
+    return;
+  }
+  // A program without a console has no descriptor behind the streams; give them one first.
+  for (FILE* stream : {stdout, stderr}) {
+    if (_fileno(stream) < 0) {
+      FILE* reopened = nullptr;
+      freopen_s(&reopened, "NUL", "w", stream);
+    }
+    _dup2(pipeFd, _fileno(stream));
+  }
+  _close(pipeFd);
+  std::setvbuf(stdout, nullptr, _IONBF, 0);
+  std::setvbuf(stderr, nullptr, _IONBF, 0);
+  // Code that writes to the standard handles rather than the C streams.
+  SetStdHandle(STD_OUTPUT_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stdout))));
+  SetStdHandle(STD_ERROR_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stderr))));
+  sPipeRead = readEnd;
+  std::thread(CopyThread, CopyArgs{readEnd, file, terminal}).detach();
+  std::atexit(DrainAtExit);
+  sStarted = true;
+  std::fprintf(stderr, "port: writing the log to %s\n", sPath.c_str());
 #elif defined(__ANDROID__)
   const char* external = SDL_GetAndroidExternalStoragePath();
   sPath = (external != nullptr && external[0] != '\0')
