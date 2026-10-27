@@ -270,11 +270,17 @@ AuroraInfo initialize(int argc, char* argv[], const AuroraConfig& config) noexce
   }
   if (g_config.userPath == nullptr) {
     g_config.userPath = SDL_GetPrefPath(nullptr, g_config.appName);
+    if (g_config.userPath == nullptr) { // MP2 port, see cachePath below
+      g_config.userPath = strdup("");
+    }
   } else {
     g_config.userPath = strdup(g_config.userPath);
   }
   if (g_config.cachePath == nullptr) {
     g_config.cachePath = SDL_GetPrefPath(nullptr, g_config.appName);
+    if (g_config.cachePath == nullptr) { // MP2 port: fails for names Windows rejects (':'); never leave it null
+      g_config.cachePath = strdup("");
+    }
   } else {
     g_config.cachePath = strdup(g_config.cachePath);
   }
