@@ -620,8 +620,9 @@ void CIngBoostBallGuardian::Touch(CActor& actor, CStateManager& mgr) {
 // while a resisted bomb hit (0x1080) or a safe zone holds it. Retail sets no damage highlight and
 // drives no echo emitter here, unlike CPatterned's.
 void CIngBoostBallGuardian::UpdateHitDamageTime(float dt) {
-  mDamageCooldownTimer = 0.f >= mDamageCooldownTimer - dt ? 0.f : mDamageCooldownTimer - dt;
-  mBoostHitTimer = 0.f >= mBoostHitTimer - dt ? 0.f : mBoostHitTimer - dt;
+  // 0xCA44/0xCA68 fcmpo 0.0,v; bge -> 0: NaN clamps to 0
+  mDamageCooldownTimer = mDamageCooldownTimer - dt > 0.f ? mDamageCooldownTimer - dt : 0.f;
+  mBoostHitTimer = mBoostHitTimer - dt > 0.f ? mBoostHitTimer - dt : 0.f;
   if (mSafeZoneCount > 0) {
     mBoostHitTimer = CPatterned::skDamageHitTime; // 0x0000CA90
   }
