@@ -1697,9 +1697,47 @@ def debug_pp_lines(lines):
     return out
 
 
+def drop_non_pc_arms(code):
+    """Blank (keeping newlines) the arm a PC build does not compile of a plain TARGET_PC
+    conditional: the `#else` of `#ifdef TARGET_PC` / `#if defined(TARGET_PC)`, the `#if` arm of
+    `#ifndef TARGET_PC` / `#if !defined(TARGET_PC)`. Both arms usually open braces the other
+    closes, which otherwise ends a body at the wrong line."""
+    out, stack, drop = [], [], False   # stack: (kind, dropping before) ; kind 'pc'/'npc'/'other'
+    for line in code.split('\n'):
+        m = re.match(r'^[ \t]*#[ \t]*(\w+)(.*)$', line)
+        if m:
+            d, rest = m.group(1), m.group(2).strip()
+            if d in ('if', 'ifdef', 'ifndef'):
+                if d == 'ifdef' and rest == 'TARGET_PC' or re.fullmatch(r'defined\s*\(?\s*TARGET_PC\s*\)?', rest):
+                    kind = 'pc'
+                elif d == 'ifndef' and rest == 'TARGET_PC' or re.fullmatch(r'!\s*defined\s*\(?\s*TARGET_PC\s*\)?', rest):
+                    kind = 'npc'
+                else:
+                    kind = 'other'
+                stack.append((kind, drop))
+                if kind == 'npc':
+                    drop = True
+                out.append(line)
+                continue
+            if d in ('else', 'elif') and stack:
+                kind, before = stack[-1]
+                if kind == 'pc':
+                    drop = True
+                elif kind == 'npc':
+                    drop = before
+                out.append(line)
+                continue
+            if d == 'endif' and stack:
+                drop = stack.pop()[1]
+                out.append(line)
+                continue
+        out.append(re.sub(r'\S', ' ', line) if drop else line)
+    return '\n'.join(out)
+
+
 def parse_cpp(path):
     text = open(path, errors='replace').read()
-    code = strip_comments_keep(text)
+    code = strip_comments_keep(drop_non_pc_arms(text))
     dbg_lines = debug_pp_lines(text.split('\n'))
     # blank preprocessor lines (same length) so `#include` / `#if` never join a definition head
     code = re.sub(r'(?m)^[ \t]*#.*$', lambda m: ' ' * len(m.group(0)), code)
