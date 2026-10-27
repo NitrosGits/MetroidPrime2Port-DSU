@@ -1220,6 +1220,12 @@ void CMetroidAreaCollider::CacheNodes(const CAreaOctTree::Node& node, CCollision
 }
 
 void CCollisionCacheWriter::ReserveTriangles(int count) {
+#ifdef TARGET_PC
+  // Port: ReserveWords grows the same way and re-bases the cursors with a 64-bit difference; the
+  // int delta below truncates when the buffers are over 2 GiB apart.
+  ReserveWords(count * int(sizeof(SCachedCollisionSlot) / sizeof(ushort)));
+  return;
+#endif
   int required = mCache.mData.size();
   required += count * (sizeof(SCachedCollisionSlot) / sizeof(ushort));
   if (mCache.mData.capacity() < required) {

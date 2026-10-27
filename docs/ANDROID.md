@@ -475,6 +475,19 @@ and adrenotools' hook libraries (`libhook_impl.so`, `libmain_hook.so`, `libfile_
 `libgsl_alloc_hook.so`) are extra CMake targets in `android/app/build.gradle` and are loaded by path
 from the native library dir (`useLegacyPackaging`). Not yet run on a device.
 
+### Memory log and memory warnings (2026-10-27, from MP1 #102/#162/#187)
+
+`platform/port_memory_log.cpp` (Linux and Android) writes to the log, and so to logcat (tag `mp2port`):
+at startup `port: device memory: ...` (total/available RAM, low-RAM flag, memory class) and
+`port: previous run: <reason> ...` from `ApplicationExitInfo` (Android 11+; the head of the ANR
+trace when it was one), both built in `MetroidPrime2Activity.buildExitReport()` before SDL starts;
+then `port: memory: process N MiB, system A of T MiB available, ..., dawn N MiB (textures, buffers,
+allocated)` every 30 s or when process memory moves 64 MiB or system memory 128 MiB.
+`onTrimMemory` (level >= 10) and `onLowMemory` log `port: memory warning` and call
+`nativeMemoryWarning`, which evicts pipelines idle for 16 frames and asks Dawn to release GPU memory
+(`aurora_reduce_gpu_memory`). Android always builds pipelines lazily, so the 5-s pressure check
+(SETTINGS.md, "Pipeline memory") runs there too. Not run on a device (no installs from this lane).
+
 ### Data folder move to shared storage (MP1 sync, gpu-misc)
 
 F1 > System > Data folder (`platform/port_data_folder.cpp`, Android only) moves `user/` (settings,
