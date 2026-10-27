@@ -338,6 +338,12 @@ void CSamusHud::InitializeFrameGlueMutable(const CStateManager& mgr) {
   if (CGuiWidget* energyFrame = mLoadedHudFrame->FindWidget("model_energy")) {
     mLoadedHudFrame->SetSpreadSplit(energyFrame, 0.285f);
   }
+  // The Dark Visor's red reticle shape reaches both outer quarters of the authored view, so the
+  // spread took it for a screen-wide frame and stretched it sideways. It is a centred reticle:
+  // keep its shape (anchored at its own origin, it stays centred).
+  if (mDarkVisor != nullptr) {
+    mLoadedHudFrame->SetSpreadAnchorTree(mDarkVisor);
+  }
 #endif
   if (mEnergyBracket != nullptr) {
     mEnergyBracketTransform = mEnergyBracket->GetWorldTransform();
