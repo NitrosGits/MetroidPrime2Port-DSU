@@ -8,6 +8,7 @@
 
 #include "input/port_input_devices.h"
 #include "port_input_bindings.h"
+#include "port_debug.h"
 #include "port_overlay.h"
 #include "port_pointer.h"
 #include "port_textures.h"
