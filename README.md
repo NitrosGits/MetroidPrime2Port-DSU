@@ -1,5 +1,7 @@
 # Metroid Prime 2: Echoes — native port
 
+**FIRST ALPHA RELEASE COMING 28/10/2026**
+
 **Looking for the first game? See the [Metroid Prime native port](https://github.com/Odrannnn/MetroidPrimePort).**
 
 [![Linux build](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml/badge.svg?branch=port)](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml)
