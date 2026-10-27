@@ -234,7 +234,7 @@ was built without installation**; Android end-to-end touch/device behavior remai
 ## Trilogy HUD frames (sync/trihud, 2026-10-27)
 On a Trilogy disc the combat HUD is `RS5_SamusHud{1,2,4}Combat`, the memo frame `RS5_HudMessageUS` (fallback
 `RS5_HudMessage`; layout 0 only), the helmet `FRME_RS5_Helmet` and the turret HUD `RS5_TurretHud{2,4}Combat`
-(all in RS5.PAK, names from rs5mp2_p.dol). Ball HUD, scan HUD and boss frames stay GC. MP1's STRG_Hud text,
+(all in RS5.PAK, names from rs5mp2_p.dol). Ball HUD and boss frames stay GC. Scan keeps the RS5 combat frame and overlays `FRME_ScanHudFlat{,2,4}` (NoARAM.pak, same as GC): retail rs5mp2_p.dol matches upstream there (CHudDecoInterfaceScan ctor 0x800d32a0 loads the table at 0x804a29c0; state transition 0x8019dd..-0x8019de.. reloads only Ball<->Combat, from the RS5 combat table 0x804a5d2c / ball table 0x804a5d74; getter 0x80195518 returns RS5 names; no Trilogy-only scan frame exists in RS5.PAK). MP1's STRG_Hud text,
 energy-word and instant-fill commits do not apply: Echoes looks strings up by name, has no energy-word pane,
 and `UpdateEnergy` (0x80199774) picks Instant only for |delta|<1e-5. Combat shot: `/tmp/opencode/reports/trihud-combat.png`.
 
