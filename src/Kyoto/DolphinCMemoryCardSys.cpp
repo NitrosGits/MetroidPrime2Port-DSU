@@ -12,10 +12,14 @@
 #include "port_save.h"
 
 #ifdef TARGET_PC
+#include <SDL3/SDL_messagebox.h>
+#include <SDL3/SDL_video.h>
 #include <aurora/card.h>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <string>
+#include <vector>
 #endif
 #endif
 
@@ -410,6 +414,61 @@ CMemoryCardSys::CMemoryCardSys() {
   mIsCardSysExists = true;
 }
 
+#ifdef TARGET_PC
+// Port: each release keeps its own saves, so after switching discs (USA to PAL) the card looks
+// empty. Offer, once per card, to copy the newest other release's save over, converted. The
+// overlay's Memory card section (Restore from ...) and `gci restore` do the same later.
+static void OfferRestoreFromOtherRelease() {
+  if (std::getenv("MP2_NO_DISC_DIALOG") != nullptr || std::getenv("MP2_CONSOLE") != nullptr) {
+    return; // scripted runs: nobody to answer
+  }
+  const std::vector< PortSave::OtherRelease > others = PortSave::RestoreToOffer();
+  if (others.empty()) {
+    return;
+  }
+  int windowCount = 0;
+  SDL_Window** windows = SDL_GetWindows(&windowCount);
+  SDL_Window* window = windows != nullptr && windowCount > 0 ? windows[0] : nullptr;
+  SDL_free(windows);
+  if (window == nullptr) {
+    return;
+  }
+  const PortSave::OtherRelease& newest = others.front();
+  const std::string message = "This disc has no saves yet, but there are saves from\n" + newest.label +
+                              ".\n\nCopy them over? They are converted for this disc;\nthe originals stay "
+                              "where they are.\n\nYou can also do it later: overlay, System tab,\nMemory card.";
+  enum { kSkip, kCopy };
+  const SDL_MessageBoxButtonData buttons[] = {
+      {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, kCopy, "Copy saves"},
+      {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, kSkip, "Start fresh"},
+  };
+  SDL_MessageBoxData data{};
+  data.flags = SDL_MESSAGEBOX_INFORMATION;
+  data.window = window;
+  data.title = "Metroid Prime 2: saves from another version";
+  data.message = message.c_str();
+  data.numbuttons = 2;
+  data.buttons = buttons;
+  int answer = -1;
+  if (!SDL_ShowMessageBox(&data, &answer)) {
+    std::fprintf(stderr, "port: memory card: could not offer the other release's saves: %s\n",
+                 SDL_GetError());
+    return;
+  }
+  PortSave::MarkRestoreOffered();
+  if (answer != kCopy) {
+    return;
+  }
+  std::string result;
+  const bool ok = PortSave::RestoreFrom(newest, result);
+  std::fprintf(stderr, "port: memory card: from %s: %s\n", newest.label.c_str(), result.c_str());
+  if (!ok) {
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_WARNING, "Metroid Prime 2: saves not copied",
+                             result.c_str(), window);
+  }
+}
+#endif
+
 void CMemoryCardSys::Initialize() {
   if (!mIsInitialized) {
 #ifdef TARGET_PC
@@ -422,6 +481,7 @@ void CMemoryCardSys::Initialize() {
     sDefaultCardBase = BaseOfMountedCard();
     sCardBase = sDefaultCardBase;
     PortSwitchCard(PortSave::SharedCardBase().c_str());
+    OfferRestoreFromOtherRelease();
 #else
     CARDInit();
 #endif

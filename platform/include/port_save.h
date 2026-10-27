@@ -120,6 +120,25 @@ std::string TrilogyShareBin(); // the mirrored save.bin, empty when mirroring is
 // Rate-limited to 500 ms; true when the card changed (it was remounted).
 bool SyncTrilogyShare(bool pull);
 
+// Saves the other Echoes release left beside this card: each release keeps its own files
+// (`<user>/USA/Card A` for G2ME, `<user>/EUR/Card A` for G2MP), so after switching discs the old
+// saves are still there but the game does not see them.
+struct OtherRelease {
+  std::string folder; // the other release's card folder
+  std::string code;   // G2ME or G2MP
+  std::string label;  // "Metroid Prime 2: Echoes (PAL GameCube)"
+  std::string file;   // its newest save file
+  int64_t written = 0; // that file's write time, seconds since the epoch
+};
+// Those beside the mounted GCI-folder card that have a save, newest first; empty for a raw image.
+std::vector<OtherRelease> OtherReleaseSaves();
+// Copies the release's newest save onto this card through Import: converted to this disc's release,
+// the replaced file kept in save-backups.
+bool RestoreFrom(const OtherRelease& source, std::string& message);
+// What the startup offer asks: this card has no save of this release, another release's exists,
+// and it was not offered on this card before (a marker file in the card folder remembers).
+std::vector<OtherRelease> RestoreToOffer();
+void MarkRestoreOffered();
 // The card-write hook (`MP2_CARD_BACKUP=1`, F1 > Saves): a copy of the file as it is *before* the
 // game replaces it, so a bad save can always be recovered. Called by
 // CMemoryCardSys::CCardFileInfo::WriteFile under TARGET_PC; `fileName` is the card's own file name.

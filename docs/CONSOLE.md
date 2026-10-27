@@ -121,6 +121,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `pipetrim [frames]` — release built pipelines unused for that many frames (16 minimum) at the next frame start, as Android's onTrimMemory does; Aurora logs `pipeline cache: evicted N`. They rebuild on their next draw
 - `save export [<path>]` — write the card's save file out (default: save-backups/)
 - `save import <path|latest>` — put a .gci back on the card; the file it replaces is kept
+- `gci restore [n]` — list the other Echoes release's saves beside this card (G2ME and G2MP keep separate cards), or copy entry `n` onto this card, converted for this disc; the file it replaces is kept in save-backups. Also F1 > System > Memory card > "Restore from ..." and a one-time offer at boot when the card has no save
 - `save backup | backups` — copy the card now, or list the copies in save-backups
 - `a; b; c` — run several commands in the same game tick (one reply each)
 

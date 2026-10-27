@@ -495,7 +495,7 @@ endif()
 
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_controls.cpp
-        platform/port_save.cpp platform/port_save_trilogy.cpp platform/port_save_trilogy_payload.cpp platform/port_savestate.cpp platform/port_savestate_room.cpp platform/port_savestate_format.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
+        platform/port_save.cpp platform/port_save_convert.cpp platform/port_save_trilogy.cpp platform/port_save_trilogy_payload.cpp platform/port_savestate.cpp platform/port_savestate_room.cpp platform/port_savestate_format.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
         platform/port_crash.cpp platform/port_watchdog.cpp platform/port_memory_log.cpp platform/port_storage_report.cpp
         platform/port_pointer.cpp platform/port_pointer_menu.cpp
         platform/port_events.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp
@@ -611,6 +611,15 @@ if(AURORA_SDL3_TARGET)
     add_test(NAME port_radial_mouse_tests COMMAND port_radial_mouse_tests)
     set_tests_properties(port_radial_tests port_radial_retry_tests port_radial_touch_tests port_radial_mouse_tests
         PROPERTIES TIMEOUT 30 LABELS port)
+    # G2ME <-> G2MP save conversion round trip on tests/data/01-G2ME-MetroidPrime2.gci.
+    add_executable(port_save_convert_tests tests/port_save_convert.cpp platform/port_save_convert.cpp
+        src/Kyoto/CCrc32.cpp)
+    target_include_directories(port_save_convert_tests PRIVATE platform/include include tests)
+    target_compile_definitions(port_save_convert_tests PRIVATE
+        SAVE_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/01-G2ME-MetroidPrime2.gci")
+    target_compile_options(port_save_convert_tests PRIVATE -include cstdint)
+    add_test(NAME port_save_convert_tests COMMAND port_save_convert_tests)
+    set_tests_properties(port_save_convert_tests PROPERTIES TIMEOUT 30 LABELS port)
     # Android's data folder move: the copy engine and the port_paths.txt rewrite (platform/port_data_folder.cpp).
     add_executable(port_data_folder_tests tests/port_data_folder.cpp platform/port_data_folder.cpp)
     target_include_directories(port_data_folder_tests PRIVATE platform/include tests)
