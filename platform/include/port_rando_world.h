@@ -40,6 +40,7 @@ struct DockLock {
   DockShield shield;
   DockTranslator translator;
   bool translatorLayered;      // the translator check sits on a layer that is off by default
+  bool translatorOneSided;     // the gate lets you through from the door's other face
   DockScriptLock scriptLock;
   bool scriptLockDefaultLayer; // a LOCK sender (or the isLocked door) is on a default-on layer
 };

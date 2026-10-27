@@ -11,8 +11,9 @@
 # - Light-to-dark portals need DarkBeam; dark-to-light portals need LightBeam.
 #   A portal pair is the NoDoor dock that links an area to its other-world
 #   twin; the dock node stands for the portal's arrival point.
-# - Dark Aether traversal needs DarkSuit|LightSuit (conservative; Safe Zone
-#   crystals are not barriers and are ignored).
+# - Dark Aether atmosphere is not written here: tools/rando_rules.py generates it
+#   per dark area from its safe zones and distances (docs/RANDOMIZER.md), and an
+#   area's `atmosphere <req>` line overrides it.
 # - Bomb requirements spell out MorphBall even though it is a starting item.
 # - Water: Gravity Boost sits at the bottom of the Hydrodynamo chain
 #   (00_pickup_swamp_c), so the way down is written without it; climbing back
@@ -280,25 +281,25 @@ area 00_elev_swamp_cliff_f
 # ----------------------------------------------------------------- dark world
 
 area 0c_swamp_hall_dark
-    dock0 - dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock1 > dock0: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock1 > dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock0 > dock1: LightBeam & (DarkSuit | LightSuit)
-    dock2 > dock1: LightBeam & (DarkSuit | LightSuit)
+    dock0 - dock2: any
+    dock1 > dock0: any
+    dock1 > dock2: any
+    dock0 > dock1: LightBeam
+    dock2 > dock1: LightBeam
     covers 0x00080132
     ignore 0x00080172: safe zone crystal, not a barrier
 
 area 00_pickup_swamp_a_dark
     # d1 is a NoDoor link with no Portal object: no edge.
-    dock0 > loc0x000A003B: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 > loc0x000A003B: any
 
 area 03_swamp_forgottenbridge_dark
     # Mirrors the light room; the bomb slot turns the bridge.
-    dock3 > dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock2 > dock3: LightBeam & (DarkSuit | LightSuit)  # unsure: portal assumed on the south side
-    dock1 - dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock2 - dock4: MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: bridge turned by the bomb slot
-    dock4 - dock0: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock3 > dock2: any
+    dock2 > dock3: LightBeam  # unsure: portal assumed on the south side
+    dock1 - dock2: any
+    dock2 - dock4: MorphBall & MorphBallBombs  # unsure: bridge turned by the bomb slot
+    dock4 - dock0: any
     covers 0x000D0092 0x000D020A
     ignore 0x000D0058: safe zone crystal, not a barrier
     ignore 0x000D00E6: safe zone crystal, not a barrier
@@ -306,9 +307,9 @@ area 03_swamp_forgottenbridge_dark
     ignore 0x2C0D006F: safe zone crystal, not a barrier
 
 area 01_swamp_entrance_dark
-    dock1 - dock0: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock1 - dock3: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock1 > loc0x000F00C7: ScrewAttack & GravityBoost & (DarkSuit | LightSuit)  # unsure: Temple Key chest in the dark lagoon water (z 23.9, water to ~31.5)
+    dock1 - dock0: any
+    dock1 - dock3: any
+    dock1 > loc0x000F00C7: ScrewAttack & GravityBoost  # unsure: Temple Key chest in the dark lagoon water (z 23.9, water to ~31.5)
     covers 0x000F0069
     ignore 0x000F0083: safe zone crystal, not a barrier
     ignore 0x000F007E: safe zone crystal, not a barrier
@@ -317,12 +318,12 @@ area 01_swamp_entrance_dark
 area 02_swamp_greatbridge_dark
     # Lower level d1, d2, d3, d5; upper d0 (z 50.6) beside Torvus Key 3, with a
     # grapple point above the gap.
-    dock1 - dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock1 - dock3: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock1 - dock5: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock1 > dock0: GrappleBeam & (DarkSuit | LightSuit)  # unsure: upper level via the grapple point
-    dock0 > dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock0 > loc0x001001B6: DarkSuit | LightSuit  # unsure: key 7 units from the upper dock
+    dock1 - dock2: any
+    dock1 - dock3: any
+    dock1 - dock5: any
+    dock1 > dock0: GrappleBeam  # unsure: upper level via the grapple point
+    dock0 > dock1: any
+    dock0 > loc0x001001B6: any  # unsure: key 7 units from the upper dock
     covers 0x00100017
     ignore 0x0010009D: safe zone crystal, not a barrier
     ignore 0x00100103: safe zone crystal, not a barrier
@@ -331,28 +332,28 @@ area 02_swamp_greatbridge_dark
     ignore 0x00100106: safe zone crystal, not a barrier
 
 area 0i_swamp_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 - dock1: any
 
 area 0d_swamp_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock1 > loc0x001500B7: Powerbomb & (DarkSuit | LightSuit)
+    dock0 - dock1: any
+    dock1 > loc0x001500B7: Powerbomb
     covers 0x001500C2
 
 area 0e_swamp_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 - dock1: any
 
 area 0h_swamp_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 - dock1: any
     ignore 0x001700C0: safe zone crystal, not a barrier
     ignore 0x0017001A: safe zone crystal, not a barrier
 
 area 0f_swamp_hall_dark
-    dock0 - dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock1 - dock3: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock0 > dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock2 > dock3: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock1 > dock0: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 15-unit climb
-    dock3 > dock2: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 12-unit climb
+    dock0 - dock2: any
+    dock1 - dock3: any
+    dock0 > dock1: any
+    dock2 > dock3: any
+    dock1 > dock0: SpaceJumpBoots  # unsure: 15-unit climb
+    dock3 > dock2: SpaceJumpBoots  # unsure: 12-unit climb
     ignore 0x0019005B: safe zone crystal, not a barrier
     ignore 0x0019005D: safe zone crystal, not a barrier
     ignore 0x00190061: safe zone crystal, not a barrier
@@ -364,14 +365,14 @@ area 00_map_swamp_dark
 area 06_swamp_boostballguardian_dark
     # Dark Torvus Arena: Boost Guardian. The exploding columns round the
     # Boost Ball fall during the fight.
-    dock0 > loc0x001C006C: MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: Boost Guardian fight
-    dock0 > loc0x001C0157: MorphBall & BoostBall & SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: key 10 units above the door level
+    dock0 > loc0x001C006C: MorphBall & MorphBallBombs  # unsure: Boost Guardian fight
+    dock0 > loc0x001C0157: MorphBall & BoostBall & SpaceJumpBoots  # unsure: key 10 units above the door level
     covers 0x001C011D 0x001C011F 0x001C0120 0x001C0125 0x001C0127 0x001C0128 0x001C012D 0x001C012E 0x001C012F 0x001C0134 0x001C0136 0x001C0138
     ignore 0x001C015D: safe zone crystal, not a barrier
 
 area 05_swamp_timber!_dark
-    dock0 > dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock2 > dock0: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 24-unit climb
+    dock0 > dock2: any
+    dock2 > dock0: SpaceJumpBoots  # unsure: 24-unit climb
     ignore 0x001D004F: safe zone crystal, not a barrier
     ignore 0x001D0031: safe zone crystal, not a barrier
     ignore 0x001D0041: safe zone crystal, not a barrier
@@ -383,20 +384,21 @@ area 05_swamp_timber!_dark
 area 04_swamp_temple_dark
     # Dark Torvus Temple: Chykka; the grapple points (layer 6, off by
     # default) are switched on after the fight and lead to the upper door.
-    dock4 - dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock4 - dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock4 - dock5: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock4 > loc0x382000B3: DarkBeam & Missile & (DarkSuit | LightSuit)  # unsure: Chykka fight
-    dock4 > dock3: DarkBeam & Missile & GrappleBeam & SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: grapple points enabled after Chykka
-    dock3 > dock4: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock4 - dock1: any
+    dock4 - dock2: any
+    dock4 - dock5: any
+    dock4 > loc0x382000B3: DarkBeam & Missile  # unsure: Chykka fight
+    event ChykkaDefeated: loc0x382000B3  # the boss drop appears when Chykka falls
+    dock4 > dock3: DarkBeam & Missile & GrappleBeam & SpaceJumpBoots  # unsure: grapple points enabled after Chykka
+    dock3 > dock4: any
     covers 0x1820006A 0x1820006D 0x1820006F
     ignore 0x002000E1: safe zone crystal, not a barrier
     ignore 0x002000F0: safe zone crystal, not a barrier
     ignore 0x002000ED: safe zone crystal, not a barrier
 
 area 00_pickup_swamp_b_dark
-    dock1 > dock0: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock0 > dock1: LightBeam & (DarkSuit | LightSuit)
+    dock1 > dock0: any
+    dock0 > dock1: LightBeam
     covers 0x00240015
 
 area 00_elev_swamp_sand_e_dark
@@ -405,25 +407,25 @@ area 00_elev_swamp_sand_e_dark
     ignore 0x00250074: safe zone crystal, not a barrier
 
 area 0j_swamp_hall_dark
-    dock0 > dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock1 > dock0: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 51-unit climb
-    dock0 > loc0x00260011: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 > dock1: any
+    dock1 > dock0: SpaceJumpBoots  # unsure: 51-unit climb
+    dock0 > loc0x00260011: any
 
 area 00_swamp_genconnect_dark
-    dock0 - dock1: MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: bomb slot opens the way
+    dock0 - dock1: MorphBall & MorphBallBombs  # unsure: bomb slot opens the way
     covers 0x00270043
 
 area 07_swamp_shaft_dark
     # Dark Hydrodynamo: grapple points across the ledges, a bomb-slot grating
     # over the shaft, the water cannon from the bottom slot to the top.
-    dock0 - dock4: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock0 > dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock0 > dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock1 > dock0: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 15-unit climb
-    dock2 > dock0: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 15-unit climb
-    dock1 - dock2: GrappleBeam & (DarkSuit | LightSuit)  # unsure: grapple points between the ledges
-    dock2 > dock6: MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: bomb-slot grating opens the way down
-    dock6 > dock0: MorphBall & (DarkSuit | LightSuit)  # unsure: water cannon to the top
+    dock0 - dock4: any
+    dock0 > dock1: any
+    dock0 > dock2: any
+    dock1 > dock0: SpaceJumpBoots  # unsure: 15-unit climb
+    dock2 > dock0: SpaceJumpBoots  # unsure: 15-unit climb
+    dock1 - dock2: GrappleBeam  # unsure: grapple points between the ledges
+    dock2 > dock6: MorphBall & MorphBallBombs  # unsure: bomb-slot grating opens the way down
+    dock6 > dock0: MorphBall  # unsure: water cannon to the top
     covers 0x002A000D 0x002A00BA 0x002A0016 0x002A00CA 0x002A00D0 0x002A0144
     ignore 0x002A0056: safe zone crystal, not a barrier
     ignore 0x002A01C1: safe zone crystal, not a barrier
@@ -434,28 +436,28 @@ area 00_swamp_generator_dark
     # single dock
 
 area 0l_swamphall_dark
-    dock0 - dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 - dock1: any
 
 area ok_swamp_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 - dock1: any
 
 area 00_save_swamp_b_dark
     # single dock
 
 area 0q_swamp_hall_dark
-    dock2 - dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock0 > dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock0 > dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock2 > dock0: LightBeam & (DarkSuit | LightSuit)
-    dock1 > dock0: LightBeam & (DarkSuit | LightSuit)
-    dock2 > loc0x003500F0: GravityBoost & (DarkSuit | LightSuit)  # unsure: key 22 units below the top dock beside the portal, possibly underwater
+    dock2 - dock1: any
+    dock0 > dock1: any
+    dock0 > dock2: any
+    dock2 > dock0: LightBeam
+    dock1 > dock0: LightBeam
+    dock2 > loc0x003500F0: GravityBoost  # unsure: key 22 units below the top dock beside the portal, possibly underwater
     covers 0x00350107
 
 area 10_swamp_hiddenhalfpipe_dark
-    dock0 - dock3: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock2 > dock0: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock2 > dock3: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock0 > dock2: LightBeam & MorphBall & BoostBall & (DarkSuit | LightSuit)  # unsure: spinner beside the portal
+    dock0 - dock3: any
+    dock2 > dock0: any
+    dock2 > dock3: any
+    dock0 > dock2: LightBeam & MorphBall & BoostBall  # unsure: spinner beside the portal
     covers 0x003A002E 0x003A0030 0x003A00AF
     ignore 0x003A01B3: safe zone crystal, not a barrier
     ignore 0x003A01B6: safe zone crystal, not a barrier
@@ -463,21 +465,21 @@ area 10_swamp_hiddenhalfpipe_dark
 area 08_swamp_grappleguardian_dark
     # Dark Training Chamber: Grapple Guardian. Layer 3 holds the fight (door
     # blocks, sticky columns, the Grapple Beam); layer 2 is off by default.
-    dock0 > loc0x0C3B022F: Missile & (DarkSuit | LightSuit)  # unsure: Grapple Guardian fight
-    dock0 > dock1: Missile & (DarkSuit | LightSuit)  # unsure: door blocks lift after the fight
-    dock0 > dock2: Missile & (DarkSuit | LightSuit)  # unsure: as above
-    dock1 - dock2: Missile & (DarkSuit | LightSuit)  # unsure: as above
-    dock1 > dock0: GrappleBeam & (DarkSuit | LightSuit)  # unsure: upper door 15 units up via the grapple point
-    dock2 > dock0: GrappleBeam & (DarkSuit | LightSuit)  # unsure: as above
+    dock0 > loc0x0C3B022F: Missile  # unsure: Grapple Guardian fight
+    dock0 > dock1: Missile  # unsure: door blocks lift after the fight
+    dock0 > dock2: Missile  # unsure: as above
+    dock1 - dock2: Missile  # unsure: as above
+    dock1 > dock0: GrappleBeam  # unsure: upper door 15 units up via the grapple point
+    dock2 > dock0: GrappleBeam  # unsure: as above
     covers 0x003B01AE 0x0C3B002A 0x0C3B0031 0x0C3B0042 0x0C3B0045
     ignore 0x083B0015: layer 2 is off by default
     ignore 0x083B0062: layer 2 is off by default
 
 area 11_swamp_bloggtank_dark
-    dock1 > dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock2 > dock1: LightBeam & MorphBall & SpiderBall & (DarkSuit | LightSuit)  # unsure: portal at the north end past the spider track
-    dock2 > loc0x003C00E1: MorphBall & SpiderBall & (DarkSuit | LightSuit)  # unsure: missile beside the spider track
-    dock2 > loc0x083C0217: MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: four bomb slots release the Power Bomb
+    dock1 > dock2: any
+    dock2 > dock1: LightBeam & MorphBall & SpiderBall  # unsure: portal at the north end past the spider track
+    dock2 > loc0x003C00E1: MorphBall & SpiderBall  # unsure: missile beside the spider track
+    dock2 > loc0x083C0217: MorphBall & MorphBallBombs  # unsure: four bomb slots release the Power Bomb
     covers 0x003C0253 0x083C01D3 0x083C01DE 0x083C01F7 0x083C020F 0x00000000
     ignore 0x003C037E: safe zone crystal, not a barrier
     ignore 0x003C0380: safe zone crystal, not a barrier
@@ -485,19 +487,19 @@ area 11_swamp_bloggtank_dark
     ignore 0x003C0386: safe zone crystal, not a barrier
 
 area 09_swamp_catacombs_dark
-    dock3 > dock0: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock4 > dock0: DarkSuit | LightSuit  # unsure: dark atmosphere
-    dock0 > dock3: LightBeam & (DarkSuit | LightSuit)
-    dock0 > loc0x00410126: ScrewAttack & (DarkSuit | LightSuit)  # unsure: Temple Key chest may need more than Screw Attack
+    dock3 > dock0: any
+    dock4 > dock0: any
+    dock0 > dock3: LightBeam
+    dock0 > loc0x00410126: ScrewAttack  # unsure: Temple Key chest may need more than Screw Attack
     covers 0x0041016D 0x004100C6
     ignore 0x0041002B: safe zone crystal, not a barrier
     ignore 0x00410034: safe zone crystal, not a barrier
 
 area 0n_swamp_hall_dark
-    dock0 - dock1: MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: morph ball tunnel with ball triggers
-    dock0 > loc0x00430017: MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: missile inside the tunnel
+    dock0 - dock1: MorphBall & MorphBallBombs  # unsure: morph ball tunnel with ball triggers
+    dock0 > loc0x00430017: MorphBall & MorphBallBombs  # unsure: missile inside the tunnel
     covers 0x00430035 0x0043003D 0x00430041 0x00430052 0x00430053 0x0043005E 0x0043006B 0x00430082
 
 area 0o_swamp_hall_dark
-    dock0 - dock1: MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: morph ball tunnel with ball triggers
+    dock0 - dock1: MorphBall & MorphBallBombs  # unsure: morph ball tunnel with ball triggers
     covers 0x00440025 0x0044002B 0x00440035 0x0044003A 0x00440058 0x00440061 0x00440062 0x00440064

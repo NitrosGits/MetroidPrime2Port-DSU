@@ -49,6 +49,17 @@ const BlockRow kBlocks[] = {
 #include "port_rando_logic.inc"
 #undef PORT_RANDO_BLOCK
     {0, "", 0}};
+struct EventRow {
+  int item;
+  int area;
+  NodeKind kind;
+  uint32_t id;
+};
+const EventRow kEvents[] = {
+#define PORT_RANDO_EVENT(item, area, kind, id) {item, area, NodeKind::kind, id},
+#include "port_rando_logic.inc"
+#undef PORT_RANDO_EVENT
+    {0, 0, NodeKind::Dock, 0}};
 const EdgeRow kEdges[] = {
 #define PORT_RANDO_EDGE(area, fk, fi, tk, ti, req) {area, NodeKind::fk, fi, NodeKind::tk, ti, req},
 #include "port_rando_logic.inc"
@@ -91,11 +102,13 @@ int TranslatorItem(PortRandoWorld::DockTranslator t) {
   }
 }
 
-// The items one door side asks for (beam, shield, translator), without the script lock.
-void AddLockItems(Term& term, const PortRandoWorld::DockLock& lock) {
+// The items one door side asks for (the shield and translator always; the beam when `leaving`,
+// i.e. this is the face you open; a translatorOneSided gate only when leaving), without the script
+// lock.
+void AddLockItems(Term& term, const PortRandoWorld::DockLock& lock, bool leaving) {
   using B = PortRandoWorld::DockBeam;
   using S = PortRandoWorld::DockShield;
-  switch (lock.beam) {
+  switch (leaving ? lock.beam : B::Any) {
   case B::Light: AddLiteral(term, kItemLightBeam); break;
   case B::Dark: AddLiteral(term, kItemDarkBeam); break;
   case B::Annihilator: AddLiteral(term, kItemAnnihilatorBeam); break;
@@ -121,7 +134,7 @@ void AddLockItems(Term& term, const PortRandoWorld::DockLock& lock) {
   }
   // translatorLayered (the check sits on a layer that is off by default) is treated like the
   // unlayered case for now: requiring the translator is the safe side.
-  const int translator = TranslatorItem(lock.translator);
+  const int translator = leaving || !lock.translatorOneSided ? TranslatorItem(lock.translator) : -1;
   if (translator >= 0)
     AddLiteral(term, translator);
 }
@@ -183,6 +196,17 @@ const RuleSet& DefaultRules() {
   return rules;
 }
 
+const EventSet& DefaultEvents() {
+  static const EventSet events = [] {
+    EventSet e;
+    const int n = static_cast<int>(sizeof(kEvents) / sizeof(kEvents[0])) - 1;
+    for (int i = 0; i < n; ++i)
+      e.push_back({{kEvents[i].area, kEvents[i].kind, kEvents[i].id}, kEvents[i].item});
+    return e;
+  }();
+  return events;
+}
+
 int RuleBlockCount() { return static_cast<int>(sizeof(kBlocks) / sizeof(kBlocks[0])) - 1; }
 
 Requirement DockRequirement(int dockIndex) {
@@ -191,20 +215,29 @@ Requirement DockRequirement(int dockIndex) {
     return Requirement::Never();
   if (lock->scriptLock == PortRandoWorld::DockScriptLock::Permanent)
     return Requirement::Never();
+  // Each face has its own colour: shooting this face opens the door, whatever the far face's
+  // colour (Storage D's Dark face is inside; Main Reactor's face is Any, and vanilla walks in
+  // before the Dark Beam), so the beam counts on this side only. A translator gate counts from
+  // both faces (fail closed), except the gates tools/rando_world.py lists in ONE_SIDED_GATES with
+  // disc evidence that they let you through from behind (Temple Sanctuary's North gate is raised
+  // only by the Alpha Splinter fight); those count only when leaving their own room. A blast shield
+  // is kept from both faces: the safe side, as it is unclear the door opens from behind it.
   Term term;
-  AddLockItems(term, *lock);
+  AddLockItems(term, *lock, true);
   const int back = ReverseDock(dockIndex);
   if (back >= 0)
-    AddLockItems(term, *PortRandoWorld::DockLockAt(back));
+    AddLockItems(term, *PortRandoWorld::DockLockAt(back), false);
   return Requirement{{Normalize(term)}};
 }
 
-Graph::Graph(const RuleSet& rules) {
+Graph::Graph(const RuleSet& rules, const EventSet& events) {
   using namespace PortRandoWorld;
   for (const RuleEdge& e : rules) {
     const int a = NodeIndex(e.from), b = NodeIndex(e.to);
     mOut[a].push_back({b, e.requirement});
   }
+  for (const RuleEvent& e : events)
+    mEvents.push_back({NodeIndex(e.at), e.item});
   for (int i = 0; i < DockCount(); ++i) {
     const Dock* d = DockAt(i);
     const int a = NodeIndex({d->area, NodeKind::Dock, static_cast<uint32_t>(d->dock)});
@@ -259,19 +292,31 @@ std::vector<Node> Graph::Reachable(const Inventory& inventory, const Node& start
   const int s = FindNode(start);
   if (s < 0)
     return out;
-  std::vector<char> seen(mNodes.size(), 0);
-  std::vector<int> stack{s};
-  seen[s] = 1;
-  while (!stack.empty()) {
-    const int n = stack.back();
-    stack.pop_back();
-    out.push_back(mNodes[n]);
-    for (const Out& e : mOut[n])
-      if (!seen[e.to] && e.requirement.Satisfied(inventory)) {
-        seen[e.to] = 1;
-        stack.push_back(e.to);
+  Inventory inv = inventory;
+  std::vector<char> seen;
+  for (bool grew = true; grew;) {
+    seen.assign(mNodes.size(), 0);
+    std::vector<int> stack{s};
+    seen[s] = 1;
+    while (!stack.empty()) {
+      const int n = stack.back();
+      stack.pop_back();
+      for (const Out& e : mOut[n])
+        if (!seen[e.to] && e.requirement.Satisfied(inv)) {
+          seen[e.to] = 1;
+          stack.push_back(e.to);
+        }
+    }
+    grew = false;
+    for (const auto& [node, item] : mEvents)
+      if (seen[node] && inv.Count(item) == 0) {
+        inv.Add(item);
+        grew = true;
       }
   }
+  for (int n = 0; n < static_cast<int>(mNodes.size()); ++n)
+    if (seen[n])
+      out.push_back(mNodes[n]);
   return out;
 }
 
@@ -289,7 +334,7 @@ std::vector<int> Graph::ReachableLocations(const Inventory& inventory, const Nod
 
 namespace {
 const Graph& DefaultGraph() {
-  static const Graph graph(DefaultRules());
+  static const Graph graph(DefaultRules(), DefaultEvents());
   return graph;
 }
 } // namespace

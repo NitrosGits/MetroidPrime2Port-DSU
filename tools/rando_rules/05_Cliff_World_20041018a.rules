@@ -15,9 +15,9 @@
 # - Light-to-dark portals need DarkBeam; dark-to-light portals need LightBeam.
 #   A NoDoor dock with a portal object next to it is entered through that
 #   portal; a NoDoor dock without one is arrival-only.
-# - Dark Aether traversal needs DarkSuit|LightSuit (conservative; the
-#   Ing Hive's air is lethal without them and Safe Zones are sparse).
-#   Safe Zone crystals are covered by that requirement.
+# - Dark Aether atmosphere is not written here: tools/rando_rules.py generates it
+#   per dark area from its safe zones and distances (docs/RANDOMIZER.md), and an
+#   area's `atmosphere <req>` line overrides it.
 # - Bomb requirements spell out MorphBall even though it is a starting item.
 # - Objects on layers that start inactive are listed as ignored unless the
 #   rule already requires what they would need.
@@ -99,7 +99,7 @@ area 03_cliff_chicane
     # Watch Station. The PB glass tube stands on the line between dock2 and
     # dock0; bomb block 1, a bomb slot and the spider track lead to dock1.
     dock2 - dock0: MorphBall & Powerbomb    # unsure: tube may be beside the path
-    dock2 - dock1: MorphBall & MorphBallBombs & SpiderBall    # unsure
+    dock2 - dock1: MorphBall & MorphBallBombs    # side-scroller: its spider tracks switch on only once you own the Spider Ball (CRLY 0x000A031F/0x000A0323/0x000A0325 'Does Player Have Spiderball?'), so the room is built to be crossed before it; unsure: bomb blocks and the bomb-slot conveyor assumed to be the rest of the way
     dock1 > loc0x000A0045: (MorphBall & (MorphBallBombs | Powerbomb | BoostBall)) | ScrewAttack
     dock0 > dock3: DarkBeam
     dock3 > dock0: any
@@ -279,20 +279,20 @@ area 10_cliff_rooftop
 # ----------------------------------------------------------------- dark world
 
 area 01_cliff_entrance_dark
-    dock0 > loc0x103B0167: (DarkSuit | LightSuit) & ScrewAttack & SpaceJumpBoots    # unsure: war chest height
+    dock0 > loc0x103B0167: ScrewAttack & SpaceJumpBoots    # unsure: war chest height
     covers 0x003B0109 0x103B017A
 
 area 0b_cliff_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit
+    dock0 - dock1: any
 
 area 0c_cliff_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit
+    dock0 - dock1: any
     covers 0x00290020
 
 area 02_cliff_reactorcore_dark
-    dock0 - dock1: DarkSuit | LightSuit    # unsure: balcony height as in the light room
-    dock0 - dock2: DarkSuit | LightSuit
-    dock0 - dock3: DarkSuit | LightSuit
+    dock0 - dock1: any    # unsure: balcony height as in the light room
+    dock0 - dock2: any
+    dock0 - dock3: any
     covers 0x001F0030 0x001F0033
 
 area 00_save_cliff_a_dark
@@ -302,112 +302,113 @@ area 00_pickup_cliff_a_dark
     # One dock.
 
 area 0d_cliff_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit
+    dock0 - dock1: any
     covers 0x00170058 0x0017005A
 
 area 0m_cliff_hall_dark
-    dock1 > dock0: DarkSuit | LightSuit
-    dock2 > dock0: DarkSuit | LightSuit
-    dock0 > dock3: LightBeam & (DarkSuit | LightSuit)
-    dock0 > dock4: LightBeam & (DarkSuit | LightSuit)
+    dock1 > dock0: any
+    dock2 > dock0: any
+    dock0 > dock3: LightBeam
+    dock0 > dock4: LightBeam
     covers 0x000C0042 0x000C0068
     ignore 0x00000000: 3-segment track; not on a dock path    # unsure
 
 area 03_cliff_chicane_dark
-    dock3 > dock2: DarkSuit | LightSuit
-    dock2 - dock0: (DarkSuit | LightSuit) & MorphBall & Powerbomb    # unsure: broken tube as in light room
-    dock2 - dock1: (DarkSuit | LightSuit) & MorphBall & MorphBallBombs & SpiderBall    # unsure
-    dock2 > dock3: LightBeam & (DarkSuit | LightSuit)
-    dock2 > loc0x000F0159: (DarkSuit | LightSuit) & MorphBall & MorphBallBombs & SpiderBall    # unsure
+    dock3 > dock2: any
+    dock2 - dock0: MorphBall & Powerbomb    # unsure: broken tube as in light room
+    dock2 - dock1: MorphBall & MorphBallBombs & SpiderBall    # unsure
+    dock2 > dock3: LightBeam
+    dock2 > loc0x000F0159: MorphBall & MorphBallBombs & SpiderBall    # unsure
     covers 0x000F0096 0x000F0020 0x000F009D 0x000F0074 0x000F0007 0x000F0168 0x000F016B 0x000F0169 0x000F016A 0x00000000
 
 area 04_cliff_contraption_dark
-    dock3 > dock0: DarkSuit | LightSuit
-    dock0 - dock2: (DarkSuit | LightSuit) & MorphBall & SpiderBall    # unsure
-    dock0 > dock3: LightBeam & EchoVisor & (DarkSuit | LightSuit)    # unsure: echo gate / rising platform
-    dock0 > dock4: LightBeam & EchoVisor & (DarkSuit | LightSuit)    # unsure
+    dock3 > dock0: any
+    dock0 - dock2: MorphBall & SpiderBall    # unsure
+    dock0 > dock3: LightBeam & EchoVisor    # unsure: echo gate / rising platform
+    dock0 > dock4: LightBeam & EchoVisor    # unsure
     covers 0x001200E2 0x001200A7 0x00120057 0x00120076 0x00000000
 
 area 0q_cliff_hall_dark
-    dock1 > loc0x00150034: DarkSuit | LightSuit
+    dock1 > loc0x00150034: any
 
 area 0e_cliff_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit    # lift
+    dock0 - dock1: any    # lift
 
 area 0l_cliff_hall_dark
     # 96 units between docks and no recorded obstacle.
-    dock1 > dock0: (DarkSuit | LightSuit) & MorphBall & SpaceJumpBoots    # unsure: climb method unknown
-    dock0 > dock1: DarkSuit | LightSuit
+    dock1 > dock0: MorphBall & SpaceJumpBoots    # unsure: climb method unknown
+    dock0 > dock1: any
 
 area 06_cliff_spiderballguardian_dark
-    dock0 - dock3: DarkSuit | LightSuit
-    dock0 - dock1: (DarkSuit | LightSuit) & GrappleBeam & MorphBall & SpiderBall    # unsure
-    dock1 > dock4: LightBeam & (DarkSuit | LightSuit)
-    dock4 > dock1: DarkSuit | LightSuit
-    dock0 > loc0x141E0194: (DarkSuit | LightSuit) & ScrewAttack & DarkVisor & SpaceJumpBoots    # unsure: war chest, dark-visor orbit
+    dock0 - dock3: any
+    dock0 - dock1: GrappleBeam & MorphBall & SpiderBall    # unsure
+    dock1 > dock4: LightBeam
+    dock4 > dock1: any
+    dock0 > loc0x141E0194: ScrewAttack & DarkVisor & SpaceJumpBoots    # unsure: war chest, dark-visor orbit
     covers 0x001E0057 0x001E0135 0x001E00A4 0x001E00C9 0x141E0186 0x00000000
 
 area 00_pickup_cliff_c_dark
-    dock0 > dock1: LightBeam & (DarkSuit | LightSuit)
-    dock1 > dock0: DarkSuit | LightSuit
+    dock0 > dock1: LightBeam
+    dock1 > dock0: any
     covers 0x0026004A
 
 area 08_cliff_ringtowers_dark
-    dock0 - dock1: DarkSuit | LightSuit
-    dock1 - dock3: DarkSuit | LightSuit
-    dock4 > dock3: DarkSuit | LightSuit
-    dock3 > dock4: LightBeam & (DarkSuit | LightSuit)
-    dock1 > loc0x00230082: DarkSuit | LightSuit
-    dock3 > loc0x00230043: (DarkSuit | LightSuit) & SpaceJumpBoots    # unsure: 10 units up
+    dock0 - dock1: any
+    dock1 - dock3: any
+    dock4 > dock3: any
+    dock3 > dock4: LightBeam
+    dock1 > loc0x00230082: any
+    dock3 > loc0x00230043: SpaceJumpBoots    # unsure: 10 units up
     covers 0x002300ED 0x002300EF 0x002300B3 0x00230070
 
 area 0f_cliff_hall_dark
-    dock0 - dock1: (DarkSuit | LightSuit) & EchoVisor    # echo gate by dock0
+    dock0 - dock1: EchoVisor    # echo gate by dock0
     covers 0x0027009E 0x00270074
 
 area 0n_cliff_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit
+    dock0 - dock1: any
 
 area 0o_cliff_hall_dark
-    dock0 > dock1: LightBeam & GrappleBeam & (DarkSuit | LightSuit)    # portal 20 units up past grapple points
+    dock0 > dock1: LightBeam & GrappleBeam    # portal 20 units up past grapple points
     covers 0x002B0024 0x002B002E 0x002B003B 0x002B005D
 
 area 05_cliff_engineroom_dark
     # No ordinary door: arrivals at dock1/dock2, portals back beside each,
     # grapple points between the halves.
-    dock1 > @east: DarkSuit | LightSuit
-    dock2 > @west: DarkSuit | LightSuit
-    @east > dock1: LightBeam & (DarkSuit | LightSuit)
-    @west > dock2: LightBeam & (DarkSuit | LightSuit)
-    @east - @west: (DarkSuit | LightSuit) & GrappleBeam
+    dock1 > @east: any
+    dock2 > @west: any
+    @east > dock1: LightBeam
+    @west > dock2: LightBeam
+    @east - @west: GrappleBeam
     covers 0x003400B7 0x00340122 0x00340108 0x00340110 0x00340112 0x0034011B
 
 area 07cliff_gyro_dark
-    dock0 - dock3: DarkSuit | LightSuit
-    dock0 - dock1: DarkSuit | LightSuit    # unsure: gyro static in the dark room
-    dock1 - dock2: DarkSuit | LightSuit
-    dock0 > loc0x0032010B: (DarkSuit | LightSuit) & MorphBall & SpiderBall
+    dock0 - dock3: any
+    dock0 - dock1: any    # unsure: gyro static in the dark room
+    dock1 - dock2: any
+    dock0 > loc0x0032010B: MorphBall & SpiderBall
     covers 0x00320026 0x00000000
 
 area 09_cliff_temple_dark
     # Hive Temple: Quadraxis arena.
-    dock3 - dock0: DarkSuit | LightSuit
-    dock3 - dock1: DarkSuit | LightSuit
-    dock3 > loc0x14350117: (DarkSuit | LightSuit) & MorphBall & SpiderBall & BoostBall & MorphBallBombs & SpaceJumpBoots    # unsure: Quadraxis fight
+    dock3 - dock0: any
+    dock3 - dock1: any
+    dock3 > loc0x14350117: MorphBall & SpiderBall & BoostBall & MorphBallBombs & SpaceJumpBoots    # unsure: Quadraxis fight
+    event QuadraxisDefeated: loc0x14350117  # the boss drop appears when Quadraxis falls
     covers 0x00000000
 
 area 0g_cliff_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit
+    dock0 - dock1: any
     covers 0x0038006D
 
 area 0i_cliff_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit
+    dock0 - dock1: any
 
 area 00_save_cliff_b_dark
     # One dock.
 
 area 00_cliff_generator_connect_dark
-    dock0 - dock1: (DarkSuit | LightSuit) & MorphBall & MorphBallBombs
+    dock0 - dock1: MorphBall & MorphBallBombs
     covers 0x003C0020
 
 area 00_cliff_generator_dark
@@ -418,5 +419,5 @@ area 0j_cliff_hall_bottom_dark
 
 area 10_cliff_rooftop_dark
     # Arrival at dock2; portal to dock1 past the spinner and spider track.
-    dock2 > dock1: LightBeam & (DarkSuit | LightSuit) & MorphBall & BoostBall & SpiderBall    # unsure
+    dock2 > dock1: LightBeam & MorphBall & BoostBall & SpiderBall    # unsure
     covers 0x004200C6 0x004200B6 0x004200E3 0x004200E4 0x00000000

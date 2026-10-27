@@ -115,6 +115,24 @@ CRLY_TESTS = (0xCEC16932, 0xE709DDC0, 0x49614C51, 0xB498B424)
 CRLY_BOOL, CRLY_ITEM = 0xDE3E40A3, 0xD3AF8D72
 TRANSLATORS = {0x61: "Violet", 0x62: "Amber", 0x63: "Emerald", 0x64: "Cobalt"}
 SHIELDS = {("missile",): "Missile", ("superMissile",): "SuperMissile", ("pb",): "PowerBomb"}
+# Translator gate (the POIN its CRLY activates) -> the DOOR it guards, where the nearest-door guess
+# is wrong. Hive Transport Area: the gate stands south of the elevator top, on the way to the West
+# door (Temple Assembly corridor); the East_Upper door is level with the elevator and is the
+# no-translator exit the vanilla Hive escape takes to the Industrial Site. Nearest by distance
+# picks East (42.9 vs 50.8 units).
+GATE_DOOR = {0x00050065: 0x0005004A}
+# Translator gates that let you through from behind (the door's other face): the gate counts only
+# when leaving its own room through that door. Every other gate counts from both faces (fail
+# closed). Only gates the vanilla route must pass from behind, each with its evidence; removing
+# any entry stops the vanilla sphere test (tests/port_rando_logic.cpp).
+ONE_SIDED_GATES = {
+    # 07_temple_mothlordsanctuary (Temple Sanctuary) dock0, the North door from Temple Transport A;
+    # Emerald. The gate (POIN 0x000200BF, holos 0x000200C4/C9, MRLY "Activate Gate" 0x000200B0) is
+    # raised only by the boss layer's TRGE "Begin Battle" 0x1402000D at the arena centre, so on the
+    # vanilla first entry from the North door it is still down. Vanilla walks in here before any
+    # translator; with the gate both-sided the sphere test stops at 3/114.
+    0x000200BF,
+}
 # Measured on G2ME01 (2026-10-27): docked doors, shields, translator gates per world, in pak order.
 EXPECTED_LOCKS = [(111, 27, 7), (20, 0, 3), (162, 31, 2), (152, 27, 2), (124, 12, 2)]
 
@@ -128,6 +146,7 @@ WEAPON_NEED = {"dark": "DarkBeam", "light": "LightBeam", "annih": "AnnihilatorBe
 DEVICES = {"GRAP": ("GrapplePoint", ("GrappleBeam",)), "SPIN": ("Spinner", ("BoostBall",)),
            "CANB": ("CannonBall", ("MorphBall",)), "BALT": ("BallTrigger", ("MorphBall",)),
            "PRTT": ("Portal", ()), "SFZC": ("SafeZoneCrystal", ())}
+SFZC_TYPE = 0x1115FB68  # SLdrSafeZoneCrystal.safezoneType
 KILL_MSGS = {"DECR", "DCTV"}  # messages that remove a platform; ACTV (spawn a broken piece) does not
 TRACKS = {"BALW", "BALS"}  # spider ball waypoints / attraction surfaces: one row per area
 OBSTACLE_SKIP = [("door hardware", re.compile(r"darkbutton", re.I)),
@@ -238,7 +257,7 @@ def classify_locks(where, ents, layer_on, dock_number):
         elif lockers:
             script = "Temporary"
         locks[dock] = dict(beam=beam, shield=shields.pop() if shields else "None", translator="None",
-                           translatorLayered=False, scriptLock=script,
+                           translatorLayered=False, translatorOneSided=False, gate=None, scriptLock=script,
                            scriptLockDefaultLayer=script != "None" and any(
                                on(s) for s in lockers + ([eid] if initially else [])))
     gates = 0
@@ -256,9 +275,13 @@ def classify_locks(where, ents, layer_on, dock_number):
             if len(colours) != 1 or not door_dock:
                 sys.exit(f"[rando_world] {where} gate {target:#x}: {colours}, {len(door_dock)} docked doors")
             p = pos(target)
-            door = min(door_dock, key=lambda d: sum((a - b) ** 2 for a, b in zip(pos(d), p)))
+            door = GATE_DOOR.get(target) or min(
+                door_dock, key=lambda d: sum((a - b) ** 2 for a, b in zip(pos(d), p)))
+            if door not in door_dock:
+                sys.exit(f"[rando_world] {where} gate {target:#x}: override door {door:#x} not docked")
             lock = locks[door_dock[door]]
             lock["translator"], lock["translatorLayered"] = next(iter(colours)), not on(eid)
+            lock["translatorOneSided"], lock["gate"] = target in ONE_SIDED_GATES, target
             gates += 1
     return locks, gates
 
@@ -279,6 +302,11 @@ def classify_obstacles(ents, layer_on, skipped):
     for layer, t4, eid, conns, props in ents:
         if t4 in DEVICES:
             kind, needs = DEVICES[t4]
+            if t4 == "SFZC" and struct.unpack(">i", props.get(SFZC_TYPE, b"\0\0\0\0"))[0] == 1:
+                # safezoneType 1 is a light crystal: it starts collapsed (no zone) and only a Light
+                # Beam hit expands it (CScriptSafeZoneCrystal.cpp:127, :264-266, :582). Entangled
+                # crystals are freed by the Power Beam (:329-331), so they need nothing.
+                needs = ("LightBeam",)
             out.append((layer, eid, kind, needs, pos(props), name(props)))
         elif t4 in TRACKS:
             tracks.setdefault(t4, []).append((layer, pos(props)))
@@ -370,6 +398,7 @@ def collect():
                 for di in range(len(a["docks"])):
                     dock_locks[gi, di] = locks.get(di, dict(
                         beam="NoDoor", shield="None", translator="None", translatorLayered=False,
+                        translatorOneSided=False, gate=None,
                         scriptLock="None", scriptLockDefaultLayer=False))
                 gen = ed.mrea_generated(mrea)
                 if gen is not None:
@@ -451,6 +480,11 @@ def main():
         for lock in dock_locks.values():
             counts[lock[field]] = counts.get(lock[field], 0) + 1
         print(f"dock sides by {field}: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
+    one_sided = {lock["gate"] for lock in dock_locks.values() if lock["translatorOneSided"]}
+    if one_sided != ONE_SIDED_GATES:
+        sys.exit(f"[rando_world] ONE_SIDED_GATES not on the disc: "
+                 f"{', '.join(f'{g:#x}' for g in sorted(ONE_SIDED_GATES - one_sided))}")
+    print(f"one-sided translator gates: {len(one_sided)}")
     counts = {}
     for o in obstacles:
         counts[o[4]] = counts.get(o[4], 0) + 1
@@ -475,11 +509,13 @@ def main():
               for a, d, ta, td, v in docks]
     lines += ["#endif", "#ifdef PORT_RANDO_DOCK_LOCK",
               "// PORT_RANDO_DOCK_LOCK(area, dock, beam, shield, translator, translatorLayered,"
-              " scriptLock, scriptLockDefaultLayer); one row per PORT_RANDO_DOCK, same order"]
+              " translatorOneSided, scriptLock, scriptLockDefaultLayer); one row per PORT_RANDO_DOCK,"
+              " same order"]
     for a, d, *_ in docks:
         lk = dock_locks[a, d]
         lines.append(f'PORT_RANDO_DOCK_LOCK({a}, {d}, {lk["beam"]}, {lk["shield"]}, {lk["translator"]}, '
-                     f'{"true" if lk["translatorLayered"] else "false"}, {lk["scriptLock"]}, '
+                     f'{"true" if lk["translatorLayered"] else "false"}, '
+                     f'{"true" if lk["translatorOneSided"] else "false"}, {lk["scriptLock"]}, '
                      f'{"true" if lk["scriptLockDefaultLayer"] else "false"})')
     lines += ["#endif", "#ifdef PORT_RANDO_TELEPORTER",
               "// PORT_RANDO_TELEPORTER(area, layer, editor id, destination MLVL, destination MREA)"]

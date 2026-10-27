@@ -87,6 +87,8 @@ is no longer the only source of locations. Plan, each step checkable on its own:
      tel0x0C06013A - dock0: any              # a teleporter (editor id)
      covers 0x00020041 0x00020042            # obstacles these rules account for
      ignore 0x00020050: decorative webbing   # obstacles that block nothing, with a reason
+     event AmorbisDefeated: loc0x28240265    # reaching the node grants the event, usable in any file
+     atmosphere DarkSuit | LightSuit         # dark areas only: replaces the generated air requirement
    ```
 
    - Requirements: `any`, `never`, item names as spelled in `port_randomizer.cpp`'s table,
@@ -94,15 +96,29 @@ is no longer the only source of locations. Plan, each step checkable on its own:
    - Every obstacle of the area (`--dump-obstacles`) must be in a `covers` or an `ignore` line,
      and every `dockN`/`locX`/`telX` must exist in the area, or the compiler fails.
    - Fail closed: an area with no block connects nothing, so its docks are dead ends.
-   - Dock edges come from `PORT_RANDO_DOCK`; the evaluator adds their locks: both sides' beam
-     and shield, the translator, and `never` for a Permanent script lock on the side you leave
-     from. Temporary locks are ignored. Rules only describe movement inside a room.
+   - Dock edges come from `PORT_RANDO_DOCK`; the evaluator adds their locks: the beam of the
+     side you leave from (each face has its own colour), both sides' translator gates (fail
+     closed) except a gate in `ONE_SIDED_GATES` (`tools/rando_world.py`, each with its disc
+     evidence; today only Temple Sanctuary's North gate, raised by the Alpha Splinter fight),
+     which counts only when leaving its own room, both sides' blast shields, and `never` for a Permanent script lock on the side you leave from. Temporary locks are ignored. Rules only describe movement inside a room.
+   - Events are pseudo-items (ids from `kFirstEventItem` = 120); the evaluator grants one when its
+     node is reached and searches again. The Light Suit wants the three temple boss drops' events.
+   - Dark Aether air (`tools/rando_rules.py`, constants cited there from the decomp): every edge of
+     a dark area is ANDed with `LightSuit | DarkSuit & EnergyTanks>=a | EnergyTanks>=b`, or with the
+     block's `atmosphere` line. Safe zones are the default-layer SafeZoneCrystals (light crystals
+     only with `LightBeam`, so a second tier `LightBeam & ...` is generated). For every pair of
+     docks/locations, the stretch is the walked distance away from any zone: straight lines x 1.5
+     (detour), each end continuing through up to 3 dark-to-dark doors to the nearest zone, and a
+     pair may stop at one zone on the way. The worst pair / 16.5 units/s + 10 s margin gives
+     seconds; damage is 6/s with no suit, 1.2/s with the Dark Suit; tanks = what keeps above 0 from
+     99 + 100 per tank (more than 14, or no zone in reach, is `never`). `--exposure` prints the
+     worst areas.
    - When unsure whether a route works without an item, require the item. A rule that is too
      strict only shrinks the seed space; one that is too loose makes unbeatable seeds.
    - State (2026-10-27): all five worlds have rules (284 areas). With every item, all 114
      locations are reachable from the Landing Site. With the starting inventory and the vanilla
-     placement, only the first sphere (the `01_temple_hive01` Missile) opens: some early rules are
-     stricter than the game, since vanilla is beatable by definition. Elevator rooms need an explicit
+     placement all 114 open in 9 spheres (`TestVanillaSpheres` in `tests/port_rando_logic.cpp`,
+     granting the four translators at their energy controllers). Elevator rooms need an explicit
      `dock0 - telX` edge, or their world is cut off.
 5. **Non-pickup grants** - items a script grants (the energy controllers' translators, ...).
 6. **Save binding and the F1 page** - seed hash in the save, spoiler. The F1 Randomizer page is

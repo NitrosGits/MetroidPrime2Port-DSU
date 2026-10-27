@@ -6,6 +6,10 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
+#include <map>
+#include <set>
+#include <string>
 
 namespace {
 
@@ -106,6 +110,25 @@ void TestRuleEdges() {
         "gated: named node reached");
 }
 
+void TestEvents() {
+  // Landing Site: an event behind a Morph Ball edge opens dock0 > dock1 once reached.
+  const Node n0 = DockNode(0, 0), n1 = DockNode(0, 1), tunnel{0, NodeKind::Named, 0};
+  RuleSet rules;
+  rules.push_back({n0, tunnel, Requirement::Item(kItemMorphBall)});
+  rules.push_back({n0, n1, Requirement::Item(kFirstEventItem)});
+  const EventSet events{{tunnel, kFirstEventItem}};
+  Check(!Contains(Graph(rules).Reachable(Items({kItemMorphBall}), n0), n1), "event: no event set, no grant");
+  Check(!Contains(Graph(rules, events).Reachable(Inventory{}, n0), n1), "event: its node unreached");
+  Check(Contains(Graph(rules, events).Reachable(Items({kItemMorphBall}), n0), n1),
+        "event: reaching its node opens the edge");
+  Check(Contains(Graph(rules, events).Reachable(Items({kFirstEventItem}), n0), n1),
+        "event: an inventory that already holds it");
+  for (const RuleEvent& e : DefaultEvents())
+    Check(e.item >= kFirstEventItem && e.item < kMaxItems, "compiled event ids are pseudo-items", e.item);
+  Check(DefaultEvents().size() == 3, "the three temple boss events are compiled in",
+        int(DefaultEvents().size()));
+}
+
 void TestDockLocks() {
   using namespace PortRandoWorld;
   Check(DockRequirement(-1).terms.empty(), "bad dock index = never");
@@ -165,6 +188,55 @@ void TestDockLocks() {
                                  kItemPowerbomb, kItemMorphBall, kItemLightBeam, kItemDarkBeam,
                                  kItemAnnihilatorBeam}),
           "translator door opens with the translator");
+    // A gate counts from both faces unless it is listed one-sided (Temple Sanctuary's North gate,
+    // which only the boss fight raises): walking back in from the other room needs the translator
+    // for an ordinary gate and not for a one-sided one.
+    auto reverseOf = [](int i) {
+      const Dock* d = DockAt(i);
+      for (int j = 0; j < DockCount(); ++j) {
+        const Dock* r = DockAt(j);
+        if (r->area == d->toArea && r->dock == d->toDock && r->toArea == d->area && r->toDock == d->dock)
+          return j;
+      }
+      return -1;
+    };
+    const std::initializer_list<int> allButTranslators = {
+        kItemMissile, kItemSuperMissile, kItemSeekerLauncher, kItemPowerbomb, kItemMorphBall,
+        kItemLightBeam, kItemDarkBeam, kItemAnnihilatorBeam};
+    int back = -1, oneSidedBack = -1, oneSided = 0;
+    for (int i = 0; i < DockCount(); ++i) {
+      const DockLock* l = DockLockAt(i);
+      oneSided += l->translator != DockTranslator::None && l->translatorOneSided;
+      const int r = l->translator != DockTranslator::None ? reverseOf(i) : -1;
+      if (r < 0 || DockLockAt(r)->translator != DockTranslator::None || DockLockAt(r)->shield != DockShield::None)
+        continue;
+      if (l->translatorOneSided && oneSidedBack < 0)
+        oneSidedBack = r;
+      else if (!l->translatorOneSided && back < 0)
+        back = r;
+    }
+    Check(oneSided == 1, "exactly one one-sided translator gate (ONE_SIDED_GATES)");
+    Check(back >= 0 && oneSidedBack >= 0, "both kinds of translator gate face an unlocked door");
+    if (back >= 0)
+      Check(!needs(back, allButTranslators), "an ordinary gate also blocks walking back in");
+    if (oneSidedBack >= 0)
+      Check(needs(oneSidedBack, allButTranslators), "a one-sided gate opens from behind");
+    // A beam colour binds only the face you shoot: a row whose own face is Any opens with no
+    // beam even when the far face is coloured (Main Reactor -> Storage D).
+    int anyFace = -1;
+    for (int i = 0; i < DockCount() && anyFace < 0; ++i) {
+      const DockLock* l = DockLockAt(i);
+      const int r = reverseOf(i);
+      if (l->beam == DockBeam::Any && l->shield == DockShield::None && l->translator == DockTranslator::None &&
+          l->scriptLock != DockScriptLock::Permanent && r >= 0 && DockLockAt(r)->beam == DockBeam::Dark &&
+          DockLockAt(r)->shield == DockShield::None)
+        anyFace = i;
+    }
+    Check(anyFace >= 0, "a door coloured on one face only exists");
+    if (anyFace >= 0) {
+      Check(needs(anyFace, {}), "beam lock is one-sided: the Any face opens with nothing");
+      Check(!needs(reverseOf(anyFace), {}), "the coloured face still needs its beam");
+    }
   }
   if (permanent >= 0) {
     Check(DockRequirement(permanent).terms.empty(), "permanent lock = never");
@@ -228,6 +300,94 @@ void TestTeleporters() {
   Check(paired > 0, "some teleporters pair up", paired);
 }
 
+// Vanilla placement, sphere by sphere, from the Landing Site with the starting inventory: every
+// location must open. A sphere takes everything reachable with the items of the spheres before it.
+void TestVanillaSpheres() {
+  using namespace PortRandoWorld;
+  const auto areaNamed = [](const char* name) {
+    for (int a = 0; a < AreaCount(); ++a)
+      if (std::strcmp(AreaAt(a)->name, name) == 0)
+        return a;
+    return -1;
+  };
+  const int start = areaNamed("01_Temple_LandingSite");
+  Check(start >= 0, "vanilla: the Landing Site exists");
+  if (start < 0)
+    return;
+  Inventory inv;
+  for (int item : {0, 22, 8, 9, 12, 15}) // Power Beam, Charge Beam, Combat/Scan Visor, Varia Suit, Morph Ball
+    inv.Set(item, 1);
+  // Items scripts grant rather than pickups (RANDOMIZER.md step 5), granted once their room is
+  // reached. Each translator comes from its world's energy controller: U-Mos at the Main Energy
+  // Controller gives the Violet Translator with the Energy Transfer Module (item 28, which the
+  // Agon/Torvus/Sanctuary energy rules ask for), and the Agon, Torvus and Sanctuary controllers'
+  // holograms give the Amber, Emerald and Cobalt Translators.
+  const struct {
+    const char* area;
+    int item, extra;
+  } grants[] = {
+      {"08_temple_sungenerator", kItemVioletTranslator, 28},
+      {"00_sand_generator", kItemAmberTranslator, -1},
+      {"00_swamp_generator", kItemEmeraldTranslator, -1},
+      {"00_cliff_generator", kItemCobaltTranslator, -1},
+  };
+  std::set<int> have;
+  std::map<int, int> sphere; // location -> its sphere
+  int spheres = 0;
+  for (;;) {
+    bool granted = false;
+    for (const Node& n : ReachableNodes(inv, start, 0))
+      for (const auto& g : grants)
+        if (inv.Count(g.item) == 0 && std::strcmp(AreaAt(n.area)->name, g.area) == 0) {
+          inv.Add(g.item);
+          if (g.extra >= 0)
+            inv.Add(g.extra);
+          granted = true;
+        }
+    if (granted)
+      continue;
+    std::vector<int> fresh;
+    for (int i : ReachableLocations(inv, start, 0))
+      if (!have.count(i))
+        fresh.push_back(i);
+    if (fresh.empty())
+      break;
+    ++spheres;
+    for (int i : fresh) {
+      const Location* l = LocationAt(i);
+      // Expansions give their amount (an Energy Tank pickup is one tank; ammo is many).
+      const bool counted = l->item == 42 || l->item == kItemPowerbomb || l->item == kItemMissile;
+      inv.Add(l->item, counted && l->amount > 0 ? l->amount : 1);
+      have.insert(i);
+      sphere[i] = spheres;
+    }
+  }
+  // No exemptions: vanilla must reach every location.
+  for (int i = 0; i < LocationCount(); ++i)
+    if (!have.count(i))
+      std::fprintf(stderr, "vanilla: stuck at %s 0x%08X (%s)\n", AreaAt(LocationAt(i)->area)->name,
+                   LocationAt(i)->editorId, LocationAt(i)->itemName);
+  Check(int(have.size()) == LocationCount(), "vanilla: every location in some sphere", int(have.size()));
+  // The Light Suit (Main Energy Controller) opens only after the three temple bosses' drops.
+  const auto sphereOf = [&](uint32_t editorId) {
+    for (int i = 0; i < LocationCount(); ++i)
+      if (LocationAt(i)->editorId == editorId)
+        return sphere.count(i) ? sphere[i] : -1;
+    return -1;
+  };
+  const int lightSuit = sphereOf(0x200702C7);
+  for (uint32_t boss : {0x28240265u, 0x382000B3u, 0x14350117u}) // Amorbis, Chykka, Quadraxis
+    Check(sphereOf(boss) > 0 && lightSuit >= sphereOf(boss), "vanilla: Light Suit not before a temple boss",
+          sphereOf(boss));
+  // Events are granted inside one search, so the last boss and the suit share a sphere; without
+  // the events the suit stays shut even with everything else.
+  const std::vector<int> noEvents = Graph(DefaultRules()).ReachableLocations(inv, DockNode(start, 0));
+  Check(int(noEvents.size()) == LocationCount() - 1, "vanilla: only the Light Suit needs the events",
+        int(noEvents.size()));
+  std::printf("vanilla: %zu/%d locations in %d spheres, %d Energy Tanks\n", have.size(), LocationCount(),
+              spheres, inv.Count(42));
+}
+
 } // namespace
 
 int main() {
@@ -236,6 +396,8 @@ int main() {
   TestDockLocks();
   TestFailClosed();
   TestTeleporters();
+  TestEvents();
+  TestVanillaSpheres();
   // The compiled-in rules load and answer (their content is another file's business).
   const Inventory none;
   (void)ReachableLocations(none, 0, 0);

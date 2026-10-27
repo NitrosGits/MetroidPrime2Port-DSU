@@ -30,6 +30,8 @@ enum : int {
 };
 
 constexpr int kMaxItems = 128;
+// Rule events (`event NAME: node` in the .rules) are pseudo-items from here up to kMaxItems.
+constexpr int kFirstEventItem = 120;
 
 struct Inventory {
   int counts[kMaxItems] = {};
@@ -78,8 +80,17 @@ struct RuleEdge {
 };
 using RuleSet = std::vector<RuleEdge>;
 
+// Reaching `at` grants `item` (an event such as a boss kill) for the rest of the search.
+struct RuleEvent {
+  Node at;
+  int item;
+};
+using EventSet = std::vector<RuleEvent>;
+
 // The rules compiled into port_rando_logic.inc.
 const RuleSet& DefaultRules();
+// The events compiled into port_rando_logic.inc.
+const EventSet& DefaultEvents();
 // Number of areas that have a rule block in the .inc.
 int RuleBlockCount();
 
@@ -90,8 +101,9 @@ Requirement DockRequirement(int dockIndex);
 // Rule edges plus dock and teleporter edges, indexed for repeated reachability queries.
 class Graph {
 public:
-  explicit Graph(const RuleSet& rules);
+  explicit Graph(const RuleSet& rules, const EventSet& events = {});
   // Nodes reachable from the start node with this inventory (the start included if it exists).
+  // A reached event node adds its event to the inventory and the search goes on until none is new.
   std::vector<Node> Reachable(const Inventory& inventory, const Node& start) const;
   // Indices into PortRandoWorld's locations of the Location nodes among them.
   std::vector<int> ReachableLocations(const Inventory& inventory, const Node& start) const;
@@ -107,6 +119,7 @@ private:
   std::map<std::tuple<int, int, uint32_t>, int> mIndex;
   std::vector<int> mLocation; // per node, PortRandoWorld location index or -1
   std::vector<std::vector<Out>> mOut;
+  std::vector<std::pair<int, int>> mEvents; // (node, event item)
 };
 
 // Location indices reachable from (startArea, startDock) with the compiled-in rules; sorted.

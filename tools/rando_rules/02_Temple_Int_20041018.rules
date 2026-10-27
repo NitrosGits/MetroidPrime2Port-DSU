@@ -6,8 +6,8 @@
 #
 # Same conventions as 01_Temple_Hub_20041018.rules: the post-steal starting
 # inventory is assumed, dock locks (beam, translator, script) are applied by
-# the evaluator, Dark Aether traversal needs DarkSuit|LightSuit, light-to-dark
-# portals need DarkBeam, dark-to-light portals need LightBeam.
+# the evaluator, Dark Aether atmosphere is generated, light-to-dark portals
+# need DarkBeam, dark-to-light portals need LightBeam.
 # The Mothlord Sanctuary hub's translator doors (Emerald, Amber, Violet) are
 # dock locks and are not repeated.
 
@@ -66,20 +66,21 @@ area 08_temple_sungenerator
     dock1 > dock0: any
     # The Light Suit (layer 8) is handed over once Sanctuary's energy is back, i.e. after
     # Quadraxis. Events are not modelled, so require the Sanctuary/Quadraxis kit (fail closed).
-    dock0 > loc0x200702C7: DarkSuit & DarkBeam & LightBeam & MorphBallBombs & SpiderBall & BoostBall & SpaceJumpBoots & ScrewAttack  # unsure: stands in for the Quadraxis event
-    dock1 > loc0x200702C7: DarkSuit & DarkBeam & LightBeam & MorphBallBombs & SpiderBall & BoostBall & SpaceJumpBoots & ScrewAttack
+    # The Light Suit is handed over once the three temple bosses are dead and their energy is back.
+    dock0 > loc0x200702C7: AmorbisDefeated & ChykkaDefeated & QuadraxisDefeated  # unsure: returning each temple's energy assumed possible once its boss falls
+    dock1 > loc0x200702C7: AmorbisDefeated & ChykkaDefeated & QuadraxisDefeated
     covers 0x3807035A
 
 area 08_temple_sungenerator_dark
-    dock0 - dock1: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: dock0 is 35 units above dock1; climb assumed to need Space Jump
-    dock1 > dock0: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: as above
-    dock0 > dock1: LightBeam & (DarkSuit | LightSuit)  # unsure: dock1 is the portal arrival, portal 10 units from dock1
+    dock0 - dock1: SpaceJumpBoots  # unsure: dock0 is 35 units above dock1; climb assumed to need Space Jump
+    dock1 > dock0: SpaceJumpBoots  # unsure: as above
+    dock0 > dock1: LightBeam  # unsure: dock1 is the portal arrival, portal 10 units from dock1
     covers 0x00090042
 
 # ----------------------------------------------------------------- dark world
 
 area 0h_temple_hall_dark
-    dock0 - dock1: DarkSuit | LightSuit  # unsure: dock0 is 30 units above dock1; assumed a walkable ramp like its light twin
+    dock0 - dock1: any  # unsure: dock0 is 30 units above dock1; assumed a walkable ramp like its light twin
 
 area 07_temple_mothlordsanctuary_dark
     # Single dock (script-locked); nothing to cross.

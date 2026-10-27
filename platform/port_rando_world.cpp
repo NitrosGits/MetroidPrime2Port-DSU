@@ -20,10 +20,10 @@ const Dock kDocks[] = {
 #undef PORT_RANDO_DOCK
 };
 const DockLock kDockLocks[] = {
-#define PORT_RANDO_DOCK_LOCK(area, dock, beam, shield, translator, translatorLayered, scriptLock, \
-                             scriptLockDefaultLayer)                                             \
+#define PORT_RANDO_DOCK_LOCK(area, dock, beam, shield, translator, translatorLayered,             \
+                             translatorOneSided, scriptLock, scriptLockDefaultLayer)               \
   {area, dock, DockBeam::beam, DockShield::shield, DockTranslator::translator, translatorLayered,    \
-   DockScriptLock::scriptLock, scriptLockDefaultLayer},
+   translatorOneSided, DockScriptLock::scriptLock, scriptLockDefaultLayer},
 #include "port_rando_world.inc"
 #undef PORT_RANDO_DOCK_LOCK
 };
