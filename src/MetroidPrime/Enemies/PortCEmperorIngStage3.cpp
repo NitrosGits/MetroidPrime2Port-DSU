@@ -1208,7 +1208,7 @@ bool CEmperorIngStage3::HeartDamageReaction(CStateManager& mgr, int heart) {
 // base's pending death (0x10 at guest 0x421, mPendingDeath).
 void CEmperorIngStage3::UpdateHeartDamage(CStateManager& mgr, float dt) {
   float timer = mX860_ - dt;
-  if (0.f >= timer) {
+  if (!(0.f < timer)) { // 0x2F34 fcmpo 0,timer; bge (taken on NaN)
     timer = 0.f;
   }
   mX860_ = timer;
@@ -1912,17 +1912,17 @@ void CEmperorIngStage3::EyeShut(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
     float time = mX8ec_ * 2.f / 100.f; // rodata 0x274, 0x27C
-    if (2.5f >= time) {              // rodata 0x298: at least 2.5 (fcmpo/bge, 0x52D8)
+    if (!(2.5f < time)) {            // rodata 0x298: at least 2.5 (fcmpo/bge, 0x52D8, taken on NaN)
       time = 2.5f;
     }
     mX8f0_ = time;
     mX8ec_ = 0.f;
     float range = 1.2f * mX8f0_; // rodata 0x2EC
-    if (range > 5.f) {            // rodata 0x2BC
+    if (!(range < 5.f)) {         // rodata 0x2BC; 0x5324 fcmpo, bge (taken on NaN)
       range = 5.f;
     }
     mX8f4_ = mgr.Random()->Range(1.f, range); // rodata 0x264
-    if (mX8f0_ < 2.5f + mX8f4_) { // rodata 0x298
+    if (!(2.5f + mX8f4_ < mX8f0_)) { // rodata 0x298; 0x5350 fcmpo, bge (taken on NaN)
       mX8f0_ = 2.5f + mX8f4_;
     }
     mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x5368, the value one
@@ -2819,7 +2819,7 @@ void CEmperorIngStage3::JumpSlideAttack(CStateManager& mgr, EStateMsg msg, float
       }
       if (hit) {
         float extra = room - 20.f; // rodata 0x270
-        if (0.f >= extra) {
+        if (!(0.f < extra)) { // 0x59C0 fcmpo 0,extra; bge (taken on NaN)
           extra = 0.f;
         }
         mX8e8_ = extra / 90.f; // rodata 0x2CC
@@ -2967,7 +2967,7 @@ void CEmperorIngStage3::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) 
     const CVector3f& theirs = mgr.GetPlayer(0)->GetTranslation();
     const CVector3f toPlayer = PlayerDirection(mgr); // fn_18_2D1C
     const float distance = toPlayer.Magnitude();
-    if (distance <= 0.f) { // rodata 0x258
+    if (!(distance > 0.f)) { // rodata 0x258; 0x4F6C fcmpo, ble (taken on NaN)
       return;
     }
     if (distance > 50.f) { // rodata 0x290
