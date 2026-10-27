@@ -41,6 +41,9 @@
 // desktop-only include chain left this undeclared on Android.
 #include <unistd.h>
 #endif
+#if defined(__APPLE__)
+extern char** environ; // not declared by Apple's unistd.h
+#endif
 
 using namespace PortOverlayState;
 
