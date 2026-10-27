@@ -123,6 +123,15 @@ void DrawDebugTab() {
   ImGui::SeparatorText("Camera");
   DrawFreeCam();
 
+  ImGui::SeparatorText("Rendering");
+  DrawRendering();
+
+  ImGui::SeparatorText("Audio backends");
+  DrawAudio();
+  if (ImGui::CollapsingHeader("Sounds playing")) {
+    DrawVoices();
+  }
+
   ImGui::SeparatorText("Console");
   ImGui::TextWrapped("The console runs on the game thread and answers one command per update: "
                      "`areas`, `warp`, `world`, `items`, `give`, `god`, `objs`, `send`, `press`.");
