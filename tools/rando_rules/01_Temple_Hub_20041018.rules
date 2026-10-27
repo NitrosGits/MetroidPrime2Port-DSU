@@ -1,0 +1,395 @@
+# Temple Grounds (01_Temple_Hub_20041018), light and dark areas.
+#
+# Sources: disc data via tools/rando_world.py --dump-obstacles and the SCLY
+# script objects of each area, the decomp source in this repo, and knowledge
+# of the game. No randomizer logic database was used.
+#
+# Starting inventory (belief, for the orchestrator to decide):
+#   At the Landing Site, before the Ing steal: PowerBeam, ChargeBeam,
+#   CombatVisor, ScanVisor, VariaSuit, MorphBall, Missile (launcher),
+#   MorphBallBombs, SpaceJumpBoots.  # unsure: launcher/bombs/space jump at landing
+#   After the steal (the state a randomized start is usually built on):
+#   PowerBeam, ChargeBeam, CombatVisor, ScanVisor, VariaSuit, MorphBall.
+#   The rules below assume only the post-steal set.
+#
+# Conventions used here:
+# - Dock locks (beam, shield, translator, script) are applied by the
+#   evaluator and are not repeated.
+# - Light-to-dark portals need DarkBeam; dark-to-light portals need LightBeam.
+# - Dark Aether traversal needs DarkSuit|LightSuit (conservative; Safe Zone
+#   crystals are not barriers and are ignored).
+# - Bomb requirements spell out MorphBall even though it is a starting item.
+# - The 15 layer-3 TEL1 objects in 01_temple_hive01 ("Map to ...") are debug
+#   warps; they are left unused.
+
+# ---------------------------------------------------------------- light world
+
+area 01_Temple_LandingSite
+    dock0 - dock1: any
+
+area 0q_temple_hall
+    dock0 - dock1: any
+    dock0 - dock2: any
+    dock1 - dock2: any
+    dock3 > dock0: MorphBall
+    dock0 > dock3: MorphBall & SpaceJumpBoots  # unsure: morph tunnel 12.5 units above the floor; ledge reach not verified
+    dock4 > dock0: MorphBall
+    dock0 > dock4: MorphBall & SpaceJumpBoots  # unsure: morph tunnel 6.6 units above the floor; ledge reach not verified
+
+area 0a_temple_hall
+    dock0 - dock1: any
+    dock1 > dock2: any
+    dock2 > dock1: never  # unsure: dock2 is a drop hole 16 units below the hall; assumed not climbable
+
+area 0t_temple_hall
+    dock0 - dock3: any
+    dock1 - dock2: MorphBall
+    dock1 > dock0: MorphBall
+    dock0 > dock1: MorphBall & SpaceJumpBoots  # unsure: morph tunnel 12.5 units above the floor
+    dock2 > dock0: MorphBall
+    dock0 > dock2: MorphBall & SpaceJumpBoots  # unsure: morph tunnel 10 units above the floor
+
+area 09_temple_thirdleg
+    dock0 - dock1: any
+    dock0 - dock3: any
+    dock1 - dock3: any
+    dock2 > dock0: MorphBall
+    dock0 > dock2: MorphBall & SpaceJumpBoots  # unsure: morph tunnel 13.6 units above dock0
+
+area 0u_temple_hall
+    dock0 - dock2: any
+    dock1 > dock2: any  # unsure: dock1 is 60 units lower; assumed a walkable climb since the vanilla intro returns this way
+    dock2 > dock1: any  # unsure: same 60-unit descent; assumed walkable
+
+area 01_temple_hive01
+    # 15 layer-3 "Map to ..." TEL1 objects: debug warps, unused.
+    dock0 > loc0x18060234: any
+    loc0x18060234 > dock1: MorphBall & (MorphBallBombs | Powerbomb | BoostBall) | ScrewAttack  # unsure: Luminoth webbing 47 units from dock1 assumed to block the way
+    dock1 > loc0x18060234: MorphBall & (MorphBallBombs | Powerbomb | BoostBall) | ScrewAttack  # unsure: same webbing
+    covers 0x000601D0
+    # dock0 is a hole in the ceiling (z -59.7, floor ~-104): no way back up.
+
+area 12_temple_finalgate
+    dock0 - dock1: MorphBall  # unsure: dock0 is a morph tunnel 10 units above dock1
+    dock0 > loc0x00070057: MorphBall & BoostBall
+    dock1 > loc0x00070057: MorphBall & BoostBall
+    # The four Boost spinners count into "Puzzle Complete", whose cinematic
+    # raises the ring holding the Seeker Launcher pickup.
+    covers 0x0007009B 0x000700A3 0x000700A9 0x000700B4 0x000700B8 0x000700BC 0x000700CF 0x000700D5
+
+area 0n_temple_hall
+    dock1 - dock2: any
+    dock1 > dock0: DarkBeam
+    dock0 > dock1: any
+    dock0 > dock2: any
+    covers 0x00080050
+
+area 0m_temple_hall
+    dock0 - tel0x0009001B: any
+
+area 02_temple_exploration
+    dock0 - dock1: any
+    dock0 - dock2: any
+    dock1 - dock2: any
+
+area 01_temple_hive_04
+    dock0 - dock1: any
+    dock0 - dock2: any
+    dock1 - dock2: any
+
+area 0e_temple_hive_hall
+    dock0 - dock1: any
+
+area 10_temple_pathofeyes
+    dock0 - dock1: any
+    dock0 - dock2: any
+    dock1 - dock2: any
+    dock3 > dock0: any
+    # dock3 is the arrival point of the dark-side portal; there is no light
+    # portal object in this area, so nothing leads into dock3.
+
+area 0k_temple_hall
+    dock0 - dock1: any
+
+area 0b_temple_hall
+    dock0 - dock1: any
+
+area 01_temple_hive03
+    dock0 - dock1: any
+    dock0 > loc0x1011013B: any
+    dock1 > loc0x1011013B: any
+    dock0 - dock2: any  # unsure: scripted first portal assumed pre-opened; leads only to the dark stub area
+    dock1 - dock2: any  # unsure: as above
+    covers 0x0011011B
+
+area 00_save_hive04
+    # Single dock, no location.
+
+area 01_temple_hive02
+    dock0 - dock1: MorphBall & MorphBallBombs  # unsure: weak grate and bombslot assumed to sit on the only path; Power Bombs may also work
+    covers 0x0013001A 0x0013006B
+
+area 0r_temple_hall
+    dock0 - dock1: MorphBall  # unsure: morph cannons assumed needed to cross
+    dock0 > loc0x001600CB: MorphBall & GrappleBeam  # unsure: grapple point 26 units from the tank; cannon use not verified
+    dock1 > loc0x001600CB: MorphBall & GrappleBeam  # unsure: as above
+    covers 0x00160097 0x0016000A 0x00160036 0x00160021 0x001600AF 0x0016004A 0x001600B0
+
+area 0o_temple_hall
+    dock0 - dock1: any
+
+area 00_elev_temple_sand_a
+    dock0 - tel0x00180086: any
+    dock0 > loc0x001800B4: MorphBall  # unsure: missile placement in the transport room not verified
+
+area 03_temple_combattraining
+    dock0 - dock1: any
+    dock0 - dock2: any
+    dock0 - dock3: any
+    dock1 - dock2: any
+    dock1 - dock3: any
+    dock2 - dock3: any
+    dock0 > dock4: DarkBeam
+    dock4 > dock0: any
+    dock0 > loc0x001900A4: SpaceJumpBoots  # unsure: missile sits 9 units above the dock level
+    covers 0x0019029B
+
+area 0f_temple_hive_hall
+    dock0 - dock1: any
+
+area 11_temple_grandpuzzle
+    dock0 - dock1: any
+    dock1 > dock2: DarkBeam
+    dock2 > dock1: any
+    # The grapple points (layers 2/3, off by default) are switched on by the
+    # dark-side spinner puzzle; the Sunburst sits over a "Catch Morphball".
+    dock0 > loc0x001D00F7: MorphBall & BoostBall & GrappleBeam & DarkBeam & LightBeam & (DarkSuit | LightSuit)  # unsure: puzzle chain inferred from layers and object names
+    dock1 > loc0x001D00F7: MorphBall & BoostBall & GrappleBeam & DarkBeam & LightBeam & (DarkSuit | LightSuit)  # unsure: as above
+    covers 0x001D0105 0x001D010B 0x001D006D 0x001D0124 0x081D0074 0x081D0075 0x0C1D0073 0x0C1D0076
+
+area 00_elev_temple_swamp_b
+    dock0 - tel0x001E000D: any
+
+area 0c_temple_hall
+    dock0 - dock1: MorphBall & (MorphBallBombs | Powerbomb | BoostBall) | ScrewAttack  # unsure: layer-2 platform gates assumed to block the crossing
+    dock0 > loc0x001F011A: MorphBall & Powerbomb
+    dock1 > loc0x001F011A: MorphBall & Powerbomb
+    covers 0x001F0018 0x081F00DF 0x081F003C 0x081F0048
+    ignore 0x0C1F00DE: layer 3 is off by default
+    ignore 0x0C1F0017: layer 3 is off by default
+    ignore 0x0C1F0061: layer 3 is off by default
+
+area 0j_temple_hall
+    dock0 - tel0x00200063: any
+
+area 00_pickup_temple_b
+    dock0 > loc0x0021001C: any
+
+area 0s_temple_hall
+    dock0 - dock1: any
+
+area 04_temple_unknownenemies
+    dock1 - dock2: any
+    dock0 > dock1: any
+    dock0 > dock2: any
+    dock1 > dock0: SpaceJumpBoots  # unsure: dock0 is 17 units above the floor
+    dock2 > dock0: SpaceJumpBoots  # unsure: as above
+    dock1 > loc0x00270139: MorphBall & (MorphBallBombs | Powerbomb)
+    dock2 > loc0x00270139: MorphBall & (MorphBallBombs | Powerbomb)
+    covers 0x00270125
+
+area 05_temple_federationsite
+    dock0 - dock1: any
+    dock0 - dock2: any
+    dock0 - dock3: any
+    dock1 - dock2: any
+    dock1 - dock3: any
+    dock2 - dock3: any
+    dock0 > loc0x2C2B0324: MorphBall & SpaceJumpBoots  # unsure: layer-11 missile 9-14 units above the docks; access not verified
+    ignore 0x282B010C: layer 10 is off by default
+    ignore 0x282B0050: layer 10 is off by default
+    ignore 0x282B022A: layer 10 is off by default
+
+area 00_pickup_temple_a
+    # Single dock, no location.
+
+area 0d_temple_hall
+    dock0 - dock1: any
+
+area 0p_temple_hall
+    dock0 - dock1: any
+    dock0 > loc0x00300026: MorphBall & SpaceJumpBoots  # unsure: tank 19 units above dock0
+    dock1 > loc0x00300026: MorphBall & SpaceJumpBoots  # unsure: as above
+
+area 0e_temple_hall
+    dock0 - dock1: MorphBall  # unsure: morph cannon near dock1 assumed needed
+    covers 0x0031010F 0x00310070
+
+area 00_elev_temple_cliff_c
+    dock0 - tel0x0033006E: any
+
+area 06_temple_sacredpath
+    dock0 - dock1: MorphBall & Missile  # unsure: Missile walls near dock1 and the cannon near dock0 assumed on the path
+    dock1 > dock2: MorphBall & Missile & DarkBeam  # unsure: portal on a ledge reached by the catch-morphball cannon
+    dock0 > dock2: MorphBall & Missile & DarkBeam  # unsure: as above
+    dock2 > dock0: any
+    covers 0x00340037 0x00340190 0x003401A7 0x00340071 0x00340158 0x003401AE
+
+area 0f_temple_hall
+    dock0 - tel0x0036001F: any
+
+# ----------------------------------------------------------------- dark world
+
+area 0n_temple_hall_dark
+    dock0 > dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 > dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock1 - dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock1 > dock0: LightBeam & (DarkSuit | LightSuit)
+    dock2 > dock0: LightBeam & (DarkSuit | LightSuit)
+    covers 0x000D002F
+    ignore 0x000D005E: safe zone crystal, not a barrier
+
+area 01_temple_hive03_dark
+    # Only the portal arrival dock: the scripted Ing ambush stub. No edges.
+
+area 09_temple_thirdleg_dark
+    dock0 - dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 > loc0x0014008D: DarkSuit | LightSuit  # unsure: dark atmosphere, missile placement not verified
+    dock2 > loc0x0014008D: DarkSuit | LightSuit  # unsure: as above
+    ignore 0x00140029: safe zone crystal, not a barrier
+    ignore 0x00140022: safe zone crystal, not a barrier
+
+area 10_temple_pathofeyes_dark
+    dock3 > dock0: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 > dock3: MorphBall & MorphBallBombs & LightBeam & (DarkSuit | LightSuit)  # unsure: four bombslots assumed to power the portal
+    covers 0x001500CE 0x00150100 0x001500EC 0x001500B1 0x0015016E
+
+area 0q_temple_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 - dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock1 - dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
+    ignore 0x001C008F: safe zone crystal, not a barrier
+
+area 03_temple_combattraining_dark
+    dock3 > dock0: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 > dock3: LightBeam & (DarkSuit | LightSuit)
+    dock0 > loc0x0022004F: DarkSuit | LightSuit  # unsure: dark atmosphere, missile 145 units from the portal
+    dock3 > loc0x0022004F: DarkSuit | LightSuit  # unsure: as above
+    covers 0x00220072
+
+area 01_temple_landingsite_dark
+    dock0 > loc0x00230080: ScrewAttack & (DarkSuit | LightSuit)  # unsure: Temple Key chest may need more than Screw Attack
+    # dock2 leads to 00_scandummy (no gameplay); no edge.
+    covers 0x00230089
+    ignore 0x00230007: safe zone crystal, not a barrier
+    ignore 0x00230009: safe zone crystal, not a barrier
+    ignore 0x0023000A: safe zone crystal, not a barrier
+
+area 0t_temple_hall_dark
+    dock0 - dock3: DarkSuit | LightSuit  # unsure: dark atmosphere
+    ignore 0x00240033: safe zone crystal, not a barrier
+
+area 11_temple_grandpuzzle_dark
+    # Only the portal dock exists; the spinner puzzle here is folded into the
+    # Sunburst rule of 11_temple_grandpuzzle. No edges.
+    ignore 0x0026022A: single-dock area, puzzle folded into the light area rule
+    ignore 0x002600FE: single-dock area, puzzle folded into the light area rule
+    ignore 0x00260115: single-dock area, puzzle folded into the light area rule
+    ignore 0x00260116: single-dock area, puzzle folded into the light area rule
+    ignore 0x0026022B: single-dock area, puzzle folded into the light area rule
+    ignore 0x0026013E: single-dock area, puzzle folded into the light area rule
+    ignore 0x0026022C: single-dock area, puzzle folded into the light area rule
+    ignore 0x00260168: single-dock area, puzzle folded into the light area rule
+    ignore 0x00260245: safe zone crystal, not a barrier
+    ignore 0x0026016B: single-dock area, puzzle folded into the light area rule
+    ignore 0x00260247: safe zone crystal, not a barrier
+    ignore 0x0026016E: single-dock area, puzzle folded into the light area rule
+    ignore 0x0026024D: safe zone crystal, not a barrier
+    ignore 0x0026018F: single-dock area, puzzle folded into the light area rule
+    ignore 0x0026022D: single-dock area, puzzle folded into the light area rule
+    ignore 0x002600DB: single-dock area, portal back is not modelled
+    ignore 0x0026024F: safe zone crystal, not a barrier
+    ignore 0x1026002A: single-dock area, puzzle folded into the light area rule
+    ignore 0x1026002F: single-dock area, puzzle folded into the light area rule
+    ignore 0x10260038: single-dock area, puzzle folded into the light area rule
+    ignore 0x1026003A: single-dock area, puzzle folded into the light area rule
+    ignore 0x1026004C: single-dock area, puzzle folded into the light area rule
+    ignore 0x1026004F: single-dock area, puzzle folded into the light area rule
+    ignore 0x10260050: single-dock area, puzzle folded into the light area rule
+    ignore 0x10260052: single-dock area, puzzle folded into the light area rule
+
+area 0b_temple_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
+
+area 00_scandummy
+    # Scan/cutscene dummy area, no gameplay. No edges.
+
+area 12_temple_finalgate_dark
+    # Sky Temple gateway: all nine Temple Keys open it.
+    dock0 - tel0x082A0084: TempleKey1 & TempleKey2 & TempleKey3 & TempleKey4 & TempleKey5 & TempleKey6 & TempleKey7 & TempleKey8 & TempleKey9 & (DarkSuit | LightSuit)  # unsure: which of the three teleporters is the live one
+    dock0 - tel0x082A008B: TempleKey1 & TempleKey2 & TempleKey3 & TempleKey4 & TempleKey5 & TempleKey6 & TempleKey7 & TempleKey8 & TempleKey9 & (DarkSuit | LightSuit)  # unsure: as above
+    dock0 - tel0x082A008E: TempleKey1 & TempleKey2 & TempleKey3 & TempleKey4 & TempleKey5 & TempleKey6 & TempleKey7 & TempleKey8 & TempleKey9 & (DarkSuit | LightSuit)  # unsure: as above
+    # dock2 leads into the endgame cinematic areas; no edge.
+    ignore 0x082A0053: layer 2 is off by default (Sun Generator portal)
+
+area 02_temple_exploration_dark
+    dock1 > loc0x0C2E0030: ScrewAttack & (DarkSuit | LightSuit)  # unsure: Temple Key chest may need more than Screw Attack
+    covers 0x0C2E00A1
+    ignore 0x002E00C6: safe zone crystal, not a barrier
+
+area 06_temple_sacredpath_dark
+    dock1 > dock0: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 > dock1: LightBeam & (DarkSuit | LightSuit)
+    dock0 > loc0x003700CB: (MorphBall & (MorphBallBombs | Powerbomb | BoostBall) | ScrewAttack | AnnihilatorBeam) & (DarkSuit | LightSuit)
+    dock1 > loc0x003700CB: (MorphBall & (MorphBallBombs | Powerbomb | BoostBall) | ScrewAttack | AnnihilatorBeam) & (DarkSuit | LightSuit)
+    covers 0x00370194 0x00370076
+    ignore 0x00370162: safe zone crystal, not a barrier
+    ignore 0x00370164: safe zone crystal, not a barrier
+    ignore 0x00370165: safe zone crystal, not a barrier
+
+area 0e_temple_hall_dark
+    dock0 - dock1: GrappleBeam & (DarkSuit | LightSuit)  # unsure: grapple point near dock1 assumed required
+    covers 0x0039000C
+
+area 05_temple_federationsite_dark
+    dock0 - dock2: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock0 > loc0x003B00D6: DarkSuit | LightSuit  # unsure: missile placement not verified
+    dock2 > loc0x003B00D6: DarkSuit | LightSuit  # unsure: as above
+
+area 0d_temple_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
+
+area 04_temple_unknownenemies_dark
+    dock0 > dock1: DarkSuit | LightSuit  # unsure: dark atmosphere
+    dock1 > dock0: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: dock0 is 17 units above the floor
+    ignore 0x003D004F: stasis chamber with no location behind it
+
+area 00_pickup_temple_a_dark
+    dock0 > loc0x003E0022: ScrewAttack & (DarkSuit | LightSuit)  # unsure: Temple Key chest may need more than Screw Attack
+    covers 0x003E0031
+
+# ------------------------------------------------------- endgame cinematics
+
+area game_end_part1
+    # Endgame cinematic chain, no gameplay. No edges.
+    ignore 0x082F001E: endgame cinematic area
+    ignore 0x082F0024: endgame cinematic area
+    ignore 0x082F002D: endgame cinematic area
+    ignore 0x082F0034: endgame cinematic area
+    ignore 0x082F00C1: endgame cinematic area
+    ignore 0x082F00C5: endgame cinematic area
+    ignore 0x082F00E0: endgame cinematic area
+    ignore 0x082F00E1: endgame cinematic area
+    ignore 0x082F0127: endgame cinematic area
+
+area game_end_part2
+    # Endgame cinematic chain, no gameplay. No edges.
+
+area game_end_part3
+    # Endgame cinematic chain, no gameplay. No edges.
+
+area game_end_part4
+    # Endgame cinematic chain, no gameplay. No edges.
+
+area game_end_part5
+    # Endgame cinematic chain, no gameplay. No edges.

@@ -2,17 +2,474 @@
 // Do not edit by hand.
 #ifdef PORT_RANDO_LIT
 // PORT_RANDO_LIT(item, count)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(29, 1)
+PORT_RANDO_LIT(30, 1)
+PORT_RANDO_LIT(31, 1)
+PORT_RANDO_LIT(101, 1)
+PORT_RANDO_LIT(102, 1)
+PORT_RANDO_LIT(103, 1)
+PORT_RANDO_LIT(104, 1)
+PORT_RANDO_LIT(105, 1)
+PORT_RANDO_LIT(106, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(29, 1)
+PORT_RANDO_LIT(30, 1)
+PORT_RANDO_LIT(31, 1)
+PORT_RANDO_LIT(101, 1)
+PORT_RANDO_LIT(102, 1)
+PORT_RANDO_LIT(103, 1)
+PORT_RANDO_LIT(104, 1)
+PORT_RANDO_LIT(105, 1)
+PORT_RANDO_LIT(106, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(44, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(44, 1)
+PORT_RANDO_LIT(3, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(3, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(24, 1)
 #endif
 #ifdef PORT_RANDO_TERM
 // PORT_RANDO_TERM(first literal, literal count): an AND; zero literals = always true
+PORT_RANDO_TERM(0, 0)
+PORT_RANDO_TERM(0, 1)
+PORT_RANDO_TERM(1, 2)
+PORT_RANDO_TERM(3, 1)
+PORT_RANDO_TERM(4, 2)
+PORT_RANDO_TERM(6, 2)
+PORT_RANDO_TERM(8, 2)
+PORT_RANDO_TERM(10, 2)
+PORT_RANDO_TERM(12, 1)
+PORT_RANDO_TERM(13, 1)
+PORT_RANDO_TERM(14, 1)
+PORT_RANDO_TERM(15, 2)
+PORT_RANDO_TERM(17, 2)
+PORT_RANDO_TERM(19, 2)
+PORT_RANDO_TERM(21, 4)
+PORT_RANDO_TERM(25, 4)
+PORT_RANDO_TERM(29, 2)
+PORT_RANDO_TERM(31, 1)
+PORT_RANDO_TERM(32, 6)
+PORT_RANDO_TERM(38, 6)
+PORT_RANDO_TERM(44, 2)
+PORT_RANDO_TERM(46, 2)
+PORT_RANDO_TERM(48, 2)
+PORT_RANDO_TERM(50, 2)
+PORT_RANDO_TERM(52, 2)
+PORT_RANDO_TERM(54, 10)
+PORT_RANDO_TERM(64, 10)
+PORT_RANDO_TERM(74, 2)
+PORT_RANDO_TERM(76, 3)
+PORT_RANDO_TERM(79, 2)
+PORT_RANDO_TERM(81, 2)
+PORT_RANDO_TERM(83, 2)
+PORT_RANDO_TERM(85, 2)
+PORT_RANDO_TERM(87, 3)
+PORT_RANDO_TERM(90, 3)
+PORT_RANDO_TERM(93, 3)
+PORT_RANDO_TERM(96, 3)
+PORT_RANDO_TERM(99, 3)
+PORT_RANDO_TERM(102, 3)
+PORT_RANDO_TERM(105, 2)
+PORT_RANDO_TERM(107, 2)
+PORT_RANDO_TERM(109, 2)
+PORT_RANDO_TERM(111, 2)
 #endif
 #ifdef PORT_RANDO_REQ
 // PORT_RANDO_REQ(first term, term count): an OR; zero terms = never
+PORT_RANDO_REQ(0, 1)
+PORT_RANDO_REQ(1, 1)
+PORT_RANDO_REQ(2, 1)
+PORT_RANDO_REQ(3, 0)
+PORT_RANDO_REQ(3, 4)
+PORT_RANDO_REQ(7, 1)
+PORT_RANDO_REQ(8, 1)
+PORT_RANDO_REQ(9, 2)
+PORT_RANDO_REQ(11, 2)
+PORT_RANDO_REQ(13, 1)
+PORT_RANDO_REQ(14, 2)
+PORT_RANDO_REQ(16, 1)
+PORT_RANDO_REQ(17, 1)
+PORT_RANDO_REQ(18, 2)
+PORT_RANDO_REQ(20, 1)
+PORT_RANDO_REQ(21, 2)
+PORT_RANDO_REQ(23, 2)
+PORT_RANDO_REQ(25, 2)
+PORT_RANDO_REQ(27, 1)
+PORT_RANDO_REQ(28, 1)
+PORT_RANDO_REQ(29, 10)
+PORT_RANDO_REQ(39, 2)
+PORT_RANDO_REQ(41, 2)
 #endif
 #ifdef PORT_RANDO_BLOCK
 // PORT_RANDO_BLOCK(area, name, edge count): the areas that have rules
+PORT_RANDO_BLOCK(0, "01_Temple_LandingSite", 1)
+PORT_RANDO_BLOCK(1, "0q_temple_hall", 7)
+PORT_RANDO_BLOCK(2, "0a_temple_hall", 3)
+PORT_RANDO_BLOCK(3, "0t_temple_hall", 6)
+PORT_RANDO_BLOCK(4, "09_temple_thirdleg", 5)
+PORT_RANDO_BLOCK(5, "0u_temple_hall", 3)
+PORT_RANDO_BLOCK(6, "01_temple_hive01", 3)
+PORT_RANDO_BLOCK(7, "12_temple_finalgate", 3)
+PORT_RANDO_BLOCK(8, "0n_temple_hall", 4)
+PORT_RANDO_BLOCK(9, "0m_temple_hall", 1)
+PORT_RANDO_BLOCK(10, "02_temple_exploration", 3)
+PORT_RANDO_BLOCK(11, "01_temple_hive_04", 3)
+PORT_RANDO_BLOCK(12, "0e_temple_hive_hall", 1)
+PORT_RANDO_BLOCK(13, "0n_temple_hall_dark", 5)
+PORT_RANDO_BLOCK(14, "10_temple_pathofeyes", 4)
+PORT_RANDO_BLOCK(15, "0k_temple_hall", 1)
+PORT_RANDO_BLOCK(16, "0b_temple_hall", 1)
+PORT_RANDO_BLOCK(17, "01_temple_hive03", 5)
+PORT_RANDO_BLOCK(18, "00_save_hive04", 0)
+PORT_RANDO_BLOCK(19, "01_temple_hive02", 1)
+PORT_RANDO_BLOCK(20, "09_temple_thirdleg_dark", 3)
+PORT_RANDO_BLOCK(21, "10_temple_pathofeyes_dark", 2)
+PORT_RANDO_BLOCK(22, "0r_temple_hall", 3)
+PORT_RANDO_BLOCK(23, "0o_temple_hall", 1)
+PORT_RANDO_BLOCK(24, "00_elev_temple_sand_a", 2)
+PORT_RANDO_BLOCK(25, "03_temple_combattraining", 9)
+PORT_RANDO_BLOCK(26, "0f_temple_hive_hall", 1)
+PORT_RANDO_BLOCK(27, "01_temple_hive03_dark", 0)
+PORT_RANDO_BLOCK(28, "0q_temple_hall_dark", 3)
+PORT_RANDO_BLOCK(29, "11_temple_grandpuzzle", 5)
+PORT_RANDO_BLOCK(30, "00_elev_temple_swamp_b", 1)
+PORT_RANDO_BLOCK(31, "0c_temple_hall", 3)
+PORT_RANDO_BLOCK(32, "0j_temple_hall", 1)
+PORT_RANDO_BLOCK(33, "00_pickup_temple_b", 1)
+PORT_RANDO_BLOCK(34, "03_temple_combattraining_dark", 4)
+PORT_RANDO_BLOCK(35, "01_temple_landingsite_dark", 1)
+PORT_RANDO_BLOCK(36, "0t_temple_hall_dark", 1)
+PORT_RANDO_BLOCK(37, "0s_temple_hall", 1)
+PORT_RANDO_BLOCK(38, "11_temple_grandpuzzle_dark", 0)
+PORT_RANDO_BLOCK(39, "04_temple_unknownenemies", 7)
+PORT_RANDO_BLOCK(40, "0b_temple_hall_dark", 1)
+PORT_RANDO_BLOCK(41, "00_scandummy", 0)
+PORT_RANDO_BLOCK(42, "12_temple_finalgate_dark", 3)
+PORT_RANDO_BLOCK(43, "05_temple_federationsite", 7)
+PORT_RANDO_BLOCK(44, "00_pickup_temple_a", 0)
+PORT_RANDO_BLOCK(45, "0d_temple_hall", 1)
+PORT_RANDO_BLOCK(46, "02_temple_exploration_dark", 1)
+PORT_RANDO_BLOCK(47, "game_end_part1", 0)
+PORT_RANDO_BLOCK(48, "0p_temple_hall", 3)
+PORT_RANDO_BLOCK(49, "0e_temple_hall", 1)
+PORT_RANDO_BLOCK(50, "game_end_part2", 0)
+PORT_RANDO_BLOCK(51, "00_elev_temple_cliff_c", 1)
+PORT_RANDO_BLOCK(52, "06_temple_sacredpath", 4)
+PORT_RANDO_BLOCK(53, "game_end_part3", 0)
+PORT_RANDO_BLOCK(54, "0f_temple_hall", 1)
+PORT_RANDO_BLOCK(55, "06_temple_sacredpath_dark", 4)
+PORT_RANDO_BLOCK(56, "game_end_part4", 0)
+PORT_RANDO_BLOCK(57, "0e_temple_hall_dark", 1)
+PORT_RANDO_BLOCK(58, "game_end_part5", 0)
+PORT_RANDO_BLOCK(59, "05_temple_federationsite_dark", 3)
+PORT_RANDO_BLOCK(60, "0d_temple_hall_dark", 1)
+PORT_RANDO_BLOCK(61, "04_temple_unknownenemies_dark", 2)
+PORT_RANDO_BLOCK(62, "00_pickup_temple_a_dark", 1)
 #endif
 #ifdef PORT_RANDO_EDGE
 // PORT_RANDO_EDGE(area, from kind, from id, to kind, to id, req); kind is a NodeKind,
 //   id the dock number, location/teleporter editor id, or the area's @name index
+PORT_RANDO_EDGE(0, Dock, 0, Dock, 1, 0)  // 01_Temple_LandingSite line 28
+PORT_RANDO_EDGE(0, Dock, 1, Dock, 0, 0)  // 01_Temple_LandingSite line 28 (reverse)
+PORT_RANDO_EDGE(1, Dock, 0, Dock, 1, 0)  // 0q_temple_hall line 31
+PORT_RANDO_EDGE(1, Dock, 1, Dock, 0, 0)  // 0q_temple_hall line 31 (reverse)
+PORT_RANDO_EDGE(1, Dock, 0, Dock, 2, 0)  // 0q_temple_hall line 32
+PORT_RANDO_EDGE(1, Dock, 2, Dock, 0, 0)  // 0q_temple_hall line 32 (reverse)
+PORT_RANDO_EDGE(1, Dock, 1, Dock, 2, 0)  // 0q_temple_hall line 33
+PORT_RANDO_EDGE(1, Dock, 2, Dock, 1, 0)  // 0q_temple_hall line 33 (reverse)
+PORT_RANDO_EDGE(1, Dock, 3, Dock, 0, 1)  // 0q_temple_hall line 34
+PORT_RANDO_EDGE(1, Dock, 0, Dock, 3, 2)  // 0q_temple_hall line 35
+PORT_RANDO_EDGE(1, Dock, 4, Dock, 0, 1)  // 0q_temple_hall line 36
+PORT_RANDO_EDGE(1, Dock, 0, Dock, 4, 2)  // 0q_temple_hall line 37
+PORT_RANDO_EDGE(2, Dock, 0, Dock, 1, 0)  // 0a_temple_hall line 40
+PORT_RANDO_EDGE(2, Dock, 1, Dock, 0, 0)  // 0a_temple_hall line 40 (reverse)
+PORT_RANDO_EDGE(2, Dock, 1, Dock, 2, 0)  // 0a_temple_hall line 41
+PORT_RANDO_EDGE(2, Dock, 2, Dock, 1, 3)  // 0a_temple_hall line 42
+PORT_RANDO_EDGE(3, Dock, 0, Dock, 3, 0)  // 0t_temple_hall line 45
+PORT_RANDO_EDGE(3, Dock, 3, Dock, 0, 0)  // 0t_temple_hall line 45 (reverse)
+PORT_RANDO_EDGE(3, Dock, 1, Dock, 2, 1)  // 0t_temple_hall line 46
+PORT_RANDO_EDGE(3, Dock, 2, Dock, 1, 1)  // 0t_temple_hall line 46 (reverse)
+PORT_RANDO_EDGE(3, Dock, 1, Dock, 0, 1)  // 0t_temple_hall line 47
+PORT_RANDO_EDGE(3, Dock, 0, Dock, 1, 2)  // 0t_temple_hall line 48
+PORT_RANDO_EDGE(3, Dock, 2, Dock, 0, 1)  // 0t_temple_hall line 49
+PORT_RANDO_EDGE(3, Dock, 0, Dock, 2, 2)  // 0t_temple_hall line 50
+PORT_RANDO_EDGE(4, Dock, 0, Dock, 1, 0)  // 09_temple_thirdleg line 53
+PORT_RANDO_EDGE(4, Dock, 1, Dock, 0, 0)  // 09_temple_thirdleg line 53 (reverse)
+PORT_RANDO_EDGE(4, Dock, 0, Dock, 3, 0)  // 09_temple_thirdleg line 54
+PORT_RANDO_EDGE(4, Dock, 3, Dock, 0, 0)  // 09_temple_thirdleg line 54 (reverse)
+PORT_RANDO_EDGE(4, Dock, 1, Dock, 3, 0)  // 09_temple_thirdleg line 55
+PORT_RANDO_EDGE(4, Dock, 3, Dock, 1, 0)  // 09_temple_thirdleg line 55 (reverse)
+PORT_RANDO_EDGE(4, Dock, 2, Dock, 0, 1)  // 09_temple_thirdleg line 56
+PORT_RANDO_EDGE(4, Dock, 0, Dock, 2, 2)  // 09_temple_thirdleg line 57
+PORT_RANDO_EDGE(5, Dock, 0, Dock, 2, 0)  // 0u_temple_hall line 60
+PORT_RANDO_EDGE(5, Dock, 2, Dock, 0, 0)  // 0u_temple_hall line 60 (reverse)
+PORT_RANDO_EDGE(5, Dock, 1, Dock, 2, 0)  // 0u_temple_hall line 61
+PORT_RANDO_EDGE(5, Dock, 2, Dock, 1, 0)  // 0u_temple_hall line 62
+PORT_RANDO_EDGE(6, Dock, 0, Location, 403046964, 0)  // 01_temple_hive01 line 66
+PORT_RANDO_EDGE(6, Location, 403046964, Dock, 1, 4)  // 01_temple_hive01 line 67
+PORT_RANDO_EDGE(6, Dock, 1, Location, 403046964, 4)  // 01_temple_hive01 line 68
+PORT_RANDO_EDGE(7, Dock, 0, Dock, 1, 1)  // 12_temple_finalgate line 73
+PORT_RANDO_EDGE(7, Dock, 1, Dock, 0, 1)  // 12_temple_finalgate line 73 (reverse)
+PORT_RANDO_EDGE(7, Dock, 0, Location, 458839, 5)  // 12_temple_finalgate line 74
+PORT_RANDO_EDGE(7, Dock, 1, Location, 458839, 5)  // 12_temple_finalgate line 75
+PORT_RANDO_EDGE(8, Dock, 1, Dock, 2, 0)  // 0n_temple_hall line 81
+PORT_RANDO_EDGE(8, Dock, 2, Dock, 1, 0)  // 0n_temple_hall line 81 (reverse)
+PORT_RANDO_EDGE(8, Dock, 1, Dock, 0, 6)  // 0n_temple_hall line 82
+PORT_RANDO_EDGE(8, Dock, 0, Dock, 1, 0)  // 0n_temple_hall line 83
+PORT_RANDO_EDGE(8, Dock, 0, Dock, 2, 0)  // 0n_temple_hall line 84
+PORT_RANDO_EDGE(9, Dock, 0, Teleporter, 589851, 0)  // 0m_temple_hall line 88
+PORT_RANDO_EDGE(9, Teleporter, 589851, Dock, 0, 0)  // 0m_temple_hall line 88 (reverse)
+PORT_RANDO_EDGE(10, Dock, 0, Dock, 1, 0)  // 02_temple_exploration line 91
+PORT_RANDO_EDGE(10, Dock, 1, Dock, 0, 0)  // 02_temple_exploration line 91 (reverse)
+PORT_RANDO_EDGE(10, Dock, 0, Dock, 2, 0)  // 02_temple_exploration line 92
+PORT_RANDO_EDGE(10, Dock, 2, Dock, 0, 0)  // 02_temple_exploration line 92 (reverse)
+PORT_RANDO_EDGE(10, Dock, 1, Dock, 2, 0)  // 02_temple_exploration line 93
+PORT_RANDO_EDGE(10, Dock, 2, Dock, 1, 0)  // 02_temple_exploration line 93 (reverse)
+PORT_RANDO_EDGE(11, Dock, 0, Dock, 1, 0)  // 01_temple_hive_04 line 96
+PORT_RANDO_EDGE(11, Dock, 1, Dock, 0, 0)  // 01_temple_hive_04 line 96 (reverse)
+PORT_RANDO_EDGE(11, Dock, 0, Dock, 2, 0)  // 01_temple_hive_04 line 97
+PORT_RANDO_EDGE(11, Dock, 2, Dock, 0, 0)  // 01_temple_hive_04 line 97 (reverse)
+PORT_RANDO_EDGE(11, Dock, 1, Dock, 2, 0)  // 01_temple_hive_04 line 98
+PORT_RANDO_EDGE(11, Dock, 2, Dock, 1, 0)  // 01_temple_hive_04 line 98 (reverse)
+PORT_RANDO_EDGE(12, Dock, 0, Dock, 1, 0)  // 0e_temple_hive_hall line 101
+PORT_RANDO_EDGE(12, Dock, 1, Dock, 0, 0)  // 0e_temple_hive_hall line 101 (reverse)
+PORT_RANDO_EDGE(13, Dock, 0, Dock, 1, 7)  // 0n_temple_hall_dark line 244
+PORT_RANDO_EDGE(13, Dock, 0, Dock, 2, 7)  // 0n_temple_hall_dark line 245
+PORT_RANDO_EDGE(13, Dock, 1, Dock, 2, 7)  // 0n_temple_hall_dark line 246
+PORT_RANDO_EDGE(13, Dock, 2, Dock, 1, 7)  // 0n_temple_hall_dark line 246 (reverse)
+PORT_RANDO_EDGE(13, Dock, 1, Dock, 0, 8)  // 0n_temple_hall_dark line 247
+PORT_RANDO_EDGE(13, Dock, 2, Dock, 0, 8)  // 0n_temple_hall_dark line 248
+PORT_RANDO_EDGE(14, Dock, 0, Dock, 1, 0)  // 10_temple_pathofeyes line 104
+PORT_RANDO_EDGE(14, Dock, 1, Dock, 0, 0)  // 10_temple_pathofeyes line 104 (reverse)
+PORT_RANDO_EDGE(14, Dock, 0, Dock, 2, 0)  // 10_temple_pathofeyes line 105
+PORT_RANDO_EDGE(14, Dock, 2, Dock, 0, 0)  // 10_temple_pathofeyes line 105 (reverse)
+PORT_RANDO_EDGE(14, Dock, 1, Dock, 2, 0)  // 10_temple_pathofeyes line 106
+PORT_RANDO_EDGE(14, Dock, 2, Dock, 1, 0)  // 10_temple_pathofeyes line 106 (reverse)
+PORT_RANDO_EDGE(14, Dock, 3, Dock, 0, 0)  // 10_temple_pathofeyes line 107
+PORT_RANDO_EDGE(15, Dock, 0, Dock, 1, 0)  // 0k_temple_hall line 112
+PORT_RANDO_EDGE(15, Dock, 1, Dock, 0, 0)  // 0k_temple_hall line 112 (reverse)
+PORT_RANDO_EDGE(16, Dock, 0, Dock, 1, 0)  // 0b_temple_hall line 115
+PORT_RANDO_EDGE(16, Dock, 1, Dock, 0, 0)  // 0b_temple_hall line 115 (reverse)
+PORT_RANDO_EDGE(17, Dock, 0, Dock, 1, 0)  // 01_temple_hive03 line 118
+PORT_RANDO_EDGE(17, Dock, 1, Dock, 0, 0)  // 01_temple_hive03 line 118 (reverse)
+PORT_RANDO_EDGE(17, Dock, 0, Location, 269549883, 0)  // 01_temple_hive03 line 119
+PORT_RANDO_EDGE(17, Dock, 1, Location, 269549883, 0)  // 01_temple_hive03 line 120
+PORT_RANDO_EDGE(17, Dock, 0, Dock, 2, 0)  // 01_temple_hive03 line 121
+PORT_RANDO_EDGE(17, Dock, 2, Dock, 0, 0)  // 01_temple_hive03 line 121 (reverse)
+PORT_RANDO_EDGE(17, Dock, 1, Dock, 2, 0)  // 01_temple_hive03 line 122
+PORT_RANDO_EDGE(17, Dock, 2, Dock, 1, 0)  // 01_temple_hive03 line 122 (reverse)
+PORT_RANDO_EDGE(19, Dock, 0, Dock, 1, 9)  // 01_temple_hive02 line 129
+PORT_RANDO_EDGE(19, Dock, 1, Dock, 0, 9)  // 01_temple_hive02 line 129 (reverse)
+PORT_RANDO_EDGE(20, Dock, 0, Dock, 2, 7)  // 09_temple_thirdleg_dark line 256
+PORT_RANDO_EDGE(20, Dock, 2, Dock, 0, 7)  // 09_temple_thirdleg_dark line 256 (reverse)
+PORT_RANDO_EDGE(20, Dock, 0, Location, 1310861, 7)  // 09_temple_thirdleg_dark line 257
+PORT_RANDO_EDGE(20, Dock, 2, Location, 1310861, 7)  // 09_temple_thirdleg_dark line 258
+PORT_RANDO_EDGE(21, Dock, 3, Dock, 0, 7)  // 10_temple_pathofeyes_dark line 263
+PORT_RANDO_EDGE(21, Dock, 0, Dock, 3, 10)  // 10_temple_pathofeyes_dark line 264
+PORT_RANDO_EDGE(22, Dock, 0, Dock, 1, 1)  // 0r_temple_hall line 133
+PORT_RANDO_EDGE(22, Dock, 1, Dock, 0, 1)  // 0r_temple_hall line 133 (reverse)
+PORT_RANDO_EDGE(22, Dock, 0, Location, 1441995, 11)  // 0r_temple_hall line 134
+PORT_RANDO_EDGE(22, Dock, 1, Location, 1441995, 11)  // 0r_temple_hall line 135
+PORT_RANDO_EDGE(23, Dock, 0, Dock, 1, 0)  // 0o_temple_hall line 139
+PORT_RANDO_EDGE(23, Dock, 1, Dock, 0, 0)  // 0o_temple_hall line 139 (reverse)
+PORT_RANDO_EDGE(24, Dock, 0, Teleporter, 1572998, 0)  // 00_elev_temple_sand_a line 142
+PORT_RANDO_EDGE(24, Teleporter, 1572998, Dock, 0, 0)  // 00_elev_temple_sand_a line 142 (reverse)
+PORT_RANDO_EDGE(24, Dock, 0, Location, 1573044, 1)  // 00_elev_temple_sand_a line 143
+PORT_RANDO_EDGE(25, Dock, 0, Dock, 1, 0)  // 03_temple_combattraining line 146
+PORT_RANDO_EDGE(25, Dock, 1, Dock, 0, 0)  // 03_temple_combattraining line 146 (reverse)
+PORT_RANDO_EDGE(25, Dock, 0, Dock, 2, 0)  // 03_temple_combattraining line 147
+PORT_RANDO_EDGE(25, Dock, 2, Dock, 0, 0)  // 03_temple_combattraining line 147 (reverse)
+PORT_RANDO_EDGE(25, Dock, 0, Dock, 3, 0)  // 03_temple_combattraining line 148
+PORT_RANDO_EDGE(25, Dock, 3, Dock, 0, 0)  // 03_temple_combattraining line 148 (reverse)
+PORT_RANDO_EDGE(25, Dock, 1, Dock, 2, 0)  // 03_temple_combattraining line 149
+PORT_RANDO_EDGE(25, Dock, 2, Dock, 1, 0)  // 03_temple_combattraining line 149 (reverse)
+PORT_RANDO_EDGE(25, Dock, 1, Dock, 3, 0)  // 03_temple_combattraining line 150
+PORT_RANDO_EDGE(25, Dock, 3, Dock, 1, 0)  // 03_temple_combattraining line 150 (reverse)
+PORT_RANDO_EDGE(25, Dock, 2, Dock, 3, 0)  // 03_temple_combattraining line 151
+PORT_RANDO_EDGE(25, Dock, 3, Dock, 2, 0)  // 03_temple_combattraining line 151 (reverse)
+PORT_RANDO_EDGE(25, Dock, 0, Dock, 4, 6)  // 03_temple_combattraining line 152
+PORT_RANDO_EDGE(25, Dock, 4, Dock, 0, 0)  // 03_temple_combattraining line 153
+PORT_RANDO_EDGE(25, Dock, 0, Location, 1638564, 12)  // 03_temple_combattraining line 154
+PORT_RANDO_EDGE(26, Dock, 0, Dock, 1, 0)  // 0f_temple_hive_hall line 158
+PORT_RANDO_EDGE(26, Dock, 1, Dock, 0, 0)  // 0f_temple_hive_hall line 158 (reverse)
+PORT_RANDO_EDGE(28, Dock, 0, Dock, 1, 7)  // 0q_temple_hall_dark line 268
+PORT_RANDO_EDGE(28, Dock, 1, Dock, 0, 7)  // 0q_temple_hall_dark line 268 (reverse)
+PORT_RANDO_EDGE(28, Dock, 0, Dock, 2, 7)  // 0q_temple_hall_dark line 269
+PORT_RANDO_EDGE(28, Dock, 2, Dock, 0, 7)  // 0q_temple_hall_dark line 269 (reverse)
+PORT_RANDO_EDGE(28, Dock, 1, Dock, 2, 7)  // 0q_temple_hall_dark line 270
+PORT_RANDO_EDGE(28, Dock, 2, Dock, 1, 7)  // 0q_temple_hall_dark line 270 (reverse)
+PORT_RANDO_EDGE(29, Dock, 0, Dock, 1, 0)  // 11_temple_grandpuzzle line 161
+PORT_RANDO_EDGE(29, Dock, 1, Dock, 0, 0)  // 11_temple_grandpuzzle line 161 (reverse)
+PORT_RANDO_EDGE(29, Dock, 1, Dock, 2, 6)  // 11_temple_grandpuzzle line 162
+PORT_RANDO_EDGE(29, Dock, 2, Dock, 1, 0)  // 11_temple_grandpuzzle line 163
+PORT_RANDO_EDGE(29, Dock, 0, Location, 1900791, 13)  // 11_temple_grandpuzzle line 166
+PORT_RANDO_EDGE(29, Dock, 1, Location, 1900791, 13)  // 11_temple_grandpuzzle line 167
+PORT_RANDO_EDGE(30, Dock, 0, Teleporter, 1966093, 0)  // 00_elev_temple_swamp_b line 171
+PORT_RANDO_EDGE(30, Teleporter, 1966093, Dock, 0, 0)  // 00_elev_temple_swamp_b line 171 (reverse)
+PORT_RANDO_EDGE(31, Dock, 0, Dock, 1, 4)  // 0c_temple_hall line 174
+PORT_RANDO_EDGE(31, Dock, 1, Dock, 0, 4)  // 0c_temple_hall line 174 (reverse)
+PORT_RANDO_EDGE(31, Dock, 0, Location, 2031898, 14)  // 0c_temple_hall line 175
+PORT_RANDO_EDGE(31, Dock, 1, Location, 2031898, 14)  // 0c_temple_hall line 176
+PORT_RANDO_EDGE(32, Dock, 0, Teleporter, 2097251, 0)  // 0j_temple_hall line 183
+PORT_RANDO_EDGE(32, Teleporter, 2097251, Dock, 0, 0)  // 0j_temple_hall line 183 (reverse)
+PORT_RANDO_EDGE(33, Dock, 0, Location, 2162716, 0)  // 00_pickup_temple_b line 186
+PORT_RANDO_EDGE(34, Dock, 3, Dock, 0, 7)  // 03_temple_combattraining_dark line 274
+PORT_RANDO_EDGE(34, Dock, 0, Dock, 3, 8)  // 03_temple_combattraining_dark line 275
+PORT_RANDO_EDGE(34, Dock, 0, Location, 2228303, 7)  // 03_temple_combattraining_dark line 276
+PORT_RANDO_EDGE(34, Dock, 3, Location, 2228303, 7)  // 03_temple_combattraining_dark line 277
+PORT_RANDO_EDGE(35, Dock, 0, Location, 2293888, 15)  // 01_temple_landingsite_dark line 281
+PORT_RANDO_EDGE(36, Dock, 0, Dock, 3, 7)  // 0t_temple_hall_dark line 289
+PORT_RANDO_EDGE(36, Dock, 3, Dock, 0, 7)  // 0t_temple_hall_dark line 289 (reverse)
+PORT_RANDO_EDGE(37, Dock, 0, Dock, 1, 0)  // 0s_temple_hall line 189
+PORT_RANDO_EDGE(37, Dock, 1, Dock, 0, 0)  // 0s_temple_hall line 189 (reverse)
+PORT_RANDO_EDGE(39, Dock, 1, Dock, 2, 0)  // 04_temple_unknownenemies line 192
+PORT_RANDO_EDGE(39, Dock, 2, Dock, 1, 0)  // 04_temple_unknownenemies line 192 (reverse)
+PORT_RANDO_EDGE(39, Dock, 0, Dock, 1, 0)  // 04_temple_unknownenemies line 193
+PORT_RANDO_EDGE(39, Dock, 0, Dock, 2, 0)  // 04_temple_unknownenemies line 194
+PORT_RANDO_EDGE(39, Dock, 1, Dock, 0, 12)  // 04_temple_unknownenemies line 195
+PORT_RANDO_EDGE(39, Dock, 2, Dock, 0, 12)  // 04_temple_unknownenemies line 196
+PORT_RANDO_EDGE(39, Dock, 1, Location, 2556217, 16)  // 04_temple_unknownenemies line 197
+PORT_RANDO_EDGE(39, Dock, 2, Location, 2556217, 16)  // 04_temple_unknownenemies line 198
+PORT_RANDO_EDGE(40, Dock, 0, Dock, 1, 7)  // 0b_temple_hall_dark line 322
+PORT_RANDO_EDGE(40, Dock, 1, Dock, 0, 7)  // 0b_temple_hall_dark line 322 (reverse)
+PORT_RANDO_EDGE(42, Dock, 0, Teleporter, 136970372, 17)  // 12_temple_finalgate_dark line 329
+PORT_RANDO_EDGE(42, Teleporter, 136970372, Dock, 0, 17)  // 12_temple_finalgate_dark line 329 (reverse)
+PORT_RANDO_EDGE(42, Dock, 0, Teleporter, 136970379, 17)  // 12_temple_finalgate_dark line 330
+PORT_RANDO_EDGE(42, Teleporter, 136970379, Dock, 0, 17)  // 12_temple_finalgate_dark line 330 (reverse)
+PORT_RANDO_EDGE(42, Dock, 0, Teleporter, 136970382, 17)  // 12_temple_finalgate_dark line 331
+PORT_RANDO_EDGE(42, Teleporter, 136970382, Dock, 0, 17)  // 12_temple_finalgate_dark line 331 (reverse)
+PORT_RANDO_EDGE(43, Dock, 0, Dock, 1, 0)  // 05_temple_federationsite line 202
+PORT_RANDO_EDGE(43, Dock, 1, Dock, 0, 0)  // 05_temple_federationsite line 202 (reverse)
+PORT_RANDO_EDGE(43, Dock, 0, Dock, 2, 0)  // 05_temple_federationsite line 203
+PORT_RANDO_EDGE(43, Dock, 2, Dock, 0, 0)  // 05_temple_federationsite line 203 (reverse)
+PORT_RANDO_EDGE(43, Dock, 0, Dock, 3, 0)  // 05_temple_federationsite line 204
+PORT_RANDO_EDGE(43, Dock, 3, Dock, 0, 0)  // 05_temple_federationsite line 204 (reverse)
+PORT_RANDO_EDGE(43, Dock, 1, Dock, 2, 0)  // 05_temple_federationsite line 205
+PORT_RANDO_EDGE(43, Dock, 2, Dock, 1, 0)  // 05_temple_federationsite line 205 (reverse)
+PORT_RANDO_EDGE(43, Dock, 1, Dock, 3, 0)  // 05_temple_federationsite line 206
+PORT_RANDO_EDGE(43, Dock, 3, Dock, 1, 0)  // 05_temple_federationsite line 206 (reverse)
+PORT_RANDO_EDGE(43, Dock, 2, Dock, 3, 0)  // 05_temple_federationsite line 207
+PORT_RANDO_EDGE(43, Dock, 3, Dock, 2, 0)  // 05_temple_federationsite line 207 (reverse)
+PORT_RANDO_EDGE(43, Dock, 0, Location, 741016356, 2)  // 05_temple_federationsite line 208
+PORT_RANDO_EDGE(45, Dock, 0, Dock, 1, 0)  // 0d_temple_hall line 217
+PORT_RANDO_EDGE(45, Dock, 1, Dock, 0, 0)  // 0d_temple_hall line 217 (reverse)
+PORT_RANDO_EDGE(46, Dock, 1, Location, 204341296, 15)  // 02_temple_exploration_dark line 336
+PORT_RANDO_EDGE(48, Dock, 0, Dock, 1, 0)  // 0p_temple_hall line 220
+PORT_RANDO_EDGE(48, Dock, 1, Dock, 0, 0)  // 0p_temple_hall line 220 (reverse)
+PORT_RANDO_EDGE(48, Dock, 0, Location, 3145766, 2)  // 0p_temple_hall line 221
+PORT_RANDO_EDGE(48, Dock, 1, Location, 3145766, 2)  // 0p_temple_hall line 222
+PORT_RANDO_EDGE(49, Dock, 0, Dock, 1, 1)  // 0e_temple_hall line 225
+PORT_RANDO_EDGE(49, Dock, 1, Dock, 0, 1)  // 0e_temple_hall line 225 (reverse)
+PORT_RANDO_EDGE(51, Dock, 0, Teleporter, 3342446, 0)  // 00_elev_temple_cliff_c line 229
+PORT_RANDO_EDGE(51, Teleporter, 3342446, Dock, 0, 0)  // 00_elev_temple_cliff_c line 229 (reverse)
+PORT_RANDO_EDGE(52, Dock, 0, Dock, 1, 18)  // 06_temple_sacredpath line 232
+PORT_RANDO_EDGE(52, Dock, 1, Dock, 0, 18)  // 06_temple_sacredpath line 232 (reverse)
+PORT_RANDO_EDGE(52, Dock, 1, Dock, 2, 19)  // 06_temple_sacredpath line 233
+PORT_RANDO_EDGE(52, Dock, 0, Dock, 2, 19)  // 06_temple_sacredpath line 234
+PORT_RANDO_EDGE(52, Dock, 2, Dock, 0, 0)  // 06_temple_sacredpath line 235
+PORT_RANDO_EDGE(54, Dock, 0, Teleporter, 3538975, 0)  // 0f_temple_hall line 239
+PORT_RANDO_EDGE(54, Teleporter, 3538975, Dock, 0, 0)  // 0f_temple_hall line 239 (reverse)
+PORT_RANDO_EDGE(55, Dock, 1, Dock, 0, 7)  // 06_temple_sacredpath_dark line 341
+PORT_RANDO_EDGE(55, Dock, 0, Dock, 1, 8)  // 06_temple_sacredpath_dark line 342
+PORT_RANDO_EDGE(55, Dock, 0, Location, 3604683, 20)  // 06_temple_sacredpath_dark line 343
+PORT_RANDO_EDGE(55, Dock, 1, Location, 3604683, 20)  // 06_temple_sacredpath_dark line 344
+PORT_RANDO_EDGE(57, Dock, 0, Dock, 1, 21)  // 0e_temple_hall_dark line 351
+PORT_RANDO_EDGE(57, Dock, 1, Dock, 0, 21)  // 0e_temple_hall_dark line 351 (reverse)
+PORT_RANDO_EDGE(59, Dock, 0, Dock, 2, 7)  // 05_temple_federationsite_dark line 355
+PORT_RANDO_EDGE(59, Dock, 2, Dock, 0, 7)  // 05_temple_federationsite_dark line 355 (reverse)
+PORT_RANDO_EDGE(59, Dock, 0, Location, 3866838, 7)  // 05_temple_federationsite_dark line 356
+PORT_RANDO_EDGE(59, Dock, 2, Location, 3866838, 7)  // 05_temple_federationsite_dark line 357
+PORT_RANDO_EDGE(60, Dock, 0, Dock, 1, 7)  // 0d_temple_hall_dark line 360
+PORT_RANDO_EDGE(60, Dock, 1, Dock, 0, 7)  // 0d_temple_hall_dark line 360 (reverse)
+PORT_RANDO_EDGE(61, Dock, 0, Dock, 1, 7)  // 04_temple_unknownenemies_dark line 363
+PORT_RANDO_EDGE(61, Dock, 1, Dock, 0, 22)  // 04_temple_unknownenemies_dark line 364
+PORT_RANDO_EDGE(62, Dock, 0, Location, 4063266, 15)  // 00_pickup_temple_a_dark line 368
 #endif
