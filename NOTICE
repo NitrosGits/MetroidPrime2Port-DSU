@@ -52,12 +52,16 @@ travels with any build that contains it.
 | fmt | MIT | fetched, `fmt-src/` |
 | xxHash | BSD-2-Clause | fetched, `xxhash-src/` |
 | SQLite | public domain | fetched, `sqlite3-src/` (no licence file) |
+| Tracy — profiler client | BSD-3-Clause | fetched, `tracy-src/` |
+| Zstandard (Android) | BSD-3-Clause or GPL-2.0 | fetched, `zstd-src/` |
 | GamepadMotionHelpers — gyro calibration | MIT, © Julian "Jibb" Smart | `extern/GamepadMotionHelpers/LICENSE` |
 | libadrenotools — loads custom Vulkan drivers on Android | BSD-2-Clause, © Billy Laws | `extern/adrenotools/LICENSE` |
 | liblinkernsbypass — used by libadrenotools | BSD-2-Clause, © Billy Laws | `extern/adrenotools/lib/linkernsbypass/LICENSE` |
 | Button prompt icons | Kenney CC0 | `tools/prompt_icons/README.md` |
 
-FreeType and libpng are linked from the system on Linux and are not shipped.
+FreeType and libpng are linked from the system on Linux and are not shipped
+there; the Android build fetches and links them (FreeType License or GPL-2.0,
+and the libpng licence), and the APK carries their notices.
 
 The notices are collected into what is actually shipped:
 `share/licenses/metroid-prime2-port/` in the Linux tarball and the AppImage
