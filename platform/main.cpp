@@ -1002,13 +1002,12 @@ static void PortCrashAfterReport(int sig, const void* faultAddress) {
 }
 #endif
 
-#if defined(_WIN32)
-void PortAttachParentConsole(); // platform/port_parent_console.cpp
-#endif
-
 int main(int argc, char** argv) {
 #if defined(_WIN32)
-  PortAttachParentConsole();
+  if ((argc == 4 || argc == 5) && std::strcmp(argv[1], "--log-copy") == 0) {
+    return PortLogFile::RunCopy(argv[2], argv[3], argc == 5 ? argv[4] : nullptr);
+  }
+  PortLogFile::AttachParentConsole();
 #endif
   if (argc == 2 && std::strcmp(argv[1], "--version") == 0) {
     std::printf("Metroid Prime 2 native port %s (%s)\n", MP_BUILD_VERSION, MP_BUILD_REVISION);
