@@ -12,9 +12,19 @@ cannot hold them. This tool is run by CMake (see mp_scope_modules in CMakeLists.
             RELMain/RELExit to mp_rel_<Name>_prolog/_epilog, and localize every other defined
             global/weak symbol except those that an object outside the module references and
             that nothing outside the module defines.
+  scope --format coff
+            Windows (lld-link has no -r link). Each module object gets its own scoped copy,
+            --outputs lists "Name;out;out..." (one output per input object, same order). Every
+            module-private symbol (the same set the ELF mode localizes) is renamed with
+            llvm-objcopy --redefine-syms to mp_rel_<Name>__<symbol> in all of the module's objects, so
+            references inside the module still resolve, COMDAT leaders (inline functions,
+            templates) become per-module, and RELMain/RELExit become mp_rel_<Name>_prolog/_epilog.
+            Static initializers live in sections (.CRT$XC*) and need no renaming.
 
     scope_module.py registry --modules LIST --out INC
     scope_module.py scope --modules LIST --others LIST --outdir DIR --ld LD --objcopy OBJCOPY --nm NM
+    scope_module.py scope --format coff --modules LIST --others LIST --outputs LIST --outdir DIR \
+                          --objcopy OBJCOPY --nm NM
 """
 import argparse
 import os
@@ -22,7 +32,11 @@ import re
 import subprocess
 import sys
 
-ENTRY = {"prolog": re.compile(r"^(_Z7RELMainv|RELMain)$"), "epilog": re.compile(r"^(_Z7RELExitv|RELExit)$")}
+ENTRY = {"prolog": re.compile(r"^(_Z7RELMainv|RELMain|\?RELMain@@YAXXZ)$"),
+         "epilog": re.compile(r"^(_Z7RELExitv|RELExit|\?RELExit@@YAXXZ)$")}
+# COFF symbols the linker or CRT resolve by name; never rename them if a module defines one.
+COFF_RESERVED = {"_tls_used", "_fltused", "__ImageBase", "_tls_index", "mainCRTStartup", "WinMainCRTStartup",
+                 "main", "wmain", "WinMain", "DllMain"}
 
 
 def read_modules(path):
@@ -140,6 +154,65 @@ def scope(args):
         os.remove(stage)
 
 
+def scope_coff(args):
+    mods = read_modules(args.modules)
+    outputs = {n: o for n, o in read_modules(args.outputs)}
+    others = [l for l in open(args.others).read().splitlines() if l.strip()]
+    all_module_objs = {o for _, objs in mods for o in objs}
+    others = [o for o in others if o not in all_module_objs]
+    defined_outside = {s for s, t in nm(args.nm, others, "--defined-only", "-g") if t not in "Uu"}
+    undef_outside = {s for s, t in nm(args.nm, others, "-u")}
+    os.makedirs(args.outdir, exist_ok=True)
+
+    info = {}  # name -> (per-object (defined, undefined), module defined, module-unresolved undefined)
+    for name, objs in mods:
+        if len(outputs.get(name, [])) != len(objs):
+            sys.exit(f"scope_module: {name}: {len(objs)} objects but {len(outputs.get(name, []))} outputs "
+                     "(an unexpected source type in the module?)")
+        per = []
+        for o in objs:
+            per.append(({s for s, t in nm(args.nm, [o], "--defined-only", "-g") if t not in "Uu"},
+                        {s for s, t in nm(args.nm, [o], "-u")}))
+        defined = set().union(*(d for d, _ in per)) if per else set()
+        undef = set().union(*(u for _, u in per)) - defined if per else set()
+        info[name] = (per, defined, undef)
+
+    for name, objs in mods:
+        per, defined, _ = info[name]
+        eps = entry_points(args.nm, objs)
+        needed = set(undef_outside)
+        for other, (_, _, undef) in info.items():
+            if other != name:
+                needed |= undef
+        entry_names = {s for s in defined if any(rx.match(s) for rx in ENTRY.values())}
+        rename = {s: f"mp_rel_{name}__{s}" for s in defined
+                  if s not in entry_names and s not in COFF_RESERVED
+                  and not (s in needed and s not in defined_outside)}
+        for kind, sym in eps.items():
+            rename[sym] = f"mp_rel_{name}_{kind}"
+        for (obj, out, (d, u)) in zip(objs, outputs[name], per):
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            mapfile = out + ".redefine"
+            open(mapfile, "w").write("".join(f"{s} {rename[s]}\n" for s in sorted((d | u) & rename.keys())))
+            tmp = out + ".tmp"
+            subprocess.run([args.objcopy, f"--redefine-syms={mapfile}", obj, tmp], check=True)
+            os.replace(tmp, out)
+            os.remove(mapfile)
+            # Linker directives name symbols textually (/include:, /alternatename:); a renamed one
+            # would silently dangle.
+            drectve = out + ".drectve"
+            if subprocess.run([args.objcopy, f"--dump-section=.drectve={drectve}", out, os.devnull],
+                              capture_output=True).returncode == 0 and os.path.exists(drectve):
+                text = open(drectve, errors="replace").read()
+                os.remove(drectve)
+                for s in d | u:
+                    if s in rename and re.search(r"(include|alternatename|export):\"?" + re.escape(s) + r"[\"=\s,]", text):
+                        print(f"scope_module: warning: {obj}: .drectve names renamed symbol {s}", file=sys.stderr)
+
+
+SCOPERS = {"elf": scope, "coff": scope_coff}  # a "macho" scoper would be added here
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=["registry", "scope"])
@@ -150,8 +223,10 @@ def main():
     ap.add_argument("--ld", default="ld.bfd")
     ap.add_argument("--objcopy", default="objcopy")
     ap.add_argument("--nm", default="nm")
+    ap.add_argument("--format", choices=sorted(SCOPERS), default="elf")
+    ap.add_argument("--outputs")
     args = ap.parse_args()
-    (registry if args.mode == "registry" else scope)(args)
+    (registry if args.mode == "registry" else SCOPERS[args.format])(args)
 
 
 if __name__ == "__main__":
