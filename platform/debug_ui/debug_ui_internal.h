@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+class CMapArea;
 class CStringTable;
 template < typename T >
 class TToken;
@@ -45,6 +46,11 @@ struct SRoomEntry {
   bool real;
   TToken< CStringTable >* nameTable; // pending name load, freed once read
   std::string english;               // the English name alone, empty until it has loaded
+  // Light or Dark Aether, from the area's map (CMapArea bit 0, what the map screen splits by);
+  // unknown until that MAPA has loaded, and for an area the map does not cover.
+  enum class EDimension { kUnknown, kLight, kDark };
+  EDimension dimension;
+  TToken< CMapArea >* mapArea; // pending map-area load, freed once read
 };
 extern std::vector< SRoomEntry > sRooms;
 // The current area's layers, copied by SetAreaLayers on the game thread like the room list.

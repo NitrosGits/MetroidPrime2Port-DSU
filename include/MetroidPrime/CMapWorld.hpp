@@ -117,6 +117,9 @@ public:
     EMapAreaList GetContainingList() const { return mList; }
     void SetContainingList(EMapAreaList list) const { mList = list; }
     void SetNextMapArea(CMapAreaData* next) const { mNext = next; }
+#ifdef TARGET_PC
+    CAssetId PortAreaRes() const { return mAreaRes; }
+#endif
 
   private:
     CAssetId mAreaRes;
@@ -129,6 +132,11 @@ public:
   ~CMapWorld();
 
   uint GetNumAreas() const { return mAreas.size(); }
+#ifdef TARGET_PC
+  // The room picker reads each area's light/dark flag from its own MAPA token, without the
+  // automapper's streaming lists.
+  CAssetId PortMapAreaRes(int areaId) const { return mAreas[areaId].PortAreaRes(); }
+#endif
   CMapArea* GetMapArea(int areaId) const;
   void SetWhichMapAreasLoaded(const IWorld& world, int start, int count);
   int GetCurrentMapAreaDepth(const IWorld& world, int areaId) const;

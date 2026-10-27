@@ -301,38 +301,56 @@ void DrawCheatsSection() {
       PortWarp::Area(text);
     };
 
+    // One list per dimension, split by each area's map (SRoomEntry::dimension); a room whose map
+    // has not loaded yet, or that the map does not cover, is listed with Light Aether's.
+    const auto isDark = [](int index) {
+      return sRooms[index].dimension == SRoomEntry::EDimension::kDark;
+    };
     static char sRoomFilter[64] = {};
     const float goWidth = ImGui::CalcTextSize("Reload").x + ImGui::GetStyle().FramePadding.x * 2.f;
-    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - goWidth -
-                            ImGui::GetStyle().ItemSpacing.x);
-    if (ImGui::BeginCombo("##room", currentValid ? roomLabel(current).c_str() : "(no area)",
-                          ImGuiComboFlags_HeightLarge)) {
+    const float tagWidth = ImGui::GetCursorPosX() +
+                           std::max(ImGui::CalcTextSize("Light").x, ImGui::CalcTextSize("Dark").x) +
+                           ImGui::GetStyle().ItemSpacing.x;
+    const auto roomCombo = [&](const char* tag, const char* id, bool dark) {
+      ImGui::AlignTextToFramePadding();
+      ImGui::TextUnformatted(tag);
+      ImGui::SameLine(tagWidth);
+      ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - goWidth -
+                              ImGui::GetStyle().ItemSpacing.x);
+      const bool here = currentValid && isDark(current) == dark;
+      if (ImGui::BeginCombo(id, here ? roomLabel(current).c_str() : "(pick a room)",
+                            ImGuiComboFlags_HeightLarge)) {
 #if !defined(__ANDROID__) // it would raise the on-screen keyboard every time
-      if (ImGui::IsWindowAppearing()) {
-        ImGui::SetKeyboardFocusHere();
-      }
+        if (ImGui::IsWindowAppearing()) {
+          ImGui::SetKeyboardFocusHere();
+        }
 #endif
-      ImGui::SetNextItemWidth(-FLT_MIN);
-      ImGui::InputTextWithHint("##roomfilter", "Filter rooms", sRoomFilter, sizeof(sRoomFilter));
-      for (int i = 0; i < areaCount; ++i) {
-        if (!roomExists(i)) {
-          continue;
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::InputTextWithHint("##roomfilter", "Filter rooms", sRoomFilter, sizeof(sRoomFilter));
+        for (int i = 0; i < areaCount; ++i) {
+          if (!roomExists(i) || isDark(i) != dark) {
+            continue;
+          }
+          const std::string label = roomLabel(i);
+          if (sRoomFilter[0] != '\0' && SDL_strcasestr(label.c_str(), sRoomFilter) == nullptr &&
+              SDL_strcasestr(sRooms[i].label.c_str(), sRoomFilter) == nullptr) {
+            continue;
+          }
+          ImGui::PushID(i);
+          if (ImGui::Selectable(label.c_str(), i == current)) {
+            goToRoom(i);
+          }
+          ImGui::SetItemTooltip("%s", sRooms[i].label.c_str());
+          ImGui::PopID();
         }
-        const std::string label = roomLabel(i);
-        if (sRoomFilter[0] != '\0' && SDL_strcasestr(label.c_str(), sRoomFilter) == nullptr &&
-            SDL_strcasestr(sRooms[i].label.c_str(), sRoomFilter) == nullptr) {
-          continue;
-        }
-        ImGui::PushID(i);
-        if (ImGui::Selectable(label.c_str(), i == current)) {
-          goToRoom(i);
-        }
-        ImGui::SetItemTooltip("%s", sRooms[i].label.c_str());
-        ImGui::PopID();
+        ImGui::EndCombo();
       }
-      ImGui::EndCombo();
-    }
-    ImGui::SetItemTooltip("Pick a room to go there. A room that is not loaded streams in first.");
+      ImGui::SetItemTooltip(dark ? "Pick a Dark Aether room to go there. A room that is not loaded "
+                                   "streams in first."
+                                 : "Pick a Light Aether room to go there. A room that is not loaded "
+                                   "streams in first.");
+    };
+    roomCombo("Light", "##room", false);
     ImGui::SameLine();
     ImGui::BeginDisabled(!currentValid);
     if (ImGui::Button("Reload")) {
@@ -346,6 +364,7 @@ void DrawCheatsSection() {
     }
     ImGui::EndDisabled();
     ImGui::SetItemTooltip("Rebuild the room from the disc, as leaving and coming back does.");
+    roomCombo("Dark", "##darkroom", true);
 
     // Rebuilt when the card's table changes size, so loading another save does not leave the
     // combo showing the previous one's worlds.

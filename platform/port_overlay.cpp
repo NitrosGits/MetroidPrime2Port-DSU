@@ -21,6 +21,8 @@
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"
 #include "Kyoto/Text/CStringTable.hpp"
+#include "MetroidPrime/CMapArea.hpp"
+#include "MetroidPrime/CMapWorld.hpp"
 #include "MetroidPrime/CMemoryCard.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/IGameArea.hpp"
@@ -231,12 +233,43 @@ namespace {
 bool sHudScaling = false;
 bool sReadEnv = false;
 uint32_t sRoomsWorld = 0; // the asset id the entries were taken from, 0 before any world
+bool sRoomsSplitLogged = false; // the Light/Dark count is logged once per world
 
 void ClearRooms() {
   for (SRoomEntry& room : sRooms) {
     delete room.nameTable;
+    delete room.mapArea;
   }
   sRooms.clear();
+}
+
+// Asks for the area's map, whose header says Light or Dark Aether; read by ReadDimension once loaded.
+void RequestDimension(SRoomEntry& room, const CWorld& world, int index) {
+  const CMapWorld* mapWorld = world.GetMapWorld();
+  if (room.mapArea != nullptr || room.dimension != SRoomEntry::EDimension::kUnknown ||
+      !room.real || mapWorld == nullptr || gpSimplePool == nullptr ||
+      index >= static_cast< int >(mapWorld->GetNumAreas())) {
+    return;
+  }
+  const CAssetId mapa = mapWorld->PortMapAreaRes(index);
+  if (mapa == kInvalidAssetId) {
+    return;
+  }
+  room.mapArea = rs_new TToken< CMapArea >(gpSimplePool->GetObj(SObjectTag('MAPA', mapa)));
+  room.mapArea->Lock();
+}
+
+void ReadDimension(SRoomEntry& room) {
+  if (room.mapArea == nullptr || !room.mapArea->IsLoaded()) {
+    return;
+  }
+  const CMapArea* map = **room.mapArea;
+  if (map != nullptr) {
+    room.dimension =
+        map->IsInDarkWorld() ? SRoomEntry::EDimension::kDark : SRoomEntry::EDimension::kLight;
+  }
+  delete room.mapArea;
+  room.mapArea = nullptr;
 }
 
 uint64_t sFpsWindowStart = 0;
@@ -437,6 +470,22 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
   const uint32_t roomWorld = static_cast< uint32_t >(world->IGetWorldAssetId());
   if (roomWorld == sRoomsWorld && !sRooms.empty()) {
     // The same world: its area table cannot have changed under it, only name loads finish.
+    int light = 0;
+    int dark = 0;
+    int pending = 0;
+    for (int i = 0; i < static_cast< int >(sRooms.size()); ++i) {
+      SRoomEntry& room = sRooms[i];
+      RequestDimension(room, *world, i);
+      ReadDimension(room);
+      light += room.dimension == SRoomEntry::EDimension::kLight ? 1 : 0;
+      dark += room.dimension == SRoomEntry::EDimension::kDark ? 1 : 0;
+      pending += room.mapArea != nullptr ? 1 : 0;
+    }
+    if (pending == 0 && !sRoomsSplitLogged) {
+      sRoomsSplitLogged = true;
+      std::fprintf(stderr, "[rooms] %08x: %d Light Aether, %d Dark Aether, %d without a map\n",
+                   roomWorld, light, dark, static_cast< int >(sRooms.size()) - light - dark);
+    }
     for (int i = 0; i < static_cast< int >(sRooms.size()); ++i) {
       SRoomEntry& room = sRooms[i];
       if (room.nameTable == nullptr || !room.nameTable->IsLoaded()) {
@@ -458,6 +507,7 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
     return;
   }
   sRoomsWorld = roomWorld;
+  sRoomsSplitLogged = false;
   ClearRooms();
   const int count = world->IGetAreaCount();
   sRooms.reserve(count);
@@ -481,7 +531,9 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
       nameTable = rs_new TToken< CStringTable >(gpSimplePool->GetObj(SObjectTag('STRG', strg)));
       nameTable->Lock();
     }
-    sRooms.push_back(SRoomEntry{label, label, real, nameTable, std::string()});
+    sRooms.push_back(SRoomEntry{label, label, real, nameTable, std::string(),
+                                SRoomEntry::EDimension::kUnknown, nullptr});
+    RequestDimension(sRooms.back(), *world, i);
   }
 }
 
