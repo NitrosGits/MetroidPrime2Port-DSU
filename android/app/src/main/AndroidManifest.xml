@@ -3,7 +3,8 @@
      No storage permissions, no file picker: the disc, the user data and the cache
      all live in the app's private files directory for now, which needs no permission, and
      the picker that fills in port_paths.txt is M2. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- SDL's Android haptics call Vibrator.cancel() unconditionally, which throws without
          this and poisons the next JNI call. -->
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -13,6 +14,11 @@
     <!-- Photo mode's export to Pictures/Metroid Prime 2 on Android 9 (MediaStore needs none on 10+). -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    <!-- F1 > System > Data folder moves the user data to /storage/emulated/0/MetroidPrime2/, which the
+         game reads with plain file calls: all files access on Android 11+, the legacy storage
+         permission (WRITE_EXTERNAL_STORAGE above, requested at runtime) on 9-10. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
     <application
         android:allowBackup="false"
         android:appCategory="game"
@@ -33,5 +39,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Ends the game's process and starts it again after a data folder move; its own process, so
+             it outlives the one it ends. -->
+        <activity
+            android:name="org.metroidprime2.port.RestartActivity"
+            android:exported="false"
+            android:process=":restart"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
     </application>
 </manifest>

@@ -703,6 +703,21 @@ void CmdStatus(CStateManager& mgr, const Args& args, std::string& out) {
                   static_cast< unsigned long long >(pipes.prefetches),
                   static_cast< unsigned long long >(pipes.prefetchQueued), pipes.pinned, pipes.known);
     out += line;
+    AuroraTextureStats textures{};
+    aurora_get_texture_stats(&textures);
+    std::snprintf(line, sizeof(line),
+                  "textures: %u, %.1f MiB; render targets %u, %.1f MiB; lighting %u, %.1f MiB\n",
+                  textures.count[0], textures.bytes[0] / 1048576.f, textures.count[1],
+                  textures.bytes[1] / 1048576.f, textures.count[2], textures.bytes[2] / 1048576.f);
+    out += line;
+    AuroraDawnMemory dawn{};
+    if (aurora_get_dawn_memory(&dawn)) {
+      std::snprintf(line, sizeof(line),
+                    "dawn: %.1f MiB estimated (textures %.1f, buffers %.1f); allocator %.1f MiB used of %.1f allocated\n",
+                    dawn.total / 1048576.f, dawn.textures / 1048576.f, dawn.buffers / 1048576.f,
+                    dawn.allocatorUsed / 1048576.f, dawn.allocatorAllocated / 1048576.f);
+      out += line;
+    }
     // Per-frame work counters (aurora/perf.h): render pass breaks by reason (each one is a full
     // colour+depth store and reload on a tiled GPU), GXCopyTex calls by caller (module offsets,
     // addr2line -f -e metroid_prime2_port <offset>), texture cache traffic, extra draws.

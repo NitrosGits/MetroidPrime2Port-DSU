@@ -10,6 +10,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Process;
+import android.provider.Settings;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -111,6 +115,50 @@ public final class MetroidPrime2Activity extends SDLActivity {
             // Not fatal: the native side falls back to those same directories.
             Log.w(TAG, "Could not write " + marker, e);
         }
+    }
+
+    private static final int REQUEST_STORAGE = 0x57a6;
+
+    // Whether native code may read and write shared storage with plain file calls
+    // (platform/port_data_folder.cpp).
+    public boolean hasStorageAccess() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
+        return checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            == PackageManager.PERMISSION_GRANTED;
+    }
+
+    // Opens the system's "All files access" page (Android 11+) or asks for the storage
+    // permission (9-10).
+    public void requestStorageAccess() {
+        runOnUiThread(() -> {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_STORAGE);
+                return;
+            }
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.parse("package:" + getPackageName())));
+            } catch (android.content.ActivityNotFoundException e) {
+                try {
+                    startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+                } catch (android.content.ActivityNotFoundException e2) {
+                    Log.w(TAG, "No settings page for all files access", e2);
+                }
+            }
+        });
+    }
+
+    // Starts the game again in a new process (RestartActivity), so the data folder chosen in the
+    // overlay is picked up.
+    public void restartApp() {
+        runOnUiThread(() -> {
+            Intent intent = new Intent(this, RestartActivity.class);
+            intent.putExtra(RestartActivity.EXTRA_PID, Process.myPid());
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        });
     }
 
     private static final int REQUEST_TEXTURE_PACK = 0x7e57;

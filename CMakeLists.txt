@@ -466,6 +466,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp
         platform/port_gyro_motion.cpp
         platform/port_dynamic_res.cpp platform/port_video.cpp platform/port_gpu_driver.cpp
+        platform/port_data_folder.cpp
         platform/debug_ui/card_data.cpp platform/debug_ui/cheats.cpp platform/debug_ui/controls.cpp platform/debug_ui/debug.cpp
         platform/debug_ui/game_sections.cpp platform/debug_ui/performance.cpp platform/debug_ui/randomizer.cpp
         platform/debug_ui/savestates.cpp platform/debug_ui/search.cpp platform/debug_ui/settings.cpp
@@ -571,6 +572,12 @@ if(AURORA_SDL3_TARGET)
     add_test(NAME port_radial_mouse_tests COMMAND port_radial_mouse_tests)
     set_tests_properties(port_radial_tests port_radial_retry_tests port_radial_touch_tests port_radial_mouse_tests
         PROPERTIES TIMEOUT 30 LABELS port)
+    # Android's data folder move: the copy engine and the port_paths.txt rewrite (platform/port_data_folder.cpp).
+    add_executable(port_data_folder_tests tests/port_data_folder.cpp platform/port_data_folder.cpp)
+    target_include_directories(port_data_folder_tests PRIVATE platform/include tests)
+    add_test(NAME port_data_folder_tests COMMAND port_data_folder_tests
+        ${CMAKE_CURRENT_BINARY_DIR}/data-folder-test)
+    set_tests_properties(port_data_folder_tests PROPERTIES TIMEOUT 30 LABELS port)
     add_executable(port_mods_tests tests/port_mods.cpp platform/port_mods_pak.cpp)
     target_include_directories(port_mods_tests PRIVATE platform/include)
     add_test(NAME port_mods_tests COMMAND port_mods_tests)
