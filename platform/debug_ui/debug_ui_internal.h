@@ -142,7 +142,7 @@ void DrawGameSection();
 void DrawCutscenesSection();
 void DrawGameAudio();
 void DrawSpeedrunSection();
-void DrawModsSection();
+void DrawTexturesSection(); // the Mods page's texture pack section
 #if defined(__ANDROID__)
 std::string TexturePackStatus();
 void PickTexturePack();
@@ -179,9 +179,11 @@ void DrawControlsKeyboardMouse();
 void DrawControlsController();
 void DrawControlsTouchGyro();
 
+// mods.cpp
+void DrawMods();
+
 // The remaining pages and sections.
 void DrawFreeCam();
-void DrawCheatsTab();
 // MP1's cheat rows without the page's own wrapper, for a caller that draws them under a heading.
 void DrawCheatsSection();
 void DrawRendering();
@@ -192,6 +194,7 @@ void DrawPerformanceTab();
 void DrawSaveStatesTab();
 void DrawRandomizerTab();
 void DrawGameTab();
+void DrawModsTab();
 void DrawControlsTab();
 void DrawVideoTab();
 void DrawSystemTab();

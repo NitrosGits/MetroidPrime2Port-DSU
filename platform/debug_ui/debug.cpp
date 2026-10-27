@@ -113,6 +113,14 @@ void DrawFreeCam() {
 }
 
 void DrawDebugTab() {
+  // MP1's gate for the cheat rows. Not saved: a cheat must not persist (see sGodMode).
+  static bool sShowCheats = false;
+  ImGui::SeparatorText("Cheats");
+  ImGui::Checkbox("Show cheats (items, health, teleport)", &sShowCheats);
+  if (sShowCheats) {
+    DrawCheatsSection();
+  }
+
   ImGui::SeparatorText("Game");
   ImGui::Text("world %08X  area %d", sWorldId, sAreaId);
   if (const std::string room = PortOverlay::RoomName(sWorldId, sAreaId); !room.empty()) {
