@@ -193,6 +193,17 @@ public final class MetroidPrime2Activity extends SDLActivity {
         // ResolveAndroidPaths).
         writePortPaths();
         try {
+            // Cleared first: copying only adds, so an icon a newer APK no longer ships
+            // would keep replacing a texture it no longer claims. The native side reads
+            // <files>/textures (platform/main.cpp, PortPaths::base) whatever the user
+            // folder is moved to.
+            File textures = new File(getFilesDir(), "textures");
+            deleteTree(textures);
+            copyAssetTree("textures", textures);
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to unpack the button glyphs", e);
+        }
+        try {
             exitReport = buildExitReport();
         } catch (RuntimeException e) {
             Log.w(TAG, "Could not read the previous exit", e);
@@ -455,6 +466,31 @@ public final class MetroidPrime2Activity extends SDLActivity {
                         "Copying the texture pack... %d textures", copied[0]));
                 }
             }
+        }
+    }
+
+    private void copyAssetTree(String assetPath, File destination) throws IOException {
+        String[] children = getAssets().list(assetPath);
+        if (children == null || children.length == 0) {
+            File parent = destination.getParentFile();
+            if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
+                throw new IOException("Failed to create " + parent);
+            }
+            try (InputStream input = getAssets().open(assetPath);
+                 FileOutputStream output = new FileOutputStream(destination)) {
+                byte[] buffer = new byte[64 * 1024];
+                int count;
+                while ((count = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, count);
+                }
+            }
+            return;
+        }
+        if (!destination.isDirectory() && !destination.mkdirs()) {
+            throw new IOException("Failed to create " + destination);
+        }
+        for (String child : children) {
+            copyAssetTree(assetPath + "/" + child, new File(destination, child));
         }
     }
 

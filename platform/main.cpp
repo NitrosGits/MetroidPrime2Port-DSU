@@ -144,6 +144,7 @@ struct PortPaths {
   std::string user;
   std::string cache;
   std::string disc;
+  std::string base;  // the app's private files directory, where the APK's textures are unpacked
 };
 
 // An environment variable if it is set and non-empty, otherwise the value resolved for this
@@ -346,6 +347,7 @@ PortPaths ResolveAndroidPaths() {
   const std::string base = preference;
   SDL_free(preference);
 
+  paths.base = base;
   paths.user = base + "user";
   paths.cache = base + "cache";
   paths.disc = base + "disc.iso";
@@ -1175,7 +1177,8 @@ int main(int argc, char** argv) {
       textures = env;
     } else {
 #if defined(__ANDROID__)
-      const std::string base = touchUser != nullptr ? std::string(touchUser) : std::string();
+      // Unpacked by the activity beside port_paths.txt, so a moved user folder does not hide it.
+      const std::string base = appPaths.base;
 #else
       const std::string base = ExecutableDir(argc > 0 ? argv[0] : nullptr);
 #endif

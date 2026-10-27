@@ -122,6 +122,7 @@ jobs:
           d=build/release/metroid-prime2-port-linux-${{ matrix.arch }}
           mkdir -p "$d/share/licenses/metroid-prime2-port"
           cp build/port-gcc/metroid_prime2_port "$d/"
+          cp -r textures "$d/"
           bash tools/collect_licenses.sh build/port-gcc "$d/share/licenses/metroid-prime2-port"
           tar -C build/release -czf build/release/metroid-prime2-port-linux-${{ matrix.arch }}.tar.gz \
             metroid-prime2-port-linux-${{ matrix.arch }}

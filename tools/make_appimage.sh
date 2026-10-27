@@ -41,6 +41,7 @@ rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/bin"
 
 install -m755 "$BIN" "$APPDIR/usr/bin/metroid_prime2_port"
+cp -r "$ROOT/textures" "$APPDIR/usr/bin/textures"
 install -m644 "$ICON" "$APPDIR/$APP_ID.png"
 # File managers and AppImage launchers read the icon from here.
 ln -s "$APP_ID.png" "$APPDIR/.DirIcon"
