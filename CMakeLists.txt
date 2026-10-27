@@ -841,6 +841,9 @@ endif()
 if(WIN32)
     # The icon Explorer and the window show.
     target_sources(metroid_prime2_port PRIVATE packaging/metroid_prime2_port.rc)
+    # The DLLs the exe imports (Dawn's) go next to it, so ctest can start it from the build tree.
+    include(extern/aurora/cmake/AuroraCopyRuntimeDLLs.cmake)
+    aurora_copy_runtime_dlls(metroid_prime2_port)
 endif()
 set_source_files_properties(${MP_SCOPED_MODULE_OBJECTS} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
 target_sources(metroid_prime2_port PRIVATE

@@ -132,7 +132,11 @@ jobs:
         run: |
           $env:MP2_USER_PATH = "$PWD/build-win/settings-selftest/"
           $p = Start-Process -FilePath ./build-win/metroid_prime2_port.exe -ArgumentList '--settings-selftest' -PassThru -RedirectStandardError ./selftest-err.log -RedirectStandardOutput ./selftest-out.log
-          if ($p.WaitForExit(15000)) { "exited $($p.ExitCode)" } else {
+          if ($p.WaitForExit(15000)) {
+            "exited $($p.ExitCode)"
+            # 0xC0000135: a DLL the exe imports is missing; list what it needs and what is there.
+            if ($p.ExitCode -eq -1073741515) { & dumpbin /dependents ./build-win/metroid_prime2_port.exe; Get-ChildItem build-win/*.dll | ForEach-Object Name }
+          } else {
             $cdb = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers" -Recurse -Filter cdb.exe | Where-Object { $_.FullName -match '\\(x64|arm64)\\' } | Select-Object -First 1
             if ($cdb) { & $cdb.FullName -pv -p $p.Id -y "$PWD/build-win" -c ".symfix+; .reload; ~*kn 40; qd" } else { 'no cdb' }
             Stop-Process -Id $p.Id -Force
