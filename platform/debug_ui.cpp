@@ -937,9 +937,6 @@ void UpdateControllerNav() {
   if (!sEventWatchRegistered) {
     sEventWatchRegistered = true;
     SDL_AddEventWatch(debug_event_watch, nullptr);
-#if defined(PORT_TOUCH_OVERLAY)
-    InstallTouchOverlay();
-#endif
   }
   UpdateUiScale();
   if (sToggleRequested.exchange(false, std::memory_order_acq_rel)) {

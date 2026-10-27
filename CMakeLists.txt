@@ -662,6 +662,13 @@ if(AURORA_SDL3_TARGET)
         # port_console.cpp's `covdump` (platform/port_coverage.cpp).
         target_compile_definitions(mp_port_audio PRIVATE MP_PORT_COVERAGE=1)
     endif()
+    # The F1 overlay and the touch overlay (platform/debug_ui) are built here, not in mp_platform.
+    if(ANDROID OR IOS OR MP_TOUCH_OVERLAY_DESKTOP)
+        target_compile_definitions(mp_port_audio PRIVATE PORT_TOUCH_CONTROLS)
+    endif()
+    if(IOS OR (MP_TOUCH_OVERLAY_DESKTOP AND NOT ANDROID))
+        target_compile_definitions(mp_port_audio PRIVATE PORT_TOUCH_OVERLAY)
+    endif()
     mp_signed_char(mp_port_audio)
     mp_websocket_tls(mp_port_audio)
     # aurora::core carries ImGui's include directory, which the F1 overlay builds against.

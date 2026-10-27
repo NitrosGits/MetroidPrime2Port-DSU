@@ -1157,6 +1157,64 @@ void CmdIgt(CStateManager&, const Args& args, std::string& out) {
 
 // pointer <x> <y> move|click|dclick|tap|dtap|down|up|drag|wheel|pinch ... | back | where | hits:
 // scripted mouse/touch input for the pointer menus, in GUI (EFB) pixels as screenshots show them.
+// Pushes one SDL finger event at window pixel x,y, as a touch screen would: the touch overlay's
+// event filter sees it as it is pushed. Tests the touch overlay on a desktop build (MP1's `finger`).
+bool PushFinger(Uint32 type, SDL_FingerID id, float x, float y) {
+  int count = 0;
+  SDL_Window** windows = SDL_GetWindows(&count);
+  SDL_Window* window = windows != nullptr && count > 0 ? windows[0] : nullptr;
+  SDL_free(windows);
+  int w = 0;
+  int h = 0;
+  if (window == nullptr || !SDL_GetWindowSizeInPixels(window, &w, &h) || w <= 0 || h <= 0) {
+    return false;
+  }
+  SDL_Event e{};
+  e.type = type;
+  e.tfinger.timestamp = SDL_GetTicksNS();
+  e.tfinger.touchID = 1;
+  e.tfinger.fingerID = id;
+  e.tfinger.x = x / float(w);
+  e.tfinger.y = y / float(h);
+  e.tfinger.pressure = type == SDL_EVENT_FINGER_UP ? 0.f : 1.f;
+  e.tfinger.windowID = SDL_GetWindowID(window);
+  SDL_PushEvent(&e);
+  return true;
+}
+
+void CmdFinger(CStateManager&, const Args& args, std::string&) {
+  const auto num = [&](size_t i) { return static_cast< float >(std::atof(std::string(args[i]).c_str())); };
+  const char* usage =
+      "usage: finger down|move|up <id> <x> <y> | tap <x> <y> | drag <x0> <y0> <x1> <y1> [steps]";
+  bool ok = true;
+  if (args.size() == 5 && (args[1] == "down" || args[1] == "move" || args[1] == "up")) {
+    const Uint32 type = args[1] == "down" ? SDL_EVENT_FINGER_DOWN
+                        : args[1] == "move" ? SDL_EVENT_FINGER_MOTION
+                                            : SDL_EVENT_FINGER_UP;
+    ok = PushFinger(type, SDL_FingerID(std::atoll(std::string(args[2]).c_str())), num(3), num(4));
+  } else if (args.size() == 4 && args[1] == "tap") {
+    ok = PushFinger(SDL_EVENT_FINGER_DOWN, 1, num(2), num(3)) &&
+         PushFinger(SDL_EVENT_FINGER_UP, 1, num(2), num(3));
+  } else if ((args.size() == 6 || args.size() == 7) && args[1] == "drag") {
+    const int steps = args.size() == 7 ? std::max(1, std::atoi(std::string(args[6]).c_str())) : 10;
+    const float x0 = num(2), y0 = num(3), x1 = num(4), y1 = num(5);
+    ok = PushFinger(SDL_EVENT_FINGER_DOWN, 1, x0, y0);
+    for (int i = 1; ok && i <= steps; ++i) {
+      const float t = float(i) / float(steps);
+      PushFinger(SDL_EVENT_FINGER_MOTION, 1, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);
+    }
+    if (ok) {
+      PushFinger(SDL_EVENT_FINGER_UP, 1, x1, y1);
+    }
+  } else {
+    Fail(usage);
+    return;
+  }
+  if (!ok) {
+    Fail("no window");
+  }
+}
+
 void CmdPointer(CStateManager&, const Args& args, std::string& out) {
   static const char* const kUsage =
       "usage: pointer <x> <y> move|click|dclick|tap|dtap|down|up [l|r|touch]|drag <x1> <y1> "
@@ -4659,6 +4717,9 @@ const CommandSpec kCommands[] = {
       "                            damage stop spawn; value: float for damage, state for generic)\n"},
     {"fastmorph", CmdFastMorph,
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"},
+    {"finger", CmdFinger,
+      "finger down|move|up <id> <x> <y> | tap <x> <y> | drag <x0> <y0> <x1> <y1> [steps]  SDL touch\n"
+      "                           events at window pixels (the touch overlay's input; MP_TOUCH_OVERLAY_DESKTOP)\n"},
     {"pointer", CmdPointer,
       "pointer <x> <y> move|click|dclick|tap|dtap|down|up|drag <x1> <y1>|wheel <n>|pinch <r> | back | where | hits\n"
       "                            scripted mouse/touch input for the pointer menus (GUI pixels)\n"},

@@ -271,6 +271,9 @@ void UpdateControllerNav() {
   if (ImGui::GetCurrentContext() == nullptr) {
     return;
   }
+#if defined(PORT_TOUCH_OVERLAY)
+  InstallTouchOverlay(); // idempotent; the SDL event filter that feeds the touch controls
+#endif
   ImGuiIO& io = ImGui::GetIO();
   io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
