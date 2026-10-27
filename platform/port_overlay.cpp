@@ -73,6 +73,8 @@ bool sIgtTimer = false;
 bool sOriginalExperience = false;
 bool sUnlockHardMode = false;
 bool sUnlockGalleries = false;
+bool sUnlockBeamDoors = false;
+bool sStackBeams = false;
 int sHintDelay = 0;
 bool sSpringBall = false;
 bool sSpringFlick = false;
@@ -1805,6 +1807,28 @@ bool UnlockGalleries() {
 void SetUnlockGalleries(bool enabled) {
   ReadEnv();
   sUnlockGalleries = enabled;
+  Persist();
+}
+
+bool UnlockBeamDoors() {
+  ReadEnv();
+  return EnvBool("MP2_UNLOCK_BEAM_DOORS", sUnlockBeamDoors) && !OriginalExperience();
+}
+
+void SetUnlockBeamDoors(bool enabled) {
+  ReadEnv();
+  sUnlockBeamDoors = enabled;
+  Persist();
+}
+
+bool StackBeams() {
+  ReadEnv();
+  return EnvBool("MP2_STACK_BEAMS", sStackBeams) && !OriginalExperience();
+}
+
+void SetStackBeams(bool enabled) {
+  ReadEnv();
+  sStackBeams = enabled;
   Persist();
 }
 

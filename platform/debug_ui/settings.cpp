@@ -187,6 +187,8 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sSkipCinematics >("skip_cinematics"),
     BoolKey< &sUnlockHardMode >("unlock_hard_mode"),
     BoolKey< &sUnlockGalleries >("unlock_galleries"),
+    BoolKey< &sUnlockBeamDoors >("unlock_beam_doors"),
+    BoolKey< &sStackBeams >("stack_beams"),
     IntKey< &sBootLogos, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off >(
         "boot_logos", "0", "2"),
     IntKey< &sWorldNameCard, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off >(

@@ -80,7 +80,11 @@ CGunWeapon::CGunWeapon(EWeaponType type, TUniqueId playerId, const CVector3f& sc
 , mModelTouchEnabled(true)
 , x271_26(flags & 1) {}
 
-CGunWeapon::~CGunWeapon() {}
+CGunWeapon::~CGunWeapon() {
+#ifdef TARGET_PC
+  PortUnlockStackTokens();
+#endif
+}
 
 const SWeaponInfo& CGunWeapon::GetWeaponInfo() const {
   return gpTweakPlayerGun->GetBeamInfo(mBeamId);
@@ -448,6 +452,39 @@ void CGunWeapon::Fire(const TCachedToken< CWeaponDescription >& projectile, bool
     }
   }
 }
+
+#ifdef TARGET_PC
+void CGunWeapon::PortLockStackTokens() {
+  if (PortStackTokensLocked()) {
+    return;
+  }
+  for (int i = 0; i < mWeapons.capacity(); ++i) {
+    mPortStackWeapons.push_back(TCachedToken< CWeaponDescription >(mWeapons[i]));
+    mPortStackWeapons[i].Lock();
+  }
+}
+
+void CGunWeapon::PortUnlockStackTokens() {
+  for (int i = 0; i < mPortStackWeapons.size(); ++i) {
+    mPortStackWeapons[i].Unlock();
+  }
+  mPortStackWeapons = rstl::reserved_vector< TCachedToken< CWeaponDescription >, 2 >();
+}
+
+void CGunWeapon::PortFireStackedProjectile(bool underwater, float dt,
+                                           CPlayerState::EChargeStage chargeState,
+                                           const CTransform4f& xf, CStateManager& mgr,
+                                           TUniqueId homingTarget, float chargeFactor) {
+  if (!PortStackTokensLocked() || !mPortStackWeapons[chargeState].TryCache()) {
+    return;
+  }
+  // 0x800000 and 0x1000000: no charge-release camera shake and no shoot animation, which belong
+  // to the beam in hand.
+  CGunWeapon::Fire(mPortStackWeapons[chargeState], underwater, dt, chargeState, xf, mgr,
+                   homingTarget, 0x800000 | 0x1000000, CSfxManager::kInternalInvalidSfxId, nullptr,
+                   nullptr, chargeFactor, chargeFactor);
+}
+#endif
 
 void CGunWeapon::ReturnToDefault(CStateManager& mgr, bool reset) {
   if (!mGunController.null()) {

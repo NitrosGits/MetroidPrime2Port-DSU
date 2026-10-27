@@ -162,6 +162,14 @@ bool UnlockHardMode();
 void SetUnlockHardMode(bool enabled);
 bool UnlockGalleries();
 void SetUnlockGalleries(bool enabled);
+// Beam doors (`MP2_UNLOCK_BEAM_DOORS`): a colour-locked door lock (a damageable trigger that some of
+// the Power, Dark, Light and Annihilator beams hit and others do not) takes any of the four beams.
+// Stack beams (`MP2_STACK_BEAMS`): a beam fired while another is selected also fires the other
+// beams Samus owns, as in Prime 1's stacked beams. Both read false while Original experience is on.
+bool UnlockBeamDoors();
+void SetUnlockBeamDoors(bool enabled);
+bool StackBeams();
+void SetStackBeams(bool enabled);
 // Hint delay in minutes (`MP2_HINT_DELAY`, 0 = the game's own timing): HintDelaySeconds() caps the
 // wait before a hint first shows (CHintOptions::Update), 0 when off. RequestShowHint() (F1 button,
 // `hintshow`) asks the next CHintOptions::Update to show the hint the game would show next;

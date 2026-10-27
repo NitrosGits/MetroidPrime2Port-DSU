@@ -111,6 +111,18 @@ public:
   rstl::optional_object< CModelData >& SolidModelData() { return mSolidModelData; }
   const CModelData& GetSolidModelData() const { return mSolidModelData.data(); }
 
+#ifdef TARGET_PC
+  // Port: stacked beams (F1 > Game > Unlocks). The weapon descriptions are locked only while this
+  // beam is the loaded one, so the gun takes its own locked copies to fire this beam from the
+  // side without loading its model (MP1's CGunWeapon::PortLockStackTokens).
+  void PortLockStackTokens();
+  void PortUnlockStackTokens();
+  bool PortStackTokensLocked() const { return mPortStackWeapons.size() != 0; }
+  // Fires this beam's projectile for chargeState if its description is ready, else nothing.
+  void PortFireStackedProjectile(bool underwater, float dt, CPlayerState::EChargeStage chargeState,
+                                 const CTransform4f& xf, CStateManager& mgr,
+                                 TUniqueId homingTarget, float chargeFactor);
+#endif
   EWeaponType GetType() const { return mWeaponType; }
   const TCachedToken< CWeaponDescription >&
   GetProjectileToken(CPlayerState::EChargeStage stage) const {
@@ -223,6 +235,9 @@ protected:
   void LoadFxIdle(float dt, CStateManager& mgr);
   void LockTokens();
   void UnlockTokens();
+#ifdef TARGET_PC
+  rstl::reserved_vector< TCachedToken< CWeaponDescription >, 2 > mPortStackWeapons;
+#endif
 
   static void PointGenerator(const CSkinnedModel& model, const SSkinningWorkspace& workspace,
                              void* context);
