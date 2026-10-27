@@ -267,6 +267,24 @@ elseif(WIN32)
         HINTS "${MP_WIN_LLVM_BIN}" REQUIRED)
     find_program(MP_NM NAMES llvm-nm ${CMAKE_NM} nm HINTS "${MP_WIN_LLVM_BIN}" REQUIRED)
     set(MP_LD_BFD "")
+elseif(APPLE)
+    # Mach-O (macOS, iOS) has no ld.bfd either; tools/scope_module.py --format macho renames
+    # per object like the COFF mode. Apple's own objcopy does not exist, so llvm-objcopy and
+    # llvm-nm come from Homebrew's llvm (or LLVM_BIN, or the compiler's directory).
+    get_filename_component(MP_APPLE_LLVM_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    set(_mp_llvm_hints "${MP_APPLE_LLVM_BIN}" "$ENV{LLVM_BIN}"
+        /opt/homebrew/opt/llvm/bin /usr/local/opt/llvm/bin)
+    find_program(_mp_brew brew)
+    if(_mp_brew)
+        execute_process(COMMAND "${_mp_brew}" --prefix llvm OUTPUT_VARIABLE _mp_brew_llvm
+            OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET RESULT_VARIABLE _mp_brew_rc)
+        if(_mp_brew_rc EQUAL 0 AND _mp_brew_llvm)
+            list(APPEND _mp_llvm_hints "${_mp_brew_llvm}/bin")
+        endif()
+    endif()
+    find_program(MP_OBJCOPY NAMES llvm-objcopy HINTS ${_mp_llvm_hints} REQUIRED)
+    find_program(MP_NM NAMES llvm-nm HINTS ${_mp_llvm_hints} REQUIRED)
+    set(MP_LD_BFD "")
 else()
     find_program(MP_LD_BFD NAMES ld.bfd ld REQUIRED)
     find_program(MP_OBJCOPY NAMES ${CMAKE_OBJCOPY} objcopy REQUIRED)
@@ -310,9 +328,16 @@ function(mp_scope_modules)
     set(outs)
     set(scope_args --ld "${MP_LD_BFD}")
     set(scope_deps)
-    if(WIN32)
+    if(WIN32 OR APPLE)
         # One scoped object per input object, at paths known now: <Name>/<index>_<source>.obj, in
         # the order $<TARGET_OBJECTS> lists the compiled sources. The tool checks the counts.
+        if(WIN32)
+            set(scope_format coff)
+            set(obj_ext obj)
+        else()
+            set(scope_format macho)
+            set(obj_ext o)
+        endif()
         set(outlist "")
         foreach(m ${MP_MODULES})
             set(i 0)
@@ -320,7 +345,7 @@ function(mp_scope_modules)
             foreach(src ${MP_MODULE_${m}_SOURCES})
                 if(src MATCHES "\\.(c|cc|cpp|cxx|C)$")
                     get_filename_component(base "${src}" NAME)
-                    set(o "${MP_MODULE_DIR}/${m}/${i}_${base}.obj")
+                    set(o "${MP_MODULE_DIR}/${m}/${i}_${base}.${obj_ext}")
                     list(APPEND outs "${o}")
                     string(APPEND outlist ";${o}")
                     math(EXPR i "${i} + 1")
@@ -331,7 +356,7 @@ function(mp_scope_modules)
         file(WRITE "${MP_MODULE_DIR}/outputs.txt.tmp" "${outlist}")
         file(COPY_FILE "${MP_MODULE_DIR}/outputs.txt.tmp" "${MP_MODULE_DIR}/outputs.txt" ONLY_IF_DIFFERENT)
         file(REMOVE "${MP_MODULE_DIR}/outputs.txt.tmp")
-        set(scope_args --format coff --outputs "${MP_MODULE_DIR}/outputs.txt")
+        set(scope_args --format ${scope_format} --outputs "${MP_MODULE_DIR}/outputs.txt")
         set(scope_deps "${MP_MODULE_DIR}/outputs.txt")
     else()
         foreach(m ${MP_MODULES})
@@ -621,6 +646,11 @@ if(AURORA_SDL3_TARGET)
     add_test(NAME port_settings_index COMMAND ${Python3_EXECUTABLE} -I
         ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_settings_index.py ${CMAKE_CURRENT_SOURCE_DIR})
     set_tests_properties(port_settings_index PROPERTIES TIMEOUT 30 LABELS port)
+    # tools/scope_module.py --format macho on arm64-apple-macos objects; skipped (77) when the
+    # llvm-mingw clang the test borrows is absent.
+    add_test(NAME port_scope_macho
+        COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/tests/port_scope_macho_test.py)
+    set_tests_properties(port_scope_macho PROPERTIES TIMEOUT 60 LABELS port SKIP_RETURN_CODE 77)
     # Every command in the console's table is documented in docs/CONSOLE.md.
     add_test(NAME port_console_docs
         COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/tests/port_console_docs.py
