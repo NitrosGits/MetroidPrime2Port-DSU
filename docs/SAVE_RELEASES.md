@@ -390,8 +390,8 @@ The per-player options and header fields map 1:1 in every pair [I]. The `PLST` f
 | --- | --- | --- |
 | G2ME → G2MP | **Remap by ID** | See below |
 | G2MP → G2ME | **Remap by ID** (lossy) | The inverse of the above. Drop the PAL-only scans, relay and layer bit. |
-| GC → R3ME | **Container done, payload pending** | Framing, header, CRC, summary and slot size are implemented (`port_save_trilogy.cpp`). The part A/B stream conversion (remap-by-ID) is the seam in `port_save_trilogy_payload.cpp`. |
-| R3ME → GC | **Blocked** | Same reason |
+| G2ME → R3ME | **Done (2026-10-27), unverified in the Trilogy** | `port_save_trilogy.cpp` (container) and `port_save_trilogy_payload.cpp` (stream, remap by ID with the tables `tools/trilogy_tables.py` writes from both discs). Wii part B = 20 zero bytes, GMST stream with 2 flag bits (hard, dark; the GC's initPowerups bit is dropped and the card's kept), cinematics inline, 12 world records, no GMND; part A = signature, SYST + 29 system variables + SYND. The 2000-byte part B is 5 bytes short of the whole stream: the last world's (e3b0c703) record is cut off in every real save, and the importer reads it from zeros with its layers at the MLVL defaults. The flag meaning (hard, dark) is inferred from the fixtures, not proven. |
+| R3ME → G2ME | **Done, same caveats** | The inverse; a cinematic set on the card is kept (union). Lossy: scans/hints/relays/doors/layers/cinematics with no counterpart, counted in `ConvertReport`. |
 | any ↔ R3MP | **Blocked** | No disc, no data |
 
 G2ME → G2MP rewrites:
@@ -411,7 +411,7 @@ Remap by ID needs no game logic. Every indexed bit list is keyed by stable IDs p
 - scan asset IDs
 - layer names per area
 
-Where an ID exists only in the source, the bit is dropped [I]. Within the payload, GC ↔ Trilogy would also need these [I]:
+Where an ID exists only in the source, the bit is dropped [I]. Within the payload, GC ↔ Trilogy would also need these [I]: (implemented 2026-10-27 in `port_save_trilogy_payload.cpp`)
 
 - Cinematic bits remapped by ID. Trilogy drops 34.
 - The HINT list remapped (44 → 42). That needs hint names, which `HINT_Hints` carries.
@@ -461,6 +461,6 @@ How each piece maps onto Echoes [I unless marked]:
 | `ReadSlot` / `WriteSlot`, `ReadSystem` / `WriteSystem` | The `CGameState::PutTo` and `CPersistentOptions` bitstreams of §2. They are the same on G2ME and G2MP. | Layout from source; not checked on data |
 | `MakeHeader` / `PutComment` / `CardCrc` | Rewrite the `SSaveHeader` signature with the **target release's console value** (§3 table), then the two copy CRCs and the header-block CRC. The comment and banner are the same on both GC releases. | Not written |
 | `ReadUsaContainer` / `ReadPalContainer` | One GCI reader covers both GC releases, because the container is the same (§1). | Exists (`Inspect()`) |
-| `ReadWii` / `WriteWii` (`save.bin`) | Trilogy R3ME/R3MP: container ported as `port_save_trilogy.cpp` (plaintext NAND file, no AES; the AES one is the SD `data.bin`). Payload conversion pending. | Partial |
+| `ReadWii` / `WriteWii` (`save.bin`) | Trilogy R3ME/R3MP: container ported as `port_save_trilogy.cpp` (plaintext NAND file, no AES; the AES one is the SD `data.bin`). Payload conversion: `port_save_trilogy_payload.cpp` (G2ME). | Partial: G2MP and signature-less (empty card) imports refused |
 
 The first slice worth building is G2ME ↔ G2MP only: both directions are a remap by ID (§4), and the offer, marker and backup flow carries over unchanged.

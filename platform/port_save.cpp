@@ -711,9 +711,9 @@ void BeforeCardWrite(const char* fileName) {
 }
 
 // ---- Metroid Prime Trilogy's save.bin (port_save_trilogy.h) ----------------------------------------
-// MP1's PortGci::ExportTrilogy / SyncTrilogy / SyncTrilogyShare. The container is complete; the slot
-// stream conversion is the seam in port_save_trilogy_payload.cpp, so until it exists every export
-// ends with that stage's message and leaves save.bin as it was.
+// MP1's PortGci::ExportTrilogy / SyncTrilogy / SyncTrilogyShare. The container is port_save_trilogy.cpp and the
+// slot stream conversion (G2ME .gci <-> the bin's parts A/B, by asset ID) is port_save_trilogy_payload.cpp.
+// An import needs a card save to take the framing from; a G2MP (PAL Echoes) card file is refused.
 
 namespace {
 

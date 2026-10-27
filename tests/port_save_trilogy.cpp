@@ -3,6 +3,7 @@
 #include "port_save_trilogy.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iterator>
@@ -23,6 +24,73 @@ std::vector<uint8_t> Load(const std::string& path) {
   std::ifstream in(path, std::ios::binary);
   return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
+
+uint32_t CardCrc(const uint8_t* p, size_t n) {
+  uint32_t c = 0xFFFFFFFFu;
+  for (size_t i = 0; i < n; ++i) {
+    c ^= p[i];
+    for (int k = 0; k < 8; ++k) {
+      c = (c >> 1) ^ (0xEDB88320u & (0u - (c & 1u)));
+    }
+  }
+  return c;
+}
+
+// An R3ME card file holding only an empty system block (all cinematics unseen) and no slot: the
+// framing GciFromPayload needs. The system block is SYST, 2 index bits, 1030 + 29 zero bits, SYND.
+std::vector<uint8_t> SyntheticGci() {
+  std::vector<uint8_t> g(0x40 + 3 * 0x2000, 0);
+  std::memcpy(g.data(), "R3ME01", 6);
+  for (int c = 0; c < 2; ++c) {
+    uint8_t* block = g.data() + 0x40 + 0x2000 + size_t(c) * 0x2000;
+    uint8_t* user = block + 8;
+    std::memcpy(user + 11, "SAVH", 4);
+    uint8_t* sys = user + 15;
+    std::memcpy(sys, "SYST", 4);
+    const size_t at = 32 + 2 + 1030 + 29; // SYND, MSB-first
+    for (size_t b = 0; b < 32; ++b) {
+      const uint32_t word = 0x53594e44u; // "SYND"
+      if ((word >> (31 - b)) & 1) {
+        sys[(at + b) / 8] |= uint8_t(0x80 >> ((at + b) % 8));
+      }
+    }
+    const uint32_t crc = CardCrc(block + 4, 0x2000 - 4);
+    for (int i = 0; i < 4; ++i) {
+      block[i] = uint8_t(crc >> (8 * i)); // little-endian
+    }
+  }
+  return g;
+}
+
+// A payload from a fixture, through a gci and back: the Wii's own bytes must survive.
+void RoundTripPayloads(const std::vector<uint8_t>& bin, int f, const char* name) {
+  Payload p;
+  if (!Read(bin.data(), f, p)) {
+    return;
+  }
+  std::string error;
+  std::vector<uint8_t> gci = SyntheticGci();
+  ConvertReport rep;
+  const bool imported = GciFromPayload(p, gci, error, &rep);
+  Check(imported, error.c_str(), name);
+  if (!imported) {
+    return;
+  }
+  Check(rep.Total() == 0, "an R3ME gci import reports dropped entries", name);
+  uint8_t a[kPartSize], b[kPartSize];
+  const bool exported = PayloadFromGci(gci, 0, a, b, error);
+  Check(exported, error.c_str(), name);
+  // Part A's signature is by region (the synthetic card is USA): compare it past the signature.
+  Check(!std::memcmp(b, p.partB, kPartSize), "part B does not survive payload -> gci -> payload", name);
+  Check(!std::memcmp(a + 4, p.partA + 4, kPartSize - 4), "part A does not survive payload -> gci -> payload", name);
+  // The converter is deterministic and idempotent: a second pass changes nothing.
+  std::vector<uint8_t> again = gci;
+  Payload q;
+  std::memcpy(q.partA, a, kPartSize);
+  std::memcpy(q.partB, b, kPartSize);
+  Check(GciFromPayload(q, again, error) && again == gci, "importing the same payload twice differs", name);
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -74,11 +142,49 @@ int main(int argc, char** argv) {
         }
         Check(outside <= 7 + kSummaryBytes + 4, "a write changed bytes outside Echoes' file", name);
       }
+      RoundTripPayloads(bin, f, name);
       // A flipped byte in the checksummed range is caught.
       std::vector<uint8_t> bad = bin;
       bad[0x100] ^= 1;
       Check(!Validate(bad.data(), bad.size(), error), "a corrupted save.bin validates", name);
       break;
+    }
+  }
+  // A real card save (the port's own G2ME slot) exported and imported back: identical but for the
+  // fields the Trilogy cannot hold. Skipped when the file is not on this machine.
+  if (const char* home = std::getenv("HOME")) {
+    const std::string gciPath = std::string(home) + "/.cache/mp2-orch/saves/mi_u/USA/Card A/01-G2ME-MetroidPrime2.gci";
+    const std::vector<uint8_t> gci = Load(gciPath);
+    if (gci.empty()) {
+      std::printf("skip: %s not present\n", gciPath.c_str());
+    } else {
+      for (int slot = 0; slot < 3; ++slot) {
+        std::string error;
+        uint8_t a[kPartSize], b[kPartSize];
+        ConvertReport rep;
+        if (!PayloadFromGci(gci, slot, a, b, error, &rep)) {
+          std::printf("slot %d: %s\n", slot, error.c_str());
+          continue;
+        }
+        Payload p;
+        std::memcpy(p.partA, a, kPartSize);
+        std::memcpy(p.partB, b, kPartSize);
+        std::vector<uint8_t> back = gci;
+        const bool imported = GciFromPayload(p, back, error);
+        Check(imported, error.c_str(), "gci");
+        // What may differ: the two CRCs, and the bytes of the world the Wii cuts off (its record is 5
+        // bytes short in every real Trilogy save, so that world's layers come back at their defaults).
+        size_t changed = 0;
+        for (size_t i = 0; i < gci.size(); ++i) {
+          const size_t inCopy = i >= 0x2040 ? (i - 0x2040) % 0x2000 : 0x100;
+          changed += back[i] != gci[i] && inCopy >= 4;
+        }
+        std::printf("slot %d: dropped %d, %zu byte(s) differ outside the CRCs\n", slot, rep.Total(), changed);
+        Check(changed <= 8, "gci -> payload -> gci changed more than the cut-off world", "gci");
+        uint8_t a2[kPartSize], b2[kPartSize];
+        Check(PayloadFromGci(back, slot, a2, b2, error) && !std::memcmp(a, a2, kPartSize) && !std::memcmp(b, b2, kPartSize),
+              "gci -> payload -> gci -> payload is not stable", "gci");
+      }
     }
   }
   Check(withEchoes > 0, "no fixture has Echoes progress; the test proved nothing", "fixtures");

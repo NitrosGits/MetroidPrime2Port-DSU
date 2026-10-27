@@ -205,8 +205,8 @@ Statuses:
 | Section order | tabs.cpp:261-274: Overlay, Settings, Memory card, Data folder, Log, Disc check, Discord, Update, About | tabs.cpp `DrawSystemTab`: Overlay, Settings, Memory card, Data folder, Log, Disc image, Discord, About (f1-frame) | SAME order; no Update section (see Game page, Updates) |
 | Overlay (floating window, Menu theme, Menu sounds) | game_sections.cpp | game_sections.cpp:415-427 | SAME |
 | Memory card, Import file, Import from Dolphin, Export to Dolphin, Open card folder | file_dialogs.cpp | card_data.cpp | SAME |
-| Emulator card (Choose…, Auto, Installed emulators, Share card, Copy port saves) | file_dialogs.cpp:542-603 | card_data.cpp DrawEmulatorCard; port_save.cpp; DolphinCMemoryCardSys.cpp Initialize | SAME (sharing takes effect at next launch, not live). Trilogy mirror: PARTIAL - `PortSave::SyncTrilogyShare` + "Mirror with the Trilogy save.bin" checkbox + `CSaveGameScreen::Update` hook (container, mtime sync, failure markers done); it reports "slot stream conversion is not written yet" until `port_save_trilogy_payload.cpp` is filled in. Gated by `mirror_trilogy_save` (off), not by the disc as in MP1 |
-| Export as / Export into save.bin / Export… | file_dialogs.cpp:680-693 card_data.cpp DrawCardTransfer ("Export as" combo, "Export into save.bin…", Dolphin Wii NAND target); port_save.cpp `ExportTrilogy`; port_save_trilogy.cpp | PARTIAL - superseded the earlier "no Echoes counterpart" SKIPPED: Echoes has slots at 0x3660 in save.bin. Container done and tested on real save.bins (`port_save_trilogy_tests`): layout, Mii-owned file choice, summary line, 0x76C constant, CRC, `.bak`. The G2ME stream -> part A/B conversion is still missing, so an export stops with that message and writes nothing |
+| Emulator card (Choose…, Auto, Installed emulators, Share card, Copy port saves) | file_dialogs.cpp:542-603 | card_data.cpp DrawEmulatorCard; port_save.cpp; DolphinCMemoryCardSys.cpp Initialize | SAME (sharing takes effect at next launch, not live). Trilogy mirror: PARTIAL - `PortSave::SyncTrilogyShare` + "Mirror with the Trilogy save.bin" checkbox + `CSaveGameScreen::Update` hook (container, mtime sync, failure markers done); the slot conversion is `port_save_trilogy_payload.cpp` (G2ME <-> R3ME by asset ID; G2MP refused; an import needs a card save to take its framing from). Gated by `mirror_trilogy_save` (off), not by the disc as in MP1 |
+| Export as / Export into save.bin / Export… | file_dialogs.cpp:680-693 card_data.cpp DrawCardTransfer ("Export as" combo, "Export into save.bin…", Dolphin Wii NAND target); port_save.cpp `ExportTrilogy`; port_save_trilogy.cpp | PARTIAL - superseded the earlier "no Echoes counterpart" SKIPPED: Echoes has slots at 0x3660 in save.bin. Container done and tested on real save.bins (`port_save_trilogy_tests`): layout, Mii-owned file choice, summary line, 0x76C constant, CRC, `.bak`. The G2ME stream <-> part A/B conversion is `port_save_trilogy_payload.cpp` (tables from `tools/trilogy_tables.py`); tested on the 5 fixtures (payload -> gci -> payload byte-identical) and a real G2ME card save (gci -> payload -> gci differs in 4 bytes: the Wii's cut-off last world). Not yet checked against the Trilogy running it |
 | Data folder (Android) | PortDataFolder::DrawPanel | tabs.cpp | SAME |
 | Log | debug.cpp | game_sections.cpp:631 | SAME |
 | Disc image | debug.cpp | game_sections.cpp:522 | SAME |
@@ -293,7 +293,7 @@ checks.
    - Size: about 0.7k lines.
 6. **Memory card.**
    - Files: `card_data.cpp`.
-   - Rows: emulator card, Export as / into save.bin (container done, payload conversion pending: see the row above).
+   - Rows: emulator card, Export as / into save.bin (container and G2ME payload conversion done: see the row above).
    - MP1 source: `file_dialogs.cpp` (981 lines).
 7. **Randomizer page.**
    - Files: `randomizer.cpp`.
