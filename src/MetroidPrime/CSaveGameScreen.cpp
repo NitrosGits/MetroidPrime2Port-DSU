@@ -309,6 +309,14 @@ CIOWin::EMessageReturn CSaveGameScreen::Update(float dt) {
     ResetCardDriver();
     return CIOWin::kMR_Normal;
   }
+  // Port: with the Trilogy mirror on, a save made here goes out to Dolphin's Trilogy save.bin once
+  // written, and in the front end a newer one made there comes in (PortSave::SyncTrilogyShare).
+  if (PortSave::MirrorTrilogy() && !CMemoryCardDriver::IsCardBusy(mCardDriver->GetState())) {
+    if (PortSave::SyncTrilogyShare(mSaveCtx == kSC_FrontEnd)) {
+      ResetCardDriver();
+      return CIOWin::kMR_Normal;
+    }
+  }
 #endif
 
   const EState state = mCardDriver->GetState();

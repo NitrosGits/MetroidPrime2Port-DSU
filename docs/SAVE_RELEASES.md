@@ -71,7 +71,7 @@ What this implies [I]:
 - All three games share one NAND `save.bin`, owned by the front end.
 - There is no GCI and no `CARD*` container.
 
-**The framing of `save.bin` is unknown.** That covers the offset of the Echoes section, its size, its checksum, and whether the two-copy and generation scheme survives. Answering it needs a real Trilogy save, or decompiling `CSaveGameInterface` and the NAND path in `rs5fe_p.dol`.
+**Superseded 2026-10-27: the framing of `save.bin` is known** (measured on the Prime 1 port's real Trilogy fixtures, USA and PAL). The file is plaintext in Dolphin's NAND, 0x1C000 bytes, with a big-endian CRC32 at 0 over [4, 0x1980C); Echoes' summary is at +0x70 of each 0x258-byte file summary (0x64, 0x2BC, 0x514) and Echoes' three slots are at 0x3660, 4000 bytes each (part A the options, part B the GMST stream; `SYST` at +0x14 of A, `GMST` at +0x14 of B), with no two-copy/generation scheme. Code: `platform/port_save_trilogy.cpp`. The SD-export `data.bin` is still encrypted and out of scope.
 
 ## 2. Payload (user data, 0x1ff8 bytes)
 
@@ -165,7 +165,7 @@ What this suggests [I]:
 - The GC `SSaveHeader`, the options packing and the 0xa38 slot do not.
 - `SYND` is missing from the Echoes DOL but present in `rs5fe_p.dol`, so the system options may have moved to the shared front end.
 
-The Trilogy slot size and header are **unknown**.
+Trilogy slot size: 4000 bytes in `save.bin`, as two 2000-byte parts (see the §1 note, 2026-10-27). The payload differs from GC's: part B has the timestamp, then 2 flag bits and the world id, where GC's `PutTo` writes 3 bits.
 
 ## 3. World data — `tools/savw_diff.py`
 
@@ -390,7 +390,7 @@ The per-player options and header fields map 1:1 in every pair [I]. The `PLST` f
 | --- | --- | --- |
 | G2ME → G2MP | **Remap by ID** | See below |
 | G2MP → G2ME | **Remap by ID** (lossy) | The inverse of the above. Drop the PAL-only scans, relay and layer bit. |
-| GC → R3ME | **Blocked** | The `save.bin` framing, header, options packing and slot size are unknown. The payload inside it would be remap-by-ID. |
+| GC → R3ME | **Container done, payload pending** | Framing, header, CRC, summary and slot size are implemented (`port_save_trilogy.cpp`). The part A/B stream conversion (remap-by-ID) is the seam in `port_save_trilogy_payload.cpp`. |
 | R3ME → GC | **Blocked** | Same reason |
 | any ↔ R3MP | **Blocked** | No disc, no data |
 
@@ -431,8 +431,8 @@ One save written by an older port build was decoded [M]: `~/.cache/mp2-orch/save
 
 ## 6. Unknowns and risks
 
-1. **Trilogy `save.bin` framing.** No Trilogy save is available, and `CSaveGameInterface` is not decompiled.
-2. **Trilogy header and slot layout.** `SAVH` and 0xa38 are absent from the Echoes DOL.
+1. ~~Trilogy `save.bin` framing~~ - resolved 2026-10-27 (§1).
+2. ~~Trilogy header and slot layout~~ - resolved; what is left is the payload stream (part A/B) conversion.
 3. **R3MP01.** There is no disc.
 4. **Port versus console signature — measured and fixed.** Older port builds hashed host-LE words and wrote `37d0412e` on G2ME, so they would have refused a real console GCI (`44bfc715`). `CalculateHash` now swaps to big-endian words under `TARGET_PC`. The port writes the console value and accepts either (§2 Signature). The two logged values equal `savw_diff.py`'s predictions. Still unverified: a real console (Dolphin) save, which none is available to test.
 5. **HINT order.** The G2ME and G2MP lists have the same count but different bytes. Check the names before copying hint states 1:1.
@@ -461,6 +461,6 @@ How each piece maps onto Echoes [I unless marked]:
 | `ReadSlot` / `WriteSlot`, `ReadSystem` / `WriteSystem` | The `CGameState::PutTo` and `CPersistentOptions` bitstreams of §2. They are the same on G2ME and G2MP. | Layout from source; not checked on data |
 | `MakeHeader` / `PutComment` / `CardCrc` | Rewrite the `SSaveHeader` signature with the **target release's console value** (§3 table), then the two copy CRCs and the header-block CRC. The comment and banner are the same on both GC releases. | Not written |
 | `ReadUsaContainer` / `ReadPalContainer` | One GCI reader covers both GC releases, because the container is the same (§1). | Exists (`Inspect()`) |
-| `ReadWii` (AES-CBC `save.bin`) | Trilogy R3ME/R3MP: **blocked** until the `save.bin` framing is known (§6 items 1-2). Prime 1's `ReadWii` is the place to start, because Trilogy's front end owns one `save.bin` for all three games. | Blocked |
+| `ReadWii` / `WriteWii` (`save.bin`) | Trilogy R3ME/R3MP: container ported as `port_save_trilogy.cpp` (plaintext NAND file, no AES; the AES one is the SD `data.bin`). Payload conversion pending. | Partial |
 
 The first slice worth building is G2ME ↔ G2MP only: both directions are a remap by ID (§4), and the offer, marker and backup flow carries over unchanged.
