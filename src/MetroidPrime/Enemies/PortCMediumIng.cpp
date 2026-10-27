@@ -369,15 +369,13 @@ void CMediumIng::UpdateCurrentSafeZone(const CStateManager& mgr, const CVector3f
     return;
   }
   const TUniqueId zone = mgr.GetSafeZoneManager()->PointIsInWhichSafeZone(mgr, point);
-  if (zone == kInvalidUniqueId) {
-    return;
-  }
+  // 0x15D8..0x15E8: retail has no invalid-zone early out (the id is stored as is).
   const float d2 = (point - pos).MagSquared();
   const CScriptSafeZone* current = // 0x160C
       TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(mSafeZoneId));
-  // Retail keeps the current zone only when it is nearer (`fcmpo; bge` keep: NaN sets).
+  // Retail keeps the current zone unless this one is nearer (0x1648 `fcmpo; bge` keeps: NaN keeps).
   if (mSafeZoneId == kInvalidUniqueId || current == nullptr ||
-      !(d2 >= (current->GetTranslation() - pos).MagSquared())) {
+      d2 < (current->GetTranslation() - pos).MagSquared()) {
     mSafeZoneId = zone;
   }
 }
@@ -668,7 +666,7 @@ void CMediumIngTentacle::Think(float dt, CStateManager& mgr) {
     if (mRetractTime > 0.5f) { // rodata_38; `ble` skips
       mLengthScale -= dt / 0.5f;
     }
-    if (!(mLengthScale >= 0.f)) { // `bge` skips: NaN shakes
+    if (mLengthScale < 0.f) { // 0xA090 `fcmpo; bge` skips: NaN skips
       UpdateShake(mgr, mLengthScale);
     }
   }
