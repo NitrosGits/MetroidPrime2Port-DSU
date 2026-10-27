@@ -519,9 +519,13 @@ if(MP_SDK_HEADERS_ONLY)
     add_executable(port_save_trilogy_tests tests/port_save_trilogy.cpp platform/port_save_trilogy.cpp
         platform/port_save_trilogy_payload.cpp)
     target_include_directories(port_save_trilogy_tests PRIVATE platform/include)
-    add_test(NAME port_save_trilogy_tests
-        COMMAND port_save_trilogy_tests ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/trilogy)
-    set_tests_properties(port_save_trilogy_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # The fixtures are real saves (untracked: they carry the game's banner and icon); the test
+    # only runs where a copy sits in tests/fixtures/trilogy.
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/trilogy/01-firstboot.bin)
+        add_test(NAME port_save_trilogy_tests
+            COMMAND port_save_trilogy_tests ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/trilogy)
+        set_tests_properties(port_save_trilogy_tests PROPERTIES TIMEOUT 30 LABELS port)
+    endif()
 
     add_executable(port_rando_models_tests tests/port_rando_models.cpp platform/port_rando_models.cpp)
     target_include_directories(port_rando_models_tests PRIVATE platform/include)
@@ -725,15 +729,18 @@ if(AURORA_SDL3_TARGET)
     add_test(NAME port_radial_mouse_tests COMMAND port_radial_mouse_tests)
     set_tests_properties(port_radial_tests port_radial_retry_tests port_radial_touch_tests port_radial_mouse_tests
         PROPERTIES TIMEOUT 30 LABELS port)
-    # G2ME <-> G2MP save conversion round trip on tests/data/01-G2ME-MetroidPrime2.gci.
-    add_executable(port_save_convert_tests tests/port_save_convert.cpp platform/port_save_convert.cpp
-        src/Kyoto/CCrc32.cpp)
-    target_include_directories(port_save_convert_tests PRIVATE platform/include include tests)
-    target_compile_definitions(port_save_convert_tests PRIVATE
-        SAVE_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/01-G2ME-MetroidPrime2.gci")
-    target_compile_options(port_save_convert_tests PRIVATE $<IF:$<BOOL:${MSVC}>,/FIcstdint,-include$<SEMICOLON>cstdint>)
-    add_test(NAME port_save_convert_tests COMMAND port_save_convert_tests)
-    set_tests_properties(port_save_convert_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # G2ME <-> G2MP save conversion round trip on tests/data/01-G2ME-MetroidPrime2.gci (a real
+    # save, untracked like the Trilogy fixtures: registered only where a copy is present).
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/01-G2ME-MetroidPrime2.gci)
+        add_executable(port_save_convert_tests tests/port_save_convert.cpp platform/port_save_convert.cpp
+            src/Kyoto/CCrc32.cpp)
+        target_include_directories(port_save_convert_tests PRIVATE platform/include include tests)
+        target_compile_definitions(port_save_convert_tests PRIVATE
+            SAVE_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/01-G2ME-MetroidPrime2.gci")
+        target_compile_options(port_save_convert_tests PRIVATE $<IF:$<BOOL:${MSVC}>,/FIcstdint,-include$<SEMICOLON>cstdint>)
+        add_test(NAME port_save_convert_tests COMMAND port_save_convert_tests)
+        set_tests_properties(port_save_convert_tests PROPERTIES TIMEOUT 30 LABELS port)
+    endif()
     # Android's data folder move: the copy engine and the port_paths.txt rewrite (platform/port_data_folder.cpp).
     add_executable(port_data_folder_tests tests/port_data_folder.cpp platform/port_data_folder.cpp)
     target_include_directories(port_data_folder_tests PRIVATE platform/include tests)

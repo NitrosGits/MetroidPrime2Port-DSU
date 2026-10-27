@@ -42,3 +42,7 @@ build-boot-probe/
 
 # The CI composite action lives under a build-* directory name.
 !/.github/actions/build-and-test/
+
+# Real game saves used as test fixtures: kept locally, never committed (they carry the game's banner and icon)
+tests/data/*.gci
+tests/fixtures/trilogy/*.bin

@@ -1,13 +1,15 @@
 # Metroid Prime 2: Echoes — native port
 
+**Looking for the first game? See the [Metroid Prime native port](https://github.com/Odrannnn/MetroidPrimePort).**
+
 [![Linux build](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml/badge.svg?branch=port)](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml)
 
-A native build of **Metroid Prime 2: Echoes** for Linux and Android, compiled from
+A native build of **Metroid Prime 2: Echoes** for Linux, Windows, macOS and Android, compiled from
 the [PrimeDecomp/echoes](https://github.com/PrimeDecomp/echoes) decompilation and
 rendered through Aurora (SDL3/WebGPU). There's no emulator involved. Supported
 discs: the USA GameCube release (`G2ME01`), the PAL release (`G2MP01`, experimental) and
 the Wii's Metroid Prime Trilogy (`R3ME01` USA, `R3MP01` PAL; its Metroid Prime 2, experimental).
-Windows and macOS builds are planned; none exists yet.
+This is a pre-release: expect rough edges, and please report what you hit.
 
 **No game content is included.** You need your own copy of the game: the port
 reads it from a disc image and never ships any of its assets. This repository
@@ -45,12 +47,14 @@ ships no disc image, and neither does any package or release built from it.
 ## Downloads
 
 Releases are published on the
-[GitHub releases page](https://github.com/Odrannnn/MetroidPrime2Port/releases/latest).
+[GitHub releases page](https://github.com/Odrannnn/MetroidPrime2Port/releases).
 Every build needs your own disc image; none of them contains one.
 
 | Platform | Asset |
 |---|---|
 | Linux x86_64 / aarch64 | `metroid-prime2-port-X-linux-{x86_64,aarch64}.tar.gz`, or the AppImage |
+| Windows x86_64 / arm64 | `metroid-prime2-port-X-windows-{x86_64,arm64}.zip` |
+| macOS (Apple silicon) | `metroid-prime2-port-X-macos-arm64.zip` |
 | Android (arm64) | `metroid-prime2-port-X-android-arm64.apk` |
 
 **Quick start:** download the build for your platform, start it, and pick your disc

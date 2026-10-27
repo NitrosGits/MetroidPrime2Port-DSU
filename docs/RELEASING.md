@@ -1,8 +1,8 @@
 # Releasing
 
 How a release of the port is built, what it may contain, and what has to travel with it. Mirrors
-`../MetroidPrimePort/docs/RELEASING.md`, for the platforms this tree builds: Linux and Android.
-Windows comes next, then macOS and iOS; none of them has been built yet.
+`../MetroidPrimePort/docs/RELEASING.md`, for the platforms this tree builds: Linux, Windows
+(x64, arm64), macOS (arm64, experimental) and Android. iOS and Flatpak come later.
 
 ## What may ship
 
@@ -28,6 +28,8 @@ Every package also carries `textures/` (button glyphs and binding icons, generat
 |---|---|---|
 | `linux-build.yml` | PRs, manual (a push starts nothing) | Ubuntu 24.04, gcc-14; build, `ctest -L port`, Aurora `gx_fifo_tests` (`.github/actions/build-and-test`) |
 | `linux-release.yml` | manual | `almalinux:9` + gcc-toolset-14, x86_64 and aarch64; AppImage + tarball, artifacts `metroid_prime2_port-linux[-aarch64]`; fails if the binary needs glibc > 2.34 or GLIBCXX > 3.4.29 |
+| `windows.yml` | manual | clang-cl, x64 and arm64 (`windows-11-arm`); artifacts `metroid_prime2_port-windows[-arm64]` (`dist/`) |
+| `macos.yml` | manual | arm64, ad-hoc signed `Metroid Prime 2 Port.app` + `licenses/`, artifact `metroid_prime2_port-macos`; checks system-only dylibs, codesign and the packaged no-disc startup |
 | `android.yml` | manual | release APK signed with this project's key, artifact `android-apk`; fails on any other signer |
 | `cache-prune.yml` | after the build workflows | keeps the newest cache entry per key family |
 | `build.yml.disable` | never | upstream's matching-decomp CI; needs the retail DOL, which this repository cannot have |
@@ -64,13 +66,18 @@ entry (newest first) in `packaging/io.github.odrannnn.metroidprime2port.metainfo
      `gh run download <id> -n metroid_prime2_port-linux` and `-n metroid_prime2_port-linux-aarch64`.
      Rename the tarballs `metroid-prime2-port-X-linux-{x86_64,aarch64}.tar.gz`; the AppImages keep
      their names.
+   - Windows: `windows.yml`; drop any `user/` folder from each artifact and zip the rest as
+     `metroid-prime2-port-X-windows-{x86_64,arm64}.zip`.
+   - macOS: `macos.yml`; `chmod +x` the bundle's executable (artifacts lose the mode bit) and zip
+     the `.app` and `licenses/` as `metroid-prime2-port-X-macos-arm64.zip`.
    - Android: `gh workflow run android.yml --ref port -R Odrannnn/MetroidPrime2Port`, download
      `android-apk`, ship as `metroid-prime2-port-X-android-arm64.apk`.
 3. Crash soak the release commit: `python3 tools/mpsoak.py --evidence-dir build/s-release-<date>/soak`;
    every row of `summary.tsv` `ok`, exit 0.
 4. Check each artefact's version and that none holds game data (`unzip -l`, `--appimage-extract`),
    then `git tag -a vX` and `git push origin vX`.
-5. `gh release create vX --notes-file …` with every asset passed explicitly; confirm with
-   `gh release view vX --json assets`.
+5. `gh release create vX --notes-file …` with every asset passed explicitly (`--prerelease`
+   while the port is pre-1.0); confirm with `gh release view vX --json assets`.
 
-The repository is private until the first public release; changing that is the maintainer's call.
+The repository is public since 0.6.0. Real saves used as test fixtures (`tests/data/*.gci`,
+`tests/fixtures/trilogy/*.bin`) stay untracked: they carry the game's banner and icon.
