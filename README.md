@@ -1,5 +1,7 @@
 # Metroid Prime 2: Echoes — native port
 
+**FIRST ALPHA RELEASE COMING 28/10/2026**
+
 **Looking for the first game? See the [Metroid Prime native port](https://github.com/Odrannnn/MetroidPrimePort).**
 
 [![Linux build](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml/badge.svg?branch=port)](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml)
@@ -53,6 +55,7 @@ Every build needs your own disc image; none of them contains one.
 | Platform | Asset |
 |---|---|
 | Linux x86_64 / aarch64 | `metroid-prime2-port-X-linux-{x86_64,aarch64}.tar.gz`, or the AppImage |
+| Linux x86_64 (Flatpak) | `MetroidPrime2Port.flatpak` (`flatpak install --user MetroidPrime2Port.flatpak`) |
 | Windows x86_64 / arm64 | `metroid-prime2-port-X-windows-{x86_64,arm64}.zip` |
 | macOS (Apple silicon) | `metroid-prime2-port-X-macos-arm64.zip` |
 | Android (arm64) | `metroid-prime2-port-X-android-arm64.apk` |

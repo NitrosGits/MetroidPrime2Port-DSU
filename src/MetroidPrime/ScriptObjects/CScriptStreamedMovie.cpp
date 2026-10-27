@@ -15,6 +15,22 @@
 #include "MetroidPrime/TCastTo.hpp"
 
 static CScriptStreamedMovie* sPlayingMovie = nullptr; // Guessed name
+#ifdef TARGET_PC
+static CScriptStreamedMovie* sPortSkippedMovie = nullptr;
+static TUniqueId sPortSkippedMovieId = kInvalidUniqueId;
+
+// Port: the movie a max-speed skip stopped. Retail plays that movie through (drawn over the HUD),
+// so the skip's flow state waits for the scene to move on instead of showing the player's view.
+bool CScriptStreamedMovie::PortSkippedMovieLive(const CStateManager& mgr) {
+  // The object may be gone with its area: only a pointer the manager still resolves is read.
+  if (sPortSkippedMovie == nullptr ||
+      mgr.GetObjectById(sPortSkippedMovieId) != static_cast< const CEntity* >(sPortSkippedMovie)) {
+    return false;
+  }
+  const CScriptStreamedMovie* movie = sPortSkippedMovie;
+  return movie->GetActive() && movie->mSkipping && movie->mMoviePlayer.get() != nullptr;
+}
+#endif
 
 CScriptStreamedMovie::CScriptStreamedMovie(TUniqueId uid, const rstl::string& name,
                                            const CEntityInfo& info, const CTransform4f& xf,
@@ -69,6 +85,10 @@ void CScriptStreamedMovie::Think(float dt, CStateManager& mgr) {
     if (!mSkipping) {
       mSkipTime = mMoviePlayer->GetPlayedSeconds();
       mSkipping = true;
+#ifdef TARGET_PC
+      sPortSkippedMovie = this;
+      sPortSkippedMovieId = GetUniqueId();
+#endif
       StopMovie(mgr);
     }
     const float fadeStart = mMoviePlayer->GetTotalSeconds() - mFadeOutTime;

@@ -43,6 +43,9 @@
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/Player/CWorldTransManager.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/ScriptObjects/CScriptStreamedMovie.hpp"
+#endif
 #include "MetroidPrime/TCastTo.hpp"
 #include "rstl/math.hpp"
 
@@ -59,6 +62,11 @@ bool sHarnessCinematicSkip = false;
 // The player asked for the current cinematic's skip with START or A (kAM_UserInput); the
 // kFS_CinematicSkip case takes the same path as for the debug setting. Cleared on leaving it.
 bool sPortUserCinematicSkip = false;
+// A skip waits out a stopped movie scene's gap at normal speed behind black (kFS_CinematicSkip).
+bool sPortSkipGapHold = false;
+// The credits (or the end-game results) have started: no port skip runs or starts after this, or
+// the max-speed loop (one draw a second, CMain) makes them scroll in jerks. Reset with the game flow.
+bool sPortGameEnded = false;
 // How long a cinematic camera has been current in kFS_InGame; A only skips past kPortSkipAGuard.
 float sPortCinematicTime = 0.f;
 const float kPortSkipAGuard = 0.5f;
@@ -85,6 +93,9 @@ CMFGame::CMFGame(rstl::ncrc_ptr< CStateManager > stateManager,
 , mEndGameFrameCaptured(false)
 , mTransitionFromDarkWorld(false) {
   gpMain->SetGameFlowBuilt(true);
+#ifdef TARGET_PC
+  sPortGameEnded = false;
+#endif
   mMultiplayerGuiActive = false;
   gpGameState->PreviousGameResults().mShowResults = false;
 }
@@ -92,6 +103,9 @@ CMFGame::CMFGame(rstl::ncrc_ptr< CStateManager > stateManager,
 CMFGame::~CMFGame() {
   gpMain->SetGameFlowBuilt(false);
   gpMain->SetMaxSpeed(false);
+#ifdef TARGET_PC
+  sPortGameEnded = false;
+#endif
   CSfxManager::SetMuted(false);
   CDecalManager::Reinitialize();
 #ifdef TARGET_PC
@@ -110,6 +124,16 @@ CMFGame::~CMFGame() {
 #endif
 }
 
+#ifdef TARGET_PC
+void CMFGame::PortMarkGameEnded() {
+  // The credits' window takes the updates, so kFS_CinematicSkip's update case may never run again
+  // to end the skip: drop max speed here, and the draw case below keeps it off.
+  sPortGameEnded = true;
+  sPortSkipGapHold = false;
+  gpMain->SetMaxSpeed(false);
+}
+#endif
+
 void CMFGame::SetFlowState(EFlowState state) {
   switch (mFlowState) {
   case kFS_CinematicSkip:
@@ -121,6 +145,7 @@ void CMFGame::SetFlowState(EFlowState state) {
     std::fprintf(stderr, "[skip] done: %.1f s of game time in %.2f s\n", mFlowTime,
                  PortHarness::Seconds() - sPortSkipStart);
     sPortUserCinematicSkip = false;
+    sPortSkipGapHold = false;
     sPortCinematicTime = 0.f;
 #endif
     break;
@@ -236,7 +261,7 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
 #ifdef TARGET_PC
     // MP2_SKIP_INTRO: a cinematic before gameplay is skipped the way START skips it in kAM_UserInput
     // (MP2_SKIP_CINEMATICS still decides whether one the player has not seen may be skipped).
-    if (mFlowState == kFS_InGame && !mStateManager->IsMultiplayer() &&
+    if (mFlowState == kFS_InGame && !sPortGameEnded && !mStateManager->IsMultiplayer() &&
         gpGameState->GetGameMode().GetGameModeType() != 'FRND') {
       const CCinematicCamera* const introCam = TCastToConstPtr< CCinematicCamera >(
           *mStateManager->GetCameraManager(0)->GetCurrentCamera(*mStateManager, true));
@@ -428,6 +453,31 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
           finished = true;
         }
       }
+#ifdef TARGET_PC
+      sPortSkipGapHold =
+          !cineCam &&
+          (PortOverlay::SkipCinematics() || sHarnessCinematicSkip || sPortUserCinematicSkip) &&
+          mFlowTime < 600.f && mStateManager->mPendingDockArea == kInvalidAreaId &&
+          CScriptStreamedMovie::PortSkippedMovieLive(*mStateManager);
+      if (sPortSkipGapHold) {
+        // Port: a skipped movie scene (the ending's planet) has no camera of its own: retail plays
+        // the movie through there, drawn over the HUD. The skip stopped the movie, so returning to
+        // the game now shows the player's view and HUD for the movie's length before the next
+        // sequence starts. Stay here, black and at normal speed (the sequence timer's later
+        // connections do not fire at max speed, CScriptSequenceTimer::ApplyTime), until the scene
+        // moves on (the next cinematic camera, a dock load) or the same cap as above runs out.
+        // (The draw is not called at max speed, so the speed is dropped here.)
+        gpMain->SetMaxSpeed(false);
+        finished = false;
+      }
+      // Port: the credits started under the skip: it ends here (SetFlowState drops max speed), the
+      // credits and the results after them run at normal speed. The draw case below only sets max
+      // speed while this state is current.
+      if (sPortGameEnded) {
+        sPortSkipGapHold = false;
+        finished = true;
+      }
+#endif
       if (finished) {
         SetFlowState(kFS_InGame);
         break;
@@ -613,8 +663,8 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
       // (off, retail: START, and only one the player has seen). A counts once the cinematic has been
       // on for a moment, so the press that walked the player into its trigger does not skip it. The
       // skip takes the robust path in kFS_CinematicSkip (sPortUserCinematicSkip).
-      if (PortOverlay::SkipCinematics() && static_cast< int >(input.ControllerNumber()) == 0 &&
-          cineCam &&
+      if (PortOverlay::SkipCinematics() && !sPortGameEnded &&
+          static_cast< int >(input.ControllerNumber()) == 0 && cineCam &&
           (input.PStart() || (input.PA() && sPortCinematicTime >= kPortSkipAGuard)) &&
           !mStateManager->IsMultiplayer() &&
           gpGameState->GetGameMode().GetGameModeType() != 'FRND') {
@@ -851,7 +901,17 @@ void CMFGame::Draw() const {
     const float fadeTime =
         PortOverlay::SkipCinematics() || sHarnessCinematicSkip || sPortUserCinematicSkip ? 0.25f
                                                                                          : 1.f;
-    if (mFlowTime >= fadeTime) {
+    if (sPortSkipGapHold) {
+      // The sequence plays on at normal speed behind a black screen (see the update case).
+      gpMain->SetMaxSpeed(false);
+      DrawWorld(singleViewport);
+      DrawGui(singleViewport);
+      CCameraFilterPass::DrawFilter(CCameraFilterPass::kFT_Multiply,
+                                    CCameraFilterPass::kFS_Fullscreen,
+                                    CColor(0.f, 0.f, 0.f, 1.f), nullptr, 1.f);
+      return;
+    }
+    if (mFlowTime >= fadeTime && !sPortGameEnded) {
       gpMain->SetMaxSpeed(true);
       return;
     }

@@ -1,6 +1,8 @@
 #ifndef METROID_PRIME2_PORT_PORT_CRASH_H
 #define METROID_PRIME2_PORT_PORT_CRASH_H
 
+#include <string>
+
 // Writes a crash report into the log: what went wrong, where (module + offset,
 // which a symbolizer turns back into a line of code), the build, and the stack.
 // The breadcrumbs (PortBreadcrumb) follow. Nothing else changes about the crash,
@@ -11,7 +13,8 @@
 // MP2_CRASH_TEST=segv|abort crashes right after Install, to check the report.
 namespace PortCrash {
 
-void Install();
+// dumpFolder: where Windows writes metroid_prime2_port.dmp (empty: no dump).
+void Install(const std::string& dumpFolder = {});
 
 // Runs at the end of a crash report, still in the signal handler (async-signal-safe
 // code only): Android uses it to let the stderr pump reach logcat before the process dies.
