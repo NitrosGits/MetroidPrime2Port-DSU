@@ -30,6 +30,10 @@
 #include "rstl/math.hpp"
 
 #ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
+
+#ifdef TARGET_PC
 #include <stdio.h>
 
 #include "port_console.h"
@@ -206,6 +210,12 @@ CSlideShow::~CSlideShow() {
 
 uint CSlideShow::GetGalleriesUnlocked() {
   uint flags = 0;
+#ifdef TARGET_PC
+  // F1 > Game > Unlocks: every gallery, without touching the save's flags.
+  if (PortOverlay::UnlockGalleries()) {
+    return 0x3F;
+  }
+#endif
   if (gpGameState != nullptr) {
     const int percent =
         gpGameState->SystemOptions().EnvVars().FindEnvironmentVariable("PercentScans")->GetValue();

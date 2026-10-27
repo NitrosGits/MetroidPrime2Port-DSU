@@ -34,6 +34,10 @@
 
 #include "rstl/StringExtras.hpp"
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
+
 #include <math.h>
 #include <stdio.h>
 
@@ -690,7 +694,13 @@ void CScriptGuiFrontEndScreen::RefreshSaveSlots(CStateManager& mgr) {
 // @ fn_60_2B78
 void CScriptGuiFrontEndScreen::UpdateSaveSlots(CStateManager& mgr) {
   CSaveGameScreen* saveScreen = mgr.mSaveGameScreen.get();
-  const bool normalCompleted = gpGameState->SystemOptions()
+#ifdef TARGET_PC
+  // F1 > Game > Unlocks stands in for the save's flag without writing it.
+  const bool normalCompleted = PortOverlay::UnlockHardMode() ||
+#else
+  const bool normalCompleted =
+#endif
+                               gpGameState->SystemOptions()
                                    .EnvVars()
                                    .FindEnvironmentVariable("NormalModeCompleted")
                                    ->GetValue() > 0;

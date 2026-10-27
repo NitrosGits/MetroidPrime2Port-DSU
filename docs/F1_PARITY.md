@@ -126,18 +126,18 @@ Statuses:
 | Restart to menu | tabs.cpp:38-80 | "Return to title", game_sections.cpp:69 | DIFF: label |
 | Screenshot / Photo mode buttons | tabs.cpp:38-80 | photo.cpp | SAME |
 | Exit game + "Exit game?" modal | tabs.cpp:38-80 | game_sections.cpp:77-82 | SAME |
-| Unlock beam doors once opened | game_sections.cpp:85 | — | MISSING |
-| Stack beams | game_sections.cpp:92 | — | MISSING |
-| 1.00 revision compatibility | game_sections.cpp:107-111 | — | MISSING: check whether Echoes has comparable revision differences |
-| Hard mode unlock | game_sections.cpp:138 | — | MISSING |
+| Unlock beam doors once opened | game_sections.cpp:85 | — | SKIPPED (package 3): door lock logic lives in the retail REL, no `port_beam_doors` hook point in Echoes |
+| Stack beams | game_sections.cpp:92 | — | SKIPPED (package 3): Echoes' Dark/Light/Annihilator beams cannot all fire together; no counterpart to MP1's CPlayerGun change |
+| 1.00 revision compatibility | game_sections.cpp:107-111 | — | SKIPPED (package 3): Echoes has no `Revision100` sequence-break fixes to restore |
+| Hard mode unlock | game_sections.cpp:138 | game_sections.cpp `DrawUnlocksSection` (called from the Cutscenes section until package 2 gives it a tab); hook `CScriptGuiScreen.cpp` `UpdateSaveSlots` | SAME (package 3) |
 | Fusion Suit, Wear Fusion Suit | game_sections.cpp:144,166 | — | MP1-ONLY: Prime 1's Fusion Suit unlock |
-| Image galleries + gallery window | game_sections.cpp:175; gallery.cpp (138 lines) | — | MISSING: Echoes has galleries |
+| Image galleries + gallery window | game_sections.cpp:175; gallery.cpp (138 lines) | unlock row in `DrawUnlocksSection`; hook `CSlideShow::GetGalleriesUnlocked` (mask 0x3F) | SAME for the unlock (package 3). Gallery window SKIPPED: it shows Remastered-import pictures (`port_gallery`), Echoes has no such source |
 | Cutscenes | game_sections.cpp | game_sections.cpp | SAME |
 | Game audio | audio.cpp | video.cpp:512 area | SAME |
 | Flaahgra boss theme | audio.cpp:40 | — | MP1-ONLY: Prime 1 boss |
 | Language | own section, tabs.cpp:202; rows remastered.cpp:131-143 | inside Game section, game_sections.cpp:154 | DIFF: placement |
 | Speedrun | tabs.cpp:203 | tabs.cpp:16 | SAME |
-| Updates (Check for updates, Check now, Open release page) | game_sections.cpp:271,301,307 | — | MISSING |
+| Updates (Check for updates, Check now, Open release page) | game_sections.cpp:271,301,307 | — | SKIPPED (package 3): needs `port_update_check` + `port_ws`/`port_json` (HTTPS client) which this tree lacks, and Echoes has no release feed to check |
 
 ## Controls page
 
