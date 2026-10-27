@@ -18,6 +18,14 @@ is no longer the only source of locations. Plan, each step checkable on its own:
    ..`Metroid5.pak`; `Metroid6.pak` is the multiplayer arenas), script layers and the MREA's
    generated-object section, into a `WORLD:AREA:ENTITY` table the generator reads instead of the
    dump log. `tools/rando_models.py` already does this walk for models.
+   **Done (2026-10-27), apart from the generator switch:** `tools/rando_world.py --write` writes
+   `platform/include/port_rando_world.inc` (read by `platform/port_rando_world.cpp`, tested by
+   `port_rando_world_tests`): 5 worlds, 284 areas, 678 MLVL dock edges (all symmetric, 78 virtual),
+   53 `TEL1` teleporters and 114 locations. A location is a layer `PCKP` that is not a refill
+   (items 41/43-46 with itemPercentageIncrease 0), or a generated-section `PCKP` that raises the
+   percentage (only the Bomb Guardian's bombs). Excluded: the nine TempleKey1 copies in
+   `12_temple_finalgate_dark` layer 3 and the AgonKey2/3 copies in `03_sand_temple_dark` layer 2.
+   The rules are in the tool's docstring. `port_rando_gen.cpp` still reads the dump log.
 2. **Seed format** - the native JSON only (done; see Workflow).
 3. **Pickup presentation** - the placed item's model and acquisition text.
    *Done (builds, unit-tested, not yet seen in game):* `tools/rando_models.py` reads every PCKP on

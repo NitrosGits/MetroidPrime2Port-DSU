@@ -225,9 +225,10 @@ def parse_mlvl(b):
         r.skip(8 * r.u32())
         r.skip(8 * r.u32())
         r.skip(4 * r.u32())
+        a["docks"] = []  # per dock: [(connected area index, connected dock index)]
         for _ in range(r.u32()):
-            r.skip(8 * r.u32())
-            r.skip(12 * r.u32())
+            a["docks"].append([(r.u32(), r.u32()) for _ in range(r.u32())])
+            r.skip(12 * r.u32())  # the dock's portal corners
         a["mods"] = [r.cstr() for _ in range(r.u32())]
         a["offs"] = [r.u32() for _ in range(r.u32())]
         a["iname"] = r.cstr()
