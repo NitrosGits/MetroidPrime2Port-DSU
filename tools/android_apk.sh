@@ -72,8 +72,8 @@ fi
 
 # A Rust cross-toolchain for the real nod (-PandroidNodStub=false). Same discovery as
 # tools/android_probe.sh: this tree's vendored copy first, then the MP1 checkout's
-# (referenced, not copied - it is ~2 GB), or ANDROID_RUST_DIR to point at another. Harmless
-# while nod is the stub.
+# (referenced, not copied - it is ~2 GB), or ANDROID_RUST_DIR to point at another. Without one,
+# the PATH's cargo/rustup is used (CI installs it).
 mp1_dir=$root_dir/../MetroidPrimePort
 rust_dir=
 for candidate in "${ANDROID_RUST_DIR:-}" "$root_dir/build/android-rust" "$mp1_dir/build/android-rust"; do
@@ -93,7 +93,7 @@ if [ -n "$rust_dir" ]; then
     export CARGO_HOME RUSTUP_HOME PATH CARGO_NET_OFFLINE
     echo "note: Rust cross-toolchain: $rust_dir (cargo --offline)" >&2
 else
-    # Nothing to do for the stub (the default), but an explicit request for the real nod
+    # The PATH's cargo serves the default real nod (CI); an explicit request for the real nod
     # cannot be configured without it, so say so here rather than in CMake's FindRust.
     case " $* " in
         *androidNodStub=false*|*androidNodStub=FALSE*)
