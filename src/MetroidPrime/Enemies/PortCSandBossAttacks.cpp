@@ -869,7 +869,7 @@ bool CSandBoss::IsBallInRange(const CPlayer& player) const {
   const CTransform4f locatorXf = GetLctrTransform(mArmorLocators[0]); // 0xF00
   const CVector3f delta = player.GetTranslation() - locatorXf.GetTranslation(); // player 0x54..0x5C
   const float range = mData.suckMorphballRange; // 0x820
-  if (range * range <= delta.MagSquared()) {
+  if (!(delta.MagSquared() < range * range)) { // 0x5BAC bge: NaN is out of range
     return false;
   }
   const CVector3f flatDelta(CVector2f(delta.GetX(), delta.GetY()), 0.f);
@@ -1061,7 +1061,7 @@ void CSandBoss::Helper7E60(float dt, CStateManager& mgr, const CVector3f& pos,
   mFlashTime = 0.33f;   // 0xF10
   if (mStampedeHP > 0.f) { // 0xF24
     mStampedeHP -= dt;
-    if (mStampedeHP > 0.f) {
+    if (!(mStampedeHP <= 0.f)) { // 0x7EC8 cror eq,lt,eq; bne: NaN holds
       // 0x978 = mData + 0x1B8 = stampedeArmor.sound_ArmorImpact (attachedArmor is 0x24 bytes
       // before it, at 0x194 = 0x954)
       CSfxManager::AddEmitter(static_cast< ushort >(mData.stampedeArmor.sound_ArmorImpact), pos,
@@ -1096,7 +1096,7 @@ void CSandBoss::Helper8008(float dt, CStateManager& mgr, const CVector3f& pos,
   } else if (!mNotRecovered && mHeadArmorHP > 0.f) { // 0x165D b5, 0xF2C
     mFlashTime = 0.33f;
     mHeadArmorHP -= dt;
-    if (mHeadArmorHP > 0.f) {
+    if (!(mHeadArmorHP <= 0.f)) { // 0x811C cror eq,lt,eq; bne: NaN flinches
       // command word 0x1c with 1.0f / -1
       BodyController()->CommandMgr().DeliverCmd(CBCAdditiveFlinchCmd(1.f));
     } else {

@@ -888,7 +888,7 @@ CVector3f CSandBoss::GetAimPosition(const CStateManager&, float dt) const {
     predicted = PredictMotion(dt).GetTranslation();
   }
   CVector3f aim = predicted + GetLctrTransform(mArmorLocators[0]).GetTranslation();
-  if (mStampedeActive && GetTranslation().GetZ() >= aim.GetZ()) {
+  if (mStampedeActive && !(GetTranslation().GetZ() < aim.GetZ())) { // 0xCEB8 bge: NaN raises
     aim.SetZ(GetTranslation().GetZ());
   }
   return aim;

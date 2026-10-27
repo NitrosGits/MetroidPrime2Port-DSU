@@ -207,8 +207,9 @@ bool CSandBoss::ShouldSnapJaws(CStateManager& mgr, const CTriggerData&) const {
   }
   const CVector3f delta = player->GetTranslation() - GetTranslation(); // player 0x54..0x5C
   const float distanceSq = delta.MagSquared();
-  if (distanceSq < mMinAttackRange * mMinAttackRange ||
-      distanceSq > mMaxAttackRange * mMaxAttackRange) {
+  // 0xC314/0xC318 cror eq,gt,eq; bne and 0xC320/0xC324 cror eq,lt,eq; bne: NaN is out of band
+  if (!(distanceSq >= mMinAttackRange * mMinAttackRange) ||
+      !(distanceSq <= mMaxAttackRange * mMaxAttackRange)) {
     return false;
   }
   return CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY), delta) < 0.5235987901687622f;
@@ -396,7 +397,7 @@ void CSandBoss::RotateToPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSandBoss::SuckAir(CStateManager& mgr, EStateMsg msg, float dt) {
   CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
   if (msg == kStateMsg_Update) {
-    if (mData.suckAirTime <= mStateMachine->GetTime()) {      // 0x81C
+    if (!(mStateMachine->GetTime() < mData.suckAirTime)) {    // 0x81C; 0xB7AC bge: NaN ends
       mAnimationState.SetState(CAnimationState::kAS_Over);     // 0x6B4 = 3
       return;
     }

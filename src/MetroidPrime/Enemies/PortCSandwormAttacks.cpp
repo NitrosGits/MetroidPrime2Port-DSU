@@ -418,8 +418,9 @@ void CSandworm::FireSpit(CStateManager& mgr) {
 
 // @ fn_56_C0A4
 bool CSandworm::GrabHelper(CStateManager& mgr) {
+  // 0xC148 extrwi GT; cntlzw: !(distSq > 6.25), so NaN counts as near
   return PlayerMorphed(mgr) &&
-         (PlayerPos(mgr) - PlayerDirection(0.f)).MagSquared() <= 6.25f;
+         !((PlayerPos(mgr) - PlayerDirection(0.f)).MagSquared() > 6.25f);
 }
 
 // Triggers.
