@@ -1971,6 +1971,10 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
   // `remastered` replaces the game's reticle model with the cursor drawn procedurally below, and
   // that path runs before the model is looked up because this port's classic model never loads
   // (`mCrosshairs.GetObject()` is null), so the classic style draws nothing here.
+  // While Trilogy's own aiming cursor is up (PortTriDrawAiming), it is the crosshair.
+  if (mPortTri && mPortTriAimArmAlpha > 0.f) {
+    return;
+  }
   float scale = mCrosshairsDrawScale;
   if (PortMouse::Aiming()) {
     scale *= static_cast< float >(PortOverlay::CrosshairSize()) / 100.f;
