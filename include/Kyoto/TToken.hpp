@@ -32,7 +32,11 @@ public:
 template < typename T >
 class TCachedToken : public TToken< T > {
 public:
+#ifdef TARGET_PC
+  TCachedToken() : mItem(nullptr) {}
+#else
   TCachedToken() {}
+#endif
   TCachedToken(const CToken& token) : TToken< T >(token), mItem(nullptr) {}
   TCachedToken(const CToken& token, bool) : TToken< T >(token), mItem(TToken< T >::GetT()) {}
 

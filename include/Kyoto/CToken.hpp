@@ -10,7 +10,12 @@ class CObjectReference;
 
 class CToken {
 public:
+#ifdef TARGET_PC
+  // The host heap isn't zeroed: a default token must be null so destroying or assigning it is safe.
+  CToken() : mObjRef(nullptr), mLockHeld(false) {}
+#else
   CToken() {}
+#endif
   CToken(CObjectReference* ref);
   CToken(IObj* obj); // : x0_objRef(new CObjectReference(obj)), x4_lockHeld(false) {}
   CToken(const CToken& other);

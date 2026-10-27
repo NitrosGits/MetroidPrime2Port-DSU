@@ -12,6 +12,11 @@ CToken::CToken(IObj* obj) : mObjRef(rs_new CObjectReference(obj)), mLockHeld(fal
 }
 
 CToken::CToken(const CToken& other) : mObjRef(other.mObjRef), mLockHeld(false) {
+#ifdef TARGET_PC
+  if (mObjRef == nullptr) {
+    return;
+  }
+#endif
   mObjRef->AddReference();
   if (other.mLockHeld) {
     Lock();
@@ -31,6 +36,11 @@ CObjOwnerDerivedFromIObjUntyped* CToken::GetObj() {
 }
 
 void CToken::RemoveRef() {
+#ifdef TARGET_PC
+  if (mObjRef == nullptr) {
+    return;
+  }
+#endif
   if (mObjRef->RemoveReference() == 0) {
     delete mObjRef;
   }
@@ -59,6 +69,11 @@ CToken& CToken::operator=(const CToken& other) {
   Unlock();
   RemoveRef();
   mObjRef = other.mObjRef;
+#ifdef TARGET_PC
+  if (mObjRef == nullptr) {
+    return *this;
+  }
+#endif
   mObjRef->AddReference();
   if (other.mLockHeld) {
     Lock();
