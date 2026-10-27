@@ -44,6 +44,17 @@ if(MP_ANDROID_NOD_STUB)
     add_library(nod::nod ALIAS mp_android_nod_stub)
 endif()
 
+# Apple's libc++ still marks std::jthread/std::stop_token (used by aurora's
+# threads) experimental; the flag unlocks them and links libc++experimental.
+if(APPLE)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX,OBJCXX>:-fexperimental-library>)
+    # The iOS Simulator SDK ships no libc++experimental; jthread and stop_token
+    # are header-only, so its build compiles with the flag and links without it.
+    if(NOT CMAKE_OSX_SYSROOT MATCHES "[Ss]imulator")
+        add_link_options(-fexperimental-library)
+    endif()
+endif()
+
 # The REL module tests need modules extracted from a disc the user owns (see
 # tools/extract_disc_file.py) plus the symbol list of the executable they were
 # linked against. Both are optional: without them the tests report themselves
