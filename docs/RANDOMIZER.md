@@ -18,14 +18,14 @@ is no longer the only source of locations. Plan, each step checkable on its own:
    ..`Metroid5.pak`; `Metroid6.pak` is the multiplayer arenas), script layers and the MREA's
    generated-object section, into a `WORLD:AREA:ENTITY` table the generator reads instead of the
    dump log. `tools/rando_models.py` already does this walk for models.
-   **Done (2026-10-27), apart from the generator switch:** `tools/rando_world.py --write` writes
+   **Done (2026-10-27):** `tools/rando_world.py --write` writes
    `platform/include/port_rando_world.inc` (read by `platform/port_rando_world.cpp`, tested by
    `port_rando_world_tests`): 5 worlds, 284 areas, 678 MLVL dock edges (all symmetric, 78 virtual),
    53 `TEL1` teleporters and 114 locations. A location is a layer `PCKP` that is not a refill
    (items 41/43-46 with itemPercentageIncrease 0), or a generated-section `PCKP` that raises the
    percentage (only the Bomb Guardian's bombs). Excluded: the nine TempleKey1 copies in
    `12_temple_finalgate_dark` layer 3 and the AgonKey2/3 copies in `03_sand_temple_dark` layer 2.
-   The rules are in the tool's docstring. `port_rando_gen.cpp` still reads the dump log.
+   The rules are in the tool's docstring. `port_rando_gen.cpp` generates from this table.
 2. **Seed format** - the native JSON only (done; see Workflow).
 3. **Pickup presentation** - the placed item's model and acquisition text.
    *Done (builds, unit-tested, not yet seen in game):* `tools/rando_models.py` reads every PCKP on
@@ -120,6 +120,16 @@ is no longer the only source of locations. Plan, each step checkable on its own:
      placement all 114 open in 9 spheres (`TestVanillaSpheres` in `tests/port_rando_logic.cpp`,
      granting the four translators at their energy controllers). Elevator rooms need an explicit
      `dock0 - telX` edge, or their world is cut off.
+   - Fill (2026-10-27): `platform/port_rando_gen.cpp` shuffles the 114 vanilla pickups (item,
+     amount, capacity) with its own SplitMix64 seeded from the seed name's FNV-1a hash. Progression
+     copies are pool copies of an item a requirement names, up to the largest count asked for (one
+     Missile expansion, five Energy Tanks; `PortRandoLogic::RequiredCounts`); the rest are filler.
+     The progression copies are placed in collection order, each in a random empty location
+     reachable with the start and the copies before it (on the last empty location, the next copy is
+     one that opens another), then filler fills the rest. `PortRandoLogic::Beatable` checks the
+     result (the sphere model the vanilla test uses, `Collect`); a failed attempt retries with the
+     continued PRNG, up to 64. `port_rando_gen_tests`: 200/200 seeds beatable on the first attempt,
+     5-13 spheres (average 9.4), about 1 ms per seed.
 5. **Non-pickup grants** - items a script grants (the energy controllers' translators, ...).
 6. **Save binding and the F1 page** - seed hash in the save, spoiler. The F1 Randomizer page is
    hidden (`platform/debug_ui/search.cpp`) until then.
@@ -134,7 +144,10 @@ Disc findings:
 - The Energy Transfer Module location gives item 28 (`TranslatorUpgrade_TempETM`), not
   `EnergyTransferModule` (107).
 
-## Decision (2026-10-18)
+## Decision (2026-10-18) - superseded 2026-10-27
+
+Superseded: locations now come from the disc (step 1) and the generator fills with logic (step 4).
+Kept for its reasoning.
 
 MP2 gets a **no-logic shuffle generator over a dumped location list**, not a port of the MP1
 generator. `../MetroidPrimePort/platform/port_rando_gen.cpp` is the Archipelago apworld
@@ -150,12 +163,14 @@ be unbeatable (no logic) and only cover areas that were dumped.
 
 ## Workflow
 
-1. Dump: `MP_RANDO_DUMP=1` and play/sweep (`tools/sweep_areas.sh`). Each pickup load appends
+1. Generate: `MP_RANDO_GEN=<seed name>` (without dump mode), or the F1 Randomizer page's Generate
+   button, fills all 114 locations with logic (no dump needed) and writes the seed JSON to
+   `MP_RANDO_SEED` (default `<user>/randomizer_seed.json`); the env var then loads it in the same
+   process. Same name + same build = same seed.
+2. Play: leave `MP_RANDO_GEN` off; the seed file is loaded at startup.
+3. Optional, for checking keys in game: `MP_RANDO_DUMP=1` logs each pickup load as
    `LOC <WORLD>:<AREA>:<ENTITY> <Item> amount=<n> capacity=<n>` to `<user>/randomizer_locations.log`.
-2. Generate: `MP_RANDO_GEN=<seed name>` (without dump mode) reads that log and writes the seed JSON to
-   `MP_RANDO_SEED` (default `<user>/randomizer_seed.json`), then loads it in the same process.
-   Same name + same log = same seed. The last record per key wins.
-3. Play: leave `MP_RANDO_GEN` off; the seed file is loaded at startup.
+   The generator does not read it.
 
 `<user>` is `MP2_USER_PATH` (then `MP_USER_PATH`, the Prime 1 port's name) or SDL's pref path. Code: `platform/port_rando_gen.cpp`,
 `platform/port_randomizer.cpp`.
@@ -170,5 +185,5 @@ be unbeatable (no logic) and only cover areas that were dumped.
 - Verified 2026-10-18: a 5-shard sweep (`tools/sweep_areas.sh`, `DWELL=500`) with `MP_RANDO_DUMP=1`
   logged 18 distinct locations (Temple Grounds); `MP_RANDO_GEN=echoes1` then wrote a seed with all 18
   and the next run loaded it (`randomizer: seed 'echoes1', 18 placements`).
-- Not done: logic (beatable seeds), start items, a second world's locations, and applying a
-  placement's model/scan text; the pickup keeps its original model.
+- Not done: start items, non-pickup grants (step 5), and seeing step 3's model/scan text in game.
+  Beatable seeds and all five worlds' locations are done (steps 1 and 4).

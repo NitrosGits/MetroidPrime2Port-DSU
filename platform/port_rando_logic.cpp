@@ -3,6 +3,7 @@
 #include "port_rando_world.h"
 
 #include <algorithm>
+#include <cstring>
 #include <map>
 #include <tuple>
 
@@ -321,8 +322,12 @@ std::vector<Node> Graph::Reachable(const Inventory& inventory, const Node& start
 }
 
 std::vector<int> Graph::ReachableLocations(const Inventory& inventory, const Node& start) const {
+  return LocationsAmong(Reachable(inventory, start));
+}
+
+std::vector<int> Graph::LocationsAmong(const std::vector<Node>& nodes) const {
   std::vector<int> out;
-  for (const Node& n : Reachable(inventory, start))
+  for (const Node& n : nodes)
     if (n.kind == NodeKind::Location) {
       const int loc = mLocation[FindNode(n)];
       if (loc >= 0)
@@ -353,6 +358,130 @@ std::vector<int> ReachableLocations(const RuleSet& rules, const Inventory& inven
 std::vector<Node> ReachableNodes(const Inventory& inventory, int startArea, int startDock) {
   return DefaultGraph().Reachable(inventory,
                                   {startArea, NodeKind::Dock, static_cast<uint32_t>(startDock)});
+}
+
+namespace {
+int AreaNamed(const char* name) {
+  for (int a = 0; a < PortRandoWorld::AreaCount(); ++a)
+    if (std::strcmp(PortRandoWorld::AreaAt(a)->name, name) == 0)
+      return a;
+  return -1;
+}
+} // namespace
+
+Node StartNode() {
+  static const int area = AreaNamed("01_Temple_LandingSite");
+  return {area, NodeKind::Dock, 0};
+}
+
+Inventory StartInventory() {
+  Inventory inv;
+  for (int item : {0, 22, 8, 9, 12, int(kItemMorphBall)}) // Power/Charge Beam, Combat/Scan Visor, Varia
+    inv.Set(item, 1);
+  return inv;
+}
+
+void AddPickup(Inventory& inventory, int item, int amount) {
+  const bool counted = item == 42 || item == kItemPowerbomb || item == kItemMissile;
+  inventory.Add(item, counted && amount > 0 ? amount : 1);
+}
+
+const std::vector<ScriptGrant>& ScriptGrants() {
+  static const std::vector<ScriptGrant> grants = {
+      {"08_temple_sungenerator", kItemVioletTranslator, 28},
+      {"00_sand_generator", kItemAmberTranslator, -1},
+      {"00_swamp_generator", kItemEmeraldTranslator, -1},
+      {"00_cliff_generator", kItemCobaltTranslator, -1},
+  };
+  return grants;
+}
+
+std::vector<int> ReachableWithGrants(Inventory& inventory) {
+  static const std::vector<int> grantArea = [] {
+    std::vector<int> out;
+    for (const ScriptGrant& g : ScriptGrants())
+      out.push_back(AreaNamed(g.area));
+    return out;
+  }();
+  const Graph& graph = DefaultGraph();
+  for (;;) {
+    const std::vector<Node> nodes = graph.Reachable(inventory, StartNode());
+    bool granted = false;
+    for (size_t g = 0; g < grantArea.size(); ++g) {
+      const ScriptGrant& grant = ScriptGrants()[g];
+      if (grantArea[g] < 0 || inventory.Count(grant.item) != 0)
+        continue;
+      for (const Node& n : nodes)
+        if (n.area == grantArea[g]) {
+          inventory.Add(grant.item);
+          if (grant.extra >= 0)
+            inventory.Add(grant.extra);
+          granted = true;
+          break;
+        }
+    }
+    if (!granted)
+      return graph.LocationsAmong(nodes);
+  }
+}
+
+std::vector<Pickup> VanillaPlacement() {
+  std::vector<Pickup> out;
+  for (int i = 0; i < PortRandoWorld::LocationCount(); ++i)
+    out.push_back({PortRandoWorld::LocationAt(i)->item, PortRandoWorld::LocationAt(i)->amount});
+  return out;
+}
+
+Playthrough Collect(const std::vector<Pickup>& placement) {
+  Playthrough p;
+  p.sphere.assign(placement.size(), 0);
+  p.inventory = StartInventory();
+  for (;;) {
+    std::vector<int> fresh;
+    for (int i : ReachableWithGrants(p.inventory))
+      if (i < static_cast<int>(placement.size()) && p.sphere[i] == 0)
+        fresh.push_back(i);
+    if (fresh.empty())
+      break;
+    ++p.spheres;
+    for (int i : fresh) {
+      AddPickup(p.inventory, placement[i].item, placement[i].amount);
+      p.sphere[i] = p.spheres;
+      ++p.collected;
+    }
+  }
+  return p;
+}
+
+bool Beatable(const std::vector<Pickup>& placement, int* spheres) {
+  const Playthrough p = Collect(placement);
+  if (spheres != nullptr)
+    *spheres = p.spheres;
+  return p.Beatable();
+}
+
+std::vector<int> RequiredCounts() {
+  std::vector<int> need(kMaxItems, 0);
+  const auto mark = [&](const Requirement& r) {
+    for (const Term& t : r.terms)
+      for (const Literal& l : t)
+        if (l.item >= 0 && l.item < kFirstEventItem)
+          need[l.item] = std::max(need[l.item], l.count);
+  };
+  for (const RuleEdge& e : DefaultRules())
+    mark(e.requirement);
+  for (int i = 0; i < PortRandoWorld::DockCount(); ++i)
+    mark(DockRequirement(i));
+  return need;
+}
+
+std::vector<int> ProgressionItems() {
+  const std::vector<int> need = RequiredCounts();
+  std::vector<int> out;
+  for (int i = 0; i < kMaxItems; ++i)
+    if (need[i] > 0)
+      out.push_back(i);
+  return out;
 }
 
 } // namespace PortRandoLogic

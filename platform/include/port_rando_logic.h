@@ -107,6 +107,8 @@ public:
   std::vector<Node> Reachable(const Inventory& inventory, const Node& start) const;
   // Indices into PortRandoWorld's locations of the Location nodes among them.
   std::vector<int> ReachableLocations(const Inventory& inventory, const Node& start) const;
+  // Indices into PortRandoWorld's locations of the Location nodes among `nodes`; sorted.
+  std::vector<int> LocationsAmong(const std::vector<Node>& nodes) const;
 
 private:
   struct Out {
@@ -129,6 +131,60 @@ std::vector<int> ReachableLocations(const RuleSet& rules, const Inventory& inven
                                     int startDock);
 // Lower level: all reachable nodes, compiled-in rules.
 std::vector<Node> ReachableNodes(const Inventory& inventory, int startArea, int startDock);
+
+// The playthrough model the vanilla test and the generator share: the post-steal start, the items
+// scripts grant, and collecting a placement sphere by sphere with the compiled-in rules.
+
+// The start: 01_Temple_LandingSite's first dock (area -1 if the world data lacks it), with Power
+// Beam, Charge Beam, Combat and Scan Visor, Varia Suit and Morph Ball.
+Node StartNode();
+Inventory StartInventory();
+
+// What one pickup adds: an expansion (EnergyTanks, Powerbomb, Missile) its amount, else one.
+void AddPickup(Inventory& inventory, int item, int amount);
+
+// Items scripts grant rather than pickups (RANDOMIZER.md step 5), granted once their area is
+// reached: each world's energy controller gives its translator (and U-Mos the Energy Transfer
+// Module's item 28 with the Violet one).
+struct ScriptGrant {
+  const char* area; // MLVL internal area name
+  int item;
+  int extra; // a second item, -1 for none
+};
+const std::vector<ScriptGrant>& ScriptGrants();
+
+// Locations reachable from StartNode() with `inventory`; the script grants of every reached area
+// are added to `inventory` (and the search repeated) first. Sorted.
+std::vector<int> ReachableWithGrants(Inventory& inventory);
+
+// One location's contents in a placement.
+struct Pickup {
+  int item;
+  int amount;
+};
+// The vanilla placement: PortRandoWorld's locations' own items, in location order.
+std::vector<Pickup> VanillaPlacement();
+
+// A placement collected sphere by sphere from the start: a sphere takes every location reachable
+// with the items of the spheres before it (and the grants and events those reach).
+struct Playthrough {
+  std::vector<int> sphere; // per location, its sphere (1-based); 0 = never reached
+  int spheres = 0;
+  int collected = 0;
+  Inventory inventory; // at the end, grants and pickups (not events)
+  bool Beatable() const { return collected == static_cast<int>(sphere.size()); }
+};
+// `placement` is indexed like PortRandoWorld's locations.
+Playthrough Collect(const std::vector<Pickup>& placement);
+// Every location is collectable; `spheres` gets the sphere count.
+bool Beatable(const std::vector<Pickup>& placement, int* spheres = nullptr);
+
+// Item ids any requirement names (the compiled rules with their atmosphere, and every dock lock),
+// events excluded; sorted.
+std::vector<int> ProgressionItems();
+// Per item id (kMaxItems entries), the largest count any requirement asks for; 0 = never named.
+// Pool copies of an item beyond what reaches this count unlock nothing.
+std::vector<int> RequiredCounts();
 
 } // namespace PortRandoLogic
 

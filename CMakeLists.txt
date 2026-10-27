@@ -518,6 +518,12 @@ if(MP_SDK_HEADERS_ONLY)
     add_test(NAME port_rando_logic_tests COMMAND port_rando_logic_tests)
     set_tests_properties(port_rando_logic_tests PROPERTIES TIMEOUT 30 LABELS port)
 
+    add_executable(port_rando_gen_tests tests/port_rando_gen.cpp platform/port_rando_gen.cpp
+        platform/port_rando_logic.cpp platform/port_rando_world.cpp)
+    target_include_directories(port_rando_gen_tests PRIVATE platform/include)
+    add_test(NAME port_rando_gen_tests COMMAND port_rando_gen_tests)
+    set_tests_properties(port_rando_gen_tests PROPERTIES TIMEOUT 120 LABELS port)
+
     add_executable(port_entry_tests tests/port_entry_tests.cpp platform/entry.cpp)
     target_include_directories(port_entry_tests PRIVATE platform/include extern/aurora/include)
     target_compile_definitions(port_entry_tests PRIVATE TARGET_PC)

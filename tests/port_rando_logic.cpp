@@ -300,68 +300,34 @@ void TestTeleporters() {
   Check(paired > 0, "some teleporters pair up", paired);
 }
 
-// Vanilla placement, sphere by sphere, from the Landing Site with the starting inventory: every
-// location must open. A sphere takes everything reachable with the items of the spheres before it.
+// Vanilla placement, sphere by sphere, from the Landing Site with the starting inventory and the
+// script grants (Collect, shared with the generator): every location must open.
 void TestVanillaSpheres() {
   using namespace PortRandoWorld;
-  const auto areaNamed = [](const char* name) {
-    for (int a = 0; a < AreaCount(); ++a)
-      if (std::strcmp(AreaAt(a)->name, name) == 0)
-        return a;
-    return -1;
-  };
-  const int start = areaNamed("01_Temple_LandingSite");
-  Check(start >= 0, "vanilla: the Landing Site exists");
+  const int start = StartNode().area;
+  Check(start >= 0 && std::strcmp(AreaAt(start)->name, "01_Temple_LandingSite") == 0,
+        "vanilla: the start is the Landing Site");
   if (start < 0)
     return;
-  Inventory inv;
-  for (int item : {0, 22, 8, 9, 12, 15}) // Power Beam, Charge Beam, Combat/Scan Visor, Varia Suit, Morph Ball
-    inv.Set(item, 1);
-  // Items scripts grant rather than pickups (RANDOMIZER.md step 5), granted once their room is
-  // reached. Each translator comes from its world's energy controller: U-Mos at the Main Energy
-  // Controller gives the Violet Translator with the Energy Transfer Module (item 28, which the
-  // Agon/Torvus/Sanctuary energy rules ask for), and the Agon, Torvus and Sanctuary controllers'
-  // holograms give the Amber, Emerald and Cobalt Translators.
-  const struct {
-    const char* area;
-    int item, extra;
-  } grants[] = {
-      {"08_temple_sungenerator", kItemVioletTranslator, 28},
-      {"00_sand_generator", kItemAmberTranslator, -1},
-      {"00_swamp_generator", kItemEmeraldTranslator, -1},
-      {"00_cliff_generator", kItemCobaltTranslator, -1},
-  };
-  std::set<int> have;
-  std::map<int, int> sphere; // location -> its sphere
-  int spheres = 0;
-  for (;;) {
-    bool granted = false;
-    for (const Node& n : ReachableNodes(inv, start, 0))
-      for (const auto& g : grants)
-        if (inv.Count(g.item) == 0 && std::strcmp(AreaAt(n.area)->name, g.area) == 0) {
-          inv.Add(g.item);
-          if (g.extra >= 0)
-            inv.Add(g.extra);
-          granted = true;
-        }
-    if (granted)
-      continue;
-    std::vector<int> fresh;
-    for (int i : ReachableLocations(inv, start, 0))
-      if (!have.count(i))
-        fresh.push_back(i);
-    if (fresh.empty())
-      break;
-    ++spheres;
-    for (int i : fresh) {
-      const Location* l = LocationAt(i);
-      // Expansions give their amount (an Energy Tank pickup is one tank; ammo is many).
-      const bool counted = l->item == 42 || l->item == kItemPowerbomb || l->item == kItemMissile;
-      inv.Add(l->item, counted && l->amount > 0 ? l->amount : 1);
-      have.insert(i);
-      sphere[i] = spheres;
-    }
+  for (const ScriptGrant& g : ScriptGrants()) {
+    bool found = false;
+    for (int a = 0; a < AreaCount(); ++a)
+      found = found || std::strcmp(AreaAt(a)->name, g.area) == 0;
+    Check(found, "vanilla: every grant's area exists", g.item);
   }
+  const Playthrough play = Collect(VanillaPlacement());
+  const Inventory& inv = play.inventory;
+  const int spheres = play.spheres;
+  std::map<int, int> sphere; // location -> its sphere
+  std::set<int> have;
+  for (int i = 0; i < LocationCount(); ++i)
+    if (play.sphere[i] > 0) {
+      have.insert(i);
+      sphere[i] = play.sphere[i];
+    }
+  int vanillaSpheres = -1;
+  Check(Beatable(VanillaPlacement(), &vanillaSpheres) && vanillaSpheres == spheres, "vanilla: Beatable agrees",
+        vanillaSpheres);
   // No exemptions: vanilla must reach every location.
   for (int i = 0; i < LocationCount(); ++i)
     if (!have.count(i))

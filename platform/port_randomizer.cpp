@@ -433,15 +433,14 @@ std::string SeedFilePath() { return SeedPath(); }
 
 std::string DumpLogFilePath() { return LogPath("randomizer_locations.log"); }
 
-bool GenerateSeedFromDumpLog(const char* seedName, std::string& error) {
+bool GenerateSeed(const char* seedName, std::string& error) {
   error.clear();
   if (seedName == nullptr || seedName[0] == '\0') {
     error = "Give the seed a name first.";
     return false;
   }
-  const std::string dump = LogPath("randomizer_locations.log");
-  if (!GenerateSeedFile(dump, seedName, SeedPath())) {
-    error = "No seed was written: the dump log is missing or has no records (see the log for why).";
+  if (!GenerateSeedFile(seedName, SeedPath())) {
+    error = "No seed was written: no beatable placement, or the seed file could not be written (see the log).";
     return false;
   }
   return true;
@@ -454,10 +453,10 @@ void EnsureLoaded() {
       try {
         State& state = GetState();
         state.dump = EnvEnabled("MP_RANDO_DUMP");
-        // MP_RANDO_GEN=<seed name>: build the seed from the dump log first, then load it.
+        // MP_RANDO_GEN=<seed name>: generate the seed (logic fill, no dump needed), then load it.
         if (const char* gen = std::getenv("MP_RANDO_GEN")) {
           if (gen[0] != '\0' && !state.dump)
-            (void)GenerateSeedFile(LogPath("randomizer_locations.log"), gen, SeedPath());
+            (void)GenerateSeedFile(gen, SeedPath());
         }
         (void)LoadSeed(state);
       } catch (const ParseError& error) {
@@ -690,13 +689,6 @@ int ItemFromName(const char* name) {
   return -1;
 }
 
-void FormatLocationKey(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, char* out,
-                       int outSize) {
-  if (out == nullptr || outSize <= 0)
-    return;
-  std::snprintf(out, static_cast<size_t>(outSize), "%08X:%08X:%08X",
-                static_cast<unsigned int>(worldAssetId), static_cast<unsigned int>(areaAssetId),
-                static_cast<unsigned int>(entityId));
-}
+// FormatLocationKey is in port_rando_gen.cpp, shared with the generator's tests.
 
 } // namespace PortRandomizer

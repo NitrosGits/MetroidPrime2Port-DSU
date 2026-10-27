@@ -31,20 +31,21 @@ void SuppressMemoOnce(uint16_t uniqueId);
 bool TakeMemoSuppressed(uint16_t uniqueId);
 // Records a collected pickup check when randomizer or dump mode is active.
 void RecordCheck(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int itemType);
-// The seed file the loader reads (MP_RANDO_SEED, else <user>/randomizer_seed.json) and the dump
-// log the generator reads (<user>/randomizer_locations.log).
+// The seed file the loader reads (MP_RANDO_SEED, else <user>/randomizer_seed.json) and the log
+// dump mode writes (<user>/randomizer_locations.log; the generator no longer reads it).
 std::string SeedFilePath();
 std::string DumpLogFilePath();
-// Writes a seed built from the dump log, for the F1 overlay's Randomizer page. The running game
-// keeps the seed it loaded at start-up; the new one is read by the next launch. False, with the
-// reason in `error`, when the log is missing or has no records.
-bool GenerateSeedFromDumpLog(const char* seedName, std::string& error);
+// Writes a seed from the logic-based generator (port_rando_gen.h), for the F1 overlay's Randomizer
+// page. The running game keeps the seed it loaded at start-up; the new one is read by the next
+// launch. False, with the reason in `error`, when no seed was written.
+bool GenerateSeed(const char* seedName, std::string& error);
 
 // Returns the retail item name, or "Unknown" for an out-of-range item type.
 const char* ItemName(int itemType);
 // Returns an item type for a case-insensitive exact name, or -1 when unknown.
 int ItemFromName(const char* name);
-// Formats a location as three uppercase, zero-padded eight-digit hexadecimal IDs.
+// Formats a location as three uppercase, zero-padded eight-digit hexadecimal IDs (defined in
+// port_rando_gen.cpp).
 void FormatLocationKey(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId,
                        char* out, int outSize);
 

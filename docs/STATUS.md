@@ -208,8 +208,8 @@ on scannables"; asked how, "they flash".
   Remastered, Mods, Archipelago and Tracker have no feature here, so no empty pages. `Debug` holds
   the free camera and photo (moved off Game), the world/area and game-update readout, and the
   console's commands; `Save states` is the old Game block on a page of its own; `Randomizer` reports
-  the loaded seed and writes one from the dump log (`PortRandomizer::SeedFilePath`,
-  `DumpLogFilePath`, `GenerateSeedFromDumpLog`).
+  the loaded seed and generates one with the logic fill (`PortRandomizer::SeedFilePath`,
+  `GenerateSeed`; the dump log is no longer read).
 - **The randomizer's user directory was the Prime 1 port's** (`MP_USER_PATH`, else SDL's pref path
   for "Metroid Prime"), so a dump or seed went somewhere the port's card and settings never look.
   It now reads `MP2_USER_PATH` first; the Randomizer page showed `/tmp/opencode/ov_user/...` under a

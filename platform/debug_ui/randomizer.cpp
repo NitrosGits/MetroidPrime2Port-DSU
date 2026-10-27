@@ -1,6 +1,5 @@
-// F1 overlay: The Randomizer page. This port's randomizer is the dump-then-shuffle one
-// (docs/RANDOMIZER.md), so the page reports what the running game loaded and can write a seed from
-// the dump log. State and helpers shared with the other parts are in debug_ui_internal.h.
+// F1 overlay: The Randomizer page. It reports what the running game loaded and can write a seed
+// from the port's logic-based generator (docs/RANDOMIZER.md). State and helpers shared with the other parts are in debug_ui_internal.h.
 
 #include "debug_ui_internal.h"
 
@@ -29,14 +28,13 @@ void DrawRandomizerTab() {
   static bool sGenerateOk = false;
   ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14.f);
   ImGui::InputText("Seed name", sSeedName, sizeof(sSeedName));
-  if (ImGui::Button("Generate from the dump log")) {
+  if (ImGui::Button("Generate")) {
     std::string error;
-    sGenerateOk = PortRandomizer::GenerateSeedFromDumpLog(sSeedName, error);
+    sGenerateOk = PortRandomizer::GenerateSeed(sSeedName, error);
     sGenerateResult = sGenerateOk ? "Seed written. It loads on the next launch." : error;
   }
-  ItemHelp("MP_RANDO_DUMP=1 logs every pickup the areas you visit hold; generate here, then restart "
-           "without MP_RANDO_DUMP to play the seed. A seed only covers what was dumped, and the "
-           "shuffle has no logic, so a seed may not be beatable.");
+  ItemHelp("Shuffles the items of all 114 pickup locations with the port's own logic, so every "
+           "location can be reached from the start. Generate here, then restart to play the seed.");
   if (!sGenerateResult.empty()) {
     ImGui::PushTextWrapPos(0.f);
     ImGui::TextColored(sGenerateOk ? ThemeGoodColor() : ThemeBadColor(), "%s", sGenerateResult.c_str());
