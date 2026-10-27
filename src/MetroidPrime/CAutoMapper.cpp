@@ -74,6 +74,12 @@ float sPortMapRotX = 0.f;
 float sPortMapRotY = 0.f;
 float sPortMapTwist = 0.f;
 float sPortMapPinch = 1.f;
+// Pinch zoom past the area map's farthest distance (or the world map's nearest) switches maps.
+// log2 of the pinch ratio gathered while at the limit; one switch per gesture (latched until
+// the fingers lift).
+const float kPortMapSwitchLog2 = 0.4f;
+float sPortMapSwitchAccum = 0.f;
+bool sPortMapSwitchLatched = false;
 } // namespace
 #endif
 static const char* const skFRME_MapScreen = "FRME_MapScreen";
@@ -750,6 +756,34 @@ void CAutoMapper::PortPointerInput(CFinalInput& input, const CStateManager& mgr)
     sPortMapTwist = m.twist;
     if (m.zoom != 0.f) {
       sPortMapPinch = static_cast< float >(pow(2.0, 0.5 * m.zoom));
+    }
+  }
+  {
+    PortPointer::Recognizer& gz = PortPointer::Gestures();
+    if (sPortMapSwitchLatched && gz.FingerCount() == 0 && sPortMapPinch == 1.f) {
+      sPortMapSwitchLatched = false;
+    }
+    // Zooming out (pinch < 1) at the area map's far limit goes to the world map; zooming in
+    // (pinch > 1) at the world map's near limit goes back, as the A button does.
+    const float logPinch = log2f(sPortMapPinch);
+    const float dist = mRenderState0.mCamDist;
+    const bool atLimit =
+        universe ? dist <= gpTweakAutoMapper->GetMapScreenMapUniverseMinCameraDistance() + 0.01f
+                 : dist >= gpTweakAutoMapper->GetMaxCamDistance() - 0.01f;
+    const bool outward = universe ? logPinch > 0.f : logPinch < 0.f;
+    if (!atLimit || !outward || sPortMapSwitchLatched) {
+      if (!atLimit || logPinch == 0.f || !outward) {
+        sPortMapSwitchAccum = 0.f;
+      }
+    } else {
+      sPortMapSwitchAccum += fabsf(logPinch);
+      if (sPortMapSwitchAccum >= kPortMapSwitchLog2 && (universe || HasCurrentMapUniverseWorld(mgr))) {
+        sPortMapSwitchAccum = 0.f;
+        sPortMapSwitchLatched = true;
+        sPortMapPinch = 1.f;
+        PortPointerMenu::PressA(input);
+        return;
+      }
     }
   }
   // A held pan drag (right or middle button, a pan gesture) keeps the map from drifting back
