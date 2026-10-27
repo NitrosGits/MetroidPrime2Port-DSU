@@ -593,7 +593,7 @@ CVector3f CSwampBossStage1::UpdateHeadLook(CStateManager& mgr, float dt) {
   if (xc34_tongueState == 0) {
     xd04_headLatch = true;
     xd08_headBlend += dt;
-    if (xd08_headBlend <= 1.f) {
+    if (!(xd08_headBlend > 1.f)) { // 0x3178 fcmpo/ble: NaN takes the Lerp arm
       return CVector3f::Lerp(xcf8_headDir, target, xd08_headBlend);
     }
     return target;
