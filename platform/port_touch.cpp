@@ -360,9 +360,11 @@ void PadButton(int button, bool down) {
 }
 
 // The player the wheels act on: player 0's state while the game is in play (MP1's wheels are
-// disabled outside play too). Game thread only.
+// disabled outside play too). The title and file select are a CMFGame too, in the 'FRND' front-end
+// world, whose own Samus sits in the Morph Ball: that is not play. Game thread only.
 CPlayerState* PlayerInPlay() {
-  if (gpGameState == nullptr || PortHarness::FlowState() != kInGame) {
+  if (gpGameState == nullptr || PortHarness::FlowState() != kInGame ||
+      gpGameState->GetGameMode().GetGameModeType() == 'FRND') {
     return nullptr;
   }
   return gpGameState->PlayerState(0).GetPtr();
