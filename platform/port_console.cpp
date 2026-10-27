@@ -4275,6 +4275,34 @@ std::string RestOf(const Args& args, size_t first) {
   return text;
 }
 
+// gci restore [n]: another release's saves beside this card (platform/port_save.cpp). Without an
+// index, lists them; with one, copies that release's newest save onto the card, converted.
+void CmdGci(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() < 2 || Lower(args[1]) != "restore" || args.size() > 3) {
+    Fail("usage: gci restore [n]");
+    return;
+  }
+  const std::vector< PortSave::OtherRelease > others = PortSave::OtherReleaseSaves();
+  if (args.size() == 2) {
+    for (size_t i = 0; i < others.size(); ++i) {
+      out += std::to_string(i) + ": " + others[i].label + " (" + others[i].folder + ")\n";
+    }
+    out += others.empty() ? "no other release's saves found\n" : "gci restore <n> copies one in\n";
+    return;
+  }
+  const size_t i = std::strtoul(std::string(args[2]).c_str(), nullptr, 10);
+  if (i >= others.size()) {
+    Fail("no such entry");
+    return;
+  }
+  std::string message;
+  if (!PortSave::RestoreFrom(others[i], message)) {
+    Fail(message);
+    return;
+  }
+  out += others[i].label + ": " + message + '\n';
+}
+
 // save info [<file>] | export [<path>] | import <path|latest> | backup | backups: the card's save
 // as the file it is (platform/port_save.cpp). `info` reads a .gci without mounting the card, so a
 // backup can be checked while the game runs; with no file it reads the card's own.
@@ -4634,6 +4662,8 @@ const CommandSpec kCommands[] = {
       "sticky <0|1>                sticky charge: a long A hold keeps charging after the release\n"},
     {"pointeraim", CmdPointerAim,
       "pointeraim [on|off|<x> <y>] pointer aim (the F1 row), or place its pointer (-1..1)\n"},
+    {"gci", CmdGci,
+      "gci restore [n]            list or copy in the other release's saves, converted for this disc\n"},
     {"save", CmdSave,
       "save [info] [<file>]        the card's save slots, or one .gci on disk: world, items, time\n"},
     {"cardbackup", CmdCardBackup,

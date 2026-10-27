@@ -1,7 +1,7 @@
 # Echoes save layouts across releases
 
 This is research for carrying a save from one disc release to another, as the Prime 1 port can.
-It describes the formats and the converter (`platform/port_save_convert.cpp`, hooked into `port::save::Import()`); the restore offer is not written yet. Measured on 2026-10-27.
+It describes the formats and the converter (`platform/port_save_convert.cpp`, hooked into `port::save::Import()`); the restore offer is `PortSave::RestoreToOffer`/`RestoreFrom` (boot prompt, overlay button, `gci restore`). Measured on 2026-10-27.
 
 Each claim carries one of two labels:
 
@@ -453,8 +453,8 @@ How each piece maps onto Echoes [I unless marked]:
 | Prime 1 piece | Echoes equivalent | State |
 | --- | --- | --- |
 | `kReleases` (GM8E, GM8P, R3ME, R3MP) | G2ME, G2MP, R3ME, R3MP. The USA/EUR folder split is the same: `aurora_card_get_path(GameCode(), …)` gives `<user>/USA/Card A` or `<user>/EUR/Card A` [M, `platform/port_save.cpp:23,144`] | Ready |
-| Release discovery, marker file, the prompt and its skip knobs | Same logic, over `port::entry::CurrentGameCode()`. Skip it under `MP2_CONSOLE` and the gameplay harness. | Not written |
-| Hook at boot in `DolphinCMemoryCardSys.cpp` | Same file exists here; hook it after `CMemoryCardSys::MountCard` [M, line 414] | Not written |
+| Release discovery, marker file, the prompt and its skip knobs | Same logic, over `port::entry::CurrentGameCode()`. Skipped under `MP2_CONSOLE` and `MP2_NO_DISC_DIALOG`. | Done: `PortSave::OtherReleaseSaves/RestoreToOffer/MarkRestoreOffered` |
+| Hook at boot in `DolphinCMemoryCardSys.cpp` | Same file exists here; `OfferRestoreFromOtherRelease()` at the end of `CMemoryCardSys::Initialize`, under `TARGET_PC` | Done |
 | Import path (`CopyFiles` → converter) | `port::save::Import()` (`port_save.cpp:443`). It backs up what it replaces (`replaced-<stamp>.gci`), and now converts G2ME <-> G2MP through `PortSave::Convert::Gci` instead of refusing (other codes are still refused). | Done |
 | `gen_save_layouts.py` tables | `tools/savw_diff.py` already extracts every per-world list and size the converter needs. Emit them as a generated table rather than printing them. | Data measured; generator not written |
 | `MapIds` / `Remap` (ID remap, dropped counts) | Rebuild each bit list by stable ID: relay, door and unmappable `TEditorId`s, cinematic IDs, scan asset IDs, and layer names per area (§4). Report the dropped bits, as Prime 1 does. | Done: `Convert::Report` |
@@ -476,3 +476,5 @@ from ME -> MP -> ME with the console value `44bfc715` and fresh CRCs; every othe
 asserts exactly that, plus the refusals (Trilogy, same release, truncated file, damaged SAVH).
 Not covered by a test: a slot with PAL-only scans set (no such real save is available), and a real
 console save of either release.
+
+Restore surfaces: the boot message box (once per card and release, marker `.restore-offered-<code>` in the card folder), F1 > System > Memory card "Restore from <release>", and `gci restore [n]` (docs/CONSOLE.md). All go through `Import`, so the replaced file is kept in save-backups. Not run against a live window: only built and linked.

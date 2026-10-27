@@ -11,6 +11,7 @@
 #include "port_save.h"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_timer.h>
 #include <imgui.h>
 
 #include <algorithm>
@@ -244,6 +245,26 @@ void DrawCardTransfer() {
                             "/Card A) was found in the usual user folders.").c_str()
                          : (std::string("Imports the newest save in Dolphin's ") + DolphinRegion() +
                             " card folder.").c_str());
+  // Saves another release left on the port's card (each release keeps its own files). Rescanned
+  // every two seconds: it reads every file's header.
+  static std::vector< PortSave::OtherRelease > sOthers;
+  static Uint64 sOthersNext = 0;
+  if (SDL_GetTicks() >= sOthersNext) {
+    sOthers = PortSave::OtherReleaseSaves();
+    sOthersNext = SDL_GetTicks() + 2000;
+  }
+  for (size_t i = 0; i < sOthers.size(); ++i) {
+    ImGui::PushID(static_cast< int >(i));
+    if (ImGui::Button(("Restore from " + sOthers[i].label).c_str())) {
+      std::string message;
+      const bool ok = PortSave::RestoreFrom(sOthers[i], message);
+      sStatus = ok ? "Restored: " + message : "Restore failed: " + message;
+      sOthersNext = 0;
+    }
+    ItemHelp("Copies that release's newest save onto this card, converted; this card's save is "
+             "copied to save-backups first, and the other release's file is left as it is.");
+    ImGui::PopID();
+  }
   ImGui::EndDisabled();
   ImGui::BeginDisabled(sDialogOpen || saves == 0);
   if (ImGui::Button("Export to folder...")) {

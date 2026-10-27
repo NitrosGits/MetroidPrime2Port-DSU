@@ -11,6 +11,8 @@
 #include <aurora/card.h>
 
 #include <algorithm>
+#include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
@@ -677,6 +679,105 @@ bool Import(const std::string& source, std::string& message) {
     message += " (the file it replaced is " + kept + ")";
   }
   return true;
+}
+
+namespace {
+struct Release {
+  const char* code;
+  const char* label;
+  const char* region;
+};
+constexpr Release kReleases[] = {
+    {"G2ME", "Metroid Prime 2: Echoes (USA GameCube)", "USA"},
+    {"G2MP", "Metroid Prime 2: Echoes (PAL GameCube)", "EUR"},
+};
+
+// The .gci files of `folder` whose directory entry is `code`, with their write times.
+std::vector<std::pair<std::string, int64_t>> FilesOfCode(const std::filesystem::path& folder,
+                                                          const char* code) {
+  std::vector<std::pair<std::string, int64_t>> out;
+  std::error_code ec;
+  for (const std::filesystem::directory_entry& entry :
+       std::filesystem::directory_iterator(folder, ec)) {
+    if (!entry.is_regular_file(ec)) {
+      continue;
+    }
+    std::ifstream in(entry.path(), std::ios::binary);
+    char head[6];
+    if (!in.read(head, sizeof head) || std::memcmp(head, code, 4) != 0 || head[4] != '0' ||
+        head[5] != '1') {
+      continue;
+    }
+    const auto time = std::filesystem::last_write_time(entry.path(), ec);
+    out.emplace_back(entry.path().string(),
+                     std::chrono::duration_cast<std::chrono::seconds>(time.time_since_epoch()).count());
+  }
+  return out;
+}
+
+std::string RestoreMarker(const std::string& folder) {
+  return folder + "/.restore-offered-" + GameCode();
+}
+} // namespace
+
+std::vector<OtherRelease> OtherReleaseSaves() {
+  std::vector<OtherRelease> found;
+  if (IsImage()) {
+    return found;
+  }
+  std::filesystem::path folder = Directory();
+  if (folder.empty()) {
+    return found;
+  }
+  if (!folder.has_filename()) {
+    folder = folder.parent_path(); // a trailing separator
+  }
+  // <base>/<region>/Card A: the other region's card sits beside this one.
+  const std::filesystem::path base = folder.parent_path().parent_path();
+  for (const Release& release : kReleases) {
+    if (std::strncmp(release.code, GameCode(), 4) == 0) {
+      continue;
+    }
+    const std::filesystem::path source = base / release.region / folder.filename();
+    OtherRelease other{source.string(), release.code, release.label, std::string(), 0};
+    for (const auto& file : FilesOfCode(source, release.code)) {
+      if (other.file.empty() || file.second > other.written) {
+        other.file = file.first;
+        other.written = file.second;
+      }
+    }
+    if (!other.file.empty()) {
+      found.push_back(std::move(other));
+    }
+  }
+  std::sort(found.begin(), found.end(),
+            [](const OtherRelease& a, const OtherRelease& b) { return a.written > b.written; });
+  return found;
+}
+
+bool RestoreFrom(const OtherRelease& source, std::string& message) {
+  if (source.file.empty()) {
+    message = "nothing to restore";
+    return false;
+  }
+  return Import(source.file, message);
+}
+
+std::vector<OtherRelease> RestoreToOffer() {
+  const std::string folder = IsImage() ? std::string() : Directory();
+  std::error_code ec;
+  if (folder.empty() || !FilesOfCode(folder, GameCode()).empty() ||
+      std::filesystem::exists(RestoreMarker(folder), ec)) {
+    return {};
+  }
+  return OtherReleaseSaves();
+}
+
+void MarkRestoreOffered() {
+  const std::string folder = IsImage() ? std::string() : Directory();
+  if (!folder.empty()) {
+    std::ofstream(RestoreMarker(folder)) << "asked\n";
+  }
 }
 
 bool Backup(std::string* written, std::string& error) {
