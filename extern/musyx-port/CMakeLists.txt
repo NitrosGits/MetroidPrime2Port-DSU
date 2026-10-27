@@ -53,6 +53,8 @@ target_compile_definitions(musyx PUBLIC
         -DMUSY_VERSION_MAJOR=2 -DMUSY_VERSION_MINOR=0 -DMUSY_VERSION_PATCH=${MUSYX_VERSION_PATCH}
         $<$<CONFIG:Release>:NDEBUG>
         $<$<CONFIG:MinSizeRel>:NDEBUG>)
+# hardware.c uses M_PI, which the MSVC CRT's math.h only defines on request.
+target_compile_definitions(musyx PRIVATE $<$<BOOL:${WIN32}>:_USE_MATH_DEFINES>)
 set_target_properties(musyx PROPERTIES DEBUG_POSTFIX D)
 set_target_properties(musyx PROPERTIES RELWITHDEBINFO_POSTFIX RD)
 set_target_properties(musyx PROPERTIES MINSIZEREL_POSTFIX MIN)
