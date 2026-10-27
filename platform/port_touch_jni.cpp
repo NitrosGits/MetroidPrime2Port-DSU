@@ -228,14 +228,26 @@ Java_org_metroidprime2_port_TouchControlsView_nativeDebugWheel(JNIEnv*, jclass, 
   PortOverlay::Wheel(steps);
 }
 
-// --- Stubs: MP2 has no backend for these (see port_touch.h) ---
+// --- HUD icons ---
 
-JNIEXPORT jintArray JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeWheelIcon(JNIEnv*,
-                                                                                          jclass,
-                                                                                          jint,
-                                                                                          jint) {
-  return nullptr; // no HUD icon capture: the wheels draw their text labels
+// {width, height, ARGB pixels...} of a wheel icon (wheel 0 visor, 1 beam; item in the same order as
+// nativeRequestVisor/nativeRequestBeam), or null until the HUD has loaded it.
+JNIEXPORT jintArray JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeWheelIcon(
+    JNIEnv* env, jclass, jint wheel, jint item) {
+  std::vector< uint32_t > icon;
+  if (!PortTouch::WheelIcon(wheel, item, icon)) {
+    return nullptr;
+  }
+  const jsize count = static_cast< jsize >(icon.size());
+  jintArray out = env->NewIntArray(count);
+  if (out == nullptr) {
+    return nullptr;
+  }
+  env->SetIntArrayRegion(out, 0, count, reinterpret_cast< const jint* >(icon.data()));
+  return out;
 }
+
+// --- Stubs: MP2 has no backend for these (see port_touch.h) ---
 
 JNIEXPORT jboolean JNICALL
 Java_org_metroidprime2_port_TouchControlsView_nativeMessageBoxOpen(JNIEnv*, jclass) {

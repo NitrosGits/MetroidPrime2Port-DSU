@@ -20,11 +20,15 @@
 #include "port_prompts.h"
 #include "touch_pad.h"
 
+#include "GuiSys/CGuiModel.hpp"
+#include "Kyoto/Graphics/CTexture.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 
 #include <SDL3/SDL.h>
+#include <aurora/gfx.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdio>
@@ -714,6 +718,84 @@ int WheelState() { return sWheelState.load(std::memory_order_acquire); }
 void RequestVisor(int visor) { sPendingVisor.store(visor, std::memory_order_release); }
 
 void RequestBeam(int beam) { sPendingBeam.store(beam, std::memory_order_release); }
+
+namespace {
+struct WheelIconData {
+  int w = 0;
+  int h = 0;
+  std::vector< uint32_t > argb;
+};
+std::mutex sWheelIconMutex;
+WheelIconData sWheelIcons[2][4];
+} // namespace
+
+void CaptureWheelIcons(int wheel, CGuiWidget* const* icons) {
+  if (wheel < 0 || wheel > 1) {
+    return;
+  }
+  for (int i = 0; i < 4; ++i) {
+    {
+      std::lock_guard< std::mutex > lock(sWheelIconMutex);
+      if (!sWheelIcons[wheel][i].argb.empty()) {
+        continue;
+      }
+    }
+    if (icons[i] == nullptr || icons[i]->GetWidgetTypeID() != 'MODL') {
+      continue;
+    }
+    float uv[4] = {};
+    const CTexture* tex = static_cast< const CGuiModel* >(icons[i])->PortFirstTexture(uv);
+    if (tex == nullptr) {
+      continue;
+    }
+    uint32_t w = 0;
+    uint32_t h = 0;
+    std::vector< uint8_t > rgba(256 * 256 * 4);
+    if (!aurora_gx_texobj_rgba8(tex->PortTexObj(), &w, &h, rgba.data(), rgba.size()) || w == 0 ||
+        h == 0) {
+      continue;
+    }
+    // The HUD icons share an atlas (one 256x128 texture); cut this model's cell out of it. The
+    // models map it bottom row first (v = 0 is the bottom), so flip to upright.
+    const int x0 = std::max(0, int(std::floor(uv[0] * w + 0.5f)));
+    const int x1 = std::min(int(w), int(std::floor(uv[2] * w + 0.5f)));
+    const int y0 = std::max(0, int(std::floor((1.f - uv[3]) * h + 0.5f)));
+    const int y1 = std::min(int(h), int(std::floor((1.f - uv[1]) * h + 0.5f)));
+    if (x1 <= x0 || y1 <= y0) {
+      continue;
+    }
+    WheelIconData icon;
+    icon.w = x1 - x0;
+    icon.h = y1 - y0;
+    icon.argb.resize(size_t(icon.w) * icon.h);
+    for (int y = 0; y < icon.h; ++y) {
+      for (int x = 0; x < icon.w; ++x) {
+        const uint8_t* c = &rgba[(size_t(h - 1 - (y0 + y)) * w + (x0 + x)) * 4];
+        icon.argb[size_t(y) * icon.w + x] =
+            uint32_t(c[3]) << 24 | uint32_t(c[0]) << 16 | uint32_t(c[1]) << 8 | c[2];
+      }
+    }
+    std::fprintf(stderr, "[touch] wheel icon %d/%d: %dx%d of %ux%u fmt %d\n", wheel, i, icon.w,
+                 icon.h, w, h, int(tex->GetTexelFormat()));
+    std::lock_guard< std::mutex > lock(sWheelIconMutex);
+    sWheelIcons[wheel][i] = std::move(icon);
+  }
+}
+
+bool WheelIcon(int wheel, int item, std::vector< uint32_t >& out) {
+  if (wheel < 0 || wheel > 1 || item < 0 || item > 3) {
+    return false;
+  }
+  std::lock_guard< std::mutex > lock(sWheelIconMutex);
+  const WheelIconData& icon = sWheelIcons[wheel][item];
+  if (icon.argb.empty()) {
+    return false;
+  }
+  out.assign(1, uint32_t(icon.w));
+  out.push_back(uint32_t(icon.h));
+  out.insert(out.end(), icon.argb.begin(), icon.argb.end());
+  return true;
+}
 
 void SetBeamShift(bool held) { sBeamShift.store(held, std::memory_order_release); }
 

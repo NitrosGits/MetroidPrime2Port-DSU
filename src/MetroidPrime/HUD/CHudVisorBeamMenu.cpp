@@ -14,6 +14,11 @@
 
 #include <float.h>
 
+#ifdef TARGET_PC
+#include "GuiSys/CGuiModel.hpp"
+#include "port_touch.h"
+#endif
+
 static const char* const skBaseWidgetNames[] = {"basewidget_visormenuicons",
                                                 "basewidget_beammenuicons"};
 static const char* const skMenuTitleWidgetNames[] = {"textpane_visormenu", "textpane_beammenu"};
@@ -188,6 +193,16 @@ void CHudVisorBeamMenu::PortGroupSpread() {
 
 #endif
 void CHudVisorBeamMenu::Update(float dt, const bool init) {
+#ifdef TARGET_PC
+  {
+    // The touch wheels draw these icons (a no-op once all four are taken).
+    CGuiWidget* icons[4];
+    for (int i = 0; i < 4; ++i) {
+      icons[i] = mItems[i].mIcon;
+    }
+    PortTouch::CaptureWheelIcons(mType, icons);
+  }
+#endif
   const CColor itemColors[2][4] = {
       {gpTweakGuiColors->GetVisorMenuIconColor0(), gpTweakGuiColors->GetVisorMenuIconColor1(),
        gpTweakGuiColors->GetVisorMenuIconColor2(), gpTweakGuiColors->GetVisorMenuIconColor3()},

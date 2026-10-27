@@ -31,7 +31,11 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
+#include <vector>
+
+class CGuiWidget;
 
 namespace PortTouch {
 
@@ -135,6 +139,12 @@ int WheelState();
 // Queue a switch to an owned visor or beam (item index); applied by the next `BeginFrame`.
 void RequestVisor(int visor);
 void RequestBeam(int beam);
+// Game thread, from CHudVisorBeamMenu::Update: stores the HUD's four icons of a wheel (0 visor,
+// 1 beam; item order as RequestVisor/RequestBeam) as ARGB once they have loaded. A no-op for the
+// ones already taken.
+void CaptureWheelIcons(int wheel, CGuiWidget* const* icons);
+// {width, height, ARGB pixels...} of a captured icon, or false until the HUD has loaded it.
+bool WheelIcon(int wheel, int item, std::vector< uint32_t >& out);
 // The twin layout's Beam button, and the Turbo button.
 void SetBeamShift(bool held);
 void SetTurboFire(bool held);

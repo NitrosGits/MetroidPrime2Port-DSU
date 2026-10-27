@@ -109,6 +109,10 @@ public:
   void InitBitmapBuffers(const ETexelFormat fmt, const short w, const short h, const int mips);
   void InitTextureObjects();
   void UnLock();
+#ifdef TARGET_PC
+  // Port: the GX object built with the bitmap (the touch wheels' HUD icons decode it).
+  const GXTexObj* PortTexObj() const { return &mTexObj; }
+#endif
   CGraphicsPalette* GetPalette() { return mGraphicsPalette.get(); }
 
   const CGraphicsPalette* GetPalette() const { return mGraphicsPalette.get(); }
