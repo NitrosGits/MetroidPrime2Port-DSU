@@ -35,7 +35,11 @@ long AudioEffectX::dispatcher(long opcode, long index, long value, void* ptr, fl
   case kEO_GetCurrentPosition:
     return reportCurrentPosition();
   case kEO_GetDestinationBuffer:
+    #ifdef TARGET_PC
+    return static_cast< long >(reinterpret_cast< intptr_t >(reportDestinationBuffer()));
+#else
     return reinterpret_cast< long >(reportDestinationBuffer());
+#endif
   case kEO_OfflineNotify:
     return offlineNotify(static_cast< VstAudioFile* >(ptr), value, index != 0);
   case kEO_OfflinePrepare:
@@ -69,7 +73,11 @@ long AudioEffectX::dispatcher(long opcode, long index, long value, void* ptr, fl
   case kEO_CanDo:
     return canDo(static_cast< char* >(ptr));
   case kEO_GetIcon:
+    #ifdef TARGET_PC
+    return static_cast< long >(reinterpret_cast< intptr_t >(getIcon()));
+#else
     return reinterpret_cast< long >(getIcon());
+#endif
   case kEO_SetViewPosition:
     return setViewPosition(index, value) ? 1 : 0;
   case kEO_GetTailSize:
@@ -240,8 +248,13 @@ void AudioEffectX::setOutputSamplerate(float sampleRate) {
 bool AudioEffectX::getSpeakerArrangement(VstSpeakerArrangement* input,
                                          VstSpeakerArrangement* output) {
   if (mAudioMaster != nullptr)
+#ifdef TARGET_PC
+    return mAudioMaster(&mEffect, kAM_GetSpeakerArrangement, 0,
+                        static_cast< long >(reinterpret_cast< intptr_t >(input)), output, 0.f) != 0;
+#else
     return mAudioMaster(&mEffect, kAM_GetSpeakerArrangement, 0, reinterpret_cast< long >(input),
                           output, 0.f) != 0;
+#endif
   return false;
 }
 

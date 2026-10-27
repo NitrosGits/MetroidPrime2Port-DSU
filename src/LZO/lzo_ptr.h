@@ -86,6 +86,12 @@ extern "C" {
 
 
 /* Integral types that have *exactly* the same number of bits as a lzo_voidp */
+#if defined(TARGET_PC) && defined(_WIN64) && !defined(__LZO_HAVE_PTR_T)
+   /* LLP64: `long` is 32-bit while pointers are 64-bit */
+   typedef unsigned long long lzo_ptr_t;
+   typedef long long          lzo_sptr_t;
+#  define __LZO_HAVE_PTR_T
+#endif
 #if !defined(__LZO_HAVE_PTR_T)
 #  if defined(lzo_ptr_t)
 #    define __LZO_HAVE_PTR_T

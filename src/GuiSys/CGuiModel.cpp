@@ -13,6 +13,7 @@
 #include "port_pointer.h"
 #endif
 #ifdef TARGET_PC
+#include <cstdlib>
 #include <set>
 #include <stdio.h>
 #include <stdlib.h>

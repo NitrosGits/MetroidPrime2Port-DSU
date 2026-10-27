@@ -43,6 +43,7 @@
 #include "port_warp.h"
 
 #include <stdio.h>
+#include <cstdlib>
 #include <stdlib.h>
 
 // `main.cpp` defines it and no header declares it; `CRezbitEffect.cpp` declares it the same way.
