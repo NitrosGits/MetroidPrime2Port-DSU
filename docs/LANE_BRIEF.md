@@ -54,7 +54,7 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
 ## Runs
 
 - Foreground with `timeout`; fast mode `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8` (use 1 for
-  wall-timed plans) and `tools/drivers/con.py` `@f<n>` scripts; drivers go in `tools/drivers/`.
+  wall-timed plans) and `tools/drivers/console.py` `@f<n>` scripts; drivers go in `tools/drivers/`.
 - Console (`help` lists all): `fsm <id> <state>` (reaches FSM2 sub-machines), `place <id> player [d]`,
   `damage <id> <n> [weapon|powerbomb|annihilator|darkburst|sunburst|sonicboom]`, `send <id> <msg>`,
   `shoot`, `boost` (morphed), `noise <type> [x y z]` (InformListeners; 6 = safe zone), `grapple <id> [d]`, `objs <type>`, `status`. `a; b; c` runs in one tick. `kill` alone kills the

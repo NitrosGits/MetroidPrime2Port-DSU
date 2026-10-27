@@ -22,7 +22,7 @@
 # compiled module Kralee` line lists the whole compiled-module table, so it says the module is
 # registered, not that it ran.
 # Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC), measured:
-# unpaced, its 1300 updates run from 0.1 s to 0.3 s (~6500 a second) and con.py connects at 0.5 s,
+# unpaced, its 1300 updates run from 0.1 s to 0.3 s (~6500 a second) and console.py connects at 0.5 s,
 # i.e. after the run's frame limit is up, so the steps only run in the shutdown window (kral's fast
 # transcript was identical, but nothing guarantees it: an empty transcript still reports 0
 # caught/stub). Capped, its 1300 updates take ~20 s. F=1360, last check f1160.

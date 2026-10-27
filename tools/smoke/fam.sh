@@ -14,7 +14,7 @@
 #   SMOKE_SECS     backstop timeout in seconds
 #   SMOKE_CMD      console command file, or "-" for no console
 #   SMOKE_INPUT    MP2_INPUT script, or "-" for none
-#   SMOKE_DRIVER   console driver: generic (tools/drivers/con.py) | ing | ep | darksamus
+#   SMOKE_DRIVER   console driver: generic (tools/drivers/console.py) | ing | ep | darksamus
 #   SMOKE_SAVE     the memory card that is copied as this run's user dir
 #
 # Extra "NAME=VALUE" arguments go into the game's environment (e.g. MP2_BG_FSM=1).
@@ -82,13 +82,13 @@ gcov_env "$BUILD" "$OUT/gcov_$TAG"
 
 case "$KIND" in
   generic)
-    # tools/drivers/con.py sends the command file's lines and answers when the game is up (it retries
+    # tools/drivers/console.py sends the command file's lines and answers when the game is up (it retries
     # the connect itself, and queues `@f` lines with `at`, so it must be connected before gameplay).
     # MP2_CONSOLE_WAIT holds the boot until it is in: a fast run would otherwise be thousands of
     # updates on before the first retry and fire every overdue `at` line on one update.
     if [ "$CMDF" != "-" ]; then
       export MP2_CONSOLE_WAIT=120
-      ( python3 "$ROOT/tools/drivers/con.py" "$PORT" "$CMDF" "$CON" >/dev/null 2>&1 ) &
+      ( python3 "$ROOT/tools/drivers/console.py" "$PORT" "$CMDF" "$CON" >/dev/null 2>&1 ) &
       CONPID=$!
     fi
     ;;

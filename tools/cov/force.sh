@@ -80,7 +80,7 @@ if ! xdpyinfo -display "$DISP" >/dev/null 2>&1; then
   for _ in $(seq 1 50); do xdpyinfo -display "$DISP" >/dev/null 2>&1 && break; sleep 0.1; done
 fi
 DRV=
-[ -n "$CON" ] && { python3 "$ROOT/tools/drivers/con.py" "$PORT" "$CON" > "$OUT/drive.log" 2>&1 & DRV=$!; }
+[ -n "$CON" ] && { python3 "$ROOT/tools/drivers/console.py" "$PORT" "$CON" > "$OUT/drive.log" 2>&1 & DRV=$!; }
 [ -n "$DRIVER" ] && { bash -c "${DRIVER//\{port\}/$PORT}" > "$OUT/drive.log" 2>&1 & DRV=$!; }
 cd "$BUILD" || exit 1
 env DISPLAY="$DISP" SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw SDL_AUDIODRIVER=dummy AURORA_PRESENT_EVERY=6 \

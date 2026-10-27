@@ -35,7 +35,7 @@ def connect():
 
 sock = connect()
 # A command's reply can take minutes in an attached run (the game is busy with the gdb), the
-# same reason tools/drivers/con.py honours CON_REPLY_TIMEOUT.
+# same reason tools/drivers/console.py honours CON_REPLY_TIMEOUT.
 sock.settimeout(int(os.environ.get("CON_REPLY_TIMEOUT", "300")))
 stream = sock.makefile("rw")
 

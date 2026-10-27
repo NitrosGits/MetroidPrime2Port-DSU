@@ -1,6 +1,6 @@
 # Debug console
 
-`MP2_CONSOLE=<port>` opens a TCP console on that port; `tools/drivers/con.py <port> <cmdfile>` drives
+`MP2_CONSOLE=<port>` opens a TCP console on that port; `tools/drivers/console.py <port> <cmdfile>` drives
 it (see `docs/RUNNING.md`). Each line is one command, `a; b; c` runs several in one game tick, and
 every command answers `=> ok` or `=> err: <why>`. `help` prints the list below, taken from the
 dispatch table `kCommands` in `platform/port_console.cpp`; `tests/port_console_docs.py` (ctest

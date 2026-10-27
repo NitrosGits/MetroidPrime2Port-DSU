@@ -225,12 +225,12 @@ declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sa
 declare -A I=( [ep]=in_ep.txt )
 declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # Fast mode (MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8, unpaced: ~5x shorter runs) for every family whose
-# script is timed in game updates (cmd_*.txt via con.py). The V drivers time their steps in wall
+# script is timed in game updates (cmd_*.txt via console.py). The V drivers time their steps in wall
 # seconds, so those families stay under the cap. NC is the second exception: a family whose area
-# boots so quickly that its unpaced updates are over before con.py connects - it stays capped, or
+# boots so quickly that its unpaced updates are over before console.py connects - it stays capped, or
 # nothing would be driven at all.
 #
-# MP2_CONSOLE_WAIT=120 now holds the boot until con.py connects for every cmd-file family, so the
+# MP2_CONSOLE_WAIT=120 now holds the boot until console.py connects for every cmd-file family, so the
 # "thin margin" NC cases were re-tested (capped vs fast, /tmp/opencode/ncfast1_cap vs ncfast1_fast):
 # the families below now run fast because their fast transcripts match the capped ones in hp/fsm/objs
 # (positions, camera, fps and projectile ids may differ). Dropped from NC after that re-test:

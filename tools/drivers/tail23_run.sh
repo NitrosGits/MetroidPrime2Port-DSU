@@ -16,7 +16,7 @@ export BUILD="$ROOT/build-port-cov"
 export LOG="$OUT/$TAG.log" CACHEDIR="$OUT/c_$TAG" RUNTAG="$TAG" USERDIR="$USERDIR"
 "$ROOT/tools/run_gameplay.sh" &
 GAME=$!
-python3 "$ROOT/tools/drivers/con.py" "$PORT" "$CMD" "$OUT/$TAG.con.log" &
+python3 "$ROOT/tools/drivers/console.py" "$PORT" "$CMD" "$OUT/$TAG.con.log" &
 CON=$!
 # The driver's own connect loop waits 10 min: end it as soon as the game is gone.
 while kill -0 "$CON" 2>/dev/null; do

@@ -5,10 +5,10 @@
 # See docs/LANE_BRIEF.md, "Coverage without probes".
 #
 #   tools/cov/run.sh <spec.py> <out dir> <world,area> [options]
-#     --con <cmdfile>     drive with tools/drivers/con.py (`@f<n>` lines; `layer <n>` first if needed)
+#     --con <cmdfile>     drive with tools/drivers/console.py (`@f<n>` lines; `layer <n>` first if needed)
 #     --driver '<cmd>'    or any driver command; `{port}` becomes the console port
 #     --frames <n>        MP2_FRAMES (default 6000): the game exits after n updates
-#     --fast              MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8 (con.py `@f` times still line up)
+#     --fast              MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8 (console.py `@f` times still line up)
 #     --env K=V           extra game environment (repeatable), e.g. MP2_DEBUG_SPACEPIRATE=1
 #   env: BUILD (default build-port-link), DISPLAY_NUM and COV_PORT (default: a free slot's :110x and 501xx), SECS (900),
 #        COV_MAX (hits recorded per breakpoint, 400), MP2_DISC, COV_SAVE (user dir, /tmp/opencode/mi_u)
@@ -66,7 +66,7 @@ fi
 
 DRV=
 if [ -n "$CON" ]; then
-  python3 "$ROOT/tools/drivers/con.py" "$PORT" "$CON" > "$OUT/drive.log" 2>&1 &
+  python3 "$ROOT/tools/drivers/console.py" "$PORT" "$CON" > "$OUT/drive.log" 2>&1 &
   DRV=$!
 elif [ -n "$DRIVER" ]; then
   bash -c "${DRIVER//\{port\}/$PORT}" > "$OUT/drive.log" 2>&1 &

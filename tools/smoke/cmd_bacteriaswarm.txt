@@ -20,7 +20,7 @@
 # boid band and `status` keeps its health (the shipped mDamageRadius is 0, so Touch falls back to
 # mTouchRadius, and the boids wander in a box big enough that a boid box never overlaps the player).
 # Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2350.
-# The family stays capped (run.sh NC): a fast run of 2400 updates is over in 0.3 s, before con.py
+# The family stays capped (run.sh NC): a fast run of 2400 updates is over in 0.3 s, before console.py
 # gets a console connection, so nothing would be driven.
 @f150 god 1; give missile 50; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
 @f200 objs Bact; obj e003d0023

@@ -51,7 +51,7 @@ Worktrees: `~/.local/share/opencode/worktree/3e7f972e5f2a67a4bf166b19e99a591913d
 
 **Next-slice preamble (2026-10-21; send with each lane's next slice until all have had it):** first
 `git merge port` (brings `8721dda7e`); fast runs `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8` with
-`tools/drivers/con.py` `@f<n>` scripts; reach states with console `fsm <id> <state>` / `place <id> player [d]`
+`tools/drivers/console.py` `@f<n>` scripts; reach states with console `fsm <id> <state>` / `place <id> player [d]`
 / `damage` / `send` (forced arms count when the branch table says `forced (<cmd>)`, see
 DECOMP_WORKFLOW.md); put drivers in `tools/drivers/`; ask for missing console commands and shared-header
 accessors in the report; also write the final report to `/tmp/opencode/reports/<lane>.md`.

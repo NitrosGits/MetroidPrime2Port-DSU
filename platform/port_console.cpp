@@ -2231,7 +2231,7 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
 }
 
 // frame: the game updates run so far (what MP2_FRAMES counts), so a console script can wait on
-// game time rather than wall time (con.py's `@f<n>`), which a fast harness run does not keep.
+// game time rather than wall time (console.py's `@f<n>`), which a fast harness run does not keep.
 void CmdFrame(CStateManager&, const Args&, std::string& out) {
   out += "frame " + std::to_string(PortHarness::GameUpdates()) + '\n';
 }
@@ -4884,7 +4884,7 @@ void Start() {
   std::fprintf(stderr, "[console] listening on 127.0.0.1:%d (try `help`)\n", port);
   std::thread(ListenThread, listener).detach();
   // MP2_CONSOLE_WAIT=<secs> (1 = 600): hold the boot until a client connects, so a script driver
-  // that retries its connect (tools/drivers/con.py, every 0.5 s) is in before the first update. An
+  // that retries its connect (tools/drivers/console.py, every 0.5 s) is in before the first update. An
   // unpaced fast run does thousands of updates a second; without the wait, a late connect queues
   // every overdue `at` line for the same update and the script's spacing is lost.
   if (const char* wait = std::getenv("MP2_CONSOLE_WAIT");

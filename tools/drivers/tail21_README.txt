@@ -1,6 +1,6 @@
 Sail: tail21 Rezbit/AIMannedTurret natural-play console scripts
 
-These are tools/drivers/con.py command files for a coverage-build run of the two
+These are tools/drivers/console.py command files for a coverage-build run of the two
 upstream modules the forced-FSM survey under-reached (Rezbit 26%, AIMannedTurret 37%):
 
     SMOKE_OUT=... SMOKE_BUILD=$PWD/build-port-cov SMOKE_DISPLAY=:91 SMOKE_PORT=4811 \

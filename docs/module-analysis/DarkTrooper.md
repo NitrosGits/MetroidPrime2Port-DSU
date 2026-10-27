@@ -138,7 +138,7 @@ One coverage/force run covers (b) and (c); (a) needs a force or the hanging troo
 
     tools/games_running.sh --wait
     MP2_FAST_LOAD=1 BUILD=build-port-link tools/cov/force.sh <spec> <out> \
-      3bfa3eff,05_temple_federationsite --driver 'python3 tools/drivers/con.py {port} @f600 layer 9' \
+      3bfa3eff,05_temple_federationsite --driver 'python3 tools/drivers/console.py {port} @f600 layer 9' \
       --frames 2400 --fast
 
 - Area `3bfa3eff,05_temple_federationsite`, layer 9: u<b>0242 and u<b>0259, both flotsam = 1 **and**

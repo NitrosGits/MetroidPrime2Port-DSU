@@ -67,13 +67,13 @@ iteration (`platform/include/port_timing.h`), as fast as the machine allows. Suc
 updates from launch to exit in ~1.9 s, 2026-10-23). `MP2_FAST_LOAD=1` (with `MP2_SKIP_FRONTEND`;
 `run_gameplay.sh` sets it, `FAST_LOAD=0` turns it off) does the same for a capped run until its first
 game update, so the pre-loop pak loading isn't paced either. `MP2_FRAMES` still counts ticks.
-Console scripts for `MP2_CONSOLE=<port>` runs: `tools/drivers/con.py <port> <cmdfile> [out]`, lines
+Console scripts for `MP2_CONSOLE=<port>` runs: `tools/drivers/console.py <port> <cmdfile> [out]`, lines
 `@f<n> <cmd>` or `@<secs> <cmd>`. Each run of `@f` lines is queued up front through the console's
 `at <n> <cmd>` (one `at` per `;` part), so a command runs exactly at update n even unpaced;
 `CON_POLL=1` restores the old polling of `frame` (late by many updates in a fast run).
 `MP2_CONSOLE_WAIT=<secs>` (`1` = 600) holds the boot until a console client connects; the smoke
-harness sets it for every con.py family, since an unpaced run is otherwise thousands of updates in
-before con.py's 0.5 s retry and every overdue `at` line fires on one update.
+harness sets it for every console.py family, since an unpaced run is otherwise thousands of updates in
+before console.py's 0.5 s retry and every overdue `at` line fires on one update.
 `gallery [mask]` prints the slideshow gallery unlock mask (0..63) or sets it (via PercentScans and the
 normal/hard-mode flags). `tools/drivers/slideshow_gallery.con` (`SMOKE_WORLD=69802220,cee3af0d`,
 `SKIP_FRONTEND=0`, `SMOKE_DRIVER` generic) sets 63, opens the slideshow, steps slides and leaves it; the
@@ -233,12 +233,12 @@ console scripts in `tools/smoke/cmd_*.txt`; `--list` prints the family table. Re
 `/tmp/opencode/smoke-<git hash>` by default (the card copied per family is `--save`, default
 `/tmp/opencode/mi_u`), and `tools/smoke/compare.py <new out> <old out>` prints exit, caught,
 reach-stub, stand-in and gameplay seconds per family, failing when a family regressed.
-The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
+The generic console.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
 batch (~4.6 min, ing ~266 s), and so do the `NC` families (emp1, ingswarm, darktrooper, bacteriaswarm,
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui, kral, pssm, stod,
 pbug, szone, rptl, chog, drkc, plac, plct, ming, snak, eyeb, kroc, atma, atmb, shrd, fsw, iss, ibs, mree, puff, rubk, cball, fobj, skyr, isg and spp): their areas
-boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
+boot so quickly that 2400 unpaced updates end in 0.3 s, before console.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200, spor's 2000 updates leave only ~100 ms of uncapped run after the connect and
 kral's 1300 are over (0.3 s) before it, while scriptgui's front end reads a widget's state
@@ -391,7 +391,7 @@ safe zone waking e00410048 (ReactToSafeZone -> WakeUp -> MoveAway -> Wait), the 
 shot on e00410066 (ReactToWeapon), the zone's Deactivate plus Decrement (MoveBack -> GoToSleep ->
 Sleep), the missile and Increment/Decrement/AIUpdateDisabled messages, Deactivate/Activate, `kill`
 on e00410066 and a final `obj`/`objs StoneToad`, with `obj` reads (hp, fsm, body state, message
-map) around them; its 1500 updates finish in ~0.5 s, before con.py connects, so the family stays
+map) around them; its 1500 updates finish in ~0.5 s, before console.py connects, so the family stays
 capped (NC). pbug drives Agon Wastes 0b_sand_hall's three PillBugs e00280088/e00280089/e0028008a
 (planar 1 looping paths) through a bug placed at the player (InDetectionRange -> FastPatrol), a
 touch (CollidedWith -> HitPlayer -> Pause -> AnimOver), the power/dark/light beam and missile
@@ -428,7 +428,7 @@ missile shots, damage and kills, then spawns a third ghost, with `objs ChozoGhos
 steps and at the end. drkc drives Temple Grounds dark 06_temple_sacredpath_dark's two Dark Commandos u051a and u041c through
 Activate, placement, damage and `obj` reads, with `objs DarkCommando` listing both at f200 and f4000.
 plac drives Agon Wastes 00_mapstation_sand's two inactive PlayerActors u065b and u0446 through Activate, Deactivate and `obj` reads, with `objs ScriptPlayerActor` listing both at f200 and f1800.
-ming boots Agon Wastes 0a_sand_hall_dark with the two MinorIngs u0455/u0432 (hp 20/20), Activates the inactive one, forces Patrol/PointPathFind/Dead, shoots one (20 -> 15 hp), damages it (15 -> 13), deletes it and closes with `objs MinorIng` (1 object left); snak boots Torvus Bog 01_swamp_entrance with SnakeWeedSwarm u0481 (41 weeds), Create/Activates it, places it 4 units from the player, shoots it twice (beam + charged, ScareSnakeWeeds), Deactivates/Activates and Deletes it (0 objects at the end). Both are NC (fast mode would finish before con.py connects).
+ming boots Agon Wastes 0a_sand_hall_dark with the two MinorIngs u0455/u0432 (hp 20/20), Activates the inactive one, forces Patrol/PointPathFind/Dead, shoots one (20 -> 15 hp), damages it (15 -> 13), deletes it and closes with `objs MinorIng` (1 object left); snak boots Torvus Bog 01_swamp_entrance with SnakeWeedSwarm u0481 (41 weeds), Create/Activates it, places it 4 units from the player, shoots it twice (beam + charged, ScareSnakeWeeds), Deactivates/Activates and Deletes it (0 objects at the end). Both are NC (fast mode would finish before console.py connects).
 eyeb drives Temple Grounds dark 0q_temple_hall_dark's four Corrupted Sentreyes u047a/u0476/u0452/u041d:
 activate and place u041d, force Active/Cover/Flinch, send Alert, shoot it (power beam and missile),
 kill it, with `objs EyeBall` counting four down to three. kroc drives Torvus Bog 0h_swamp_hall's three

@@ -1,7 +1,7 @@
 # SwarmBasics (module 80) swb12: fn_80_1978 CSwarmBasics::AssignSeekerBoids, the taken-scan arms
 # (1685/1686/1691) plus the geometry arms.  force.py, two fixtures, every write restored:
 #   BUILD=$PWD/build-port-cov tools/cov/force.sh tools/cov/specs/swarmbasics_seeker.py <out> \
-#     3dfd2249,0g_swamp_hall --driver "python3 tools/drivers/con.py {port} tools/drivers/swb12.con" \
+#     3dfd2249,0g_swamp_hall --driver "python3 tools/drivers/console.py {port} tools/drivers/swb12.con" \
 #     --fast --frames 1200
 #
 # 1. `caller_fixture` at the entry of the real caller, CSwarmBasics::UpdateSeekerTargets, one phase

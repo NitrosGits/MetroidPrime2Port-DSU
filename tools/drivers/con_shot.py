@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tools/drivers/con.py plus screenshots: the same cmdfile, and a command `!shot <png>` grabs the
+"""tools/drivers/console.py plus screenshots: the same cmdfile, and a command `!shot <png>` grabs the
 X display named by $SHOT_DISPLAY (ffmpeg x11grab, $SHOT_SIZE, default 1280x720) instead of going
 to the game. The transcript is rewritten after every command, so a crashed game keeps it.
 

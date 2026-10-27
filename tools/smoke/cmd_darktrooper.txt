@@ -9,7 +9,7 @@
 # a weapon `damage` knows, so the console answers `=> err`); the states kept are the ones a 2400
 # update family has frames for.
 # Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2600, last check f2380.
-# The family stays capped (run.sh NC): a fast run of 2400 updates is over in 0.3 s, before con.py
+# The family stays capped (run.sh NC): a fast run of 2400 updates is over in 0.3 s, before console.py
 # gets a console connection, so nothing would be driven.
 @f300 god 1; give missile 50
 @f302 layer 2; layer 3

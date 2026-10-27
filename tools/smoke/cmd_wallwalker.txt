@@ -18,7 +18,7 @@
 # after it, `beam -> dark` and the charged shot at u0607, `damage e00250156 10` reading hp 1.0 ->
 # 1.0, and every step answering `=> ok`. The log's `init compiled module WallWalker` line lists the
 # whole compiled-module table, so it says the module is registered, not that it ran.
-# Checks are game updates (@f<n>), never wall seconds. The family is NC: unpaced, con.py's 0.5 s
+# Checks are game updates (@f<n>), never wall seconds. The family is NC: unpaced, console.py's 0.5 s
 # connect lands at ~update 300 - the script's own first step, at ~1500 updates a second measured -
 # so `layer 3` and the f330 `objs` would arrive with no margin between them; capped, the layer is in
 # by f330 as in the driver. Capped, its 3700 updates take ~62 s. F=3700, last check f3500.

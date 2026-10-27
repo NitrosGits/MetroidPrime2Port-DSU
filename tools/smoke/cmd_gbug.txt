@@ -18,7 +18,7 @@
 # with its new position (71.58 -42.25 -20.14 for 6 units), the beam shot `shot u0629 at u044f from
 # 3.0 units` (hp 30 -> 28 at f1360) and the missile (hp -2/30, fsm Dead by f1450,
 # and gone from the f2200 list: its DeathDelete removes it, which is why the late checks are `obj`
-# reads and the count, never an `obj e000500f8` - con.py reports "no object with editor id" as a
+# reads and the count, never an `obj e000500f8` - console.py reports "no object with editor id" as a
 # step error), the scans `scan u0460 (orbit point 82.3, -42.0, -19.3, visor flags f, download 1.5 s)
 # ... orbit locked`. `scan` at f1899 reads game state 1 (soft-paused); after `visor combat`, f2001
 # reads combat/state 0. The 0.5/3/6-unit beam shots at e000500f0 and the two missiles then run before
@@ -30,7 +30,7 @@
 # The log's `init compiled module Glowbug` line lists the whole
 # compiled-module table, so it says the module is registered, not that it ran.
 # Checks are game updates (@f<n>), never wall seconds. The family runs fast like the rest, measured:
-# unpaced, its 2600 updates run from 0.1 s to 0.6-0.8 s and con.py connects at 0.5 s, the margin
+# unpaced, its 2600 updates run from 0.1 s to 0.6-0.8 s and console.py connects at 0.5 s, the margin
 # fishcloud (0.8 s) and gunturret (0.9 s) already run with; the transcript is byte-identical capped
 # and uncapped, and between two runs of each. F=2700, last check f2500.
 @f300 god 1; give missile 50; give scanVisor 1

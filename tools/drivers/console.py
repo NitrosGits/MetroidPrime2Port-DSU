@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Console driver for MP2 port harness runs (MP2_CONSOLE=<port>).
 
-usage: con.py <port> <cmdfile> [outfile]
+usage: console.py <port> <cmdfile> [outfile]
 
 cmdfile lines:
   @<secs> <command>   send at <secs> of wall time since the driver started

@@ -18,7 +18,7 @@
 # Increment/Decrement/SetToMax/SetToZero arms), every `send` and `press` answering `=> ok` with the
 # object it reached (`sent Activate to u0674 000002ab`), and the slider's Delete dropping the list
 # from 133 objects at f130 to 132 at f600 - that count is the Delete's check (an `obj e21c` after it
-# could only answer "no object with editor id", which con.py reports as a step error). The log's
+# could only answer "no object with editor id", which console.py reports as a step error). The log's
 # `init compiled module ScriptGui` line lists the whole compiled-module table, so it says the module
 # is registered, not that it ran.
 # Checks are game updates (@f<n>), never wall seconds. The area boots at about 1008/1024 object ids,

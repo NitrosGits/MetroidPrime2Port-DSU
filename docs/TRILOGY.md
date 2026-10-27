@@ -182,7 +182,7 @@ With the setting enabled and `MP2_CONSOLE=<port>`:
   `radial padrelease` releases the click but keeps the stick vector; `radial padoff` then returns
   the simulated pad to neutral. This is an explicit test override, not a physical device install.
 
-Use `at <frame> <command>` / `tools/drivers/con.py` for deterministic sequences; leave several
+Use `at <frame> <command>` / `tools/drivers/console.py` for deterministic sequences; leave several
 updates after release for the game's ordinary switch transition. `give` can grant test inventory.
 Do not combine forced normalized selection with physical holds when testing arbitration.
 

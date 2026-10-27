@@ -18,7 +18,7 @@
 # fsm Dead, and the chain counts falling as Death, Bounce and Explode tear the chains apart - the
 # four chain B tail segments u0446/u0442/u043d/u043c survive and keep crawling the wall.
 # Checks are game updates (@f<n>), never wall seconds. The family is NC: 0p_cliff_hall boots so fast
-# that an unpaced 3000 would be over before con.py connects. F=3000, last check f2990.
+# that an unpaced 3000 would be over before console.py connects. F=3000, last check f2990.
 @f120 god 1
 @f130 tp -198 119 -124
 @f140 face 270

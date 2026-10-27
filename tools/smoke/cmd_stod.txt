@@ -23,7 +23,7 @@
 # check, not a count); every step answering `=> ok`. The log's `init compiled module StoneToad` line
 # lists the whole compiled-module table, so it says the module is registered, not that it ran.
 # Checks are game updates (@f<n>), never wall seconds, and the family is capped: unpaced, its 1500
-# updates are over (0.2 s -> 0.5 s) at the very moment con.py connects at 0.5 s - spor's failure
+# updates are over (0.2 s -> 0.5 s) at the very moment console.py connects at 0.5 s - spor's failure
 # mode, where a faster machine would drive an area that had already stopped - so it stays capped
 # (~21 s: 2.1 s -> 23.1 s in the log); its capped transcript is byte-identical between runs.
 # F=1500, last check f1300.

@@ -39,7 +39,7 @@ Coverage build: natural spec `tools/cov/specs/isbg.py` with driver `isbg.con`; f
       1baa96c2,06_cliff_spiderballguardian --con tools/cov/specs/isbg_stun.con --fast --frames 8000
     python3 tools/cov/gcov_report.py build-port-cov <c>/gcov <f>/gcov --module IngSpiderballGuardian
 
-`--frames` must be greater than the driver's last `@f`; otherwise con.py's batch hits EOF and nothing is sent.
+`--frames` must be greater than the driver's last `@f`; otherwise console.py's batch hits EOF and nothing is sent.
 Console `shoot` projectiles do real damage, so they arrive as kSM_Damage and ApplyStunDamage never runs.
 The force spec therefore rewrites kSM_Damage to kSM_ResistedDamage in AcceptScriptMsg. It also drops
 mStunHealth to 0.1 on hits 4 mod 10, which reaches the stun, its recovery and the next phase.

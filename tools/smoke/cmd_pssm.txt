@@ -21,7 +21,7 @@
 # PlantScarabSwarm` line lists the whole compiled-module table, so it says the module is registered,
 # not that it ran.
 # Checks are game updates (@f<n>), never wall seconds, and the family is capped: unpaced its 3000
-# updates run from 0.2 s to 0.9/1.5 s (~2000-4000 a second) against con.py's 0.5 s connect, and two
+# updates run from 0.2 s to 0.9/1.5 s (~2000-4000 a second) against console.py's 0.5 s connect, and two
 # unpaced runs' transcripts are not even the same read (a boot's object ids differ, u049e against
 # u0618, and the boid counts 2/50 against 4/50 follow the update rate - the swarm generates boids
 # per update), so the rate would decide the baseline. Capped, its 3000 updates take ~46 s (2.1 s ->

@@ -86,7 +86,7 @@ script launched (bracketed `pgrep -f` names); other lanes run the game at the sa
 
 Fast runs: `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8` runs the game ~3-4x faster than real time
 (same fixed 1/60 s ticks); time console scripts in game updates with `@f<n>` in
-`tools/drivers/con.py`, not wall seconds. Reach a state instead of playing to it: `fsm <id> <state>`
+`tools/drivers/console.py`, not wall seconds. Reach a state instead of playing to it: `fsm <id> <state>`
 (force an AI state), `place <id> player [d]` (move an actor), `damage <id> <n> [weapon]`, `send`,
 `aim`, `frame` (`help` lists all). Gameplay drivers go in `tools/drivers/` (committed with the
 slice), not only `/tmp`. A lane that would save runs with a console command it lacks says so in its
