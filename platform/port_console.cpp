@@ -1120,6 +1120,24 @@ void CmdElevator(CStateManager&, const Args& args, std::string& out) {
   out += std::string("elevator ") + kNames[PortOverlay::ElevatorRide()] + "\n";
 }
 
+void CmdPortal(CStateManager&, const Args& args, std::string& out) {
+  static const char* const kNames[] = {"original", "fast", "skip"};
+  if (args.size() > 1) {
+    int mode = -1;
+    for (int i = 0; i < 3; ++i) {
+      if (args[1] == kNames[i]) {
+        mode = i;
+      }
+    }
+    if (mode < 0) {
+      Fail("usage: portal [original|fast|skip]");
+      return;
+    }
+    PortOverlay::SetPortalTransition(mode);
+  }
+  out += std::string("portal ") + kNames[PortOverlay::PortalTransition()] + "\n";
+}
+
 // original [0|1]: the Original experience switch (original_experience); no argument prints it.
 void CmdOriginal(CStateManager&, const Args& args, std::string& out) {
   if (args.size() > 1) {
@@ -4651,6 +4669,8 @@ const CommandSpec kCommands[] = {
       "scanspeed [50..400]         scan speed in percent (scan_speed); no argument prints it\n"},
     {"language", CmdLanguage,
       "language [0..6]             text language, applied live (language); no argument prints it\n"},
+    {"portal", CmdPortal,
+      "portal [original|fast|skip] the light/dark world portal ride (portal_transition); no argument prints it\n"},
     {"elevator", CmdElevator,
       "elevator [original|fast|skip] the ride between worlds (elevator_ride); no argument prints it\n"},
     {"original", CmdOriginal,

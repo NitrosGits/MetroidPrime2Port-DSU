@@ -128,6 +128,8 @@ private:
 #ifdef TARGET_PC
   // Port: PortOverlay::ElevatorRide() Skip: the ride ends as soon as the load is done.
   bool mPortSkipRide : 1;
+  // Port: PortOverlay::PortalTransition() Skip: the portal ride ends as soon as the load is done.
+  bool mPortSkipPortal : 1;
 #endif
 };
 CHECK_SIZEOF(CWorldTransManager, 0x4b0)

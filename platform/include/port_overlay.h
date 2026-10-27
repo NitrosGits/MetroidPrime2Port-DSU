@@ -127,6 +127,10 @@ void SetMinimapTap(bool enabled);
 enum EElevatorRide { kElevatorRide_Original, kElevatorRide_Fast, kElevatorRide_Skip };
 int ElevatorRide();
 void SetElevatorRide(int mode);
+// Portal transition (the light/dark world portal ride): same modes as the elevator ride.
+enum EPortalTransition { kPortalTransition_Original, kPortalTransition_Fast, kPortalTransition_Skip };
+int PortalTransition();
+void SetPortalTransition(int mode);
 // Text language (`MP2_LANGUAGE`: 0 English, 1 German, 2 French, 3 Spanish, 4 Italian, 5 Dutch,
 // 6 Japanese): CMain::GetLanguage returns it at startup and the overlay re-applies it every frame
 // (CStringTable::SetLanguage), so a change shows at once in text read from then on; a screen that
