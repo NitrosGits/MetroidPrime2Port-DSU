@@ -34,9 +34,14 @@
 #include "rstl/math.hpp"
 #ifdef TARGET_PC
 #include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptHUDMemo.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptRelay.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptTimer.hpp"
 #include "port_randomizer.h"
 #include "port_rando_models.h"
+#include <set>
 #include <string>
+#include <vector>
 #endif
 #include <float.h>
 
@@ -356,8 +361,9 @@ void CScriptPickup::Touch(CActor& act, CStateManager& mgr) {
     }
     playerState->SetTimeLeft(itemType, mPickupEffectLifetime);
 #ifdef TARGET_PC
-    // Randomized location: its script chain ends in a MEMO with the vanilla item's text. Drop
-    // that display (immediate path only; a MEMO behind a timer still shows) and show ours.
+    // Randomized location: its script chain ends in a MEMO with the vanilla item's text. Mark
+    // the MEMOs the Arrived connections reach, directly or through relays and timers (which
+    // deliver later), to drop their next display, and show ours.
     std::string randoText;
     bool randoMemo = false;
     if (mgr.GetWorld() != nullptr) {
@@ -367,11 +373,38 @@ void CScriptPickup::Touch(CActor& act, CStateManager& mgr) {
               mgr.GetWorld()->IGetAreaAlways(GetCurrentAreaId())->IGetAreaAssetId()),
           static_cast< uint32_t >(GetEditorId().value), static_cast< int >(itemType), randoText);
     }
-    PortRandomizer::SetMemoSuppressed(randoMemo);
+    if (randoMemo) {
+      std::set< uint16_t > visited;
+      std::vector< const CEntity* > pending;
+      pending.push_back(this);
+      for (bool first = true; !pending.empty(); first = false) {
+        const CEntity* cur = pending.back();
+        pending.pop_back();
+        for (rstl::vector< SConnection >::const_iterator it = cur->GetConnectionList().begin();
+             it != cur->GetConnectionList().end(); ++it) {
+          if (first && it->state != kSS_Arrived) {
+            continue;
+          }
+          CStateManager::TIdListResult found = mgr.GetIdListForScript(it->objId);
+          for (CStateManager::TIdList::const_iterator c = found.first; c != found.second; ++c) {
+            const CEntity* next = mgr.GetObjectById(c->second);
+            if (next == nullptr || !visited.insert(next->GetUniqueId().Value()).second) {
+              continue;
+            }
+            // dynamic_cast: host-only, TCastTo has no visitor for these types.
+            if (dynamic_cast< const CScriptHUDMemo* >(next) != nullptr) {
+              PortRandomizer::SuppressMemoOnce(next->GetUniqueId().Value());
+            } else if (dynamic_cast< const CScriptRelay* >(next) != nullptr ||
+                       dynamic_cast< const CScriptTimer* >(next) != nullptr) {
+              pending.push_back(next); // only plain relays and timers forward the chain
+            }
+          }
+        }
+      }
+    }
 #endif
     SendScriptMsgs(kSS_Arrived, mgr, player->GetUniqueId(), kSM_None);
 #ifdef TARGET_PC
-    PortRandomizer::SetMemoSuppressed(false);
     if (randoMemo) {
       std::wstring wide(randoText.begin(), randoText.end());
       CSamusHud::DisplayHudMemo(rstl::wstring_l(wide.c_str()),

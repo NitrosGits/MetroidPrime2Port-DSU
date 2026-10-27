@@ -13,6 +13,7 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -600,9 +601,9 @@ bool AcquisitionText(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entit
   }
 }
 
-static bool gMemoSuppressed = false;
-void SetMemoSuppressed(bool suppressed) { gMemoSuppressed = suppressed; }
-bool MemoSuppressed() { return gMemoSuppressed; }
+static std::set< uint16_t > gSuppressedMemos;
+void SuppressMemoOnce(uint16_t uniqueId) { gSuppressedMemos.insert(uniqueId); }
+bool TakeMemoSuppressed(uint16_t uniqueId) { return gSuppressedMemos.erase(uniqueId) != 0; }
 
 void RecordCheck(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int itemType) {
   EnsureLoaded();

@@ -40,7 +40,7 @@ void CScriptHUDMemo::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) 
   switch (message) {
   case kSM_SetToZero:
 #ifdef TARGET_PC
-    if (PortRandomizer::MemoSuppressed()) {
+    if (PortRandomizer::TakeMemoSuppressed(GetUniqueId().Value())) {
       break;
     }
 #endif

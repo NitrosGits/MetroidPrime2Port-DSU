@@ -24,10 +24,11 @@ bool ApplyPickup(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId,
 // hud_text, else "<ItemName> acquired!"). False for an unplaced location or when disabled.
 bool AcquisitionText(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int itemType,
                      std::string& out);
-// While set, CScriptHUDMemo drops its display: a randomized pickup's script chain
-// (pickup -> relay -> MEMO) would otherwise show the vanilla item's text.
-void SetMemoSuppressed(bool suppressed);
-bool MemoSuppressed();
+// Marks a MEMO (by unique id) reachable from a randomized pickup's Arrived chain: its next
+// SetToZero is dropped, whenever it arrives (relays and timers delay it), so the vanilla item's
+// text is not shown. TakeMemoSuppressed returns true once per mark.
+void SuppressMemoOnce(uint16_t uniqueId);
+bool TakeMemoSuppressed(uint16_t uniqueId);
 // Records a collected pickup check when randomizer or dump mode is active.
 void RecordCheck(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int itemType);
 // The seed file the loader reads (MP_RANDO_SEED, else <user>/randomizer_seed.json) and the dump
