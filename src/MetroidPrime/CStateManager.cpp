@@ -138,6 +138,9 @@
 #include "Kyoto/Text/CStringTable.hpp"
 #include "MetaRender/AmbientLightScale.hpp"
 #include "MetaRender/CCubeRenderer.hpp"
+#ifdef TARGET_PC
+#include "port_collision_view.h"
+#endif
 #include "MetroidPrime/CSimpleShadow.hpp"
 #include "Weapons/CDecal.hpp"
 #include "Weapons/CProjectileWeapon.hpp"
@@ -1321,12 +1324,21 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
   SetupParticleDrawMask();
   SetParticleAlphaUpdate(visor == CPlayerState::kPV_Echo);
 
+#ifdef TARGET_PC
+  // F1 > Debug > Rendering > Collision "Only": nothing of the world is drawn but Samus and the
+  // collision view (port_collision_view.h).
+  const bool portCollisionOnly = PortCollisionView::Only();
+  if (!portCollisionOnly) {
+#endif
   RenderActorQueue(mStateManagerContainer->mRenderBeforeAreas,
                    rstl::string_l("*RenderBeforeAreas"));
   DrawUnsortedGeometry(areas, mask, targetMask, visor);
   DrawSky(areas, visor);
   RenderActorQueue(mStateManagerContainer->mRenderFirstSorted,
                    rstl::string_l("*renderFirstSorted"));
+#ifdef TARGET_PC
+  }
+#endif
 
   bool deferPlayerRender = false;
   CEchoEmitter* emitters = nullptr;
@@ -1334,6 +1346,11 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
     const CGameArea& area = *areas[i];
     SetupFogForArea(area);
     gpRender->SetWorldLightFadeLevel(area.GetPostConstructed()->mWorldLightingLevel);
+#ifdef TARGET_PC
+    if (portCollisionOnly) {
+      continue;
+    }
+#endif
     RenderAreaActors(deferPlayerRender, emitters, area, visibility[i]);
     DrawSpecialGeometry(area.GetId(), visor, mask, targetMask);
     ++mObjectDrawToken;
@@ -1364,10 +1381,22 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
     }
   }
 
+#ifdef TARGET_PC
+  if (!portCollisionOnly)
+#endif
   {
     CScopedProfiler envProfile(rstl::string_l("*EnvFxManager"), true);
     mEnvFxManager->Render(*this);
   }
+#ifdef TARGET_PC
+  if (portCollisionOnly) {
+    // The areas' actors are skipped, so Samus is drawn on her own, over the collision view.
+    CPortActorRenderScope presented(*player);
+    CPortPipelineContextScope globalPipelines(AURORA_PIPELINE_CONTEXT_GLOBAL);
+    player->Render(*this);
+  }
+  PortCollisionView::Draw(*this, areas.begin(), static_cast< int >(areas.size()));
+#endif
   if (deferPlayerRender) {
     CScopedProfiler playerProfile(rstl::string_l("*2ndPlayerRender"), true);
 #ifdef TARGET_PC

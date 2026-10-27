@@ -4,6 +4,7 @@
 
 #include "debug_ui_internal.h"
 
+#include "port_collision_view.h"
 #include "port_warp.h"
 
 #include <aurora/gfx.h>
@@ -149,10 +150,18 @@ void DrawItemChecks(CPlayerState& ps, const char* tableId, const SItemCheck* ite
 
 } // namespace
 
-// The readouts for working on what mods draw. MP1's DrawRendering (debug_ui/cheats.cpp) also has a
-// Collision view and PBR / room-geometry counters; this port has neither, so only the frame
-// statistics are here.
+// The switches and readouts for working on what mods draw: the Collision view (port_collision_view.h)
+// and the frame statistics. MP1's PBR / room-geometry counters have no counterpart in this port.
 void DrawRendering() {
+  static const char* const kCollisionModes[] = {"off", "on top of the world", "only (hide the world)"};
+  int collision = int(PortCollisionView::GetMode());
+  if (ImGui::Combo("Collision", &collision, kCollisionModes, 3)) {
+    PortCollisionView::SetMode(PortCollisionView::Mode(collision));
+  }
+  ImGui::SetItemTooltip("Recommended: off. Not saved.\n"
+                        "Draws what Samus collides with: walls grey, floors blue, ceilings red,\n"
+                        "lava orange, phazon cyan, grates yellow, solid objects as orange boxes.");
+
   if (ImGui::CollapsingHeader("Frame statistics")) {
     if (const AuroraStats* stats = aurora_get_stats()) {
       ImGui::Text("%.0f fps, %u draws (%u merged), %u passes", aurora_get_fps(), stats->drawCallCount,

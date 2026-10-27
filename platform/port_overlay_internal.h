@@ -151,6 +151,10 @@ void LogSettings();
 void SaveSettings();
 void MarkDirty();
 bool Dirty();
+// The disc image F1 > System > Disc image > Replace remembered for the next start; "" when none.
+// SetDiscPath marks the settings dirty; the caller saves them.
+std::string DiscPath();
+void SetDiscPath(const std::string& path);
 // After Reset configuration moved the files away: SaveSettings writes nothing more this run.
 void FreezeAfterReset();
 // The environment variable that overrides `key`.
