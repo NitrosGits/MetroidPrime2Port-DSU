@@ -1,125 +1,148 @@
-Metroid Prime 2: Echoes  
-[![Build Status]][actions] [![Code Progress]][progress] [![Data Progress]][progress] [![Discord Badge]][discord]
-=============
+# Metroid Prime 2: Echoes — native port
 
-[Build Status]: https://github.com/PrimeDecomp/echoes/actions/workflows/build.yml/badge.svg
-[actions]: https://github.com/PrimeDecomp/echoes/actions/workflows/build.yml
-[Code Progress]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=code&label=Code
-[Data Progress]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=data&label=Data
-[progress]: https://decomp.dev/PrimeDecomp/echoes
-[DOL Progress]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=code&label=DOL&version=G2ME01&category=dol
-[RELs Progress]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=code&label=RELs&version=G2ME01&category=modules
-[DOL progress page]: https://decomp.dev/PrimeDecomp/echoes?version=G2ME01&category=dol
-[RELs progress page]: https://decomp.dev/PrimeDecomp/echoes?version=G2ME01&category=modules
+[![Linux build](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml/badge.svg?branch=port)](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml)
 
-[Code Progress G2ME01]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=code&label=Code&version=G2ME01
-[Data Progress G2ME01]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=data&label=Data&version=G2ME01
-[Progress G2ME01]: https://decomp.dev/PrimeDecomp/echoes?version=G2ME01
+A native build of **Metroid Prime 2: Echoes** for Linux and Android, compiled from
+the [PrimeDecomp/echoes](https://github.com/PrimeDecomp/echoes) decompilation and
+rendered through Aurora (SDL3/WebGPU). There's no emulator involved. Supported
+discs: the USA GameCube release (`G2ME01`), the PAL release (`G2MP01`, experimental) and
+the Wii's Metroid Prime Trilogy (`R3ME01` USA, `R3MP01` PAL; its Metroid Prime 2, experimental).
+Windows and macOS builds are planned; none exists yet.
 
-[Code Progress G2MJ01]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=code&label=Code&version=G2MJ01
-[Data Progress G2MJ01]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=data&label=Data&version=G2MJ01
-[Progress G2MJ01]: https://decomp.dev/PrimeDecomp/echoes?version=G2MJ01
+**No game content is included.** You need your own copy of the game: the port
+reads it from a disc image and never ships any of its assets. This repository
+ships no disc image, and neither does any package or release built from it.
 
-[Code Progress G2MP01]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=code&label=Code&version=G2MP01
-[Data Progress G2MP01]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=data&label=Data&version=G2MP01
-[Progress G2MP01]: https://decomp.dev/PrimeDecomp/echoes?version=G2MP01
+## What it adds over the console release
 
-[Code Progress R32J01]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=code&label=Code&version=R32J01
-[Data Progress R32J01]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=data&label=Data&version=R32J01
-[Progress R32J01]: https://decomp.dev/PrimeDecomp/echoes?version=R32J01
+- **Widescreen** with a widescreen-aware HUD, **render scale**, vsync, a frame
+  cap you can lift, and **frame interpolation**
+- **Graphics:** first-person FOV, MSAA, anisotropic filtering, dynamic resolution,
+  HUD scale, arm cannon offset, toggles to hide the helmet and visor effects, and a
+  choice of renderer (Vulkan or OpenGL on desktop Linux)
+- **Controls:** mouse and twin-stick aim, gyro aim, lock-on free aim, pointer aim,
+  full rebinding with presets
+- **Optional tweaks:** Fast Morph, Spring Ball, Toggle Lock-On, Sticky Charge,
+  walk speed, scan speed, hint delay, elevator ride; an **Original experience**
+  switch puts the retail behaviour back
+- **Skippable cutscenes**, boot logos and the world-name card
+- **Language** switching on PAL and Trilogy discs
+- **Save states** and **quick resume** after quitting
+- **Saves:** import and export the memory card file, with Dolphin and PrimeHack
+  card folders, backed up before every write
+- **Metroid Prime Trilogy:** run Echoes from a Wii disc, with Trilogy's HUD frames,
+  reticles and, opt-in, its radial beam and visor menus (mouse, pad and touch)
+- **Suit colours** for the Varia, Dark and Light suits
+- **Mods:** drop-in mod folders that replace disc data or single resources, and
+  an HD texture pack ([docs/MODS.md](docs/MODS.md))
+- **Photo mode** with a free camera and high-resolution capture
+- **Speedrun tools:** an in-game time display and LiveSplit
+- **Discord Rich Presence** on desktop, and a **touch overlay** with a layout
+  editor on Android
+- A **debug console** over TCP, and the **F1 overlay**, which has every setting,
+  with search
 
-[Code Progress R3ME01]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=code&label=Code&version=R3ME01
-[Data Progress R3ME01]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=data&label=Data&version=R3ME01
-[Progress R3ME01]: https://decomp.dev/PrimeDecomp/echoes?version=R3ME01
+## Randomizer
 
-[Code Progress R3MP01]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=code&label=Code&version=R3MP01
-[Data Progress R3MP01]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=data&label=Data&version=R3MP01
-[Progress R3MP01]: https://decomp.dev/PrimeDecomp/echoes?version=R3MP01
+A shuffle generator built in: visit areas with `MP_RANDO_DUMP=1` to dump the
+pickup locations the game reports, then generate a seed from that list. There is
+no logic, so a seed can be unbeatable, and it only covers areas you dumped. See
+[docs/RANDOMIZER.md](docs/RANDOMIZER.md). There is no Archipelago client.
 
-[Discord Badge]: https://img.shields.io/discord/727908905392275526?color=%237289DA&logo=discord&logoColor=%23FFFFFF
-[discord]: https://discord.gg/hKx3FJJgrV
+## Downloads
 
-A decompilation of Metroid Prime 2: Echoes.
+Releases are published on the
+[GitHub releases page](https://github.com/Odrannnn/MetroidPrime2Port/releases/latest).
+Every build needs your own disc image; none of them contains one.
 
-Supported versions:
+| Platform | Asset |
+|---|---|
+| Linux x86_64 / aarch64 | `metroid-prime2-port-X-linux-{x86_64,aarch64}.tar.gz`, or the AppImage |
+| Android (arm64) | `metroid-prime2-port-X-android-arm64.apk` |
 
-| Version | Release | Code | Data |
-|---------|---------|------|------|
-| `G2ME01` | GameCube (USA) | [![Code Progress G2ME01]][Progress G2ME01] | [![Data Progress G2ME01]][Progress G2ME01] |
-| `G2MJ01` | GameCube (Japan) | [![Code Progress G2MJ01]][Progress G2MJ01] | [![Data Progress G2MJ01]][Progress G2MJ01] |
-| `G2MP01` | GameCube (PAL) | [![Code Progress G2MP01]][Progress G2MP01] | [![Data Progress G2MP01]][Progress G2MP01] |
-| `R32J01` | Wii: New Play Control! (Japan) | [![Code Progress R32J01]][Progress R32J01] | [![Data Progress R32J01]][Progress R32J01] |
-| `R3ME01` | Wii: Metroid Prime Trilogy (USA) | [![Code Progress R3ME01]][Progress R3ME01] | [![Data Progress R3ME01]][Progress R3ME01] |
-| `R3MP01` | Wii: Metroid Prime Trilogy (PAL) | [![Code Progress R3MP01]][Progress R3MP01] | [![Data Progress R3MP01]][Progress R3MP01] |
+**Quick start:** download the build for your platform, start it, and pick your disc
+image when it asks (Android shows a file picker and copies the image into the
+app). Supported discs are the GameCube USA (`G2ME01`) and PAL (`G2MP01`)
+releases and the Wii Metroid Prime Trilogy (USA `R3ME01`, PAL `R3MP01`), as
+`.iso`, `.gcm`, `.rvz`, `.wia`, `.gcz`, `.ciso` or `.wbfs`. See [docs/PAL.md](docs/PAL.md)
+and [docs/TRILOGY.md](docs/TRILOGY.md) for what is verified on each. Press **F1**
+for every setting.
 
-RELs are built for `G2ME01` only: [![DOL Progress]][DOL progress page] [![RELs Progress]][RELs progress page].
+On Linux the AppImage bundles no libraries: FreeType, libpng and a Vulkan
+driver, X11 or Wayland come from the system.
 
-This repository builds the following DOLs:
+## Running
 
-```text
-6ef9b491d0cc08bc81a124fdedb8bfaec34d0010  build/G2ME01/main.dol
-7f24a768f7b1a687adb88e56559ad8637ed80589  build/G2MJ01/main.dol
-5a670d5da3d181e86a0df7cf7751c7055eee35fb  build/G2MP01/main.dol
-442947ba57dce414917feab0e75a8227690b3e4b  build/R32J01/rs5mp2jpn_p.dol
-2375606f4e9429a699cfa02728b0bb1176421226  build/R3ME01/rs5mp2_p.dol
-077712e46eb7cf2488942f337d215636edbc972d  build/R3MP01/rs5mp2_p.dol
+```sh
+./metroid_prime2_port "/path/to/Metroid Prime 2 - Echoes.iso"
 ```
 
-Dependencies
-============
+The `MP2_DISC` environment variable works too. Headless and scripted runs,
+the gameplay harness and the area sweep are in [docs/RUNNING.md](docs/RUNNING.md).
 
-Windows:
---------
+## Building
 
-- Install [ninja](https://github.com/ninja-build/ninja/releases) and add it to `%PATH%`.
-- Install [Python 3.9+](https://www.python.org/downloads/) and add it to `%PATH%`.
+CMake 3.25+ and Ninja with a C++20 toolchain. A host build needs your disc only at run
+time, never to compile. The port configuration is `-DMP_SDK_HEADERS_ONLY=OFF`,
+which adds `extern/aurora` (it fetches its own SDL3 and Dawn) and builds the
+`metroid_prime2_port` executable:
 
-macOS:
-------
+```sh
+cmake -S . -B build-port-link -G Ninja -DMP_SDK_HEADERS_ONLY=OFF
+cmake --build build-port-link --target metroid_prime2_port
+```
 
-- Install Python and ninja:
+[docs/RUNNING.md](docs/RUNNING.md) has the run, test and coverage commands,
+[docs/RELEASING.md](docs/RELEASING.md) what CI builds, [docs/ANDROID.md](docs/ANDROID.md) the
+Android build, and [PORT_NOTES.md](PORT_NOTES.md) how the port works (the REL
+runtime, `TARGET_PC` rules, SDK shims). The upstream matching build
+(`python3 configure.py && ninja`, see [docs/DECOMP_README.md](docs/DECOMP_README.md)) is kept
+intact; every port change to an upstream file sits in a `#ifdef TARGET_PC` block.
 
-  ```sh
-  brew install python ninja
-  ```
+## Troubleshooting
 
-- On Apple Silicon, install Rosetta 2 if prompted.
+- **Where are the logs?** `metroid_prime2_port.log` in the user folder (F1 > System
+  > Log); the previous run's is `metroid_prime2_port.old.log`. Attach it to a bug report.
+- **"unsupported disc"**: the image is not one of the releases above. Re-dump it,
+  or check you picked the right disc.
+- **Settings in a bad state**: F1 > System > Settings > **Reset configuration...**
+  backs up and resets every setting and mapping; saves are not touched.
 
-Linux:
-------
+## Credits and licensing
 
-- Install Python 3.9+ and [ninja](https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages) from your package manager.
-- On non-x86 platforms, install Wine with 32-bit x86 support and configure with `--wrapper /path/to/wine`.
+This is a fork of the [PrimeDecomp/echoes](https://github.com/PrimeDecomp/echoes)
+decompilation, which the game logic is built from. The port layer follows
+[MetroidPrimePort](https://github.com/Odrannnn/MetroidPrimePort), the same
+approach for Metroid Prime. Aurora (`extern/aurora`) is a vendored snapshot, and MusyX
+(`extern/musyx-port`) provides the audio engine; third-party licences are kept
+alongside them and copied into release packages.
 
-Build tools are downloaded automatically, including the compilers and [wibo 1.1.0](https://github.com/decompals/wibo/releases/tag/1.1.0) on macOS and x86 Linux.
+`LICENSE` (MIT) covers this project's own work — the platform layer, the build and
+packaging scripts, and the Android integration. It does **not** cover the game code
+under `src/` and `include/`, which comes from the decompilation and remains
+Nintendo's. See `NOTICE` for the exact scope and the third-party terms.
+`LICENSE-decomp` is upstream PrimeDecomp's CC0 dedication, kept as it was.
 
-Building
-========
+Metroid Prime 2: Echoes is a trademark of Nintendo. This project is unaffiliated
+with Nintendo and Retro Studios, and ships no game data.
 
-- Checkout the repository:
+## Documentation
 
-  ```sh
-  git clone https://github.com/PrimeDecomp/echoes.git
-  cd echoes
-  ```
+| Document | What it covers |
+|---|---|
+| `docs/SETTINGS.md` | Every control, setting and environment variable |
+| `docs/QOL.md` | Quality-of-life features: what is in, what is next |
+| `docs/RUNNING.md` | Running the port: harness, console scripts, sweeps, coverage |
+| `docs/PAL.md` | The PAL disc: what is verified |
+| `docs/TRILOGY.md` | Metroid Prime Trilogy: mount, HUD, radial menus |
+| `docs/MODS.md` | The mods folder, suit colours, texture pack |
+| `docs/RANDOMIZER.md` | The built-in randomizer |
+| `docs/CONSOLE.md` | The debug console (`MP2_CONSOLE`) |
+| `docs/ANDROID.md` | The Android port's status and build |
+| `docs/RELEASING.md` | What a release contains and must carry |
+| `docs/DECOMP_README.md` | Upstream PrimeDecomp/echoes README (decomp build) |
+| `PORT_NOTES.md` | How the port works and non-obvious facts |
 
-- Copy your game's disc image to `orig/G2ME01` (or the appropriate version).
-  - Supported formats: ISO (GCM), RVZ, WIA, WBFS, CISO, NFS, GCZ, TGC.
-  - Required files are extracted automatically. The image can be deleted after the first build.
-- Configure:
+## AI assistance
 
-  ```sh
-  python configure.py
-  ```
-
-  For another version, add `--version G2MP01` or similar. Use `python3` if needed.
-- Build:
-
-  ```sh
-  ninja
-  ```
-
-Diffing
-========
-
-Open the project directory in [objdiff 3.7.0](https://github.com/encounter/objdiff/releases/tag/v3.7.0) after the first build. Select an object to compare; edits rebuild automatically.
+Parts of this port were written with AI coding assistants, under my oversight.
