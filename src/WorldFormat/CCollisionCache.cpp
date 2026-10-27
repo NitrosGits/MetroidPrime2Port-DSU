@@ -89,6 +89,23 @@ void CCollisionCacheWriter::ReserveWords(int count) {
     uintptr_t oldAddress = reinterpret_cast< uintptr_t >(mCache.mData.data());
     int capacity = mCache.mData.capacity() * 2;
     mCache.mData.reserve(capacity > count ? capacity : count * 2);
+#ifdef TARGET_PC
+    // Port: on 64-bit the old and new buffers can be more than 2 GiB apart (a big reserve moves
+    // to its own mapping), so a 32-bit delta sends the cursors to non-canonical addresses. Rebase
+    // with the full difference, and leave null cursors null: every caller sets them again before
+    // use, and a rebased null is a wild pointer here.
+    const uintptr_t diff = reinterpret_cast< uintptr_t >(mCache.mData.data()) - oldAddress;
+    if (mLeafCount != 0) {
+      mLeafCount = reinterpret_cast< ushort* >(reinterpret_cast< uintptr_t >(mLeafCount) + diff);
+    }
+    if (mTriangleCount != 0) {
+      mTriangleCount =
+          reinterpret_cast< ushort* >(reinterpret_cast< uintptr_t >(mTriangleCount) + diff);
+    }
+    if (mLeafBounds != 0) {
+      mLeafBounds = reinterpret_cast< CAABox* >(reinterpret_cast< uintptr_t >(mLeafBounds) + diff);
+    }
+#else
     // Translate packed cursors as addresses, including the initial null cursors.
     // Integer subtraction avoids subtracting pointers to different allocations.
     int delta =
@@ -99,6 +116,7 @@ void CCollisionCacheWriter::ReserveWords(int count) {
                                                  delta * sizeof(ushort));
     mLeafBounds =
         reinterpret_cast< CAABox* >(reinterpret_cast< uintptr_t >(mLeafBounds) + delta * sizeof(ushort));
+#endif
   }
 }
 
