@@ -582,6 +582,49 @@ bool ApplyPickup(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId,
   }
 }
 
+// The game's own wording for the pickup memo; the rest are the enumerator split at its capitals.
+static std::string DisplayName(int itemType) {
+  switch (itemType) {
+  case 18:
+    return "Morph Ball Bomb";
+  case 28:
+  case 107:
+    return "Energy Transfer Module";
+  case 29: case 30: case 31: case 101: case 102: case 103: case 104: case 105: case 106:
+    return "Sky Temple Key";
+  case 32: case 33: case 34:
+    return "Dark Agon Key";
+  case 35: case 36: case 37:
+    return "Dark Torvus Key";
+  case 38: case 39: case 40:
+    return "Ing Hive Key";
+  case 42:
+    return "Energy Tank";
+  case 43:
+    return "Power Bomb Expansion";
+  case 44:
+    return "Missile Expansion";
+  case 45:
+  case 46:
+    return "Beam Ammo Expansion";
+  case 73:
+    return "Missile Launcher";
+  default:
+    break;
+  }
+  std::string out;
+  for (const char* c = ItemName(itemType); *c != '\0'; ++c) {
+    if (*c == '_') {
+      out += ' ';
+      continue;
+    }
+    if (!out.empty() && std::isupper(static_cast< unsigned char >(*c)) && out.back() != ' ')
+      out += ' ';
+    out += *c;
+  }
+  return out;
+}
+
 bool AcquisitionText(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int itemType,
                      std::string& out) {
   EnsureLoaded();
@@ -594,7 +637,7 @@ bool AcquisitionText(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entit
     const auto it = state.placements.find(key);
     if (it == state.placements.end())
       return false;
-    out = std::string(ItemName(itemType)) + " acquired!";
+    out = DisplayName(itemType) + " acquired!";
     return true;
   } catch (...) {
     return false;

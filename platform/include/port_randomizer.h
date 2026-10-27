@@ -21,7 +21,7 @@ const char* StatusText();
 bool ApplyPickup(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId,
                  int& itemType, int& capacity, int& amount);
 // For a location the seed places: true, and `out` is the text to show on pickup (the seed's first
-// hud_text, else "<ItemName> acquired!"). False for an unplaced location or when disabled.
+// hud_text, else "<display name> acquired!", with spaced names, not the ItemName). False for an unplaced location or when disabled.
 bool AcquisitionText(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int itemType,
                      std::string& out);
 // Marks a MEMO (by unique id) reachable from a randomized pickup's Arrived chain: its next

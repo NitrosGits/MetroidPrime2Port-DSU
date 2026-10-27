@@ -406,8 +406,9 @@ void CScriptPickup::Touch(CActor& act, CStateManager& mgr) {
     SendScriptMsgs(kSS_Arrived, mgr, player->GetUniqueId(), kSM_None);
 #ifdef TARGET_PC
     if (randoMemo) {
+      // wstring_l only borrows its buffer (the memo text outlives this call), so build an owning string.
       std::wstring wide(randoText.begin(), randoText.end());
-      CSamusHud::DisplayHudMemo(rstl::wstring_l(wide.c_str()),
+      CSamusHud::DisplayHudMemo(rstl::wstring(wide.c_str()),
                                 CHUDMemoParms(5.f, true, false, false, 1 << playerIndex, true));
     }
 #endif
