@@ -10,6 +10,7 @@
 #include "port_overlay.h"
 #include "port_photo.h"
 #include "port_savestate.h"
+#include "port_touch.h"
 #include "port_pipeline_context.h"
 #endif
 
@@ -94,6 +95,10 @@ CMFGame::~CMFGame() {
   CSfxManager::SetMuted(false);
   CDecalManager::Reinitialize();
 #ifdef TARGET_PC
+  // Port: back in the front end there is no game flow and no player, so the touch controls
+  // (and anything else reading these) stop seeing the last in-game state: the Ball page on the title.
+  PortHarness::GameFlowState(-1, false);
+  PortTouch::SetMorphed(false);
   // Port: the render mode is widened by the aspect setting.
   CGraphics::SetViewport(0, 0, CGraphics::GetRenderMode().fbWidth,
                          CGraphics::GetRenderMode().efbHeight);
