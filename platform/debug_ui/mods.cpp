@@ -29,10 +29,36 @@ void DrawMods() {
            "(which rebuilds the room) or after a restart.");
   std::vector< std::string > disabled = PortMods::SplitDisabled(PortMods::Disabled());
   bool changed = enabled != status.active;
-  if (status.mods.empty()) {
-    ImGui::TextDisabled("No mods in the folder.");
-  }
   for (const PortMods::ModInfo& mod : status.mods) {
+    const bool on = std::find(disabled.begin(), disabled.end(), mod.name) == disabled.end();
+    changed = changed || (enabled && on) != mod.enabled;
+  }
+  if (changed) {
+    ImGui::TextColored(ThemeWarnColor(), "Reload the mods to apply.");
+  }
+  const bool reloading = PortSaveState::ModReloadActive();
+  ImGui::BeginDisabled(reloading);
+  if (ImGui::Button(reloading ? "Reloading..." : "Reload mods")) {
+    PortSaveState::RequestModReload();
+  }
+  ImGui::EndDisabled();
+  ImGui::SetItemTooltip("Reads the mods folder again and rebuilds the room, so replaced models,\n"
+                        "textures and sounds show without a restart. Needs a running game.");
+#if !defined(__ANDROID__)
+  ImGui::SameLine();
+  if (ImGui::Button("Open mods folder") && !status.folder.empty()) {
+    const std::string url = "file://" + status.folder;
+    SDL_OpenURL(url.c_str());
+  }
+#endif
+  for (const std::string& message : status.messages) {
+    ImGui::TextColored(ThemeBadColor(), "%s", message.c_str());
+  }
+  // The mods folder's mods; Echoes has no built-in mod sections above this one.
+  ImGui::SeparatorText("Other mods");
+  bool listed = false;
+  for (const PortMods::ModInfo& mod : status.mods) {
+    listed = true;
     const auto found = std::find(disabled.begin(), disabled.end(), mod.name);
     bool on = found == disabled.end();
     ImGui::BeginDisabled(!enabled);
@@ -52,31 +78,14 @@ void DrawMods() {
     } else {
       ImGui::TextDisabled("not loaded");
     }
-    changed = changed || (enabled && on) != mod.enabled;
   }
-  const bool reloading = PortSaveState::ModReloadActive();
-  ImGui::BeginDisabled(reloading);
-  if (ImGui::Button(reloading ? "Reloading..." : "Reload mods")) {
-    PortSaveState::RequestModReload();
-  }
-  ImGui::EndDisabled();
-  ImGui::SetItemTooltip("Reads the mods folder again and rebuilds the room, so replaced models,\n"
-                        "textures and sounds show without a restart. Needs a running game.");
-#if !defined(__ANDROID__)
-  ImGui::SameLine();
-  if (ImGui::Button("Open mods folder") && !status.folder.empty()) {
-    const std::string url = "file://" + status.folder;
-    SDL_OpenURL(url.c_str());
-  }
-#endif
-  if (changed) {
-    ImGui::TextColored(ThemeBadColor(), "Reload mods to apply.");
-  }
-  for (const std::string& message : status.messages) {
-    ImGui::TextColored(ThemeBadColor(), "%s", message.c_str());
+  if (!listed) {
+    ImGui::TextDisabled("No other mods.");
   }
   if (!status.folder.empty()) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
     ImGui::TextWrapped("Folder: %s", status.folder.c_str());
+    ImGui::PopStyleColor();
   }
   ImGui::TextWrapped("Each folder in the mods folder is a mod; later names win. A file at a disc "
                      "path (Metroid5.pak, Audio/..., Video/...) replaces that file, and a "

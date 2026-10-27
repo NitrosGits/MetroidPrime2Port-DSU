@@ -179,8 +179,8 @@ Statuses:
 | Item | MP1 | MP2 | Status |
 | --- | --- | --- | --- |
 | Mods list, Load mods, Open mods folder | mods.cpp | mods.cpp (own page) | SAME (f1-frame) |
-| Reload mods | mods.cpp:533 | — | MISSING |
-| Other mods | mods.cpp:559 | — | MISSING |
+| Reload mods | mods.cpp:533 | mods.cpp `DrawMods` | SAME (f1-mods): after the "Reload the mods to apply." warning (warn colour, as MP1), then Open mods folder. DIFF kept: disabled and "Reloading..." while a reload runs; the tooltip says it needs a running game. MP1's Suspended (import) and pendingRestart warnings are MP1-ONLY |
+| Other mods | mods.cpp:559 | mods.cpp `DrawMods` | SAME (f1-mods): "Other mods" separator, per-mod switches, "No other mods.", Folder in the disabled colour. SKIPPED: importStale and the native-texture count (no such fields in Echoes' PortMods), the Remastered/Dread exclusions (no such mods) |
 | Textures section | tabs.cpp:258 | game_sections.cpp `DrawTexturesSection`, drawn under the Mods page | SAME (f1-frame) |
 | Prime Remastered and Metroid Dread importers | mods.cpp, remastered.cpp | — | MP1-ONLY: Prime 1 asset importers |
 
