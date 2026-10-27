@@ -82,7 +82,7 @@ extern void* gPortGameHeapHi;
 #include "port_crash.h"
 #include "port_storage_report.h"
 #include "port_logfile.h"
-#include "port_pipeline_trim.h"
+#include "port_memory_log.h"
 #include "port_save.h"
 #include "port_overlay.h"
 #include "port_overlay_internal.h"
@@ -942,6 +942,8 @@ int main(int argc, char** argv) {
   // Into that log, as MP1 does: every setting in effect and the MP2_* variables, then (from a
   // background thread) how much space each folder the port writes to takes.
   PortOverlaySettings::LogSettings();
+  // How the previous run ended (Android 11+) and the device's memory now (MP1 issue #102).
+  PortMemoryLog::LogStartup();
   {
     const char* cache = EnvOrFallback("MP2_CACHE_PATH", appPaths.cache);
     PortStorageReport::StartLogging({touchUser != nullptr ? touchUser : std::string(),
@@ -994,9 +996,30 @@ int main(int argc, char** argv) {
   config.iconWidth = 64;
   config.iconHeight = 64;
 #endif
-  // MP2_PIPELINE_LAZY=1: build pipelines on first use and prefetch an area's recorded ones as it
-  // streams in (MP1 sync package 10); off by default, as on desktop MP1.
-  config.pipelineCacheLazy = port::EnvFlag("MP2_PIPELINE_LAZY");
+  // Lazy pipelines: build them on first use and prefetch an area's recorded ones as it streams in
+  // (MP1 sync package 10). The startup compile of the cached pipelines costs MP1 ~950 MiB of process
+  // memory (its issue #162), so Android, and any device short on RAM, is lazy; the desktop
+  // precompiles. MP2_PIPELINE_LAZY=0|1 overrides.
+  {
+    char why[96] = "";
+    bool lazy = PortMemoryLog::LowRamDevice(why, sizeof(why));
+#if defined(__ANDROID__)
+    if (!lazy) {
+      lazy = true;
+      std::strncat(why, ", Android", sizeof(why) - std::strlen(why) - 1);
+    }
+#endif
+    const char* reason = why;
+    if (const char* env = std::getenv("MP2_PIPELINE_LAZY"); env != nullptr && env[0] != '\0') {
+      lazy = port::EnvFlag("MP2_PIPELINE_LAZY", lazy);
+      reason = "MP2_PIPELINE_LAZY";
+    }
+    if (lazy || why[0] != '\0' || reason != why) {
+      std::fprintf(stderr, "port: pipelines %s at startup (%s)\n",
+                   lazy ? "built on first use" : "precompiled", reason);
+    }
+    config.pipelineCacheLazy = lazy;
+  }
   // Aurora's own logger is fmt::println(stderr), which throws when the write fails, from inside a
   // noexcept function: with the log copier gone (EPIPE) the next line Aurora logged aborted the
   // game. Same format, through stdio, whose errors are only a lost line.
@@ -1006,12 +1029,28 @@ int main(int argc, char** argv) {
     const char* name = static_cast< unsigned >(level) < 5 ? kNames[level] : "unknown";
     std::fprintf(stderr, "[%s] [%s] %.*s\n", name, module, static_cast< int >(len), message);
   };
-  // Lazy mode keeps built pipelines until memory runs short (MP1 issue #187): under 1024 MiB
-  // available it releases those a minute of frames didn't draw, under 512 MiB all but the last
-  // frames'. MP_PIPELINE_TRIM_MIB / MP_PIPELINE_TRIM_SEVERE_MIB override the levels (0 turns one off).
+  // Lazy mode keeps built pipelines until memory runs short (MP1 issue #187), areas left long ago
+  // included, so walking back is free. It trims on Android's memory warnings (port_memory_log.cpp)
+  // and on the memory log's MemAvailable check every 5 s: under 1024 MiB available it releases
+  // what a minute of frames didn't draw, under 512 MiB all but what the last frames drew (GLOBAL
+  // pipelines stay). Overrides: MP2_PIPELINE_TRIM_MIB / MP2_PIPELINE_TRIM_SEVERE_MIB (0 turns a
+  // level off), MP2_PIPELINE_EVICT=<frames> (a fixed idle sweep at every frame start, any mode).
   if (config.pipelineCacheLazy) {
-    PortPipelineTrim::SetPressure(port::EnvInt("MP_PIPELINE_TRIM_MIB", 1024),
-                                  port::EnvInt("MP_PIPELINE_TRIM_SEVERE_MIB", 512));
+    const int trimMib = port::EnvInt("MP2_PIPELINE_TRIM_MIB", 1024);
+    const int severeMib = port::EnvInt("MP2_PIPELINE_TRIM_SEVERE_MIB", 512);
+    PortMemoryLog::SetPipelinePressure(trimMib, severeMib);
+    if (std::getenv("MP2_PIPELINE_TRIM_MIB") != nullptr ||
+        std::getenv("MP2_PIPELINE_TRIM_SEVERE_MIB") != nullptr) {
+      std::fprintf(stderr,
+                   "port: pipeline trim under %d MiB available, all idle under %d MiB "
+                   "(MP2_PIPELINE_TRIM_MIB/MP2_PIPELINE_TRIM_SEVERE_MIB)\n",
+                   trimMib, severeMib);
+    }
+  }
+  if (const char* env = std::getenv("MP2_PIPELINE_EVICT"); env != nullptr && env[0] != '\0') {
+    config.pipelineEvictFrames = static_cast< uint32_t >(std::strtoul(env, nullptr, 10));
+    std::fprintf(stderr, "port: pipeline eviction %u frames (MP2_PIPELINE_EVICT)\n",
+                 config.pipelineEvictFrames);
   }
 
   // SDL3 reaches for its Wayland backend whenever a Wayland display is reachable, and does so even

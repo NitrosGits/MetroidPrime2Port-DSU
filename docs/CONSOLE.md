@@ -118,6 +118,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `uevent <id> <type> [dt]` — call an actor's user-event handler with an event type (coverage)
 - `title` — quit to the title: the game restarts as after the pause menu's Quit
 - `window [<width> <height>]` — the window size in pixels; with two numbers, leave fullscreen and resize
+- `pipetrim [frames]` — release built pipelines unused for that many frames (16 minimum) at the next frame start, as Android's onTrimMemory does; Aurora logs `pipeline cache: evicted N`. They rebuild on their next draw
 - `save export [<path>]` — write the card's save file out (default: save-backups/)
 - `save import <path|latest>` — put a .gci back on the card; the file it replaces is kept
 - `save backup | backups` — copy the card now, or list the copies in save-backups

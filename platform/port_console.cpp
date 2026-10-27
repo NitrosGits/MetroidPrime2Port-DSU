@@ -4479,6 +4479,16 @@ void CmdTitle(CStateManager& mgr, const Args&, std::string& out) {
   out += "quitting to the title\n";
 }
 
+// pipetrim [frames]: releases the built pipelines unused for the last `frames` (16, the minimum)
+// frames at the next frame start, as Android's onTrimMemory does (MP1 cb79569ac). Prints the count
+// before; Aurora's "pipeline cache: evicted N" log line has the result.
+void CmdPipeTrim(CStateManager&, const Args& args, std::string& out) {
+  const uint32_t frames = args.size() > 1 ? static_cast< uint32_t >(std::max(ArgToInt(args[1], 16), 0)) : 16;
+  out += "pipelines built: " + std::to_string(aurora_get_pipeline_count()) + "; evicting those unused for " +
+         std::to_string(std::max< uint32_t >(frames, 16)) + " frames at the next frame (see the log)\n";
+  aurora_trim_pipelines(frames);
+}
+
 void CmdWindow(CStateManager&, const Args& args, std::string& out) {
   int count = 0;
   SDL_Window** windows = SDL_GetWindows(&count);
@@ -4752,6 +4762,8 @@ const CommandSpec kCommands[] = {
       "title                      quit to the title: the game restarts as after the pause menu's Quit\n"},
     {"window", CmdWindow,
       "window [<width> <height>]  the window size in pixels; with two numbers, leave fullscreen and resize\n"},
+    {"pipetrim", CmdPipeTrim,
+      "pipetrim [frames]          release built pipelines unused for `frames` (min 16) frames; they rebuild on demand\n"},
     {"", nullptr,
       "save export [<path>]        write the card's save file out (default: save-backups/)\n"},
     {"", nullptr,
