@@ -664,6 +664,12 @@ bool CMain::CheckReset() {
     }
 #ifdef TARGET_PC
     PortOverlay::RestoreGameOptions();
+    // No console reboot here: the caller rebuilds the game architecture in place, and the
+    // save region retail carries the options across the reboot in is never allocated (it
+    // was a memcpy to null, the crash on "return to title"). As MP1's port does.
+    gpGameState->GameOptions().EnsureOptions();
+    mResetButtonHeld = mResetRequested = mGameExitReset = mManageCard = false;
+    return true;
 #endif
     {
       CMemoryStreamOut stream(CSaveRegion::GetSaveBuffer(), CSaveRegion::kSaveBufferSize);
