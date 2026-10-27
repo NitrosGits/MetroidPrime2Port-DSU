@@ -1168,7 +1168,7 @@ int main(int argc, char** argv) {
 
   // Texture replacements (platform/port_textures.cpp) and the binding icons drawn over the game's
   // button prompts (platform/port_prompts.cpp), as in the Prime 1 port: the built-in set is
-  // MP2_TEXTURES, else a `textures` folder beside the executable (on Android, in the user
+  // MP2_TEXTURES, else a `textures` folder beside the executable (on Android, the app files
   // directory), and the user's pack MP2_USER_TEXTURES, else <user>/user_textures. Both need
   // Aurora's texture registry, so they start after aurora_initialize.
   {
