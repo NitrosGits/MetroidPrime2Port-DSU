@@ -115,6 +115,311 @@ PORT_RANDO_LIT(13, 1)
 PORT_RANDO_LIT(24, 1)
 PORT_RANDO_LIT(14, 1)
 PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(4, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(32, 1)
+PORT_RANDO_LIT(33, 1)
+PORT_RANDO_LIT(34, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(32, 1)
+PORT_RANDO_LIT(33, 1)
+PORT_RANDO_LIT(34, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(44, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(25, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(25, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(25, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(44, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(44, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(44, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(44, 1)
+PORT_RANDO_LIT(26, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(25, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(25, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(25, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(25, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(44, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(44, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(43, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(11, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(11, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(11, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(10, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(10, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(27, 1)
+PORT_RANDO_LIT(11, 1)
+PORT_RANDO_LIT(11, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(11, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(11, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(23, 1)
+PORT_RANDO_LIT(1, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(18, 1)
+PORT_RANDO_LIT(24, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(13, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(17, 1)
+PORT_RANDO_LIT(2, 1)
+PORT_RANDO_LIT(14, 1)
+PORT_RANDO_LIT(15, 1)
+PORT_RANDO_LIT(16, 1)
+PORT_RANDO_LIT(17, 1)
 #endif
 #ifdef PORT_RANDO_TERM
 // PORT_RANDO_TERM(first literal, literal count): an AND; zero literals = always true
@@ -161,6 +466,110 @@ PORT_RANDO_TERM(105, 2)
 PORT_RANDO_TERM(107, 2)
 PORT_RANDO_TERM(109, 2)
 PORT_RANDO_TERM(111, 2)
+PORT_RANDO_TERM(113, 1)
+PORT_RANDO_TERM(114, 1)
+PORT_RANDO_TERM(115, 1)
+PORT_RANDO_TERM(116, 1)
+PORT_RANDO_TERM(117, 1)
+PORT_RANDO_TERM(118, 2)
+PORT_RANDO_TERM(120, 2)
+PORT_RANDO_TERM(122, 8)
+PORT_RANDO_TERM(130, 4)
+PORT_RANDO_TERM(134, 3)
+PORT_RANDO_TERM(137, 3)
+PORT_RANDO_TERM(140, 2)
+PORT_RANDO_TERM(142, 3)
+PORT_RANDO_TERM(145, 4)
+PORT_RANDO_TERM(149, 4)
+PORT_RANDO_TERM(153, 3)
+PORT_RANDO_TERM(156, 3)
+PORT_RANDO_TERM(159, 3)
+PORT_RANDO_TERM(162, 4)
+PORT_RANDO_TERM(166, 4)
+PORT_RANDO_TERM(170, 3)
+PORT_RANDO_TERM(173, 3)
+PORT_RANDO_TERM(176, 2)
+PORT_RANDO_TERM(178, 2)
+PORT_RANDO_TERM(180, 2)
+PORT_RANDO_TERM(182, 3)
+PORT_RANDO_TERM(185, 3)
+PORT_RANDO_TERM(188, 1)
+PORT_RANDO_TERM(189, 3)
+PORT_RANDO_TERM(192, 3)
+PORT_RANDO_TERM(195, 2)
+PORT_RANDO_TERM(197, 2)
+PORT_RANDO_TERM(199, 2)
+PORT_RANDO_TERM(201, 2)
+PORT_RANDO_TERM(203, 2)
+PORT_RANDO_TERM(205, 2)
+PORT_RANDO_TERM(207, 3)
+PORT_RANDO_TERM(210, 3)
+PORT_RANDO_TERM(213, 3)
+PORT_RANDO_TERM(216, 3)
+PORT_RANDO_TERM(219, 3)
+PORT_RANDO_TERM(222, 3)
+PORT_RANDO_TERM(225, 1)
+PORT_RANDO_TERM(226, 1)
+PORT_RANDO_TERM(227, 2)
+PORT_RANDO_TERM(229, 1)
+PORT_RANDO_TERM(230, 2)
+PORT_RANDO_TERM(232, 5)
+PORT_RANDO_TERM(237, 5)
+PORT_RANDO_TERM(242, 1)
+PORT_RANDO_TERM(243, 3)
+PORT_RANDO_TERM(246, 3)
+PORT_RANDO_TERM(249, 1)
+PORT_RANDO_TERM(250, 2)
+PORT_RANDO_TERM(252, 2)
+PORT_RANDO_TERM(254, 3)
+PORT_RANDO_TERM(257, 2)
+PORT_RANDO_TERM(259, 2)
+PORT_RANDO_TERM(261, 4)
+PORT_RANDO_TERM(265, 4)
+PORT_RANDO_TERM(269, 3)
+PORT_RANDO_TERM(272, 3)
+PORT_RANDO_TERM(275, 5)
+PORT_RANDO_TERM(280, 5)
+PORT_RANDO_TERM(285, 1)
+PORT_RANDO_TERM(286, 2)
+PORT_RANDO_TERM(288, 2)
+PORT_RANDO_TERM(290, 1)
+PORT_RANDO_TERM(291, 2)
+PORT_RANDO_TERM(293, 2)
+PORT_RANDO_TERM(295, 7)
+PORT_RANDO_TERM(302, 3)
+PORT_RANDO_TERM(305, 4)
+PORT_RANDO_TERM(309, 4)
+PORT_RANDO_TERM(313, 4)
+PORT_RANDO_TERM(317, 2)
+PORT_RANDO_TERM(319, 2)
+PORT_RANDO_TERM(321, 4)
+PORT_RANDO_TERM(325, 4)
+PORT_RANDO_TERM(329, 3)
+PORT_RANDO_TERM(332, 3)
+PORT_RANDO_TERM(335, 4)
+PORT_RANDO_TERM(339, 3)
+PORT_RANDO_TERM(342, 3)
+PORT_RANDO_TERM(345, 4)
+PORT_RANDO_TERM(349, 3)
+PORT_RANDO_TERM(352, 3)
+PORT_RANDO_TERM(355, 3)
+PORT_RANDO_TERM(358, 3)
+PORT_RANDO_TERM(361, 4)
+PORT_RANDO_TERM(365, 4)
+PORT_RANDO_TERM(369, 4)
+PORT_RANDO_TERM(373, 4)
+PORT_RANDO_TERM(377, 1)
+PORT_RANDO_TERM(378, 5)
+PORT_RANDO_TERM(383, 2)
+PORT_RANDO_TERM(385, 2)
+PORT_RANDO_TERM(387, 3)
+PORT_RANDO_TERM(390, 3)
+PORT_RANDO_TERM(393, 3)
+PORT_RANDO_TERM(396, 6)
+PORT_RANDO_TERM(402, 6)
+PORT_RANDO_TERM(408, 5)
+PORT_RANDO_TERM(413, 5)
 #endif
 #ifdef PORT_RANDO_REQ
 // PORT_RANDO_REQ(first term, term count): an OR; zero terms = never
@@ -187,6 +596,63 @@ PORT_RANDO_REQ(28, 1)
 PORT_RANDO_REQ(29, 10)
 PORT_RANDO_REQ(39, 2)
 PORT_RANDO_REQ(41, 2)
+PORT_RANDO_REQ(43, 5)
+PORT_RANDO_REQ(48, 2)
+PORT_RANDO_REQ(50, 1)
+PORT_RANDO_REQ(51, 1)
+PORT_RANDO_REQ(52, 1)
+PORT_RANDO_REQ(53, 1)
+PORT_RANDO_REQ(54, 1)
+PORT_RANDO_REQ(55, 1)
+PORT_RANDO_REQ(56, 2)
+PORT_RANDO_REQ(58, 1)
+PORT_RANDO_REQ(59, 2)
+PORT_RANDO_REQ(61, 2)
+PORT_RANDO_REQ(63, 2)
+PORT_RANDO_REQ(65, 3)
+PORT_RANDO_REQ(68, 2)
+PORT_RANDO_REQ(70, 1)
+PORT_RANDO_REQ(71, 2)
+PORT_RANDO_REQ(73, 4)
+PORT_RANDO_REQ(77, 8)
+PORT_RANDO_REQ(85, 2)
+PORT_RANDO_REQ(87, 1)
+PORT_RANDO_REQ(88, 1)
+PORT_RANDO_REQ(89, 3)
+PORT_RANDO_REQ(92, 1)
+PORT_RANDO_REQ(93, 2)
+PORT_RANDO_REQ(95, 3)
+PORT_RANDO_REQ(98, 1)
+PORT_RANDO_REQ(99, 2)
+PORT_RANDO_REQ(101, 2)
+PORT_RANDO_REQ(103, 2)
+PORT_RANDO_REQ(105, 2)
+PORT_RANDO_REQ(107, 1)
+PORT_RANDO_REQ(108, 2)
+PORT_RANDO_REQ(110, 1)
+PORT_RANDO_REQ(111, 2)
+PORT_RANDO_REQ(113, 1)
+PORT_RANDO_REQ(114, 1)
+PORT_RANDO_REQ(115, 1)
+PORT_RANDO_REQ(116, 2)
+PORT_RANDO_REQ(118, 2)
+PORT_RANDO_REQ(120, 2)
+PORT_RANDO_REQ(122, 2)
+PORT_RANDO_REQ(124, 1)
+PORT_RANDO_REQ(125, 1)
+PORT_RANDO_REQ(126, 1)
+PORT_RANDO_REQ(127, 1)
+PORT_RANDO_REQ(128, 2)
+PORT_RANDO_REQ(130, 2)
+PORT_RANDO_REQ(132, 2)
+PORT_RANDO_REQ(134, 2)
+PORT_RANDO_REQ(136, 1)
+PORT_RANDO_REQ(137, 1)
+PORT_RANDO_REQ(138, 2)
+PORT_RANDO_REQ(140, 2)
+PORT_RANDO_REQ(142, 1)
+PORT_RANDO_REQ(143, 2)
+PORT_RANDO_REQ(145, 2)
 #endif
 #ifdef PORT_RANDO_BLOCK
 // PORT_RANDO_BLOCK(area, name, edge count): the areas that have rules
@@ -253,6 +719,227 @@ PORT_RANDO_BLOCK(59, "05_temple_federationsite_dark", 3)
 PORT_RANDO_BLOCK(60, "0d_temple_hall_dark", 1)
 PORT_RANDO_BLOCK(61, "04_temple_unknownenemies_dark", 2)
 PORT_RANDO_BLOCK(62, "00_pickup_temple_a_dark", 1)
+PORT_RANDO_BLOCK(63, "OF_Temple_hall_top", 1)
+PORT_RANDO_BLOCK(64, "0g_temple_hall", 3)
+PORT_RANDO_BLOCK(65, "07_temple_mothlordsanctuary", 10)
+PORT_RANDO_BLOCK(66, "0l_temple_hall", 1)
+PORT_RANDO_BLOCK(67, "0h_temple_hall", 1)
+PORT_RANDO_BLOCK(68, "0i_temple_hall", 3)
+PORT_RANDO_BLOCK(69, "om_temple_hall_top", 1)
+PORT_RANDO_BLOCK(70, "08_temple_sungenerator", 4)
+PORT_RANDO_BLOCK(71, "0j_temple_hall_top", 1)
+PORT_RANDO_BLOCK(72, "08_temple_sungenerator_dark", 3)
+PORT_RANDO_BLOCK(73, "0h_temple_hall_dark", 1)
+PORT_RANDO_BLOCK(74, "07_temple_mothlordsanctuary_dark", 0)
+PORT_RANDO_BLOCK(75, "00_Elev_Sand_Temple_A", 1)
+PORT_RANDO_BLOCK(76, "0a_sand_hall", 1)
+PORT_RANDO_BLOCK(77, "01_sand_entrance", 8)
+PORT_RANDO_BLOCK(78, "00_mapstation_sand", 0)
+PORT_RANDO_BLOCK(79, "0e_sand_hall", 1)
+PORT_RANDO_BLOCK(80, "0f_sand_hall", 1)
+PORT_RANDO_BLOCK(81, "0o_sand_hall", 2)
+PORT_RANDO_BLOCK(82, "01_sand_entrance_dark", 5)
+PORT_RANDO_BLOCK(83, "04_sand_mining", 6)
+PORT_RANDO_BLOCK(84, "0q_sand_hall", 8)
+PORT_RANDO_BLOCK(85, "02_sand_sandfalls", 9)
+PORT_RANDO_BLOCK(86, "0e_sand_hall_dark", 1)
+PORT_RANDO_BLOCK(87, "0f_sand_hall_dark", 1)
+PORT_RANDO_BLOCK(88, "0a_sand_hall_dark", 1)
+PORT_RANDO_BLOCK(89, "0o_sand_hall_dark", 2)
+PORT_RANDO_BLOCK(90, "00_pickup_sand_a", 1)
+PORT_RANDO_BLOCK(91, "0d_sand_hall", 3)
+PORT_RANDO_BLOCK(92, "04_sand_mining_dark", 3)
+PORT_RANDO_BLOCK(93, "05_portalpuzzle", 4)
+PORT_RANDO_BLOCK(94, "00_elev_sand_swamp_e", 1)
+PORT_RANDO_BLOCK(95, "0q_sand_hall_dark", 4)
+PORT_RANDO_BLOCK(96, "0c_sand_hall", 1)
+PORT_RANDO_BLOCK(97, "0g_sand_hall", 1)
+PORT_RANDO_BLOCK(98, "00_save_sand_a", 1)
+PORT_RANDO_BLOCK(99, "0n_sand_hall", 2)
+PORT_RANDO_BLOCK(100, "02_sand_sandfalls_dark", 8)
+PORT_RANDO_BLOCK(101, "03_sand_temple", 5)
+PORT_RANDO_BLOCK(102, "0d_sand_hall_dark", 3)
+PORT_RANDO_BLOCK(103, "05_portalpuzzle_dark", 4)
+PORT_RANDO_BLOCK(104, "06_sand_alamofront", 6)
+PORT_RANDO_BLOCK(105, "0c_sand_hall_dark", 1)
+PORT_RANDO_BLOCK(106, "0g_sand_hall_dark", 2)
+PORT_RANDO_BLOCK(107, "00_save_sand_a_dark", 0)
+PORT_RANDO_BLOCK(108, "0n_sand_hall_dark", 1)
+PORT_RANDO_BLOCK(109, "00_sand_generator_connect", 1)
+PORT_RANDO_BLOCK(110, "0p_sand_hall", 3)
+PORT_RANDO_BLOCK(111, "03_sand_temple_dark", 7)
+PORT_RANDO_BLOCK(112, "0h_sand_hall", 7)
+PORT_RANDO_BLOCK(113, "06_sand_alamofront_dark", 7)
+PORT_RANDO_BLOCK(114, "00_sand_generator", 0)
+PORT_RANDO_BLOCK(115, "0b_sand_hall", 6)
+PORT_RANDO_BLOCK(116, "00_sand_generator_connect_dark", 1)
+PORT_RANDO_BLOCK(117, "07_sand_alamoportalobservation", 9)
+PORT_RANDO_BLOCK(118, "0h_sand_hall_dark", 6)
+PORT_RANDO_BLOCK(119, "00_sand_generator_08_temple", 0)
+PORT_RANDO_BLOCK(120, "00_elev_sand_cliff_d", 1)
+PORT_RANDO_BLOCK(121, "10_sand_alamostorage", 6)
+PORT_RANDO_BLOCK(122, "00_sand_generator_dark", 0)
+PORT_RANDO_BLOCK(123, "0i_sand_hall", 1)
+PORT_RANDO_BLOCK(124, "0m_sand_hall", 3)
+PORT_RANDO_BLOCK(125, "07_sand_alamoportalobservation_dark", 7)
+PORT_RANDO_BLOCK(126, "0l_sand_hall", 3)
+PORT_RANDO_BLOCK(127, "00_pickup_sand_d", 1)
+PORT_RANDO_BLOCK(128, "10_sand_alamostorage_dark", 5)
+PORT_RANDO_BLOCK(129, "08_sand_casualpirates", 3)
+PORT_RANDO_BLOCK(130, "0i_sand_hall_dark", 1)
+PORT_RANDO_BLOCK(131, "0m_sand_hall_dark", 1)
+PORT_RANDO_BLOCK(132, "00_save_sand_c", 1)
+PORT_RANDO_BLOCK(133, "0l_sand_hall_dark", 2)
+PORT_RANDO_BLOCK(134, "00_pickup_sand_d_dark", 0)
+PORT_RANDO_BLOCK(135, "0j_sand_hall", 1)
+PORT_RANDO_BLOCK(136, "00_pickup_sand_b", 1)
+PORT_RANDO_BLOCK(137, "08_sand_casualpirates_dark", 4)
+PORT_RANDO_BLOCK(138, "0k_sand_hall", 1)
+PORT_RANDO_BLOCK(139, "00_save_sand_c_dark", 1)
+PORT_RANDO_BLOCK(140, "09_sand_testtubepuzzle", 4)
+PORT_RANDO_BLOCK(141, "0j_sand_hall_dark", 1)
+PORT_RANDO_BLOCK(142, "00_pickup_sand_b_dark", 1)
+PORT_RANDO_BLOCK(143, "0k_sand_hall_dark", 1)
+PORT_RANDO_BLOCK(144, "00_pickup_sand_c", 1)
+PORT_RANDO_BLOCK(145, "09_sand_testtubepuzzle_dark", 3)
+PORT_RANDO_BLOCK(146, "00_pickup_sand_c_dark", 1)
+PORT_RANDO_BLOCK(147, "00_Elev_Swamp_Temple_B", 1)
+PORT_RANDO_BLOCK(148, "0a_swamp_hall", 1)
+PORT_RANDO_BLOCK(149, "01_swamp_entrance", 5)
+PORT_RANDO_BLOCK(150, "0d_swamp_hall", 1)
+PORT_RANDO_BLOCK(151, "0c_swamp_hall", 6)
+PORT_RANDO_BLOCK(152, "0b_swamp_hall", 2)
+PORT_RANDO_BLOCK(153, "00_pickup_swamp_a", 0)
+PORT_RANDO_BLOCK(154, "03_swamp_forgottenbridge", 6)
+PORT_RANDO_BLOCK(155, "0c_swamp_hall_dark", 5)
+PORT_RANDO_BLOCK(156, "02_swamp_greatbridge", 8)
+PORT_RANDO_BLOCK(157, "00_pickup_swamp_a_dark", 1)
+PORT_RANDO_BLOCK(158, "0i_swamp_hall", 2)
+PORT_RANDO_BLOCK(159, "0e_swamp_hall", 2)
+PORT_RANDO_BLOCK(160, "03_swamp_forgottenbridge_dark", 5)
+PORT_RANDO_BLOCK(161, "0h_swamp_hall", 1)
+PORT_RANDO_BLOCK(162, "01_swamp_entrance_dark", 3)
+PORT_RANDO_BLOCK(163, "02_swamp_greatbridge_dark", 6)
+PORT_RANDO_BLOCK(164, "0f_swamp_hall", 8)
+PORT_RANDO_BLOCK(165, "00_map_swamp", 0)
+PORT_RANDO_BLOCK(166, "06_swamp_boostballguardian", 1)
+PORT_RANDO_BLOCK(167, "0i_swamp_hall_dark", 1)
+PORT_RANDO_BLOCK(168, "0d_swamp_hall_dark", 2)
+PORT_RANDO_BLOCK(169, "0e_swamp_hall_dark", 1)
+PORT_RANDO_BLOCK(170, "0h_swamp_hall_dark", 1)
+PORT_RANDO_BLOCK(171, "05_swamp_timber!", 6)
+PORT_RANDO_BLOCK(172, "0f_swamp_hall_dark", 6)
+PORT_RANDO_BLOCK(173, "00_map_swamp_dark", 0)
+PORT_RANDO_BLOCK(174, "04_swamp_temple", 7)
+PORT_RANDO_BLOCK(175, "06_swamp_boostballguardian_dark", 2)
+PORT_RANDO_BLOCK(176, "05_swamp_timber!_dark", 2)
+PORT_RANDO_BLOCK(177, "0g_swamp_hall", 2)
+PORT_RANDO_BLOCK(178, "00_pickup_swamp_b", 3)
+PORT_RANDO_BLOCK(179, "04_swamp_temple_dark", 6)
+PORT_RANDO_BLOCK(180, "00_elev_swamp_sand_e", 1)
+PORT_RANDO_BLOCK(181, "0j_swamp_hall", 2)
+PORT_RANDO_BLOCK(182, "00_swamp_genconnect", 1)
+PORT_RANDO_BLOCK(183, "00_pickup_swamp_b_dark", 2)
+PORT_RANDO_BLOCK(184, "00_elev_swamp_sand_e_dark", 0)
+PORT_RANDO_BLOCK(185, "0j_swamp_hall_dark", 3)
+PORT_RANDO_BLOCK(186, "00_swamp_genconnect_dark", 1)
+PORT_RANDO_BLOCK(187, "07_swamp_shaft", 12)
+PORT_RANDO_BLOCK(188, "00_swamp_generator", 0)
+PORT_RANDO_BLOCK(189, "07_swamp_shaft_dark", 8)
+PORT_RANDO_BLOCK(190, "00_swamp_generator_dark", 0)
+PORT_RANDO_BLOCK(191, "0l_swamphall", 1)
+PORT_RANDO_BLOCK(192, "ok_swamp_hall", 1)
+PORT_RANDO_BLOCK(193, "0m_swamp_hall", 1)
+PORT_RANDO_BLOCK(194, "00_save_swamp_b", 0)
+PORT_RANDO_BLOCK(195, "0q_swamp_hall", 5)
+PORT_RANDO_BLOCK(196, "00_swamp_generator_08_temple", 0)
+PORT_RANDO_BLOCK(197, "0l_swamphall_dark", 1)
+PORT_RANDO_BLOCK(198, "ok_swamp_hall_dark", 1)
+PORT_RANDO_BLOCK(199, "00_save_swamp_b_dark", 0)
+PORT_RANDO_BLOCK(200, "0q_swamp_hall_dark", 6)
+PORT_RANDO_BLOCK(201, "10_swamp_hiddenhalfpipe", 5)
+PORT_RANDO_BLOCK(202, "08_swamp_grappleguardian", 7)
+PORT_RANDO_BLOCK(203, "09_swamp_catacombs", 5)
+PORT_RANDO_BLOCK(204, "11_swamp_bloggtank", 4)
+PORT_RANDO_BLOCK(205, "10_swamp_hiddenhalfpipe_dark", 4)
+PORT_RANDO_BLOCK(206, "08_swamp_grappleguardian_dark", 6)
+PORT_RANDO_BLOCK(207, "11_swamp_bloggtank_dark", 4)
+PORT_RANDO_BLOCK(208, "0p_swamp_hall", 2)
+PORT_RANDO_BLOCK(209, "0n_swamp_hall", 1)
+PORT_RANDO_BLOCK(210, "0o_swamp_hall", 2)
+PORT_RANDO_BLOCK(211, "0r_swamp_hall", 1)
+PORT_RANDO_BLOCK(212, "09_swamp_catacombs_dark", 4)
+PORT_RANDO_BLOCK(213, "00_pickup_swamp_c", 1)
+PORT_RANDO_BLOCK(214, "0n_swamp_hall_dark", 2)
+PORT_RANDO_BLOCK(215, "0o_swamp_hall_dark", 1)
+PORT_RANDO_BLOCK(216, "00_elev_swamp_cliff_f", 1)
+PORT_RANDO_BLOCK(217, "00_elev_cliff_temple_c", 1)
+PORT_RANDO_BLOCK(218, "0a_cliff_hall", 1)
+PORT_RANDO_BLOCK(219, "01_cliff_entrance", 2)
+PORT_RANDO_BLOCK(220, "0b_cliff_hall", 1)
+PORT_RANDO_BLOCK(221, "0c_cliff_hall", 1)
+PORT_RANDO_BLOCK(222, "02_cliff_reactorcore", 6)
+PORT_RANDO_BLOCK(223, "00_save_cliff_a", 0)
+PORT_RANDO_BLOCK(224, "0d_cliff_hall", 1)
+PORT_RANDO_BLOCK(225, "0m_cliff_hall", 8)
+PORT_RANDO_BLOCK(226, "00_pickup_cliff_a", 1)
+PORT_RANDO_BLOCK(227, "03_cliff_chicane", 5)
+PORT_RANDO_BLOCK(228, "04_cliff_contraption", 7)
+PORT_RANDO_BLOCK(229, "0m_cliff_hall_dark", 4)
+PORT_RANDO_BLOCK(230, "0q_cliff_hall", 1)
+PORT_RANDO_BLOCK(231, "0e_cliff_hall", 1)
+PORT_RANDO_BLOCK(232, "03_cliff_chicane_dark", 5)
+PORT_RANDO_BLOCK(233, "0l_cliff_hall", 2)
+PORT_RANDO_BLOCK(234, "0p_cliff_hall", 1)
+PORT_RANDO_BLOCK(235, "04_cliff_contraption_dark", 4)
+PORT_RANDO_BLOCK(236, "00_elev_cliff_sand_d", 1)
+PORT_RANDO_BLOCK(237, "06_cliff_spiderballguardian", 7)
+PORT_RANDO_BLOCK(238, "0q_cliff_hall_dark", 1)
+PORT_RANDO_BLOCK(239, "0e_cliff_hall_dark", 1)
+PORT_RANDO_BLOCK(240, "0d_cliff_hall_dark", 1)
+PORT_RANDO_BLOCK(241, "08_cliff_ringtowers", 7)
+PORT_RANDO_BLOCK(242, "00_elev_cliff_swamp_f", 1)
+PORT_RANDO_BLOCK(243, "0l_cliff_hall_dark", 2)
+PORT_RANDO_BLOCK(244, "0f_cliff_hall", 1)
+PORT_RANDO_BLOCK(245, "0h_cliff_hall", 1)
+PORT_RANDO_BLOCK(246, "00_pickup_cliff_c", 2)
+PORT_RANDO_BLOCK(247, "06_cliff_spiderballguardian_dark", 5)
+PORT_RANDO_BLOCK(248, "02_cliff_reactorcore_dark", 3)
+PORT_RANDO_BLOCK(249, "0n_cliff_hall", 2)
+PORT_RANDO_BLOCK(250, "0k_cliff_hall", 2)
+PORT_RANDO_BLOCK(251, "0o_cliff_hall", 2)
+PORT_RANDO_BLOCK(252, "08_cliff_ringtowers_dark", 6)
+PORT_RANDO_BLOCK(253, "07cliff_gyro", 7)
+PORT_RANDO_BLOCK(254, "09_cliff_temple", 4)
+PORT_RANDO_BLOCK(255, "00_pickup_cliff_c_dark", 2)
+PORT_RANDO_BLOCK(256, "0f_cliff_hall_dark", 1)
+PORT_RANDO_BLOCK(257, "00_save_cliff_a_dark", 0)
+PORT_RANDO_BLOCK(258, "0c_cliff_hall_dark", 1)
+PORT_RANDO_BLOCK(259, "00_pickup_cliff_a_dark", 0)
+PORT_RANDO_BLOCK(260, "0o_cliff_hall_dark", 1)
+PORT_RANDO_BLOCK(261, "05_cliff_engineroom", 5)
+PORT_RANDO_BLOCK(262, "0n_cliff_hall_dark", 1)
+PORT_RANDO_BLOCK(263, "0g_cliff_hall", 2)
+PORT_RANDO_BLOCK(264, "0i_cliff_hall", 1)
+PORT_RANDO_BLOCK(265, "00_save_cliff_b", 0)
+PORT_RANDO_BLOCK(266, "00_cliff_generator_connect", 1)
+PORT_RANDO_BLOCK(267, "07cliff_gyro_dark", 4)
+PORT_RANDO_BLOCK(268, "0b_cliff_hall_dark", 1)
+PORT_RANDO_BLOCK(269, "05_cliff_engineroom_dark", 5)
+PORT_RANDO_BLOCK(270, "09_cliff_temple_dark", 3)
+PORT_RANDO_BLOCK(271, "0j_cliff_hall_bottom", 1)
+PORT_RANDO_BLOCK(272, "00_cliff_generator", 0)
+PORT_RANDO_BLOCK(273, "0g_cliff_hall_dark", 1)
+PORT_RANDO_BLOCK(274, "0i_cliff_hall_dark", 1)
+PORT_RANDO_BLOCK(275, "00_save_cliff_b_dark", 0)
+PORT_RANDO_BLOCK(276, "01_cliff_entrance_dark", 1)
+PORT_RANDO_BLOCK(277, "00_cliff_generator_connect_dark", 1)
+PORT_RANDO_BLOCK(278, "0j_cliff_hall_loop", 1)
+PORT_RANDO_BLOCK(279, "00_cliff_generator_08_temple", 0)
+PORT_RANDO_BLOCK(280, "0j_cliff_hall_bottom_dark", 0)
+PORT_RANDO_BLOCK(281, "00_cliff_generator_dark", 0)
+PORT_RANDO_BLOCK(282, "10_cliff_rooftop", 4)
+PORT_RANDO_BLOCK(283, "10_cliff_rooftop_dark", 1)
 #endif
 #ifdef PORT_RANDO_EDGE
 // PORT_RANDO_EDGE(area, from kind, from id, to kind, to id, req); kind is a NodeKind,
@@ -472,4 +1159,817 @@ PORT_RANDO_EDGE(60, Dock, 1, Dock, 0, 7)  // 0d_temple_hall_dark line 360 (rever
 PORT_RANDO_EDGE(61, Dock, 0, Dock, 1, 7)  // 04_temple_unknownenemies_dark line 363
 PORT_RANDO_EDGE(61, Dock, 1, Dock, 0, 22)  // 04_temple_unknownenemies_dark line 364
 PORT_RANDO_EDGE(62, Dock, 0, Location, 4063266, 15)  // 00_pickup_temple_a_dark line 368
+PORT_RANDO_EDGE(63, Dock, 0, Teleporter, 152, 0)  // OF_Temple_hall_top line 18
+PORT_RANDO_EDGE(63, Teleporter, 152, Dock, 0, 0)  // OF_Temple_hall_top line 18 (reverse)
+PORT_RANDO_EDGE(64, Dock, 0, Dock, 1, 0)  // 0g_temple_hall line 21
+PORT_RANDO_EDGE(64, Dock, 1, Dock, 0, 0)  // 0g_temple_hall line 21 (reverse)
+PORT_RANDO_EDGE(64, Dock, 0, Location, 65689, 23)  // 0g_temple_hall line 23
+PORT_RANDO_EDGE(64, Dock, 1, Location, 65689, 23)  // 0g_temple_hall line 24
+PORT_RANDO_EDGE(65, Dock, 0, Dock, 1, 0)  // 07_temple_mothlordsanctuary line 28
+PORT_RANDO_EDGE(65, Dock, 1, Dock, 0, 0)  // 07_temple_mothlordsanctuary line 28 (reverse)
+PORT_RANDO_EDGE(65, Dock, 0, Dock, 2, 0)  // 07_temple_mothlordsanctuary line 29
+PORT_RANDO_EDGE(65, Dock, 2, Dock, 0, 0)  // 07_temple_mothlordsanctuary line 29 (reverse)
+PORT_RANDO_EDGE(65, Dock, 0, Dock, 3, 0)  // 07_temple_mothlordsanctuary line 30
+PORT_RANDO_EDGE(65, Dock, 3, Dock, 0, 0)  // 07_temple_mothlordsanctuary line 30 (reverse)
+PORT_RANDO_EDGE(65, Dock, 1, Dock, 2, 0)  // 07_temple_mothlordsanctuary line 31
+PORT_RANDO_EDGE(65, Dock, 2, Dock, 1, 0)  // 07_temple_mothlordsanctuary line 31 (reverse)
+PORT_RANDO_EDGE(65, Dock, 1, Dock, 3, 0)  // 07_temple_mothlordsanctuary line 32
+PORT_RANDO_EDGE(65, Dock, 3, Dock, 1, 0)  // 07_temple_mothlordsanctuary line 32 (reverse)
+PORT_RANDO_EDGE(65, Dock, 2, Dock, 3, 0)  // 07_temple_mothlordsanctuary line 33
+PORT_RANDO_EDGE(65, Dock, 3, Dock, 2, 0)  // 07_temple_mothlordsanctuary line 33 (reverse)
+PORT_RANDO_EDGE(65, Dock, 0, Location, 131367, 24)  // 07_temple_mothlordsanctuary line 37
+PORT_RANDO_EDGE(65, Dock, 1, Location, 131367, 24)  // 07_temple_mothlordsanctuary line 38
+PORT_RANDO_EDGE(65, Dock, 2, Location, 131367, 24)  // 07_temple_mothlordsanctuary line 39
+PORT_RANDO_EDGE(65, Dock, 3, Location, 131367, 24)  // 07_temple_mothlordsanctuary line 40
+PORT_RANDO_EDGE(66, Dock, 0, Dock, 1, 0)  // 0l_temple_hall line 44
+PORT_RANDO_EDGE(66, Dock, 1, Dock, 0, 0)  // 0l_temple_hall line 44 (reverse)
+PORT_RANDO_EDGE(67, Dock, 0, Dock, 1, 0)  // 0h_temple_hall line 51
+PORT_RANDO_EDGE(67, Dock, 1, Dock, 0, 0)  // 0h_temple_hall line 51 (reverse)
+PORT_RANDO_EDGE(68, Dock, 0, Dock, 1, 0)  // 0i_temple_hall line 54
+PORT_RANDO_EDGE(68, Dock, 1, Dock, 0, 0)  // 0i_temple_hall line 54 (reverse)
+PORT_RANDO_EDGE(68, Dock, 0, Location, 327887, 0)  // 0i_temple_hall line 55
+PORT_RANDO_EDGE(68, Dock, 1, Location, 327887, 0)  // 0i_temple_hall line 56
+PORT_RANDO_EDGE(69, Dock, 0, Teleporter, 393260, 0)  // om_temple_hall_top line 48
+PORT_RANDO_EDGE(69, Teleporter, 393260, Dock, 0, 0)  // om_temple_hall_top line 48 (reverse)
+PORT_RANDO_EDGE(70, Dock, 0, Dock, 1, 6)  // 08_temple_sungenerator line 65
+PORT_RANDO_EDGE(70, Dock, 1, Dock, 0, 0)  // 08_temple_sungenerator line 66
+PORT_RANDO_EDGE(70, Dock, 0, Location, 537330375, 25)  // 08_temple_sungenerator line 69
+PORT_RANDO_EDGE(70, Dock, 1, Location, 537330375, 25)  // 08_temple_sungenerator line 70
+PORT_RANDO_EDGE(71, Dock, 0, Teleporter, 524321, 0)  // 0j_temple_hall_top line 60
+PORT_RANDO_EDGE(71, Teleporter, 524321, Dock, 0, 0)  // 0j_temple_hall_top line 60 (reverse)
+PORT_RANDO_EDGE(72, Dock, 0, Dock, 1, 22)  // 08_temple_sungenerator_dark line 74
+PORT_RANDO_EDGE(72, Dock, 1, Dock, 0, 22)  // 08_temple_sungenerator_dark line 74 (reverse)
+PORT_RANDO_EDGE(72, Dock, 1, Dock, 0, 22)  // 08_temple_sungenerator_dark line 75
+PORT_RANDO_EDGE(72, Dock, 0, Dock, 1, 8)  // 08_temple_sungenerator_dark line 76
+PORT_RANDO_EDGE(73, Dock, 0, Dock, 1, 7)  // 0h_temple_hall_dark line 82
+PORT_RANDO_EDGE(73, Dock, 1, Dock, 0, 7)  // 0h_temple_hall_dark line 82 (reverse)
+PORT_RANDO_EDGE(75, Dock, 0, Teleporter, 122, 0)  // 00_Elev_Sand_Temple_A line 27
+PORT_RANDO_EDGE(75, Teleporter, 122, Dock, 0, 0)  // 00_Elev_Sand_Temple_A line 27 (reverse)
+PORT_RANDO_EDGE(76, Dock, 0, Dock, 1, 0)  // 0a_sand_hall line 30
+PORT_RANDO_EDGE(76, Dock, 1, Dock, 0, 0)  // 0a_sand_hall line 30 (reverse)
+PORT_RANDO_EDGE(77, Dock, 3, Dock, 2, 0)  // 01_sand_entrance line 35
+PORT_RANDO_EDGE(77, Dock, 2, Dock, 3, 0)  // 01_sand_entrance line 35 (reverse)
+PORT_RANDO_EDGE(77, Dock, 3, Dock, 1, 0)  // 01_sand_entrance line 36
+PORT_RANDO_EDGE(77, Dock, 1, Dock, 3, 0)  // 01_sand_entrance line 36 (reverse)
+PORT_RANDO_EDGE(77, Dock, 3, Dock, 4, 0)  // 01_sand_entrance line 37
+PORT_RANDO_EDGE(77, Dock, 4, Dock, 3, 0)  // 01_sand_entrance line 37 (reverse)
+PORT_RANDO_EDGE(77, Dock, 1, Dock, 4, 0)  // 01_sand_entrance line 38
+PORT_RANDO_EDGE(77, Dock, 4, Dock, 1, 0)  // 01_sand_entrance line 38 (reverse)
+PORT_RANDO_EDGE(77, Dock, 1, Dock, 5, 6)  // 01_sand_entrance line 39
+PORT_RANDO_EDGE(77, Dock, 5, Dock, 1, 0)  // 01_sand_entrance line 40
+PORT_RANDO_EDGE(77, Dock, 3, Dock, 0, 4)  // 01_sand_entrance line 42
+PORT_RANDO_EDGE(77, Dock, 0, Dock, 3, 4)  // 01_sand_entrance line 42 (reverse)
+PORT_RANDO_EDGE(77, Dock, 3, Location, 131456, 26)  // 01_sand_entrance line 43
+PORT_RANDO_EDGE(79, Dock, 0, Dock, 1, 4)  // 0e_sand_hall line 51
+PORT_RANDO_EDGE(79, Dock, 1, Dock, 0, 4)  // 0e_sand_hall line 51 (reverse)
+PORT_RANDO_EDGE(80, Dock, 0, Dock, 1, 0)  // 0f_sand_hall line 55
+PORT_RANDO_EDGE(80, Dock, 1, Dock, 0, 0)  // 0f_sand_hall line 55 (reverse)
+PORT_RANDO_EDGE(81, Dock, 0, Dock, 1, 0)  // 0o_sand_hall line 58
+PORT_RANDO_EDGE(81, Dock, 1, Dock, 0, 0)  // 0o_sand_hall line 58 (reverse)
+PORT_RANDO_EDGE(81, Dock, 1, Location, 393247, 9)  // 0o_sand_hall line 60
+PORT_RANDO_EDGE(82, Dock, 1, Dock, 2, 7)  // 01_sand_entrance_dark line 292
+PORT_RANDO_EDGE(82, Dock, 2, Dock, 1, 7)  // 01_sand_entrance_dark line 292 (reverse)
+PORT_RANDO_EDGE(82, Dock, 0, Dock, 3, 7)  // 01_sand_entrance_dark line 293
+PORT_RANDO_EDGE(82, Dock, 3, Dock, 0, 7)  // 01_sand_entrance_dark line 293 (reverse)
+PORT_RANDO_EDGE(82, Dock, 1, Dock, 0, 7)  // 01_sand_entrance_dark line 294
+PORT_RANDO_EDGE(82, Dock, 0, Dock, 1, 7)  // 01_sand_entrance_dark line 294 (reverse)
+PORT_RANDO_EDGE(82, Dock, 0, Dock, 4, 8)  // 01_sand_entrance_dark line 295
+PORT_RANDO_EDGE(82, Dock, 4, Dock, 0, 7)  // 01_sand_entrance_dark line 296
+PORT_RANDO_EDGE(83, Dock, 1, Dock, 2, 0)  // 04_sand_mining line 64
+PORT_RANDO_EDGE(83, Dock, 2, Dock, 1, 0)  // 04_sand_mining line 64 (reverse)
+PORT_RANDO_EDGE(83, Dock, 2, Dock, 3, 6)  // 04_sand_mining line 66
+PORT_RANDO_EDGE(83, Dock, 3, Dock, 2, 0)  // 04_sand_mining line 67
+PORT_RANDO_EDGE(83, Dock, 2, Dock, 0, 14)  // 04_sand_mining line 69
+PORT_RANDO_EDGE(83, Dock, 0, Dock, 2, 27)  // 04_sand_mining line 70
+PORT_RANDO_EDGE(83, Dock, 2, Location, 524567, 28)  // 04_sand_mining line 71
+PORT_RANDO_EDGE(84, Dock, 0, Dock, 1, 0)  // 0q_sand_hall line 83
+PORT_RANDO_EDGE(84, Dock, 1, Dock, 0, 0)  // 0q_sand_hall line 83 (reverse)
+PORT_RANDO_EDGE(84, Dock, 0, Dock, 2, 12)  // 0q_sand_hall line 84
+PORT_RANDO_EDGE(84, Dock, 1, Dock, 2, 12)  // 0q_sand_hall line 85
+PORT_RANDO_EDGE(84, Dock, 2, Dock, 0, 0)  // 0q_sand_hall line 86
+PORT_RANDO_EDGE(84, Dock, 2, Dock, 1, 0)  // 0q_sand_hall line 87
+PORT_RANDO_EDGE(84, Dock, 1, Dock, 3, 29)  // 0q_sand_hall line 88
+PORT_RANDO_EDGE(84, Dock, 3, Dock, 1, 0)  // 0q_sand_hall line 89
+PORT_RANDO_EDGE(84, Dock, 0, Location, 589915, 9)  // 0q_sand_hall line 90
+PORT_RANDO_EDGE(85, Dock, 0, Dock, 2, 0)  // 02_sand_sandfalls line 102
+PORT_RANDO_EDGE(85, Dock, 2, Dock, 0, 0)  // 02_sand_sandfalls line 102 (reverse)
+PORT_RANDO_EDGE(85, Dock, 0, Dock, 1, 0)  // 02_sand_sandfalls line 103
+PORT_RANDO_EDGE(85, Dock, 1, Dock, 0, 0)  // 02_sand_sandfalls line 103 (reverse)
+PORT_RANDO_EDGE(85, Dock, 2, Dock, 1, 0)  // 02_sand_sandfalls line 104
+PORT_RANDO_EDGE(85, Dock, 1, Dock, 2, 0)  // 02_sand_sandfalls line 104 (reverse)
+PORT_RANDO_EDGE(85, Dock, 3, Dock, 4, 0)  // 02_sand_sandfalls line 105
+PORT_RANDO_EDGE(85, Dock, 4, Dock, 3, 0)  // 02_sand_sandfalls line 105 (reverse)
+PORT_RANDO_EDGE(85, Dock, 0, Dock, 3, 0)  // 02_sand_sandfalls line 106
+PORT_RANDO_EDGE(85, Dock, 0, Dock, 4, 0)  // 02_sand_sandfalls line 107
+PORT_RANDO_EDGE(85, Dock, 3, Dock, 0, 12)  // 02_sand_sandfalls line 108
+PORT_RANDO_EDGE(85, Dock, 4, Dock, 0, 12)  // 02_sand_sandfalls line 109
+PORT_RANDO_EDGE(85, Dock, 0, Location, 655912, 30)  // 02_sand_sandfalls line 110
+PORT_RANDO_EDGE(86, Dock, 0, Dock, 1, 7)  // 0e_sand_hall_dark line 306
+PORT_RANDO_EDGE(86, Dock, 1, Dock, 0, 7)  // 0e_sand_hall_dark line 306 (reverse)
+PORT_RANDO_EDGE(87, Dock, 0, Dock, 1, 7)  // 0f_sand_hall_dark line 314
+PORT_RANDO_EDGE(87, Dock, 1, Dock, 0, 7)  // 0f_sand_hall_dark line 314 (reverse)
+PORT_RANDO_EDGE(88, Dock, 1, Location, 851988, 7)  // 0a_sand_hall_dark line 321
+PORT_RANDO_EDGE(89, Dock, 0, Dock, 1, 7)  // 0o_sand_hall_dark line 327
+PORT_RANDO_EDGE(89, Dock, 1, Dock, 0, 7)  // 0o_sand_hall_dark line 327 (reverse)
+PORT_RANDO_EDGE(89, Dock, 0, Location, 917662, 31)  // 0o_sand_hall_dark line 328
+PORT_RANDO_EDGE(90, Dock, 0, Location, 983082, 0)  // 00_pickup_sand_a line 75
+PORT_RANDO_EDGE(91, Dock, 1, Dock, 0, 0)  // 0d_sand_hall line 78
+PORT_RANDO_EDGE(91, Dock, 0, Dock, 1, 12)  // 0d_sand_hall line 79
+PORT_RANDO_EDGE(91, Dock, 1, Location, 1048808, 0)  // 0d_sand_hall line 80
+PORT_RANDO_EDGE(92, Dock, 1, Dock, 2, 7)  // 04_sand_mining_dark line 333
+PORT_RANDO_EDGE(92, Dock, 2, Dock, 1, 7)  // 04_sand_mining_dark line 333 (reverse)
+PORT_RANDO_EDGE(92, Dock, 2, Dock, 3, 8)  // 04_sand_mining_dark line 334
+PORT_RANDO_EDGE(92, Dock, 3, Dock, 2, 7)  // 04_sand_mining_dark line 335
+PORT_RANDO_EDGE(93, Dock, 0, Dock, 1, 0)  // 05_portalpuzzle line 94
+PORT_RANDO_EDGE(93, Dock, 1, Dock, 0, 12)  // 05_portalpuzzle line 95
+PORT_RANDO_EDGE(93, Dock, 1, Dock, 2, 32)  // 05_portalpuzzle line 96
+PORT_RANDO_EDGE(93, Dock, 2, Dock, 1, 0)  // 05_portalpuzzle line 97
+PORT_RANDO_EDGE(94, Dock, 0, Teleporter, 1245307, 0)  // 00_elev_sand_swamp_e line 115
+PORT_RANDO_EDGE(94, Teleporter, 1245307, Dock, 0, 0)  // 00_elev_sand_swamp_e line 115 (reverse)
+PORT_RANDO_EDGE(95, Dock, 0, Dock, 1, 7)  // 0q_sand_hall_dark line 344
+PORT_RANDO_EDGE(95, Dock, 1, Dock, 0, 7)  // 0q_sand_hall_dark line 344 (reverse)
+PORT_RANDO_EDGE(95, Dock, 1, Dock, 3, 33)  // 0q_sand_hall_dark line 345
+PORT_RANDO_EDGE(95, Dock, 3, Dock, 1, 7)  // 0q_sand_hall_dark line 346
+PORT_RANDO_EDGE(95, Dock, 1, Location, 1310844, 22)  // 0q_sand_hall_dark line 347
+PORT_RANDO_EDGE(96, Dock, 0, Dock, 1, 0)  // 0c_sand_hall line 118
+PORT_RANDO_EDGE(96, Dock, 1, Dock, 0, 0)  // 0c_sand_hall line 118 (reverse)
+PORT_RANDO_EDGE(97, Dock, 0, Dock, 1, 0)  // 0g_sand_hall line 121
+PORT_RANDO_EDGE(97, Dock, 1, Dock, 0, 0)  // 0g_sand_hall line 121 (reverse)
+PORT_RANDO_EDGE(98, Dock, 0, Location, 1507348, 0)  // 00_save_sand_a line 124
+PORT_RANDO_EDGE(99, Dock, 0, Dock, 1, 0)  // 0n_sand_hall line 127
+PORT_RANDO_EDGE(99, Dock, 1, Dock, 0, 0)  // 0n_sand_hall line 127 (reverse)
+PORT_RANDO_EDGE(99, Dock, 0, Location, 1573278, 9)  // 0n_sand_hall line 128
+PORT_RANDO_EDGE(100, Dock, 0, Dock, 2, 7)  // 02_sand_sandfalls_dark line 353
+PORT_RANDO_EDGE(100, Dock, 2, Dock, 0, 7)  // 02_sand_sandfalls_dark line 353 (reverse)
+PORT_RANDO_EDGE(100, Dock, 0, Dock, 1, 7)  // 02_sand_sandfalls_dark line 354
+PORT_RANDO_EDGE(100, Dock, 1, Dock, 0, 7)  // 02_sand_sandfalls_dark line 354 (reverse)
+PORT_RANDO_EDGE(100, Dock, 3, Dock, 4, 7)  // 02_sand_sandfalls_dark line 355
+PORT_RANDO_EDGE(100, Dock, 4, Dock, 3, 7)  // 02_sand_sandfalls_dark line 355 (reverse)
+PORT_RANDO_EDGE(100, Dock, 0, Dock, 3, 7)  // 02_sand_sandfalls_dark line 356
+PORT_RANDO_EDGE(100, Dock, 0, Dock, 4, 7)  // 02_sand_sandfalls_dark line 357
+PORT_RANDO_EDGE(100, Dock, 3, Dock, 0, 22)  // 02_sand_sandfalls_dark line 358
+PORT_RANDO_EDGE(100, Dock, 4, Dock, 0, 22)  // 02_sand_sandfalls_dark line 359
+PORT_RANDO_EDGE(100, Dock, 3, Location, 1638403, 7)  // 02_sand_sandfalls_dark line 360
+PORT_RANDO_EDGE(101, Dock, 3, Named, 0, 0)  // 03_sand_temple line 135
+PORT_RANDO_EDGE(101, Named, 0, Dock, 3, 0)  // 03_sand_temple line 135 (reverse)
+PORT_RANDO_EDGE(101, Named, 0, Location, 135921780, 0)  // 03_sand_temple line 136
+PORT_RANDO_EDGE(101, Named, 0, Dock, 0, 9)  // 03_sand_temple line 137
+PORT_RANDO_EDGE(101, Dock, 0, Named, 0, 9)  // 03_sand_temple line 137 (reverse)
+PORT_RANDO_EDGE(101, Named, 0, Dock, 1, 9)  // 03_sand_temple line 138
+PORT_RANDO_EDGE(101, Dock, 1, Named, 0, 9)  // 03_sand_temple line 138 (reverse)
+PORT_RANDO_EDGE(101, Named, 0, Dock, 2, 9)  // 03_sand_temple line 139
+PORT_RANDO_EDGE(101, Dock, 2, Named, 0, 9)  // 03_sand_temple line 139 (reverse)
+PORT_RANDO_EDGE(102, Dock, 1, Dock, 0, 7)  // 0d_sand_hall_dark line 371
+PORT_RANDO_EDGE(102, Dock, 0, Dock, 1, 22)  // 0d_sand_hall_dark line 372
+PORT_RANDO_EDGE(102, Dock, 1, Location, 1769760, 7)  // 0d_sand_hall_dark line 373
+PORT_RANDO_EDGE(103, Dock, 0, Dock, 1, 7)  // 05_portalpuzzle_dark line 376
+PORT_RANDO_EDGE(103, Dock, 1, Dock, 0, 22)  // 05_portalpuzzle_dark line 377
+PORT_RANDO_EDGE(103, Dock, 1, Dock, 2, 10)  // 05_portalpuzzle_dark line 378
+PORT_RANDO_EDGE(103, Dock, 2, Dock, 1, 7)  // 05_portalpuzzle_dark line 379
+PORT_RANDO_EDGE(104, Dock, 0, Dock, 2, 0)  // 06_sand_alamofront line 143
+PORT_RANDO_EDGE(104, Dock, 2, Dock, 0, 0)  // 06_sand_alamofront line 143 (reverse)
+PORT_RANDO_EDGE(104, Dock, 1, Dock, 0, 0)  // 06_sand_alamofront line 144
+PORT_RANDO_EDGE(104, Dock, 1, Dock, 2, 0)  // 06_sand_alamofront line 145
+PORT_RANDO_EDGE(104, Dock, 0, Dock, 1, 12)  // 06_sand_alamofront line 146
+PORT_RANDO_EDGE(104, Dock, 2, Dock, 1, 12)  // 06_sand_alamofront line 147
+PORT_RANDO_EDGE(104, Dock, 2, Location, 1901100, 12)  // 06_sand_alamofront line 148
+PORT_RANDO_EDGE(105, Dock, 0, Dock, 1, 7)  // 0c_sand_hall_dark line 389
+PORT_RANDO_EDGE(105, Dock, 1, Dock, 0, 7)  // 0c_sand_hall_dark line 389 (reverse)
+PORT_RANDO_EDGE(106, Dock, 0, Dock, 1, 7)  // 0g_sand_hall_dark line 396
+PORT_RANDO_EDGE(106, Dock, 1, Dock, 0, 7)  // 0g_sand_hall_dark line 396 (reverse)
+PORT_RANDO_EDGE(106, Dock, 1, Location, 2031692, 7)  // 0g_sand_hall_dark line 397
+PORT_RANDO_EDGE(108, Dock, 0, Dock, 1, 7)  // 0n_sand_hall_dark line 406
+PORT_RANDO_EDGE(108, Dock, 1, Dock, 0, 7)  // 0n_sand_hall_dark line 406 (reverse)
+PORT_RANDO_EDGE(109, Dock, 1, Dock, 0, 9)  // 00_sand_generator_connect line 152
+PORT_RANDO_EDGE(109, Dock, 0, Dock, 1, 9)  // 00_sand_generator_connect line 152 (reverse)
+PORT_RANDO_EDGE(110, Dock, 1, Dock, 0, 0)  // 0p_sand_hall line 156
+PORT_RANDO_EDGE(110, Dock, 0, Dock, 1, 9)  // 0p_sand_hall line 157
+PORT_RANDO_EDGE(110, Dock, 0, Location, 2293876, 9)  // 0p_sand_hall line 158
+PORT_RANDO_EDGE(111, Dock, 0, Named, 0, 34)  // 03_sand_temple_dark line 413
+PORT_RANDO_EDGE(111, Dock, 1, Named, 0, 34)  // 03_sand_temple_dark line 414
+PORT_RANDO_EDGE(111, Dock, 3, Named, 0, 34)  // 03_sand_temple_dark line 415
+PORT_RANDO_EDGE(111, Named, 0, Location, 673448549, 9)  // 03_sand_temple_dark line 416
+PORT_RANDO_EDGE(111, Named, 0, Dock, 0, 35)  // 03_sand_temple_dark line 417
+PORT_RANDO_EDGE(111, Named, 0, Dock, 1, 35)  // 03_sand_temple_dark line 418
+PORT_RANDO_EDGE(111, Named, 0, Dock, 3, 35)  // 03_sand_temple_dark line 419
+PORT_RANDO_EDGE(112, Dock, 4, Dock, 0, 0)  // 0h_sand_hall line 164
+PORT_RANDO_EDGE(112, Dock, 0, Dock, 4, 0)  // 0h_sand_hall line 164 (reverse)
+PORT_RANDO_EDGE(112, Dock, 1, Dock, 3, 0)  // 0h_sand_hall line 165
+PORT_RANDO_EDGE(112, Dock, 3, Dock, 1, 0)  // 0h_sand_hall line 165 (reverse)
+PORT_RANDO_EDGE(112, Dock, 1, Dock, 4, 0)  // 0h_sand_hall line 166
+PORT_RANDO_EDGE(112, Dock, 3, Dock, 4, 0)  // 0h_sand_hall line 167
+PORT_RANDO_EDGE(112, Dock, 4, Dock, 3, 12)  // 0h_sand_hall line 168
+PORT_RANDO_EDGE(112, Dock, 0, Dock, 1, 12)  // 0h_sand_hall line 169
+PORT_RANDO_EDGE(112, Dock, 4, Dock, 2, 36)  // 0h_sand_hall line 171
+PORT_RANDO_EDGE(112, Dock, 2, Dock, 4, 36)  // 0h_sand_hall line 171 (reverse)
+PORT_RANDO_EDGE(113, Dock, 0, Dock, 2, 7)  // 06_sand_alamofront_dark line 431
+PORT_RANDO_EDGE(113, Dock, 2, Dock, 0, 7)  // 06_sand_alamofront_dark line 431 (reverse)
+PORT_RANDO_EDGE(113, Dock, 1, Dock, 0, 7)  // 06_sand_alamofront_dark line 432
+PORT_RANDO_EDGE(113, Dock, 1, Dock, 2, 7)  // 06_sand_alamofront_dark line 433
+PORT_RANDO_EDGE(113, Dock, 0, Dock, 1, 22)  // 06_sand_alamofront_dark line 434
+PORT_RANDO_EDGE(113, Dock, 2, Dock, 1, 22)  // 06_sand_alamofront_dark line 435
+PORT_RANDO_EDGE(113, Dock, 0, Location, 2490846, 7)  // 06_sand_alamofront_dark line 436
+PORT_RANDO_EDGE(113, Dock, 1, Location, 405144126, 37)  // 06_sand_alamofront_dark line 438
+PORT_RANDO_EDGE(115, Dock, 1, Dock, 2, 0)  // 0b_sand_hall line 179
+PORT_RANDO_EDGE(115, Dock, 2, Dock, 1, 0)  // 0b_sand_hall line 179 (reverse)
+PORT_RANDO_EDGE(115, Dock, 0, Dock, 1, 0)  // 0b_sand_hall line 180
+PORT_RANDO_EDGE(115, Dock, 0, Dock, 2, 0)  // 0b_sand_hall line 181
+PORT_RANDO_EDGE(115, Dock, 1, Dock, 0, 12)  // 0b_sand_hall line 182
+PORT_RANDO_EDGE(115, Dock, 2, Dock, 0, 12)  // 0b_sand_hall line 183
+PORT_RANDO_EDGE(115, Dock, 2, Location, 2621565, 12)  // 0b_sand_hall line 184
+PORT_RANDO_EDGE(116, Dock, 1, Dock, 0, 35)  // 00_sand_generator_connect_dark line 447
+PORT_RANDO_EDGE(116, Dock, 0, Dock, 1, 35)  // 00_sand_generator_connect_dark line 447 (reverse)
+PORT_RANDO_EDGE(117, Dock, 0, Dock, 1, 0)  // 07_sand_alamoportalobservation line 189
+PORT_RANDO_EDGE(117, Dock, 1, Dock, 0, 0)  // 07_sand_alamoportalobservation line 189 (reverse)
+PORT_RANDO_EDGE(117, Dock, 0, Dock, 5, 0)  // 07_sand_alamoportalobservation line 190
+PORT_RANDO_EDGE(117, Dock, 5, Dock, 0, 0)  // 07_sand_alamoportalobservation line 190 (reverse)
+PORT_RANDO_EDGE(117, Dock, 3, Dock, 4, 0)  // 07_sand_alamoportalobservation line 191
+PORT_RANDO_EDGE(117, Dock, 4, Dock, 3, 0)  // 07_sand_alamoportalobservation line 191 (reverse)
+PORT_RANDO_EDGE(117, Dock, 3, Dock, 0, 0)  // 07_sand_alamoportalobservation line 192
+PORT_RANDO_EDGE(117, Dock, 0, Dock, 3, 12)  // 07_sand_alamoportalobservation line 193
+PORT_RANDO_EDGE(117, Dock, 3, Dock, 2, 4)  // 07_sand_alamoportalobservation line 195
+PORT_RANDO_EDGE(117, Dock, 2, Dock, 3, 4)  // 07_sand_alamoportalobservation line 195 (reverse)
+PORT_RANDO_EDGE(117, Dock, 0, Dock, 6, 6)  // 07_sand_alamoportalobservation line 196
+PORT_RANDO_EDGE(117, Dock, 6, Dock, 0, 0)  // 07_sand_alamoportalobservation line 197
+PORT_RANDO_EDGE(117, Dock, 0, Location, 2752798, 0)  // 07_sand_alamoportalobservation line 198
+PORT_RANDO_EDGE(118, Dock, 0, Dock, 4, 7)  // 0h_sand_hall_dark line 451
+PORT_RANDO_EDGE(118, Dock, 4, Dock, 0, 7)  // 0h_sand_hall_dark line 451 (reverse)
+PORT_RANDO_EDGE(118, Dock, 1, Dock, 3, 7)  // 0h_sand_hall_dark line 452
+PORT_RANDO_EDGE(118, Dock, 3, Dock, 1, 7)  // 0h_sand_hall_dark line 452 (reverse)
+PORT_RANDO_EDGE(118, Dock, 1, Dock, 4, 7)  // 0h_sand_hall_dark line 453
+PORT_RANDO_EDGE(118, Dock, 3, Dock, 4, 7)  // 0h_sand_hall_dark line 454
+PORT_RANDO_EDGE(118, Dock, 4, Dock, 3, 22)  // 0h_sand_hall_dark line 455
+PORT_RANDO_EDGE(118, Dock, 0, Dock, 1, 22)  // 0h_sand_hall_dark line 456
+PORT_RANDO_EDGE(120, Dock, 0, Teleporter, 2949235, 0)  // 00_elev_sand_cliff_d line 205
+PORT_RANDO_EDGE(120, Teleporter, 2949235, Dock, 0, 0)  // 00_elev_sand_cliff_d line 205 (reverse)
+PORT_RANDO_EDGE(121, Dock, 0, Dock, 1, 0)  // 10_sand_alamostorage line 208
+PORT_RANDO_EDGE(121, Dock, 1, Dock, 0, 0)  // 10_sand_alamostorage line 208 (reverse)
+PORT_RANDO_EDGE(121, Dock, 0, Dock, 2, 0)  // 10_sand_alamostorage line 209
+PORT_RANDO_EDGE(121, Dock, 2, Dock, 0, 0)  // 10_sand_alamostorage line 209 (reverse)
+PORT_RANDO_EDGE(121, Dock, 0, Dock, 3, 0)  // 10_sand_alamostorage line 210
+PORT_RANDO_EDGE(121, Dock, 3, Dock, 0, 0)  // 10_sand_alamostorage line 210 (reverse)
+PORT_RANDO_EDGE(121, Dock, 0, Dock, 4, 6)  // 10_sand_alamostorage line 211
+PORT_RANDO_EDGE(121, Dock, 4, Dock, 0, 0)  // 10_sand_alamostorage line 212
+PORT_RANDO_EDGE(121, Dock, 2, Location, 271450243, 28)  // 10_sand_alamostorage line 214
+PORT_RANDO_EDGE(123, Dock, 0, Dock, 1, 0)  // 0i_sand_hall line 245
+PORT_RANDO_EDGE(123, Dock, 1, Dock, 0, 0)  // 0i_sand_hall line 245 (reverse)
+PORT_RANDO_EDGE(124, Dock, 0, Dock, 1, 0)  // 0m_sand_hall line 248
+PORT_RANDO_EDGE(124, Dock, 1, Dock, 0, 0)  // 0m_sand_hall line 248 (reverse)
+PORT_RANDO_EDGE(124, Dock, 0, Dock, 2, 0)  // 0m_sand_hall line 249
+PORT_RANDO_EDGE(124, Dock, 2, Dock, 0, 0)  // 0m_sand_hall line 249 (reverse)
+PORT_RANDO_EDGE(124, Dock, 1, Dock, 2, 0)  // 0m_sand_hall line 250
+PORT_RANDO_EDGE(124, Dock, 2, Dock, 1, 0)  // 0m_sand_hall line 250 (reverse)
+PORT_RANDO_EDGE(125, Dock, 0, Dock, 1, 7)  // 07_sand_alamoportalobservation_dark line 466
+PORT_RANDO_EDGE(125, Dock, 1, Dock, 0, 7)  // 07_sand_alamoportalobservation_dark line 466 (reverse)
+PORT_RANDO_EDGE(125, Dock, 2, Dock, 3, 7)  // 07_sand_alamoportalobservation_dark line 467
+PORT_RANDO_EDGE(125, Dock, 3, Dock, 2, 7)  // 07_sand_alamoportalobservation_dark line 467 (reverse)
+PORT_RANDO_EDGE(125, Dock, 3, Dock, 0, 7)  // 07_sand_alamoportalobservation_dark line 468
+PORT_RANDO_EDGE(125, Dock, 0, Dock, 3, 22)  // 07_sand_alamoportalobservation_dark line 469
+PORT_RANDO_EDGE(125, Dock, 0, Dock, 4, 8)  // 07_sand_alamoportalobservation_dark line 470
+PORT_RANDO_EDGE(125, Dock, 4, Dock, 0, 7)  // 07_sand_alamoportalobservation_dark line 471
+PORT_RANDO_EDGE(125, Dock, 3, Location, 3277443, 7)  // 07_sand_alamoportalobservation_dark line 472
+PORT_RANDO_EDGE(126, Dock, 0, Dock, 1, 0)  // 0l_sand_hall line 253
+PORT_RANDO_EDGE(126, Dock, 1, Dock, 0, 9)  // 0l_sand_hall line 254
+PORT_RANDO_EDGE(126, Dock, 1, Location, 3342388, 38)  // 0l_sand_hall line 255
+PORT_RANDO_EDGE(127, Dock, 0, Location, 3408065, 0)  // 00_pickup_sand_d line 259
+PORT_RANDO_EDGE(128, Dock, 0, Dock, 1, 7)  // 10_sand_alamostorage_dark line 483
+PORT_RANDO_EDGE(128, Dock, 1, Dock, 0, 7)  // 10_sand_alamostorage_dark line 483 (reverse)
+PORT_RANDO_EDGE(128, Dock, 0, Dock, 3, 39)  // 10_sand_alamostorage_dark line 485
+PORT_RANDO_EDGE(128, Dock, 3, Dock, 0, 39)  // 10_sand_alamostorage_dark line 485 (reverse)
+PORT_RANDO_EDGE(128, Dock, 0, Dock, 4, 8)  // 10_sand_alamostorage_dark line 486
+PORT_RANDO_EDGE(128, Dock, 4, Dock, 0, 7)  // 10_sand_alamostorage_dark line 487
+PORT_RANDO_EDGE(128, Dock, 0, Location, 339017909, 15)  // 10_sand_alamostorage_dark line 488
+PORT_RANDO_EDGE(129, Dock, 0, Dock, 1, 0)  // 08_sand_casualpirates line 262
+PORT_RANDO_EDGE(129, Dock, 1, Dock, 0, 0)  // 08_sand_casualpirates line 262 (reverse)
+PORT_RANDO_EDGE(129, Dock, 0, Dock, 2, 0)  // 08_sand_casualpirates line 263
+PORT_RANDO_EDGE(129, Dock, 2, Dock, 0, 0)  // 08_sand_casualpirates line 263 (reverse)
+PORT_RANDO_EDGE(129, Dock, 1, Dock, 2, 0)  // 08_sand_casualpirates line 264
+PORT_RANDO_EDGE(129, Dock, 2, Dock, 1, 0)  // 08_sand_casualpirates line 264 (reverse)
+PORT_RANDO_EDGE(130, Dock, 0, Dock, 1, 40)  // 0i_sand_hall_dark line 496
+PORT_RANDO_EDGE(130, Dock, 1, Dock, 0, 40)  // 0i_sand_hall_dark line 496 (reverse)
+PORT_RANDO_EDGE(131, Dock, 1, Dock, 2, 7)  // 0m_sand_hall_dark line 502
+PORT_RANDO_EDGE(131, Dock, 2, Dock, 1, 7)  // 0m_sand_hall_dark line 502 (reverse)
+PORT_RANDO_EDGE(132, Dock, 0, Dock, 1, 0)  // 00_save_sand_c line 267
+PORT_RANDO_EDGE(132, Dock, 1, Dock, 0, 0)  // 00_save_sand_c line 267 (reverse)
+PORT_RANDO_EDGE(133, Dock, 0, Dock, 1, 7)  // 0l_sand_hall_dark line 508
+PORT_RANDO_EDGE(133, Dock, 1, Dock, 0, 22)  // 0l_sand_hall_dark line 509
+PORT_RANDO_EDGE(135, Dock, 0, Dock, 1, 9)  // 0j_sand_hall line 270
+PORT_RANDO_EDGE(135, Dock, 1, Dock, 0, 9)  // 0j_sand_hall line 270 (reverse)
+PORT_RANDO_EDGE(136, Dock, 0, Location, 3997752, 0)  // 00_pickup_sand_b line 274
+PORT_RANDO_EDGE(137, Dock, 0, Dock, 2, 7)  // 08_sand_casualpirates_dark line 518
+PORT_RANDO_EDGE(137, Dock, 2, Dock, 0, 7)  // 08_sand_casualpirates_dark line 518 (reverse)
+PORT_RANDO_EDGE(137, Dock, 0, Dock, 1, 7)  // 08_sand_casualpirates_dark line 519
+PORT_RANDO_EDGE(137, Dock, 1, Dock, 0, 7)  // 08_sand_casualpirates_dark line 519 (reverse)
+PORT_RANDO_EDGE(137, Dock, 1, Dock, 2, 7)  // 08_sand_casualpirates_dark line 520
+PORT_RANDO_EDGE(137, Dock, 2, Dock, 1, 7)  // 08_sand_casualpirates_dark line 520 (reverse)
+PORT_RANDO_EDGE(137, Dock, 1, Location, 4063317, 22)  // 08_sand_casualpirates_dark line 521
+PORT_RANDO_EDGE(138, Dock, 0, Dock, 1, 0)  // 0k_sand_hall line 277
+PORT_RANDO_EDGE(138, Dock, 1, Dock, 0, 0)  // 0k_sand_hall line 277 (reverse)
+PORT_RANDO_EDGE(139, Dock, 0, Dock, 1, 7)  // 00_save_sand_c_dark line 531
+PORT_RANDO_EDGE(139, Dock, 1, Dock, 0, 7)  // 00_save_sand_c_dark line 531 (reverse)
+PORT_RANDO_EDGE(140, Dock, 1, Dock, 2, 0)  // 09_sand_testtubepuzzle line 280
+PORT_RANDO_EDGE(140, Dock, 2, Dock, 1, 0)  // 09_sand_testtubepuzzle line 280 (reverse)
+PORT_RANDO_EDGE(140, Dock, 1, Dock, 0, 0)  // 09_sand_testtubepuzzle line 281
+PORT_RANDO_EDGE(140, Dock, 0, Dock, 1, 30)  // 09_sand_testtubepuzzle line 282
+PORT_RANDO_EDGE(140, Dock, 1, Location, 4260006, 30)  // 09_sand_testtubepuzzle line 283
+PORT_RANDO_EDGE(141, Dock, 0, Dock, 1, 7)  // 0j_sand_hall_dark line 534
+PORT_RANDO_EDGE(141, Dock, 1, Dock, 0, 7)  // 0j_sand_hall_dark line 534 (reverse)
+PORT_RANDO_EDGE(142, Dock, 0, Location, 4391009, 7)  // 00_pickup_sand_b_dark line 542
+PORT_RANDO_EDGE(143, Dock, 0, Dock, 1, 41)  // 0k_sand_hall_dark line 546
+PORT_RANDO_EDGE(143, Dock, 1, Dock, 0, 41)  // 0k_sand_hall_dark line 546 (reverse)
+PORT_RANDO_EDGE(144, Dock, 0, Location, 4522091, 0)  // 00_pickup_sand_c line 287
+PORT_RANDO_EDGE(145, Dock, 1, Dock, 2, 7)  // 09_sand_testtubepuzzle_dark line 551
+PORT_RANDO_EDGE(145, Dock, 2, Dock, 1, 7)  // 09_sand_testtubepuzzle_dark line 551 (reverse)
+PORT_RANDO_EDGE(145, Dock, 1, Dock, 0, 7)  // 09_sand_testtubepuzzle_dark line 552
+PORT_RANDO_EDGE(145, Dock, 0, Dock, 1, 22)  // 09_sand_testtubepuzzle_dark line 553
+PORT_RANDO_EDGE(146, Dock, 0, Location, 4653214, 7)  // 00_pickup_sand_c_dark line 565
+PORT_RANDO_EDGE(147, Dock, 0, Teleporter, 129, 0)  // 00_Elev_Swamp_Temple_B line 27
+PORT_RANDO_EDGE(147, Teleporter, 129, Dock, 0, 0)  // 00_Elev_Swamp_Temple_B line 27 (reverse)
+PORT_RANDO_EDGE(148, Dock, 0, Dock, 1, 0)  // 0a_swamp_hall line 30
+PORT_RANDO_EDGE(148, Dock, 1, Dock, 0, 0)  // 0a_swamp_hall line 30 (reverse)
+PORT_RANDO_EDGE(149, Dock, 4, Dock, 0, 0)  // 01_swamp_entrance line 35
+PORT_RANDO_EDGE(149, Dock, 0, Dock, 4, 0)  // 01_swamp_entrance line 35 (reverse)
+PORT_RANDO_EDGE(149, Dock, 4, Dock, 1, 0)  // 01_swamp_entrance line 36
+PORT_RANDO_EDGE(149, Dock, 1, Dock, 4, 0)  // 01_swamp_entrance line 36 (reverse)
+PORT_RANDO_EDGE(149, Dock, 4, Dock, 2, 0)  // 01_swamp_entrance line 37
+PORT_RANDO_EDGE(149, Dock, 2, Dock, 4, 0)  // 01_swamp_entrance line 37 (reverse)
+PORT_RANDO_EDGE(149, Dock, 4, Dock, 3, 0)  // 01_swamp_entrance line 38
+PORT_RANDO_EDGE(149, Dock, 3, Dock, 4, 0)  // 01_swamp_entrance line 38 (reverse)
+PORT_RANDO_EDGE(149, Dock, 4, Location, 131147, 42)  // 01_swamp_entrance line 39
+PORT_RANDO_EDGE(150, Dock, 0, Dock, 1, 0)  // 0d_swamp_hall line 42
+PORT_RANDO_EDGE(150, Dock, 1, Dock, 0, 0)  // 0d_swamp_hall line 42 (reverse)
+PORT_RANDO_EDGE(151, Dock, 0, Dock, 2, 0)  // 0c_swamp_hall line 45
+PORT_RANDO_EDGE(151, Dock, 2, Dock, 0, 0)  // 0c_swamp_hall line 45 (reverse)
+PORT_RANDO_EDGE(151, Dock, 0, Dock, 1, 6)  // 0c_swamp_hall line 46
+PORT_RANDO_EDGE(151, Dock, 2, Dock, 1, 6)  // 0c_swamp_hall line 47
+PORT_RANDO_EDGE(151, Dock, 1, Dock, 0, 0)  // 0c_swamp_hall line 48
+PORT_RANDO_EDGE(151, Dock, 1, Dock, 2, 0)  // 0c_swamp_hall line 49
+PORT_RANDO_EDGE(151, Dock, 0, Location, 262368, 43)  // 0c_swamp_hall line 50
+PORT_RANDO_EDGE(152, Dock, 0, Dock, 1, 0)  // 0b_swamp_hall line 54
+PORT_RANDO_EDGE(152, Dock, 1, Dock, 0, 0)  // 0b_swamp_hall line 54 (reverse)
+PORT_RANDO_EDGE(152, Dock, 0, Location, 327730, 44)  // 0b_swamp_hall line 55
+PORT_RANDO_EDGE(154, Dock, 1, Dock, 2, 0)  // 03_swamp_forgottenbridge line 67
+PORT_RANDO_EDGE(154, Dock, 2, Dock, 1, 0)  // 03_swamp_forgottenbridge line 67 (reverse)
+PORT_RANDO_EDGE(154, Dock, 2, Location, 459107, 0)  // 03_swamp_forgottenbridge line 68
+PORT_RANDO_EDGE(154, Dock, 2, Dock, 3, 6)  // 03_swamp_forgottenbridge line 69
+PORT_RANDO_EDGE(154, Dock, 3, Dock, 2, 0)  // 03_swamp_forgottenbridge line 70
+PORT_RANDO_EDGE(154, Dock, 2, Dock, 4, 45)  // 03_swamp_forgottenbridge line 71
+PORT_RANDO_EDGE(154, Dock, 4, Dock, 2, 45)  // 03_swamp_forgottenbridge line 71 (reverse)
+PORT_RANDO_EDGE(154, Dock, 4, Dock, 0, 0)  // 03_swamp_forgottenbridge line 72
+PORT_RANDO_EDGE(154, Dock, 0, Dock, 4, 0)  // 03_swamp_forgottenbridge line 72 (reverse)
+PORT_RANDO_EDGE(155, Dock, 0, Dock, 2, 7)  // 0c_swamp_hall_dark line 283
+PORT_RANDO_EDGE(155, Dock, 2, Dock, 0, 7)  // 0c_swamp_hall_dark line 283 (reverse)
+PORT_RANDO_EDGE(155, Dock, 1, Dock, 0, 7)  // 0c_swamp_hall_dark line 284
+PORT_RANDO_EDGE(155, Dock, 1, Dock, 2, 7)  // 0c_swamp_hall_dark line 285
+PORT_RANDO_EDGE(155, Dock, 0, Dock, 1, 8)  // 0c_swamp_hall_dark line 286
+PORT_RANDO_EDGE(155, Dock, 2, Dock, 1, 8)  // 0c_swamp_hall_dark line 287
+PORT_RANDO_EDGE(156, Dock, 1, Dock, 3, 0)  // 02_swamp_greatbridge line 93
+PORT_RANDO_EDGE(156, Dock, 3, Dock, 1, 0)  // 02_swamp_greatbridge line 93 (reverse)
+PORT_RANDO_EDGE(156, Dock, 1, Dock, 4, 0)  // 02_swamp_greatbridge line 94
+PORT_RANDO_EDGE(156, Dock, 4, Dock, 1, 0)  // 02_swamp_greatbridge line 94 (reverse)
+PORT_RANDO_EDGE(156, Dock, 1, Dock, 5, 0)  // 02_swamp_greatbridge line 95
+PORT_RANDO_EDGE(156, Dock, 5, Dock, 1, 0)  // 02_swamp_greatbridge line 95 (reverse)
+PORT_RANDO_EDGE(156, Dock, 1, Dock, 2, 0)  // 02_swamp_greatbridge line 96
+PORT_RANDO_EDGE(156, Dock, 2, Dock, 1, 0)  // 02_swamp_greatbridge line 96 (reverse)
+PORT_RANDO_EDGE(156, Dock, 1, Dock, 0, 2)  // 02_swamp_greatbridge line 97
+PORT_RANDO_EDGE(156, Dock, 0, Dock, 1, 0)  // 02_swamp_greatbridge line 98
+PORT_RANDO_EDGE(156, Dock, 2, Location, 590099, 46)  // 02_swamp_greatbridge line 99
+PORT_RANDO_EDGE(156, Dock, 3, Location, 590099, 46)  // 02_swamp_greatbridge line 100
+PORT_RANDO_EDGE(157, Dock, 0, Location, 655419, 7)  // 00_pickup_swamp_a_dark line 293
+PORT_RANDO_EDGE(158, Dock, 0, Dock, 1, 9)  // 0i_swamp_hall line 77
+PORT_RANDO_EDGE(158, Dock, 1, Dock, 0, 9)  // 0i_swamp_hall line 77 (reverse)
+PORT_RANDO_EDGE(158, Dock, 1, Location, 721110, 28)  // 0i_swamp_hall line 78
+PORT_RANDO_EDGE(159, Dock, 0, Dock, 1, 0)  // 0e_swamp_hall line 82
+PORT_RANDO_EDGE(159, Dock, 1, Dock, 0, 0)  // 0e_swamp_hall line 82 (reverse)
+PORT_RANDO_EDGE(159, Dock, 0, Location, 786513, 44)  // 0e_swamp_hall line 83
+PORT_RANDO_EDGE(160, Dock, 3, Dock, 2, 7)  // 03_swamp_forgottenbridge_dark line 297
+PORT_RANDO_EDGE(160, Dock, 2, Dock, 3, 8)  // 03_swamp_forgottenbridge_dark line 298
+PORT_RANDO_EDGE(160, Dock, 1, Dock, 2, 7)  // 03_swamp_forgottenbridge_dark line 299
+PORT_RANDO_EDGE(160, Dock, 2, Dock, 1, 7)  // 03_swamp_forgottenbridge_dark line 299 (reverse)
+PORT_RANDO_EDGE(160, Dock, 2, Dock, 4, 35)  // 03_swamp_forgottenbridge_dark line 300
+PORT_RANDO_EDGE(160, Dock, 4, Dock, 2, 35)  // 03_swamp_forgottenbridge_dark line 300 (reverse)
+PORT_RANDO_EDGE(160, Dock, 4, Dock, 0, 7)  // 03_swamp_forgottenbridge_dark line 301
+PORT_RANDO_EDGE(160, Dock, 0, Dock, 4, 7)  // 03_swamp_forgottenbridge_dark line 301 (reverse)
+PORT_RANDO_EDGE(161, Dock, 0, Dock, 1, 0)  // 0h_swamp_hall line 87
+PORT_RANDO_EDGE(161, Dock, 1, Dock, 0, 0)  // 0h_swamp_hall line 87 (reverse)
+PORT_RANDO_EDGE(162, Dock, 1, Dock, 0, 7)  // 01_swamp_entrance_dark line 309
+PORT_RANDO_EDGE(162, Dock, 0, Dock, 1, 7)  // 01_swamp_entrance_dark line 309 (reverse)
+PORT_RANDO_EDGE(162, Dock, 1, Dock, 3, 7)  // 01_swamp_entrance_dark line 310
+PORT_RANDO_EDGE(162, Dock, 3, Dock, 1, 7)  // 01_swamp_entrance_dark line 310 (reverse)
+PORT_RANDO_EDGE(162, Dock, 1, Location, 983239, 47)  // 01_swamp_entrance_dark line 311
+PORT_RANDO_EDGE(163, Dock, 1, Dock, 2, 7)  // 02_swamp_greatbridge_dark line 320
+PORT_RANDO_EDGE(163, Dock, 2, Dock, 1, 7)  // 02_swamp_greatbridge_dark line 320 (reverse)
+PORT_RANDO_EDGE(163, Dock, 1, Dock, 3, 7)  // 02_swamp_greatbridge_dark line 321
+PORT_RANDO_EDGE(163, Dock, 3, Dock, 1, 7)  // 02_swamp_greatbridge_dark line 321 (reverse)
+PORT_RANDO_EDGE(163, Dock, 1, Dock, 5, 7)  // 02_swamp_greatbridge_dark line 322
+PORT_RANDO_EDGE(163, Dock, 5, Dock, 1, 7)  // 02_swamp_greatbridge_dark line 322 (reverse)
+PORT_RANDO_EDGE(163, Dock, 1, Dock, 0, 21)  // 02_swamp_greatbridge_dark line 323
+PORT_RANDO_EDGE(163, Dock, 0, Dock, 1, 7)  // 02_swamp_greatbridge_dark line 324
+PORT_RANDO_EDGE(163, Dock, 0, Location, 1049014, 7)  // 02_swamp_greatbridge_dark line 325
+PORT_RANDO_EDGE(164, Dock, 0, Dock, 2, 0)  // 0f_swamp_hall line 106
+PORT_RANDO_EDGE(164, Dock, 2, Dock, 0, 0)  // 0f_swamp_hall line 106 (reverse)
+PORT_RANDO_EDGE(164, Dock, 0, Dock, 1, 0)  // 0f_swamp_hall line 107
+PORT_RANDO_EDGE(164, Dock, 2, Dock, 3, 0)  // 0f_swamp_hall line 108
+PORT_RANDO_EDGE(164, Dock, 1, Dock, 3, 48)  // 0f_swamp_hall line 109
+PORT_RANDO_EDGE(164, Dock, 3, Dock, 1, 48)  // 0f_swamp_hall line 109 (reverse)
+PORT_RANDO_EDGE(164, Dock, 1, Dock, 0, 12)  // 0f_swamp_hall line 110
+PORT_RANDO_EDGE(164, Dock, 3, Dock, 2, 12)  // 0f_swamp_hall line 111
+PORT_RANDO_EDGE(164, Dock, 1, Location, 1114230, 48)  // 0f_swamp_hall line 112
+PORT_RANDO_EDGE(164, Dock, 3, Location, 1114230, 48)  // 0f_swamp_hall line 113
+PORT_RANDO_EDGE(166, Dock, 0, Location, 1245318, 49)  // 06_swamp_boostballguardian line 122
+PORT_RANDO_EDGE(167, Dock, 0, Dock, 1, 7)  // 0i_swamp_hall_dark line 334
+PORT_RANDO_EDGE(167, Dock, 1, Dock, 0, 7)  // 0i_swamp_hall_dark line 334 (reverse)
+PORT_RANDO_EDGE(168, Dock, 0, Dock, 1, 7)  // 0d_swamp_hall_dark line 337
+PORT_RANDO_EDGE(168, Dock, 1, Dock, 0, 7)  // 0d_swamp_hall_dark line 337 (reverse)
+PORT_RANDO_EDGE(168, Dock, 1, Location, 1376439, 50)  // 0d_swamp_hall_dark line 338
+PORT_RANDO_EDGE(169, Dock, 0, Dock, 1, 7)  // 0e_swamp_hall_dark line 342
+PORT_RANDO_EDGE(169, Dock, 1, Dock, 0, 7)  // 0e_swamp_hall_dark line 342 (reverse)
+PORT_RANDO_EDGE(170, Dock, 0, Dock, 1, 7)  // 0h_swamp_hall_dark line 345
+PORT_RANDO_EDGE(170, Dock, 1, Dock, 0, 7)  // 0h_swamp_hall_dark line 345 (reverse)
+PORT_RANDO_EDGE(171, Dock, 0, Dock, 1, 0)  // 05_swamp_timber! line 127
+PORT_RANDO_EDGE(171, Dock, 0, Dock, 2, 0)  // 05_swamp_timber! line 128
+PORT_RANDO_EDGE(171, Dock, 1, Dock, 2, 0)  // 05_swamp_timber! line 129
+PORT_RANDO_EDGE(171, Dock, 2, Dock, 1, 0)  // 05_swamp_timber! line 129 (reverse)
+PORT_RANDO_EDGE(171, Dock, 1, Dock, 0, 12)  // 05_swamp_timber! line 130
+PORT_RANDO_EDGE(171, Dock, 2, Dock, 0, 12)  // 05_swamp_timber! line 131
+PORT_RANDO_EDGE(171, Dock, 2, Location, 1572914, 46)  // 05_swamp_timber! line 132
+PORT_RANDO_EDGE(172, Dock, 0, Dock, 2, 7)  // 0f_swamp_hall_dark line 350
+PORT_RANDO_EDGE(172, Dock, 2, Dock, 0, 7)  // 0f_swamp_hall_dark line 350 (reverse)
+PORT_RANDO_EDGE(172, Dock, 1, Dock, 3, 7)  // 0f_swamp_hall_dark line 351
+PORT_RANDO_EDGE(172, Dock, 3, Dock, 1, 7)  // 0f_swamp_hall_dark line 351 (reverse)
+PORT_RANDO_EDGE(172, Dock, 0, Dock, 1, 7)  // 0f_swamp_hall_dark line 352
+PORT_RANDO_EDGE(172, Dock, 2, Dock, 3, 7)  // 0f_swamp_hall_dark line 353
+PORT_RANDO_EDGE(172, Dock, 1, Dock, 0, 22)  // 0f_swamp_hall_dark line 354
+PORT_RANDO_EDGE(172, Dock, 3, Dock, 2, 22)  // 0f_swamp_hall_dark line 355
+PORT_RANDO_EDGE(174, Dock, 4, Dock, 0, 0)  // 04_swamp_temple line 147
+PORT_RANDO_EDGE(174, Dock, 0, Dock, 4, 0)  // 04_swamp_temple line 147 (reverse)
+PORT_RANDO_EDGE(174, Dock, 4, Dock, 1, 0)  // 04_swamp_temple line 148
+PORT_RANDO_EDGE(174, Dock, 1, Dock, 4, 0)  // 04_swamp_temple line 148 (reverse)
+PORT_RANDO_EDGE(174, Dock, 4, Dock, 2, 0)  // 04_swamp_temple line 149
+PORT_RANDO_EDGE(174, Dock, 2, Dock, 4, 0)  // 04_swamp_temple line 149 (reverse)
+PORT_RANDO_EDGE(174, Dock, 4, Dock, 5, 0)  // 04_swamp_temple line 150
+PORT_RANDO_EDGE(174, Dock, 5, Dock, 4, 0)  // 04_swamp_temple line 150 (reverse)
+PORT_RANDO_EDGE(174, Dock, 4, Location, 1770204, 0)  // 04_swamp_temple line 151
+PORT_RANDO_EDGE(174, Dock, 4, Dock, 3, 12)  // 04_swamp_temple line 152
+PORT_RANDO_EDGE(174, Dock, 3, Dock, 4, 0)  // 04_swamp_temple line 153
+PORT_RANDO_EDGE(175, Dock, 0, Location, 1835116, 35)  // 06_swamp_boostballguardian_dark line 367
+PORT_RANDO_EDGE(175, Dock, 0, Location, 1835351, 51)  // 06_swamp_boostballguardian_dark line 368
+PORT_RANDO_EDGE(176, Dock, 0, Dock, 2, 7)  // 05_swamp_timber!_dark line 373
+PORT_RANDO_EDGE(176, Dock, 2, Dock, 0, 22)  // 05_swamp_timber!_dark line 374
+PORT_RANDO_EDGE(177, Dock, 0, Dock, 1, 0)  // 0g_swamp_hall line 136
+PORT_RANDO_EDGE(177, Dock, 1, Dock, 0, 0)  // 0g_swamp_hall line 136 (reverse)
+PORT_RANDO_EDGE(177, Dock, 0, Location, 1966211, 1)  // 0g_swamp_hall line 137
+PORT_RANDO_EDGE(178, Dock, 0, Dock, 1, 6)  // 00_pickup_swamp_b line 140
+PORT_RANDO_EDGE(178, Dock, 1, Dock, 0, 0)  // 00_pickup_swamp_b line 141
+PORT_RANDO_EDGE(178, Dock, 0, Location, 2031654, 0)  // 00_pickup_swamp_b line 142
+PORT_RANDO_EDGE(179, Dock, 4, Dock, 1, 7)  // 04_swamp_temple_dark line 386
+PORT_RANDO_EDGE(179, Dock, 1, Dock, 4, 7)  // 04_swamp_temple_dark line 386 (reverse)
+PORT_RANDO_EDGE(179, Dock, 4, Dock, 2, 7)  // 04_swamp_temple_dark line 387
+PORT_RANDO_EDGE(179, Dock, 2, Dock, 4, 7)  // 04_swamp_temple_dark line 387 (reverse)
+PORT_RANDO_EDGE(179, Dock, 4, Dock, 5, 7)  // 04_swamp_temple_dark line 388
+PORT_RANDO_EDGE(179, Dock, 5, Dock, 4, 7)  // 04_swamp_temple_dark line 388 (reverse)
+PORT_RANDO_EDGE(179, Dock, 4, Location, 941621427, 52)  // 04_swamp_temple_dark line 389
+PORT_RANDO_EDGE(179, Dock, 4, Dock, 3, 53)  // 04_swamp_temple_dark line 390
+PORT_RANDO_EDGE(179, Dock, 3, Dock, 4, 7)  // 04_swamp_temple_dark line 391
+PORT_RANDO_EDGE(180, Dock, 0, Teleporter, 2162826, 0)  // 00_elev_swamp_sand_e line 157
+PORT_RANDO_EDGE(180, Teleporter, 2162826, Dock, 0, 0)  // 00_elev_swamp_sand_e line 157 (reverse)
+PORT_RANDO_EDGE(181, Dock, 0, Dock, 1, 0)  // 0j_swamp_hall line 160
+PORT_RANDO_EDGE(181, Dock, 1, Dock, 0, 12)  // 0j_swamp_hall line 161
+PORT_RANDO_EDGE(182, Dock, 0, Dock, 1, 9)  // 00_swamp_genconnect line 164
+PORT_RANDO_EDGE(182, Dock, 1, Dock, 0, 9)  // 00_swamp_genconnect line 164 (reverse)
+PORT_RANDO_EDGE(183, Dock, 1, Dock, 0, 7)  // 00_pickup_swamp_b_dark line 398
+PORT_RANDO_EDGE(183, Dock, 0, Dock, 1, 8)  // 00_pickup_swamp_b_dark line 399
+PORT_RANDO_EDGE(185, Dock, 0, Dock, 1, 7)  // 0j_swamp_hall_dark line 408
+PORT_RANDO_EDGE(185, Dock, 1, Dock, 0, 22)  // 0j_swamp_hall_dark line 409
+PORT_RANDO_EDGE(185, Dock, 0, Location, 2490385, 7)  // 0j_swamp_hall_dark line 410
+PORT_RANDO_EDGE(186, Dock, 0, Dock, 1, 35)  // 00_swamp_genconnect_dark line 413
+PORT_RANDO_EDGE(186, Dock, 1, Dock, 0, 35)  // 00_swamp_genconnect_dark line 413 (reverse)
+PORT_RANDO_EDGE(187, Dock, 0, Dock, 4, 0)  // 07_swamp_shaft line 173
+PORT_RANDO_EDGE(187, Dock, 4, Dock, 0, 0)  // 07_swamp_shaft line 173 (reverse)
+PORT_RANDO_EDGE(187, Dock, 0, Dock, 1, 0)  // 07_swamp_shaft line 174
+PORT_RANDO_EDGE(187, Dock, 0, Dock, 2, 0)  // 07_swamp_shaft line 175
+PORT_RANDO_EDGE(187, Dock, 0, Dock, 3, 0)  // 07_swamp_shaft line 176
+PORT_RANDO_EDGE(187, Dock, 1, Dock, 2, 0)  // 07_swamp_shaft line 177
+PORT_RANDO_EDGE(187, Dock, 2, Dock, 1, 0)  // 07_swamp_shaft line 177 (reverse)
+PORT_RANDO_EDGE(187, Dock, 2, Dock, 3, 0)  // 07_swamp_shaft line 178
+PORT_RANDO_EDGE(187, Dock, 3, Dock, 2, 0)  // 07_swamp_shaft line 178 (reverse)
+PORT_RANDO_EDGE(187, Dock, 1, Dock, 0, 42)  // 07_swamp_shaft line 179
+PORT_RANDO_EDGE(187, Dock, 2, Dock, 0, 42)  // 07_swamp_shaft line 180
+PORT_RANDO_EDGE(187, Dock, 3, Dock, 0, 42)  // 07_swamp_shaft line 181
+PORT_RANDO_EDGE(187, Dock, 0, Dock, 6, 0)  // 07_swamp_shaft line 182
+PORT_RANDO_EDGE(187, Dock, 6, Dock, 0, 1)  // 07_swamp_shaft line 183
+PORT_RANDO_EDGE(187, Dock, 2, Location, 2621639, 54)  // 07_swamp_shaft line 184
+PORT_RANDO_EDGE(189, Dock, 0, Dock, 4, 7)  // 07_swamp_shaft_dark line 419
+PORT_RANDO_EDGE(189, Dock, 4, Dock, 0, 7)  // 07_swamp_shaft_dark line 419 (reverse)
+PORT_RANDO_EDGE(189, Dock, 0, Dock, 1, 7)  // 07_swamp_shaft_dark line 420
+PORT_RANDO_EDGE(189, Dock, 0, Dock, 2, 7)  // 07_swamp_shaft_dark line 421
+PORT_RANDO_EDGE(189, Dock, 1, Dock, 0, 22)  // 07_swamp_shaft_dark line 422
+PORT_RANDO_EDGE(189, Dock, 2, Dock, 0, 22)  // 07_swamp_shaft_dark line 423
+PORT_RANDO_EDGE(189, Dock, 1, Dock, 2, 21)  // 07_swamp_shaft_dark line 424
+PORT_RANDO_EDGE(189, Dock, 2, Dock, 1, 21)  // 07_swamp_shaft_dark line 424 (reverse)
+PORT_RANDO_EDGE(189, Dock, 2, Dock, 6, 35)  // 07_swamp_shaft_dark line 425
+PORT_RANDO_EDGE(189, Dock, 6, Dock, 0, 55)  // 07_swamp_shaft_dark line 426
+PORT_RANDO_EDGE(191, Dock, 0, Dock, 1, 0)  // 0l_swamphall line 197
+PORT_RANDO_EDGE(191, Dock, 1, Dock, 0, 0)  // 0l_swamphall line 197 (reverse)
+PORT_RANDO_EDGE(192, Dock, 0, Dock, 1, 0)  // ok_swamp_hall line 200
+PORT_RANDO_EDGE(192, Dock, 1, Dock, 0, 0)  // ok_swamp_hall line 200 (reverse)
+PORT_RANDO_EDGE(193, Dock, 0, Dock, 1, 0)  // 0m_swamp_hall line 203
+PORT_RANDO_EDGE(193, Dock, 1, Dock, 0, 0)  // 0m_swamp_hall line 203 (reverse)
+PORT_RANDO_EDGE(195, Dock, 2, Dock, 1, 0)  // 0q_swamp_hall line 210
+PORT_RANDO_EDGE(195, Dock, 1, Dock, 2, 56)  // 0q_swamp_hall line 211
+PORT_RANDO_EDGE(195, Dock, 2, Dock, 0, 6)  // 0q_swamp_hall line 212
+PORT_RANDO_EDGE(195, Dock, 0, Dock, 1, 0)  // 0q_swamp_hall line 213
+PORT_RANDO_EDGE(195, Dock, 0, Dock, 2, 56)  // 0q_swamp_hall line 214
+PORT_RANDO_EDGE(197, Dock, 0, Dock, 1, 7)  // 0l_swamphall_dark line 437
+PORT_RANDO_EDGE(197, Dock, 1, Dock, 0, 7)  // 0l_swamphall_dark line 437 (reverse)
+PORT_RANDO_EDGE(198, Dock, 0, Dock, 1, 7)  // ok_swamp_hall_dark line 440
+PORT_RANDO_EDGE(198, Dock, 1, Dock, 0, 7)  // ok_swamp_hall_dark line 440 (reverse)
+PORT_RANDO_EDGE(200, Dock, 2, Dock, 1, 7)  // 0q_swamp_hall_dark line 446
+PORT_RANDO_EDGE(200, Dock, 1, Dock, 2, 7)  // 0q_swamp_hall_dark line 446 (reverse)
+PORT_RANDO_EDGE(200, Dock, 0, Dock, 1, 7)  // 0q_swamp_hall_dark line 447
+PORT_RANDO_EDGE(200, Dock, 0, Dock, 2, 7)  // 0q_swamp_hall_dark line 448
+PORT_RANDO_EDGE(200, Dock, 2, Dock, 0, 8)  // 0q_swamp_hall_dark line 449
+PORT_RANDO_EDGE(200, Dock, 1, Dock, 0, 8)  // 0q_swamp_hall_dark line 450
+PORT_RANDO_EDGE(200, Dock, 2, Location, 3473648, 57)  // 0q_swamp_hall_dark line 451
+PORT_RANDO_EDGE(201, Dock, 0, Dock, 1, 0)  // 10_swamp_hiddenhalfpipe line 232
+PORT_RANDO_EDGE(201, Dock, 1, Dock, 0, 0)  // 10_swamp_hiddenhalfpipe line 232 (reverse)
+PORT_RANDO_EDGE(201, Dock, 0, Dock, 3, 0)  // 10_swamp_hiddenhalfpipe line 233
+PORT_RANDO_EDGE(201, Dock, 3, Dock, 0, 0)  // 10_swamp_hiddenhalfpipe line 233 (reverse)
+PORT_RANDO_EDGE(201, Dock, 0, Dock, 2, 32)  // 10_swamp_hiddenhalfpipe line 234
+PORT_RANDO_EDGE(201, Dock, 2, Dock, 0, 0)  // 10_swamp_hiddenhalfpipe line 235
+PORT_RANDO_EDGE(201, Dock, 3, Location, 3539117, 58)  // 10_swamp_hiddenhalfpipe line 236
+PORT_RANDO_EDGE(202, Dock, 0, Dock, 1, 0)  // 08_swamp_grappleguardian line 241
+PORT_RANDO_EDGE(202, Dock, 0, Dock, 2, 0)  // 08_swamp_grappleguardian line 242
+PORT_RANDO_EDGE(202, Dock, 1, Dock, 2, 0)  // 08_swamp_grappleguardian line 243
+PORT_RANDO_EDGE(202, Dock, 2, Dock, 1, 0)  // 08_swamp_grappleguardian line 243 (reverse)
+PORT_RANDO_EDGE(202, Dock, 1, Dock, 0, 42)  // 08_swamp_grappleguardian line 244
+PORT_RANDO_EDGE(202, Dock, 2, Dock, 0, 42)  // 08_swamp_grappleguardian line 245
+PORT_RANDO_EDGE(202, Dock, 0, Dock, 3, 30)  // 08_swamp_grappleguardian line 246
+PORT_RANDO_EDGE(202, Dock, 3, Dock, 0, 30)  // 08_swamp_grappleguardian line 246 (reverse)
+PORT_RANDO_EDGE(202, Dock, 0, Location, 3604859, 59)  // 08_swamp_grappleguardian line 247
+PORT_RANDO_EDGE(203, Dock, 1, Dock, 0, 0)  // 09_swamp_catacombs line 251
+PORT_RANDO_EDGE(203, Dock, 0, Dock, 1, 0)  // 09_swamp_catacombs line 251 (reverse)
+PORT_RANDO_EDGE(203, Dock, 1, Dock, 2, 0)  // 09_swamp_catacombs line 252
+PORT_RANDO_EDGE(203, Dock, 2, Dock, 1, 0)  // 09_swamp_catacombs line 252 (reverse)
+PORT_RANDO_EDGE(203, Dock, 1, Dock, 3, 32)  // 09_swamp_catacombs line 253
+PORT_RANDO_EDGE(203, Dock, 3, Dock, 1, 0)  // 09_swamp_catacombs line 254
+PORT_RANDO_EDGE(203, Dock, 4, Dock, 1, 0)  // 09_swamp_catacombs line 255
+PORT_RANDO_EDGE(204, Dock, 2, Dock, 0, 38)  // 11_swamp_bloggtank line 220
+PORT_RANDO_EDGE(204, Dock, 0, Dock, 2, 56)  // 11_swamp_bloggtank line 221
+PORT_RANDO_EDGE(204, Dock, 2, Dock, 1, 60)  // 11_swamp_bloggtank line 222
+PORT_RANDO_EDGE(204, Dock, 1, Dock, 2, 56)  // 11_swamp_bloggtank line 223
+PORT_RANDO_EDGE(205, Dock, 0, Dock, 3, 7)  // 10_swamp_hiddenhalfpipe_dark line 455
+PORT_RANDO_EDGE(205, Dock, 3, Dock, 0, 7)  // 10_swamp_hiddenhalfpipe_dark line 455 (reverse)
+PORT_RANDO_EDGE(205, Dock, 2, Dock, 0, 7)  // 10_swamp_hiddenhalfpipe_dark line 456
+PORT_RANDO_EDGE(205, Dock, 2, Dock, 3, 7)  // 10_swamp_hiddenhalfpipe_dark line 457
+PORT_RANDO_EDGE(205, Dock, 0, Dock, 2, 61)  // 10_swamp_hiddenhalfpipe_dark line 458
+PORT_RANDO_EDGE(206, Dock, 0, Location, 205193775, 62)  // 08_swamp_grappleguardian_dark line 466
+PORT_RANDO_EDGE(206, Dock, 0, Dock, 1, 62)  // 08_swamp_grappleguardian_dark line 467
+PORT_RANDO_EDGE(206, Dock, 0, Dock, 2, 62)  // 08_swamp_grappleguardian_dark line 468
+PORT_RANDO_EDGE(206, Dock, 1, Dock, 2, 62)  // 08_swamp_grappleguardian_dark line 469
+PORT_RANDO_EDGE(206, Dock, 2, Dock, 1, 62)  // 08_swamp_grappleguardian_dark line 469 (reverse)
+PORT_RANDO_EDGE(206, Dock, 1, Dock, 0, 21)  // 08_swamp_grappleguardian_dark line 470
+PORT_RANDO_EDGE(206, Dock, 2, Dock, 0, 21)  // 08_swamp_grappleguardian_dark line 471
+PORT_RANDO_EDGE(207, Dock, 1, Dock, 2, 7)  // 11_swamp_bloggtank_dark line 477
+PORT_RANDO_EDGE(207, Dock, 2, Dock, 1, 63)  // 11_swamp_bloggtank_dark line 478
+PORT_RANDO_EDGE(207, Dock, 2, Location, 3932385, 64)  // 11_swamp_bloggtank_dark line 479
+PORT_RANDO_EDGE(207, Dock, 2, Location, 138150423, 35)  // 11_swamp_bloggtank_dark line 480
+PORT_RANDO_EDGE(208, Dock, 0, Dock, 1, 59)  // 0p_swamp_hall line 260
+PORT_RANDO_EDGE(208, Dock, 1, Dock, 0, 59)  // 0p_swamp_hall line 260 (reverse)
+PORT_RANDO_EDGE(208, Dock, 0, Location, 3997746, 59)  // 0p_swamp_hall line 261
+PORT_RANDO_EDGE(209, Dock, 0, Dock, 1, 9)  // 0n_swamp_hall line 265
+PORT_RANDO_EDGE(209, Dock, 1, Dock, 0, 9)  // 0n_swamp_hall line 265 (reverse)
+PORT_RANDO_EDGE(210, Dock, 0, Dock, 1, 9)  // 0o_swamp_hall line 269
+PORT_RANDO_EDGE(210, Dock, 1, Dock, 0, 9)  // 0o_swamp_hall line 269 (reverse)
+PORT_RANDO_EDGE(210, Dock, 1, Location, 4128859, 9)  // 0o_swamp_hall line 270
+PORT_RANDO_EDGE(211, Dock, 0, Dock, 1, 0)  // 0r_swamp_hall line 274
+PORT_RANDO_EDGE(211, Dock, 1, Dock, 0, 0)  // 0r_swamp_hall line 274 (reverse)
+PORT_RANDO_EDGE(212, Dock, 3, Dock, 0, 7)  // 09_swamp_catacombs_dark line 488
+PORT_RANDO_EDGE(212, Dock, 4, Dock, 0, 7)  // 09_swamp_catacombs_dark line 489
+PORT_RANDO_EDGE(212, Dock, 0, Dock, 3, 8)  // 09_swamp_catacombs_dark line 490
+PORT_RANDO_EDGE(212, Dock, 0, Location, 4260134, 15)  // 09_swamp_catacombs_dark line 491
+PORT_RANDO_EDGE(213, Dock, 0, Location, 4325440, 0)  // 00_pickup_swamp_c line 227
+PORT_RANDO_EDGE(214, Dock, 0, Dock, 1, 35)  // 0n_swamp_hall_dark line 497
+PORT_RANDO_EDGE(214, Dock, 1, Dock, 0, 35)  // 0n_swamp_hall_dark line 497 (reverse)
+PORT_RANDO_EDGE(214, Dock, 0, Location, 4390935, 35)  // 0n_swamp_hall_dark line 498
+PORT_RANDO_EDGE(215, Dock, 0, Dock, 1, 35)  // 0o_swamp_hall_dark line 502
+PORT_RANDO_EDGE(215, Dock, 1, Dock, 0, 35)  // 0o_swamp_hall_dark line 502 (reverse)
+PORT_RANDO_EDGE(216, Dock, 0, Teleporter, 4522032, 0)  // 00_elev_swamp_cliff_f line 278
+PORT_RANDO_EDGE(216, Teleporter, 4522032, Dock, 0, 0)  // 00_elev_swamp_cliff_f line 278 (reverse)
+PORT_RANDO_EDGE(217, Dock, 0, Teleporter, 38, 0)  // 00_elev_cliff_temple_c line 32
+PORT_RANDO_EDGE(217, Teleporter, 38, Dock, 0, 0)  // 00_elev_cliff_temple_c line 32 (reverse)
+PORT_RANDO_EDGE(218, Dock, 0, Dock, 1, 5)  // 0a_cliff_hall line 36
+PORT_RANDO_EDGE(218, Dock, 1, Dock, 0, 5)  // 0a_cliff_hall line 36 (reverse)
+PORT_RANDO_EDGE(219, Dock, 1, Dock, 0, 30)  // 01_cliff_entrance line 42
+PORT_RANDO_EDGE(219, Dock, 0, Dock, 1, 30)  // 01_cliff_entrance line 42 (reverse)
+PORT_RANDO_EDGE(219, Dock, 1, Location, 131298, 65)  // 01_cliff_entrance line 43
+PORT_RANDO_EDGE(220, Dock, 0, Dock, 1, 0)  // 0b_cliff_hall line 59
+PORT_RANDO_EDGE(220, Dock, 1, Dock, 0, 0)  // 0b_cliff_hall line 59 (reverse)
+PORT_RANDO_EDGE(221, Dock, 0, Dock, 1, 0)  // 0c_cliff_hall line 62
+PORT_RANDO_EDGE(221, Dock, 1, Dock, 0, 0)  // 0c_cliff_hall line 62 (reverse)
+PORT_RANDO_EDGE(222, Dock, 3, Dock, 0, 0)  // 02_cliff_reactorcore line 67
+PORT_RANDO_EDGE(222, Dock, 0, Dock, 3, 0)  // 02_cliff_reactorcore line 67 (reverse)
+PORT_RANDO_EDGE(222, Dock, 3, Dock, 4, 1)  // 02_cliff_reactorcore line 68
+PORT_RANDO_EDGE(222, Dock, 4, Dock, 3, 1)  // 02_cliff_reactorcore line 68 (reverse)
+PORT_RANDO_EDGE(222, Dock, 3, Dock, 1, 43)  // 02_cliff_reactorcore line 69
+PORT_RANDO_EDGE(222, Dock, 1, Dock, 3, 0)  // 02_cliff_reactorcore line 70
+PORT_RANDO_EDGE(222, Dock, 1, Dock, 2, 0)  // 02_cliff_reactorcore line 71
+PORT_RANDO_EDGE(222, Dock, 2, Dock, 1, 0)  // 02_cliff_reactorcore line 71 (reverse)
+PORT_RANDO_EDGE(222, Dock, 1, Location, 327779, 43)  // 02_cliff_reactorcore line 72
+PORT_RANDO_EDGE(224, Dock, 0, Dock, 1, 9)  // 0d_cliff_hall line 83
+PORT_RANDO_EDGE(224, Dock, 1, Dock, 0, 9)  // 0d_cliff_hall line 83 (reverse)
+PORT_RANDO_EDGE(225, Dock, 0, Dock, 1, 0)  // 0m_cliff_hall line 87
+PORT_RANDO_EDGE(225, Dock, 1, Dock, 0, 0)  // 0m_cliff_hall line 87 (reverse)
+PORT_RANDO_EDGE(225, Dock, 0, Location, 524643, 0)  // 0m_cliff_hall line 88
+PORT_RANDO_EDGE(225, Dock, 0, Dock, 3, 6)  // 0m_cliff_hall line 89
+PORT_RANDO_EDGE(225, Dock, 0, Dock, 2, 66)  // 0m_cliff_hall line 90
+PORT_RANDO_EDGE(225, Dock, 2, Dock, 0, 0)  // 0m_cliff_hall line 91
+PORT_RANDO_EDGE(225, Dock, 3, Dock, 0, 0)  // 0m_cliff_hall line 92
+PORT_RANDO_EDGE(225, Dock, 4, Dock, 0, 0)  // 0m_cliff_hall line 93
+PORT_RANDO_EDGE(225, Dock, 5, Dock, 0, 0)  // 0m_cliff_hall line 94
+PORT_RANDO_EDGE(226, Dock, 0, Location, 590026, 67)  // 00_pickup_cliff_a line 79
+PORT_RANDO_EDGE(227, Dock, 2, Dock, 0, 14)  // 03_cliff_chicane line 101
+PORT_RANDO_EDGE(227, Dock, 0, Dock, 2, 14)  // 03_cliff_chicane line 101 (reverse)
+PORT_RANDO_EDGE(227, Dock, 2, Dock, 1, 30)  // 03_cliff_chicane line 102
+PORT_RANDO_EDGE(227, Dock, 1, Dock, 2, 30)  // 03_cliff_chicane line 102 (reverse)
+PORT_RANDO_EDGE(227, Dock, 1, Location, 655429, 4)  // 03_cliff_chicane line 103
+PORT_RANDO_EDGE(227, Dock, 0, Dock, 3, 6)  // 03_cliff_chicane line 104
+PORT_RANDO_EDGE(227, Dock, 3, Dock, 0, 0)  // 03_cliff_chicane line 105
+PORT_RANDO_EDGE(228, Dock, 1, Dock, 2, 0)  // 04_cliff_contraption line 110
+PORT_RANDO_EDGE(228, Dock, 2, Dock, 1, 0)  // 04_cliff_contraption line 110 (reverse)
+PORT_RANDO_EDGE(228, Dock, 2, Dock, 0, 43)  // 04_cliff_contraption line 111
+PORT_RANDO_EDGE(228, Dock, 0, Dock, 2, 0)  // 04_cliff_contraption line 112
+PORT_RANDO_EDGE(228, Dock, 2, Dock, 3, 6)  // 04_cliff_contraption line 113
+PORT_RANDO_EDGE(228, Dock, 3, Dock, 2, 0)  // 04_cliff_contraption line 114
+PORT_RANDO_EDGE(228, Dock, 4, Dock, 2, 0)  // 04_cliff_contraption line 115
+PORT_RANDO_EDGE(228, Dock, 2, Location, 721311, 68)  // 04_cliff_contraption line 116
+PORT_RANDO_EDGE(229, Dock, 1, Dock, 0, 7)  // 0m_cliff_hall_dark line 309
+PORT_RANDO_EDGE(229, Dock, 2, Dock, 0, 7)  // 0m_cliff_hall_dark line 310
+PORT_RANDO_EDGE(229, Dock, 0, Dock, 3, 8)  // 0m_cliff_hall_dark line 311
+PORT_RANDO_EDGE(229, Dock, 0, Dock, 4, 8)  // 0m_cliff_hall_dark line 312
+PORT_RANDO_EDGE(230, Dock, 0, Dock, 1, 0)  // 0q_cliff_hall line 120
+PORT_RANDO_EDGE(230, Dock, 1, Dock, 0, 0)  // 0q_cliff_hall line 120 (reverse)
+PORT_RANDO_EDGE(231, Dock, 0, Dock, 1, 0)  // 0e_cliff_hall line 124
+PORT_RANDO_EDGE(231, Dock, 1, Dock, 0, 0)  // 0e_cliff_hall line 124 (reverse)
+PORT_RANDO_EDGE(232, Dock, 3, Dock, 2, 7)  // 03_cliff_chicane_dark line 317
+PORT_RANDO_EDGE(232, Dock, 2, Dock, 0, 39)  // 03_cliff_chicane_dark line 318
+PORT_RANDO_EDGE(232, Dock, 0, Dock, 2, 39)  // 03_cliff_chicane_dark line 318 (reverse)
+PORT_RANDO_EDGE(232, Dock, 2, Dock, 1, 31)  // 03_cliff_chicane_dark line 319
+PORT_RANDO_EDGE(232, Dock, 1, Dock, 2, 31)  // 03_cliff_chicane_dark line 319 (reverse)
+PORT_RANDO_EDGE(232, Dock, 2, Dock, 3, 8)  // 03_cliff_chicane_dark line 320
+PORT_RANDO_EDGE(232, Dock, 2, Location, 983385, 31)  // 03_cliff_chicane_dark line 321
+PORT_RANDO_EDGE(233, Dock, 1, Dock, 0, 1)  // 0l_cliff_hall line 128
+PORT_RANDO_EDGE(233, Dock, 0, Dock, 1, 1)  // 0l_cliff_hall line 128 (reverse)
+PORT_RANDO_EDGE(233, Dock, 1, Location, 1048745, 1)  // 0l_cliff_hall line 129
+PORT_RANDO_EDGE(234, Dock, 0, Dock, 1, 0)  // 0p_cliff_hall line 134
+PORT_RANDO_EDGE(234, Dock, 1, Dock, 0, 0)  // 0p_cliff_hall line 134 (reverse)
+PORT_RANDO_EDGE(235, Dock, 3, Dock, 0, 7)  // 04_cliff_contraption_dark line 325
+PORT_RANDO_EDGE(235, Dock, 0, Dock, 2, 64)  // 04_cliff_contraption_dark line 326
+PORT_RANDO_EDGE(235, Dock, 2, Dock, 0, 64)  // 04_cliff_contraption_dark line 326 (reverse)
+PORT_RANDO_EDGE(235, Dock, 0, Dock, 3, 69)  // 04_cliff_contraption_dark line 327
+PORT_RANDO_EDGE(235, Dock, 0, Dock, 4, 69)  // 04_cliff_contraption_dark line 328
+PORT_RANDO_EDGE(236, Dock, 0, Teleporter, 1245332, 0)  // 00_elev_cliff_sand_d line 142
+PORT_RANDO_EDGE(236, Teleporter, 1245332, Dock, 0, 0)  // 00_elev_cliff_sand_d line 142 (reverse)
+PORT_RANDO_EDGE(237, Dock, 0, Dock, 1, 0)  // 06_cliff_spiderballguardian line 147
+PORT_RANDO_EDGE(237, Dock, 1, Dock, 0, 0)  // 06_cliff_spiderballguardian line 147 (reverse)
+PORT_RANDO_EDGE(237, Dock, 0, Dock, 2, 0)  // 06_cliff_spiderballguardian line 148
+PORT_RANDO_EDGE(237, Dock, 2, Dock, 0, 0)  // 06_cliff_spiderballguardian line 148 (reverse)
+PORT_RANDO_EDGE(237, Dock, 0, Dock, 3, 0)  // 06_cliff_spiderballguardian line 149
+PORT_RANDO_EDGE(237, Dock, 3, Dock, 0, 0)  // 06_cliff_spiderballguardian line 149 (reverse)
+PORT_RANDO_EDGE(237, Dock, 0, Location, 1311406, 0)  // 06_cliff_spiderballguardian line 150
+PORT_RANDO_EDGE(237, Dock, 0, Location, 1311926, 12)  // 06_cliff_spiderballguardian line 151
+PORT_RANDO_EDGE(237, Dock, 1, Dock, 4, 6)  // 06_cliff_spiderballguardian line 152
+PORT_RANDO_EDGE(237, Dock, 4, Dock, 1, 0)  // 06_cliff_spiderballguardian line 153
+PORT_RANDO_EDGE(238, Dock, 1, Location, 1376308, 7)  // 0q_cliff_hall_dark line 332
+PORT_RANDO_EDGE(239, Dock, 0, Dock, 1, 7)  // 0e_cliff_hall_dark line 335
+PORT_RANDO_EDGE(239, Dock, 1, Dock, 0, 7)  // 0e_cliff_hall_dark line 335 (reverse)
+PORT_RANDO_EDGE(240, Dock, 0, Dock, 1, 7)  // 0d_cliff_hall_dark line 305
+PORT_RANDO_EDGE(240, Dock, 1, Dock, 0, 7)  // 0d_cliff_hall_dark line 305 (reverse)
+PORT_RANDO_EDGE(241, Dock, 0, Dock, 1, 0)  // 08_cliff_ringtowers line 180
+PORT_RANDO_EDGE(241, Dock, 1, Dock, 0, 0)  // 08_cliff_ringtowers line 180 (reverse)
+PORT_RANDO_EDGE(241, Dock, 1, Dock, 3, 0)  // 08_cliff_ringtowers line 181
+PORT_RANDO_EDGE(241, Dock, 3, Dock, 1, 0)  // 08_cliff_ringtowers line 181 (reverse)
+PORT_RANDO_EDGE(241, Dock, 0, Dock, 2, 0)  // 08_cliff_ringtowers line 182
+PORT_RANDO_EDGE(241, Dock, 2, Dock, 0, 0)  // 08_cliff_ringtowers line 182 (reverse)
+PORT_RANDO_EDGE(241, Dock, 0, Dock, 3, 0)  // 08_cliff_ringtowers line 183
+PORT_RANDO_EDGE(241, Dock, 3, Dock, 0, 0)  // 08_cliff_ringtowers line 183 (reverse)
+PORT_RANDO_EDGE(241, Dock, 3, Dock, 4, 6)  // 08_cliff_ringtowers line 184
+PORT_RANDO_EDGE(241, Dock, 4, Dock, 3, 0)  // 08_cliff_ringtowers line 185
+PORT_RANDO_EDGE(241, Dock, 3, Location, 1573246, 30)  // 08_cliff_ringtowers line 186
+PORT_RANDO_EDGE(242, Dock, 0, Teleporter, 1638535, 0)  // 00_elev_cliff_swamp_f line 138
+PORT_RANDO_EDGE(242, Teleporter, 1638535, Dock, 0, 0)  // 00_elev_cliff_swamp_f line 138 (reverse)
+PORT_RANDO_EDGE(243, Dock, 1, Dock, 0, 70)  // 0l_cliff_hall_dark line 339
+PORT_RANDO_EDGE(243, Dock, 0, Dock, 1, 7)  // 0l_cliff_hall_dark line 340
+PORT_RANDO_EDGE(244, Dock, 0, Dock, 1, 43)  // 0f_cliff_hall line 169
+PORT_RANDO_EDGE(244, Dock, 1, Dock, 0, 43)  // 0f_cliff_hall line 169 (reverse)
+PORT_RANDO_EDGE(245, Dock, 0, Dock, 1, 1)  // 0h_cliff_hall line 174
+PORT_RANDO_EDGE(245, Dock, 1, Dock, 0, 1)  // 0h_cliff_hall line 174 (reverse)
+PORT_RANDO_EDGE(246, Dock, 0, Dock, 1, 6)  // 00_pickup_cliff_c line 164
+PORT_RANDO_EDGE(246, Dock, 1, Dock, 0, 0)  // 00_pickup_cliff_c line 165
+PORT_RANDO_EDGE(247, Dock, 0, Dock, 3, 7)  // 06_cliff_spiderballguardian_dark line 343
+PORT_RANDO_EDGE(247, Dock, 3, Dock, 0, 7)  // 06_cliff_spiderballguardian_dark line 343 (reverse)
+PORT_RANDO_EDGE(247, Dock, 0, Dock, 1, 71)  // 06_cliff_spiderballguardian_dark line 344
+PORT_RANDO_EDGE(247, Dock, 1, Dock, 0, 71)  // 06_cliff_spiderballguardian_dark line 344 (reverse)
+PORT_RANDO_EDGE(247, Dock, 1, Dock, 4, 8)  // 06_cliff_spiderballguardian_dark line 345
+PORT_RANDO_EDGE(247, Dock, 4, Dock, 1, 7)  // 06_cliff_spiderballguardian_dark line 346
+PORT_RANDO_EDGE(247, Dock, 0, Location, 337510804, 72)  // 06_cliff_spiderballguardian_dark line 347
+PORT_RANDO_EDGE(248, Dock, 0, Dock, 1, 7)  // 02_cliff_reactorcore_dark line 293
+PORT_RANDO_EDGE(248, Dock, 1, Dock, 0, 7)  // 02_cliff_reactorcore_dark line 293 (reverse)
+PORT_RANDO_EDGE(248, Dock, 0, Dock, 2, 7)  // 02_cliff_reactorcore_dark line 294
+PORT_RANDO_EDGE(248, Dock, 2, Dock, 0, 7)  // 02_cliff_reactorcore_dark line 294 (reverse)
+PORT_RANDO_EDGE(248, Dock, 0, Dock, 3, 7)  // 02_cliff_reactorcore_dark line 295
+PORT_RANDO_EDGE(248, Dock, 3, Dock, 0, 7)  // 02_cliff_reactorcore_dark line 295 (reverse)
+PORT_RANDO_EDGE(249, Dock, 0, Dock, 1, 0)  // 0n_cliff_hall line 190
+PORT_RANDO_EDGE(249, Dock, 1, Dock, 0, 0)  // 0n_cliff_hall line 190 (reverse)
+PORT_RANDO_EDGE(249, Dock, 1, Location, 2097363, 73)  // 0n_cliff_hall line 191
+PORT_RANDO_EDGE(250, Dock, 0, Dock, 1, 44)  // 0k_cliff_hall line 196
+PORT_RANDO_EDGE(250, Dock, 1, Dock, 0, 44)  // 0k_cliff_hall line 196 (reverse)
+PORT_RANDO_EDGE(250, Dock, 1, Location, 2162719, 0)  // 0k_cliff_hall line 197
+PORT_RANDO_EDGE(251, Dock, 0, Dock, 2, 0)  // 0o_cliff_hall line 201
+PORT_RANDO_EDGE(251, Dock, 2, Dock, 0, 0)  // 0o_cliff_hall line 201 (reverse)
+PORT_RANDO_EDGE(251, Dock, 1, Dock, 0, 0)  // 0o_cliff_hall line 202
+PORT_RANDO_EDGE(252, Dock, 0, Dock, 1, 7)  // 08_cliff_ringtowers_dark line 356
+PORT_RANDO_EDGE(252, Dock, 1, Dock, 0, 7)  // 08_cliff_ringtowers_dark line 356 (reverse)
+PORT_RANDO_EDGE(252, Dock, 1, Dock, 3, 7)  // 08_cliff_ringtowers_dark line 357
+PORT_RANDO_EDGE(252, Dock, 3, Dock, 1, 7)  // 08_cliff_ringtowers_dark line 357 (reverse)
+PORT_RANDO_EDGE(252, Dock, 4, Dock, 3, 7)  // 08_cliff_ringtowers_dark line 358
+PORT_RANDO_EDGE(252, Dock, 3, Dock, 4, 8)  // 08_cliff_ringtowers_dark line 359
+PORT_RANDO_EDGE(252, Dock, 1, Location, 2293890, 7)  // 08_cliff_ringtowers_dark line 360
+PORT_RANDO_EDGE(252, Dock, 3, Location, 2293827, 22)  // 08_cliff_ringtowers_dark line 361
+PORT_RANDO_EDGE(253, Dock, 0, Dock, 3, 0)  // 07cliff_gyro line 218
+PORT_RANDO_EDGE(253, Dock, 3, Dock, 0, 0)  // 07cliff_gyro line 218 (reverse)
+PORT_RANDO_EDGE(253, Dock, 0, Dock, 4, 0)  // 07cliff_gyro line 219
+PORT_RANDO_EDGE(253, Dock, 4, Dock, 0, 0)  // 07cliff_gyro line 219 (reverse)
+PORT_RANDO_EDGE(253, Dock, 3, Dock, 4, 0)  // 07cliff_gyro line 220
+PORT_RANDO_EDGE(253, Dock, 4, Dock, 3, 0)  // 07cliff_gyro line 220 (reverse)
+PORT_RANDO_EDGE(253, Dock, 0, Dock, 2, 5)  // 07cliff_gyro line 221
+PORT_RANDO_EDGE(253, Dock, 2, Dock, 0, 5)  // 07cliff_gyro line 222
+PORT_RANDO_EDGE(253, Dock, 2, Dock, 1, 59)  // 07cliff_gyro line 223
+PORT_RANDO_EDGE(253, Dock, 1, Dock, 2, 59)  // 07cliff_gyro line 223 (reverse)
+PORT_RANDO_EDGE(253, Dock, 2, Location, 136577160, 74)  // 07cliff_gyro line 224
+PORT_RANDO_EDGE(254, Dock, 0, Named, 0, 44)  // 09_cliff_temple line 245
+PORT_RANDO_EDGE(254, Named, 0, Dock, 0, 44)  // 09_cliff_temple line 245 (reverse)
+PORT_RANDO_EDGE(254, Dock, 1, Named, 0, 44)  // 09_cliff_temple line 246
+PORT_RANDO_EDGE(254, Named, 0, Dock, 1, 44)  // 09_cliff_temple line 246 (reverse)
+PORT_RANDO_EDGE(254, Dock, 2, Named, 0, 44)  // 09_cliff_temple line 247
+PORT_RANDO_EDGE(254, Named, 0, Dock, 2, 44)  // 09_cliff_temple line 247 (reverse)
+PORT_RANDO_EDGE(254, Dock, 3, Named, 0, 43)  // 09_cliff_temple line 248
+PORT_RANDO_EDGE(254, Named, 0, Dock, 3, 43)  // 09_cliff_temple line 248 (reverse)
+PORT_RANDO_EDGE(255, Dock, 0, Dock, 1, 8)  // 00_pickup_cliff_c_dark line 351
+PORT_RANDO_EDGE(255, Dock, 1, Dock, 0, 7)  // 00_pickup_cliff_c_dark line 352
+PORT_RANDO_EDGE(256, Dock, 0, Dock, 1, 75)  // 0f_cliff_hall_dark line 365
+PORT_RANDO_EDGE(256, Dock, 1, Dock, 0, 75)  // 0f_cliff_hall_dark line 365 (reverse)
+PORT_RANDO_EDGE(258, Dock, 0, Dock, 1, 7)  // 0c_cliff_hall_dark line 289
+PORT_RANDO_EDGE(258, Dock, 1, Dock, 0, 7)  // 0c_cliff_hall_dark line 289 (reverse)
+PORT_RANDO_EDGE(260, Dock, 0, Dock, 1, 76)  // 0o_cliff_hall_dark line 372
+PORT_RANDO_EDGE(261, Dock, 0, Dock, 1, 6)  // 05_cliff_engineroom line 207
+PORT_RANDO_EDGE(261, Dock, 1, Dock, 0, 0)  // 05_cliff_engineroom line 208
+PORT_RANDO_EDGE(261, Dock, 0, Dock, 2, 77)  // 05_cliff_engineroom line 209
+PORT_RANDO_EDGE(261, Dock, 2, Dock, 0, 5)  // 05_cliff_engineroom line 210
+PORT_RANDO_EDGE(261, Dock, 0, Location, 2883687, 59)  // 05_cliff_engineroom line 211
+PORT_RANDO_EDGE(262, Dock, 0, Dock, 1, 7)  // 0n_cliff_hall_dark line 369
+PORT_RANDO_EDGE(262, Dock, 1, Dock, 0, 7)  // 0n_cliff_hall_dark line 369 (reverse)
+PORT_RANDO_EDGE(263, Dock, 0, Dock, 1, 5)  // 0g_cliff_hall line 238
+PORT_RANDO_EDGE(263, Dock, 1, Dock, 0, 5)  // 0g_cliff_hall line 238 (reverse)
+PORT_RANDO_EDGE(263, Dock, 0, Location, 3014807, 5)  // 0g_cliff_hall line 239
+PORT_RANDO_EDGE(264, Dock, 0, Dock, 1, 0)  // 0i_cliff_hall line 252
+PORT_RANDO_EDGE(264, Dock, 1, Dock, 0, 0)  // 0i_cliff_hall line 252 (reverse)
+PORT_RANDO_EDGE(266, Dock, 0, Dock, 1, 9)  // 00_cliff_generator_connect line 255
+PORT_RANDO_EDGE(266, Dock, 1, Dock, 0, 9)  // 00_cliff_generator_connect line 255 (reverse)
+PORT_RANDO_EDGE(267, Dock, 0, Dock, 3, 7)  // 07cliff_gyro_dark line 386
+PORT_RANDO_EDGE(267, Dock, 3, Dock, 0, 7)  // 07cliff_gyro_dark line 386 (reverse)
+PORT_RANDO_EDGE(267, Dock, 0, Dock, 1, 7)  // 07cliff_gyro_dark line 387
+PORT_RANDO_EDGE(267, Dock, 1, Dock, 0, 7)  // 07cliff_gyro_dark line 387 (reverse)
+PORT_RANDO_EDGE(267, Dock, 1, Dock, 2, 7)  // 07cliff_gyro_dark line 388
+PORT_RANDO_EDGE(267, Dock, 2, Dock, 1, 7)  // 07cliff_gyro_dark line 388 (reverse)
+PORT_RANDO_EDGE(267, Dock, 0, Location, 3277067, 64)  // 07cliff_gyro_dark line 389
+PORT_RANDO_EDGE(268, Dock, 0, Dock, 1, 7)  // 0b_cliff_hall_dark line 286
+PORT_RANDO_EDGE(268, Dock, 1, Dock, 0, 7)  // 0b_cliff_hall_dark line 286 (reverse)
+PORT_RANDO_EDGE(269, Dock, 1, Named, 0, 7)  // 05_cliff_engineroom_dark line 378
+PORT_RANDO_EDGE(269, Dock, 2, Named, 1, 7)  // 05_cliff_engineroom_dark line 379
+PORT_RANDO_EDGE(269, Named, 0, Dock, 1, 8)  // 05_cliff_engineroom_dark line 380
+PORT_RANDO_EDGE(269, Named, 1, Dock, 2, 8)  // 05_cliff_engineroom_dark line 381
+PORT_RANDO_EDGE(269, Named, 0, Named, 1, 21)  // 05_cliff_engineroom_dark line 382
+PORT_RANDO_EDGE(269, Named, 1, Named, 0, 21)  // 05_cliff_engineroom_dark line 382 (reverse)
+PORT_RANDO_EDGE(270, Dock, 3, Dock, 0, 7)  // 09_cliff_temple_dark line 394
+PORT_RANDO_EDGE(270, Dock, 0, Dock, 3, 7)  // 09_cliff_temple_dark line 394 (reverse)
+PORT_RANDO_EDGE(270, Dock, 3, Dock, 1, 7)  // 09_cliff_temple_dark line 395
+PORT_RANDO_EDGE(270, Dock, 1, Dock, 3, 7)  // 09_cliff_temple_dark line 395 (reverse)
+PORT_RANDO_EDGE(270, Dock, 3, Location, 339018007, 78)  // 09_cliff_temple_dark line 396
+PORT_RANDO_EDGE(271, Dock, 0, Dock, 1, 0)  // 0j_cliff_hall_bottom line 266
+PORT_RANDO_EDGE(271, Dock, 1, Dock, 0, 0)  // 0j_cliff_hall_bottom line 266 (reverse)
+PORT_RANDO_EDGE(273, Dock, 0, Dock, 1, 7)  // 0g_cliff_hall_dark line 400
+PORT_RANDO_EDGE(273, Dock, 1, Dock, 0, 7)  // 0g_cliff_hall_dark line 400 (reverse)
+PORT_RANDO_EDGE(274, Dock, 0, Dock, 1, 7)  // 0i_cliff_hall_dark line 404
+PORT_RANDO_EDGE(274, Dock, 1, Dock, 0, 7)  // 0i_cliff_hall_dark line 404 (reverse)
+PORT_RANDO_EDGE(276, Dock, 0, Location, 272302439, 37)  // 01_cliff_entrance_dark line 282
+PORT_RANDO_EDGE(277, Dock, 0, Dock, 1, 35)  // 00_cliff_generator_connect_dark line 410
+PORT_RANDO_EDGE(277, Dock, 1, Dock, 0, 35)  // 00_cliff_generator_connect_dark line 410 (reverse)
+PORT_RANDO_EDGE(278, Dock, 0, Dock, 1, 12)  // 0j_cliff_hall_loop line 269
+PORT_RANDO_EDGE(278, Dock, 1, Dock, 0, 12)  // 0j_cliff_hall_loop line 269 (reverse)
+PORT_RANDO_EDGE(282, Dock, 0, Dock, 2, 29)  // 10_cliff_rooftop line 273
+PORT_RANDO_EDGE(282, Dock, 1, Dock, 0, 0)  // 10_cliff_rooftop line 274
+PORT_RANDO_EDGE(282, Dock, 2, Dock, 0, 0)  // 10_cliff_rooftop line 275
+PORT_RANDO_EDGE(282, Dock, 0, Location, 4260007, 12)  // 10_cliff_rooftop line 276
+PORT_RANDO_EDGE(283, Dock, 2, Dock, 1, 79)  // 10_cliff_rooftop_dark line 421
 #endif

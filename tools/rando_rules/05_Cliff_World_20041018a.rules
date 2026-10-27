@@ -1,0 +1,422 @@
+# Sanctuary Fortress and the Ing Hive (05_Cliff_World_20041018a), light and
+# dark areas.
+#
+# Sources: disc data via tools/rando_world.py --dump-obstacles (dock, location
+# and obstacle positions), the SCLY script objects of each area (object names,
+# layers and connections), the decomp source in this repo, and knowledge of
+# the game. No randomizer logic database was used.
+#
+# Starting inventory assumed (not relisted): PowerBeam, ChargeBeam,
+# CombatVisor, ScanVisor, VariaSuit, MorphBall.
+#
+# Conventions used here (same as 01_Temple_Hub_20041018.rules):
+# - Dock locks (beam, shield, translator, script) are applied by the
+#   evaluator; rules describe movement inside a room only.
+# - Light-to-dark portals need DarkBeam; dark-to-light portals need LightBeam.
+#   A NoDoor dock with a portal object next to it is entered through that
+#   portal; a NoDoor dock without one is arrival-only.
+# - Dark Aether traversal needs DarkSuit|LightSuit (conservative; the
+#   Ing Hive's air is lethal without them and Safe Zones are sparse).
+#   Safe Zone crystals are covered by that requirement.
+# - Bomb requirements spell out MorphBall even though it is a starting item.
+# - Objects on layers that start inactive are listed as ignored unless the
+#   rule already requires what they would need.
+# - Vertical gaps of more than ~15 units with no recorded lift need
+#   SpaceJumpBoots or a spider track; when that is a guess the rule is
+#   marked # unsure.
+
+# ---------------------------------------------------------------- light world
+
+area 00_elev_cliff_temple_c
+    # Elevator room: one dock, nothing to traverse.
+    dock0 - tel0x00000026: any
+
+area 0a_cliff_hall
+    # Spinner + attract ball by dock1 raise the Luminoth door barrier.
+    dock0 - dock1: MorphBall & BoostBall    # unsure: spinner may be optional
+    covers 0x000100D4 0x000100DB
+
+area 01_cliff_entrance
+    # Sanctuary Entrance: the bridge is smashed on the first visit; the far
+    # side is reached along the 87-segment spider track and bomb slots.
+    dock1 - dock0: MorphBall & SpiderBall & MorphBallBombs    # unsure: post-bridge-smash route
+    dock1 > loc0x000200E2: MorphBall & SpiderBall & MorphBallBombs & SpaceJumpBoots    # unsure: 43 units above dock1
+    covers 0x00000000
+    ignore 0x00020085: Power Bomb glass beside the dock0 elevator; shortcut not relied on    # unsure
+    ignore 0x18020099: layer 6 starts inactive (post-bridge cannons)
+    ignore 0x180203E8: layer 6 starts inactive (post-bridge cannons)
+    ignore 0x18020177: layer 6 starts inactive (post-bridge cannons)
+    ignore 0x180200C1: layer 6 starts inactive (post-bridge cannons)
+    ignore 0x180203BD: layer 6 starts inactive (post-bridge cannons)
+    ignore 0x180203C9: layer 6 starts inactive (post-bridge cannons)
+    ignore 0x18020104: layer 6 starts inactive (post-bridge cannons)
+    ignore 0x18020184: layer 6 starts inactive (post-bridge cannons)
+    ignore 0x180203EE: layer 6 starts inactive (post-bridge cannons)
+    ignore 0x1802035A: layer 6 starts inactive (post-bridge cannons)
+    ignore 0x18020352: layer 6 starts inactive (post-bridge cannons)
+
+area 0b_cliff_hall
+    dock0 - dock1: any
+
+area 0c_cliff_hall
+    dock0 - dock1: any
+
+area 02_cliff_reactorcore
+    # Dynamo Works: floor docks 0, 3, 4 at z -139.7; docks 1, 2 on a
+    # balcony 30 units up reached by the spider track.
+    dock3 - dock0: any
+    dock3 - dock4: MorphBall    # cannon + ball trigger by the pickup room door
+    dock3 > dock1: MorphBall & SpiderBall    # unsure: 30-unit climb
+    dock1 > dock3: any
+    dock1 - dock2: any
+    dock1 > loc0x00050063: MorphBall & SpiderBall    # unsure: spider track ends near the tank
+    covers 0x00050059 0x0005002C 0x00000000
+
+area 00_save_cliff_a
+    # One dock.
+
+area 00_pickup_cliff_a
+    dock0 > loc0x000900CA: MorphBall & SpiderBall & SpaceJumpBoots    # unsure: 42 units above the door on a platform
+
+area 0d_cliff_hall
+    # Four bomb slots drive the gyroscope barriers.
+    dock0 - dock1: MorphBall & MorphBallBombs    # unsure: layer-3 bomb slots may be pre-solved
+    covers 0x0C0700AF 0x0C0700BD 0x0C0700D9 0x0C0700D2
+
+area 0m_cliff_hall
+    dock0 - dock1: any
+    dock0 > loc0x00080163: any
+    dock0 > dock3: DarkBeam
+    dock0 > dock2: DarkBeam & MorphBall & Powerbomb    # unsure: portal sits behind the PB glass
+    dock2 > dock0: any
+    dock3 > dock0: any
+    dock4 > dock0: any
+    dock5 > dock0: any
+    covers 0x000800A5 0x000800EE 0x0008013A
+    ignore 0x00000000: 6-segment track by the PB glass; not on a dock path    # unsure
+
+area 03_cliff_chicane
+    # Watch Station. The PB glass tube stands on the line between dock2 and
+    # dock0; bomb block 1, a bomb slot and the spider track lead to dock1.
+    dock2 - dock0: MorphBall & Powerbomb    # unsure: tube may be beside the path
+    dock2 - dock1: MorphBall & MorphBallBombs & SpiderBall    # unsure
+    dock1 > loc0x000A0045: (MorphBall & (MorphBallBombs | Powerbomb | BoostBall)) | ScrewAttack
+    dock0 > dock3: DarkBeam
+    dock3 > dock0: any
+    covers 0x000A000B 0x000A006C 0x000A0224 0x00000000 0x000A0064 0x000A010F
+
+area 04_cliff_contraption
+    # Main Research. dock0 is 20 units above dock1/dock2.
+    dock1 - dock2: any
+    dock2 > dock0: MorphBall & SpiderBall    # unsure
+    dock0 > dock2: any
+    dock2 > dock3: DarkBeam    # unsure: portal-to-dock pairing guessed from y positions
+    dock3 > dock2: any
+    dock4 > dock2: any
+    dock2 > loc0x000B019F: MorphBall & SpiderBall & MorphBallBombs & EchoVisor    # unsure: behind Head Piece / echo gate
+    covers 0x000B00A9 0x100B02FD 0x180B01C3 0x00000000
+
+area 0q_cliff_hall
+    dock0 - dock1: any
+
+area 0e_cliff_hall
+    # Lift between dock1 (z -109.7) and dock0 (z 1.3).
+    dock0 - dock1: any
+
+area 0l_cliff_hall
+    # Morph ball cannon shaft: dock1 (z -104.7) up to dock0 (z -8.7).
+    dock1 - dock0: MorphBall    # unsure: cannon chain may need blast shields opened by a weapon
+    dock1 > loc0x001000A9: MorphBall
+    covers 0x00100071 0x001000F5 0x001000D4 0x00100163 0x00100046 0x00100161 0x00100066 0x00100073 0x001000C4 0x001000F1
+    covers 0x00100017 0x0010009B 0x0010008B 0x00100162 0x00100166 0x00100143 0x001000F7 0x00100164 0x0010011F 0x00100152
+
+area 0p_cliff_hall
+    dock0 - dock1: any
+
+area 00_elev_cliff_swamp_f
+    # Elevator room.
+    dock0 - tel0x00190087: any
+
+area 00_elev_cliff_sand_d
+    # Elevator room.
+    dock0 - tel0x00130094: any
+
+area 06_cliff_spiderballguardian
+    # Spider Guardian arena: the guardian's bomb slots (layer 13) and spider
+    # track (layer 8) start inactive; the room is crossed on foot.
+    dock0 - dock1: any
+    dock0 - dock2: any
+    dock0 - dock3: any
+    dock0 > loc0x001402AE: any    # unsure: the guardian fight itself is not modeled
+    dock0 > loc0x001404B6: SpaceJumpBoots    # unsure
+    dock1 > dock4: DarkBeam
+    dock4 > dock1: any
+    covers 0x001400BF
+    ignore 0x34140317: layer 13 starts inactive (guardian bomb slots)
+    ignore 0x34140330: layer 13 starts inactive (guardian bomb slots)
+    ignore 0x341402E3: layer 13 starts inactive (guardian bomb slots)
+    ignore 0x34140323: layer 13 starts inactive (guardian bomb slots)
+    ignore 0x34140307: layer 13 starts inactive (guardian bomb slots)
+    ignore 0x341402F1: layer 13 starts inactive (guardian bomb slots)
+    ignore 0x00000000: layer 8 starts inactive (guardian spider track)
+
+area 00_pickup_cliff_c
+    dock0 > dock1: DarkBeam
+    dock1 > dock0: any
+    covers 0x001D004C
+
+area 0f_cliff_hall
+    dock0 - dock1: MorphBall & SpiderBall    # unsure: 6-segment track may be optional
+    covers 0x00000000
+
+area 0h_cliff_hall
+    # Cannon and bullseye pairs at both ends of the hall.
+    dock0 - dock1: MorphBall    # unsure: bullseyes may also need a weapon
+    covers 0x001C0006 0x001C001B 0x001C002F 0x001C003E 0x001C0046 0x001C0055 0x001C005D
+
+area 08_cliff_ringtowers
+    # Docks 0-3 are on the floor (z -9 to -1); the Dark Ammo sits 55 units
+    # up above the portal, reached by the bomb slot, spider track and cannons.
+    dock0 - dock1: any
+    dock1 - dock3: any
+    dock0 - dock2: any
+    dock0 - dock3: any    # unsure: rotating platform between halves
+    dock3 > dock4: DarkBeam
+    dock4 > dock3: any
+    dock3 > loc0x0018017E: MorphBall & MorphBallBombs & SpiderBall    # unsure
+    covers 0x001800B2 0x001801AF 0x0018002A 0x0018002B 0x001800CF 0x0018004D 0x00000000
+
+area 0n_cliff_hall
+    dock0 - dock1: any
+    dock1 > loc0x002000D3: EchoVisor    # echo gate opened by echo-visor sound keys
+    covers 0x002000A2
+
+area 0k_cliff_hall
+    # Grapple points 34 units above the floor bridge the gap between docks.
+    dock0 - dock1: GrappleBeam    # unsure: gap may be jumpable
+    dock1 > loc0x0021001F: any
+    covers 0x00210032 0x0021003D
+
+area 0o_cliff_hall
+    dock0 - dock2: any
+    dock1 > dock0: any    # arrival from the dark portal, 26 units above
+
+area 05_cliff_engineroom
+    # Four spinners turn off the laser cannons; the Screw Attack sits on a
+    # bomb slot mid-room. Portals: by dock1 (east) and dock2 (west).
+    dock0 > dock1: DarkBeam
+    dock1 > dock0: any
+    dock0 > dock2: DarkBeam & MorphBall & BoostBall    # unsure: lasers between halves
+    dock2 > dock0: MorphBall & BoostBall    # unsure
+    dock0 > loc0x002C0067: MorphBall & BoostBall & MorphBallBombs    # unsure
+    covers 0x002C00B7 0x002C026E 0x002C01A8 0x002C01EE 0x002C01F7 0x002C0204 0x002C0205 0x002C0219 0x002C021C 0x002C0234 0x002C0238
+
+area 07cliff_gyro
+    # Main Gyro Chamber. Docks 0, 3, 4 at the south end (y ~225); docks 1, 2
+    # at the north end (y ~320) past the gyro, the boost glass ring and two
+    # bomb slots. The Power Bomb is on layer 2 below an echo gate.
+    dock0 - dock3: any
+    dock0 - dock4: any
+    dock3 - dock4: any
+    dock0 > dock2: MorphBall & BoostBall    # unsure: spinner by dock0 stops the gyro
+    dock2 > dock0: MorphBall & BoostBall    # unsure
+    dock2 - dock1: MorphBall & BoostBall & MorphBallBombs    # glass ring + bomb slots
+    dock2 > loc0x08240088: MorphBall & BoostBall & MorphBallBombs & SpiderBall & EchoVisor    # unsure: layer-2 item
+    covers 0x002402C2 0x0024036B 0x00240154 0x1024019C 0x102401AE 0x1C240358 0x00000000
+    ignore 0x08240029: layer 2 starts inactive
+    ignore 0x08240097: layer 2 starts inactive
+    ignore 0x08240072: layer 2 starts inactive
+    ignore 0x08240079: layer 2 starts inactive
+    ignore 0x14240283: layer 5 starts inactive
+    ignore 0x14240298: layer 5 starts inactive
+
+area 00_save_cliff_b
+    # One dock.
+
+area 0g_cliff_hall
+    # Spinner + cannon by dock0 extend the catch platform to dock1.
+    dock0 - dock1: MorphBall & BoostBall    # unsure
+    dock0 > loc0x002E0097: MorphBall & BoostBall    # unsure
+    covers 0x002E007A 0x002E0065 0x002E006D 0x002E010B 0x002E00A9 0x002E00AE
+
+area 09_cliff_temple
+    # Docks on the four sides of a central pit; grapple points lead to the
+    # centre from docks 0, 1, 2; the spider track from dock3.
+    dock0 - @center: GrappleBeam    # unsure
+    dock1 - @center: GrappleBeam    # unsure
+    dock2 - @center: GrappleBeam    # unsure
+    dock3 - @center: MorphBall & SpiderBall    # unsure
+    covers 0x00250049 0x00250136 0x0025013A 0x00250144 0x00000000
+
+area 0i_cliff_hall
+    dock0 - dock1: any
+
+area 00_cliff_generator_connect
+    dock0 - dock1: MorphBall & MorphBallBombs    # bomb slot
+    covers 0x00310031
+
+area 00_cliff_generator
+    # dock1 leads into the end-game generator sequence (layer 2 portal).
+    ignore 0x08370103: layer 2 starts inactive (Inside Sun Generator)
+
+area 00_cliff_generator_08_temple
+    # One dock, only reached through the generator sequence.
+
+area 0j_cliff_hall_bottom
+    dock0 - dock1: any    # unsure: lift up 48 units
+
+area 0j_cliff_hall_loop
+    dock0 - dock1: SpaceJumpBoots    # unsure: 80-unit climb, lift not identified
+
+area 10_cliff_rooftop
+    # Aerie. Portal by dock2 is 24 units above dock0; the Echo Visor 48.
+    dock0 > dock2: DarkBeam & SpaceJumpBoots    # unsure
+    dock1 > dock0: any
+    dock2 > dock0: any
+    dock0 > loc0x004100A7: SpaceJumpBoots    # unsure
+    covers 0x004100DB
+
+# ----------------------------------------------------------------- dark world
+
+area 01_cliff_entrance_dark
+    dock0 > loc0x103B0167: (DarkSuit | LightSuit) & ScrewAttack & SpaceJumpBoots    # unsure: war chest height
+    covers 0x003B0109 0x103B017A
+
+area 0b_cliff_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+
+area 0c_cliff_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    covers 0x00290020
+
+area 02_cliff_reactorcore_dark
+    dock0 - dock1: DarkSuit | LightSuit    # unsure: balcony height as in the light room
+    dock0 - dock2: DarkSuit | LightSuit
+    dock0 - dock3: DarkSuit | LightSuit
+    covers 0x001F0030 0x001F0033
+
+area 00_save_cliff_a_dark
+    # One dock.
+
+area 00_pickup_cliff_a_dark
+    # One dock.
+
+area 0d_cliff_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    covers 0x00170058 0x0017005A
+
+area 0m_cliff_hall_dark
+    dock1 > dock0: DarkSuit | LightSuit
+    dock2 > dock0: DarkSuit | LightSuit
+    dock0 > dock3: LightBeam & (DarkSuit | LightSuit)
+    dock0 > dock4: LightBeam & (DarkSuit | LightSuit)
+    covers 0x000C0042 0x000C0068
+    ignore 0x00000000: 3-segment track; not on a dock path    # unsure
+
+area 03_cliff_chicane_dark
+    dock3 > dock2: DarkSuit | LightSuit
+    dock2 - dock0: (DarkSuit | LightSuit) & MorphBall & Powerbomb    # unsure: broken tube as in light room
+    dock2 - dock1: (DarkSuit | LightSuit) & MorphBall & MorphBallBombs & SpiderBall    # unsure
+    dock2 > dock3: LightBeam & (DarkSuit | LightSuit)
+    dock2 > loc0x000F0159: (DarkSuit | LightSuit) & MorphBall & MorphBallBombs & SpiderBall    # unsure
+    covers 0x000F0096 0x000F0020 0x000F009D 0x000F0074 0x000F0007 0x000F0168 0x000F016B 0x000F0169 0x000F016A 0x00000000
+
+area 04_cliff_contraption_dark
+    dock3 > dock0: DarkSuit | LightSuit
+    dock0 - dock2: (DarkSuit | LightSuit) & MorphBall & SpiderBall    # unsure
+    dock0 > dock3: LightBeam & EchoVisor & (DarkSuit | LightSuit)    # unsure: echo gate / rising platform
+    dock0 > dock4: LightBeam & EchoVisor & (DarkSuit | LightSuit)    # unsure
+    covers 0x001200E2 0x001200A7 0x00120057 0x00120076 0x00000000
+
+area 0q_cliff_hall_dark
+    dock1 > loc0x00150034: DarkSuit | LightSuit
+
+area 0e_cliff_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit    # lift
+
+area 0l_cliff_hall_dark
+    # 96 units between docks and no recorded obstacle.
+    dock1 > dock0: (DarkSuit | LightSuit) & MorphBall & SpaceJumpBoots    # unsure: climb method unknown
+    dock0 > dock1: DarkSuit | LightSuit
+
+area 06_cliff_spiderballguardian_dark
+    dock0 - dock3: DarkSuit | LightSuit
+    dock0 - dock1: (DarkSuit | LightSuit) & GrappleBeam & MorphBall & SpiderBall    # unsure
+    dock1 > dock4: LightBeam & (DarkSuit | LightSuit)
+    dock4 > dock1: DarkSuit | LightSuit
+    dock0 > loc0x141E0194: (DarkSuit | LightSuit) & ScrewAttack & DarkVisor & SpaceJumpBoots    # unsure: war chest, dark-visor orbit
+    covers 0x001E0057 0x001E0135 0x001E00A4 0x001E00C9 0x141E0186 0x00000000
+
+area 00_pickup_cliff_c_dark
+    dock0 > dock1: LightBeam & (DarkSuit | LightSuit)
+    dock1 > dock0: DarkSuit | LightSuit
+    covers 0x0026004A
+
+area 08_cliff_ringtowers_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    dock1 - dock3: DarkSuit | LightSuit
+    dock4 > dock3: DarkSuit | LightSuit
+    dock3 > dock4: LightBeam & (DarkSuit | LightSuit)
+    dock1 > loc0x00230082: DarkSuit | LightSuit
+    dock3 > loc0x00230043: (DarkSuit | LightSuit) & SpaceJumpBoots    # unsure: 10 units up
+    covers 0x002300ED 0x002300EF 0x002300B3 0x00230070
+
+area 0f_cliff_hall_dark
+    dock0 - dock1: (DarkSuit | LightSuit) & EchoVisor    # echo gate by dock0
+    covers 0x0027009E 0x00270074
+
+area 0n_cliff_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+
+area 0o_cliff_hall_dark
+    dock0 > dock1: LightBeam & GrappleBeam & (DarkSuit | LightSuit)    # portal 20 units up past grapple points
+    covers 0x002B0024 0x002B002E 0x002B003B 0x002B005D
+
+area 05_cliff_engineroom_dark
+    # No ordinary door: arrivals at dock1/dock2, portals back beside each,
+    # grapple points between the halves.
+    dock1 > @east: DarkSuit | LightSuit
+    dock2 > @west: DarkSuit | LightSuit
+    @east > dock1: LightBeam & (DarkSuit | LightSuit)
+    @west > dock2: LightBeam & (DarkSuit | LightSuit)
+    @east - @west: (DarkSuit | LightSuit) & GrappleBeam
+    covers 0x003400B7 0x00340122 0x00340108 0x00340110 0x00340112 0x0034011B
+
+area 07cliff_gyro_dark
+    dock0 - dock3: DarkSuit | LightSuit
+    dock0 - dock1: DarkSuit | LightSuit    # unsure: gyro static in the dark room
+    dock1 - dock2: DarkSuit | LightSuit
+    dock0 > loc0x0032010B: (DarkSuit | LightSuit) & MorphBall & SpiderBall
+    covers 0x00320026 0x00000000
+
+area 09_cliff_temple_dark
+    # Hive Temple: Quadraxis arena.
+    dock3 - dock0: DarkSuit | LightSuit
+    dock3 - dock1: DarkSuit | LightSuit
+    dock3 > loc0x14350117: (DarkSuit | LightSuit) & MorphBall & SpiderBall & BoostBall & MorphBallBombs & SpaceJumpBoots    # unsure: Quadraxis fight
+    covers 0x00000000
+
+area 0g_cliff_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    covers 0x0038006D
+
+area 0i_cliff_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+
+area 00_save_cliff_b_dark
+    # One dock.
+
+area 00_cliff_generator_connect_dark
+    dock0 - dock1: (DarkSuit | LightSuit) & MorphBall & MorphBallBombs
+    covers 0x003C0020
+
+area 00_cliff_generator_dark
+    # One dock.
+
+area 0j_cliff_hall_bottom_dark
+    # One dock.
+
+area 10_cliff_rooftop_dark
+    # Arrival at dock2; portal to dock1 past the spinner and spider track.
+    dock2 > dock1: LightBeam & (DarkSuit | LightSuit) & MorphBall & BoostBall & SpiderBall    # unsure
+    covers 0x004200C6 0x004200B6 0x004200E3 0x004200E4 0x00000000

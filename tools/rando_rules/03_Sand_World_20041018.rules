@@ -1,0 +1,565 @@
+# Agon Wastes (03_Sand_World_20041018), light and dark areas.
+#
+# Sources: disc data via tools/rando_world.py --dump-obstacles (dock, pickup
+# and obstacle positions, layers, script names), the decomp source in this
+# repo, and knowledge of the game. No randomizer logic database was used.
+#
+# Starting inventory assumed (see 01_Temple_Hub_20041018.rules): PowerBeam,
+# ChargeBeam, CombatVisor, ScanVisor, VariaSuit, MorphBall.
+#
+# Conventions used here:
+# - Dock locks (beam, shield, translator, script) are applied by the
+#   evaluator and are not repeated.
+# - Light-to-dark portals need DarkBeam; dark-to-light portals need LightBeam.
+# - Dark Aether traversal needs DarkSuit|LightSuit (conservative; Safe Zone
+#   crystals are not barriers and are ignored).
+# - Bomb requirements spell out MorphBall even though it is a starting item.
+# - "Breakable" below is the disc's own requirement set for Rock Blockers and
+#   weak grates: bombs, Power Bomb, Boost Ball or Screw Attack.
+# - Climbs of more than ~10 units between dock heights (z from the dump) need
+#   SpaceJumpBoots unless a ramp is known; each such rule is marked unsure.
+# - The three layer-6 TEL1 objects in 00_sand_generator are the Sun Generator
+#   endgame warps; they and the generator areas are left unconnected.
+
+# ---------------------------------------------------------------- light world
+
+area 00_Elev_Sand_Temple_A
+    dock0 - tel0x0000007A: any
+
+area 0a_sand_hall
+    dock0 - dock1: any
+
+area 01_sand_entrance
+    # dock3 (from the elevator) and dock2 are on the floor (z -27..-29);
+    # dock1/dock4 (z -11.8) and the portal (z -8.4) sit on the upper level.
+    dock3 - dock2: any
+    dock3 - dock1: any  # unsure: upper doors 15 units above the floor; ramp assumed (the vanilla first visit reaches them with no items)
+    dock3 - dock4: any  # unsure: as above
+    dock1 - dock4: any
+    dock1 > dock5: DarkBeam
+    dock5 > dock1: any
+    # Rock Blocker 22 units from the map station door.
+    dock3 - dock0: (MorphBall & MorphBallBombs) | (MorphBall & Powerbomb) | (MorphBall & BoostBall) | ScrewAttack
+    dock3 > loc0x00020180: SpaceJumpBoots & ScrewAttack & MorphBall & BoostBall  # unsure: Energy Tank 19 units above the floor near dock3; route not verified
+    covers 0x000201F8
+
+area 00_mapstation_sand
+    # Single dock, nothing to collect.
+
+area 0e_sand_hall
+    # Layer 2 is on by default, so the Rock Blocker stands in the hall.
+    dock0 - dock1: (MorphBall & MorphBallBombs) | (MorphBall & Powerbomb) | (MorphBall & BoostBall) | ScrewAttack  # unsure: layer-2 blocker may be removed by a script before the first visit
+    covers 0x08040017
+
+area 0f_sand_hall
+    dock0 - dock1: any
+
+area 0o_sand_hall
+    dock0 - dock1: any
+    # Energy Tank at z 1.8, above the docks; cannon and its trigger at z -19.
+    dock1 > loc0x0006001F: MorphBall & MorphBallBombs  # unsure: assumes the bomb trigger arms the cannon that launches to the tank
+    covers 0x00060089 0x000600A4
+
+area 04_sand_mining
+    dock1 - dock2: any
+    # Portal sits 13 units below the dock2 level.
+    dock2 > dock3: DarkBeam  # unsure: portal floor 13 below the docks; return climb assumed walkable
+    dock3 > dock2: any  # unsure: as above
+    # Power Bomb blocker in front of the lower pickup door (z -26.8).
+    dock2 > dock0: MorphBall & Powerbomb
+    dock0 > dock2: MorphBall & Powerbomb & SpaceJumpBoots  # unsure: 20-unit climb from the lower door
+    dock2 > loc0x00080117: MorphBall & MorphBallBombs & SpaceJumpBoots  # unsure: Darkburst behind a chain of bomb slots and cannons
+    covers 0x000802F0 0x00080315 0x0008016C 0x0008009D 0x000800FF 0x00080177 0x000802B9 0x000802BB
+
+area 00_pickup_sand_a
+    dock0 > loc0x000F002A: any
+
+area 0d_sand_hall
+    dock1 > dock0: any
+    dock0 > dock1: SpaceJumpBoots  # unsure: 16.5-unit climb from dock0 to dock1
+    dock1 > loc0x001000E8: any
+
+area 0q_sand_hall
+    dock0 - dock1: any
+    dock0 > dock2: SpaceJumpBoots  # unsure: elevator door 16 units above dock0
+    dock1 > dock2: SpaceJumpBoots  # unsure: elevator door 10 units above dock1
+    dock2 > dock0: any
+    dock2 > dock1: any
+    dock1 > dock3: DarkBeam & SpaceJumpBoots  # unsure: portal at z 3.8, 20 above dock1
+    dock3 > dock1: any
+    dock0 > loc0x0009005B: MorphBall & MorphBallBombs  # unsure: Missile next to a bomb slot
+    covers 0x00090026 0x000900AB
+
+area 05_portalpuzzle
+    dock0 > dock1: any
+    dock1 > dock0: SpaceJumpBoots  # unsure: dock0 15.6 above dock1
+    dock1 > dock2: DarkBeam & MorphBall & MorphBallBombs  # unsure: assumes the bomb slot and ball triggers power the portal
+    dock2 > dock1: any
+    covers 0x00120136 0x00120119 0x001200FD 0x001203AD
+
+area 02_sand_sandfalls
+    # dock0/dock2 at z 7.2, dock1 at 14.7, dock4 at -0.3, dock3 at -7.8.
+    dock0 - dock2: any
+    dock0 - dock1: any  # unsure: dock1 7.5 above dock0
+    dock2 - dock1: any  # unsure: as above
+    dock3 - dock4: any
+    dock0 > dock3: any
+    dock0 > dock4: any
+    dock3 > dock0: SpaceJumpBoots  # unsure: 15-unit climb from the low door
+    dock4 > dock0: SpaceJumpBoots  # unsure: 7.5-unit climb, ramp not verified
+    dock0 > loc0x000A0228: MorphBall & SpiderBall & MorphBallBombs  # unsure: Missile at z 32, 11 units from an 18-row spider track; catch-ball trigger and cannons beside it
+    covers 0x00000000 0x000A034A 0x000A0230 0x000A02BF 0x000A024E
+    ignore 0x000A008D: unsure: Power Bomb wall 35 units from dock0 and below dock level; assumed not on a dock path
+
+area 00_elev_sand_swamp_e
+    dock0 - tel0x0013007B: any
+
+area 0c_sand_hall
+    dock0 - dock1: any
+
+area 0g_sand_hall
+    dock0 - dock1: any
+
+area 00_save_sand_a
+    dock0 > loc0x00170014: any
+
+area 0n_sand_hall
+    dock0 - dock1: any
+    dock0 > loc0x0018019E: MorphBall & MorphBallBombs  # unsure: Missile behind a cannon and bullseye puzzle
+    covers 0x00180066 0x00180085 0x0018008D 0x001800DB 0x00180112 0x001800C5 0x001800D9 0x001800DD 0x001800DF 0x00180113 0x001800F8 0x0018010C
+
+area 03_sand_temple
+    # Agon Temple. dock3 (south) is the arena entrance; the Bomb Guardian
+    # drops the bombs, and the bomb gates (left by dock0/dock3, right by
+    # dock1/dock2) and the North/South floor gates open with them.
+    dock3 - @arena: any
+    @arena > loc0x081A0074: any  # unsure: Bomb Guardian assumed beatable with the Power Beam
+    @arena - dock0: MorphBall & MorphBallBombs  # unsure: which doors sit behind which gate not verified; all gated
+    @arena - dock1: MorphBall & MorphBallBombs  # unsure: as above
+    @arena - dock2: MorphBall & MorphBallBombs  # unsure: as above
+    covers 0x001A0019 0x001A0018 0x001A000D 0x001A0016 0x001A0017 0x001A005E 0x0C1A004D 0x0C1A00C0 0x101A0217 0x101A0218
+
+area 06_sand_alamofront
+    dock0 - dock2: any
+    dock1 > dock0: any
+    dock1 > dock2: any
+    dock0 > dock1: SpaceJumpBoots  # unsure: dock1 12 above dock0
+    dock2 > dock1: SpaceJumpBoots  # unsure: dock1 10 above dock2
+    dock2 > loc0x001D022C: SpaceJumpBoots  # unsure: Dark Ammo 16.5 above dock2
+    ignore 0x00000000: unsure: spider track near dock1 is an alternative route; the rules use SpaceJumpBoots instead
+
+area 00_sand_generator_connect
+    dock1 - dock0: MorphBall & MorphBallBombs  # unsure: bomb slot assumed to open the generator door
+    covers 0x00220032
+
+area 0p_sand_hall
+    dock1 > dock0: any
+    dock0 > dock1: MorphBall & MorphBallBombs  # unsure: dock1 16 above dock0; cannon puzzle assumed to be the way up
+    dock0 > loc0x00230074: MorphBall & MorphBallBombs  # unsure: Power Bomb pickup 96 units from dock0 inside the cannon/bullseye puzzle
+    covers 0x00230121 0x0023002C 0x00230033 0x00230036 0x0023004B 0x00230125
+
+area 0h_sand_hall
+    # Lower: dock4 (9.7), dock0 (13.8), morph tunnel dock2 (6.1).
+    # Upper: dock1, dock3 (21.7).
+    dock4 - dock0: any
+    dock1 - dock3: any
+    dock1 > dock4: any
+    dock3 > dock4: any
+    dock4 > dock3: SpaceJumpBoots  # unsure: 12-unit climb to the upper doors
+    dock0 > dock1: SpaceJumpBoots  # unsure: 8-unit climb, ramp not verified
+    # Two weak grates between dock4 and the morph tunnel.
+    dock4 - dock2: (MorphBall & MorphBallBombs) | (MorphBall & Powerbomb) | (MorphBall & BoostBall)  # unsure: grates assumed to close the morph tunnel (Screw Attack dropped for a ball path)
+    covers 0x00250035 0x0025003E
+
+area 00_sand_generator
+    # Sun Generator: endgame, no edges.
+    ignore 0x18270198: layer 6 is off by default (Sun Generator portal)
+
+area 0b_sand_hall
+    dock1 - dock2: any
+    dock0 > dock1: any
+    dock0 > dock2: any
+    dock1 > dock0: SpaceJumpBoots  # unsure: elevator door 10 above dock1
+    dock2 > dock0: SpaceJumpBoots  # unsure: elevator door 6 above dock2, ramp not verified
+    dock2 > loc0x0028007D: SpaceJumpBoots  # unsure: Missile at z 35.2, above every door
+
+area 07_sand_alamoportalobservation
+    # Lower: dock0 (13.8), dock1 (11.3), morph dock5 (6.1), portal floor 5.8.
+    # Upper: dock2, dock3, dock4 (21.6).
+    dock0 - dock1: any
+    dock0 - dock5: any
+    dock3 - dock4: any
+    dock3 > dock0: any
+    dock0 > dock3: SpaceJumpBoots  # unsure: 8-unit climb to the upper walkway
+    # Breakable windows 15-25 units from dock2.
+    dock3 - dock2: (MorphBall & MorphBallBombs) | (MorphBall & Powerbomb) | (MorphBall & BoostBall) | ScrewAttack  # unsure: windows assumed to close the way to dock2
+    dock0 > dock6: DarkBeam
+    dock6 > dock0: any
+    dock0 > loc0x002A011E: any
+    covers 0x002A0188 0x002A02A1 0x002A02A2 0x002A02B0
+
+area 00_sand_generator_08_temple
+    # Endgame cinematic area.
+
+area 00_elev_sand_cliff_d
+    dock0 - tel0x002D0073: any
+
+area 10_sand_alamostorage
+    dock0 - dock1: any
+    dock0 - dock2: any
+    dock0 - dock3: any
+    dock0 > dock4: DarkBeam
+    dock4 > dock0: any
+    # Missile (layer 4) at z 17.6 among breakable pipes and canisters.
+    dock2 > loc0x102E0083: MorphBall & MorphBallBombs & SpaceJumpBoots  # unsure: layer-4 pickup; its spider track is on an off layer; route among breakable pipes not verified
+    covers 0x002E01DE 0x002E0059 0x002E00D2 0x002E0123 0x002E0051 0x002E014D 0x002E00DC
+    ignore 0x082E001A: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01A4: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E003C: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E00F8: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E0199: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E0043: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E0044: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E00D8: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E00DE: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01DB: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01DF: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01E0: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01E1: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01AB: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01E4: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E004C: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E004E: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01F9: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01FB: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01FC: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01FD: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E00D7: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01A1: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01F2: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01F4: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x082E01F5: breakable scenery (panels, lights, pipes), not on a path
+    ignore 0x00000000: layer 4 is off by default
+
+area 0i_sand_hall
+    dock0 - dock1: any
+
+area 0m_sand_hall
+    dock0 - dock1: any
+    dock0 - dock2: any
+    dock1 - dock2: any
+
+area 0l_sand_hall
+    dock0 > dock1: any
+    dock1 > dock0: MorphBall & MorphBallBombs  # unsure: dock0 15 above dock1; bomb slot assumed to raise the platform
+    dock1 > loc0x00330034: Missile  # unsure: Missile behind a Missile false wall
+    covers 0x003300BE 0x003300C9
+
+area 00_pickup_sand_d
+    dock0 > loc0x003400C1: any
+
+area 08_sand_casualpirates
+    dock0 - dock1: any
+    dock0 - dock2: any
+    dock1 - dock2: any
+
+area 00_save_sand_c
+    dock0 - dock1: any
+
+area 0j_sand_hall
+    dock0 - dock1: MorphBall & MorphBallBombs  # unsure: bomb slot assumed to open the test-tube puzzle door
+    covers 0x003C0010
+
+area 00_pickup_sand_b
+    dock0 > loc0x003D0038: any
+
+area 0k_sand_hall
+    dock0 - dock1: any
+
+area 09_sand_testtubepuzzle
+    dock1 - dock2: any
+    dock1 > dock0: any
+    dock0 > dock1: MorphBall & SpiderBall & MorphBallBombs  # unsure: 22.5-unit climb; 64-row spider track assumed to be the way up
+    dock1 > loc0x004100A6: MorphBall & SpiderBall & MorphBallBombs  # unsure: Energy Tank on the test-tube puzzle; route not verified
+    covers 0x00000000
+
+area 00_pickup_sand_c
+    dock0 > loc0x0045006B: any
+
+# ----------------------------------------------------------------- dark world
+
+area 01_sand_entrance_dark
+    dock1 - dock2: DarkSuit | LightSuit
+    dock0 - dock3: DarkSuit | LightSuit
+    dock1 - dock0: DarkSuit | LightSuit  # unsure: upper doors 15 above the floor; ramp assumed as in the light area
+    dock0 > dock4: LightBeam & (DarkSuit | LightSuit)
+    dock4 > dock0: DarkSuit | LightSuit
+    covers 0x000701CE
+    ignore 0x00070168: safe zone crystal, not a barrier
+    ignore 0x0007016C: safe zone crystal, not a barrier
+    ignore 0x0007016E: safe zone crystal, not a barrier
+    ignore 0x00070171: safe zone crystal, not a barrier
+    ignore 0x00070174: safe zone crystal, not a barrier
+    ignore 0x00070210: safe zone crystal, not a barrier
+
+area 0e_sand_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    ignore 0x000B0088: safe zone crystal, not a barrier
+    ignore 0x000B008B: safe zone crystal, not a barrier
+    ignore 0x000B0091: safe zone crystal, not a barrier
+    ignore 0x000B0095: safe zone crystal, not a barrier
+    ignore 0x000B0097: safe zone crystal, not a barrier
+
+area 0f_sand_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    ignore 0x000C01DB: safe zone crystal, not a barrier
+    ignore 0x000C01DD: safe zone crystal, not a barrier
+    ignore 0x000C01E0: safe zone crystal, not a barrier
+    ignore 0x000C01E1: safe zone crystal, not a barrier
+
+area 0a_sand_hall_dark
+    dock1 > loc0x000D0014: DarkSuit | LightSuit
+    ignore 0x000D00DE: safe zone crystal, not a barrier
+    ignore 0x000D00E1: safe zone crystal, not a barrier
+    ignore 0x000D00E5: safe zone crystal, not a barrier
+
+area 0o_sand_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    dock0 > loc0x000E009E: (DarkSuit | LightSuit) & MorphBall & SpiderBall & MorphBallBombs  # unsure: Missile 4 below dock level between a spider track and a bomb slot
+    covers 0x00000000 0x000E004D
+    ignore 0x000E00AE: safe zone crystal, not a barrier
+
+area 04_sand_mining_dark
+    dock1 - dock2: DarkSuit | LightSuit
+    dock2 > dock3: LightBeam & (DarkSuit | LightSuit)  # unsure: portal 13 below the docks, as in the light area
+    dock3 > dock2: DarkSuit | LightSuit  # unsure: as above
+    covers 0x0011005A
+    ignore 0x00110080: safe zone crystal, not a barrier
+    ignore 0x0011001B: safe zone crystal, not a barrier
+    ignore 0x0011001D: safe zone crystal, not a barrier
+    ignore 0x0011001F: safe zone crystal, not a barrier
+    ignore 0x0011007A: safe zone crystal, not a barrier
+
+area 0q_sand_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    dock1 > dock3: LightBeam & SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: portal height mirrors the light area (20 above dock1)
+    dock3 > dock1: DarkSuit | LightSuit
+    dock1 > loc0x0014007C: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: Missile 21 above dock1
+    ignore 0x00140005: safe zone crystal, not a barrier
+    ignore 0x00140009: safe zone crystal, not a barrier
+    ignore 0x0014000B: safe zone crystal, not a barrier
+
+area 02_sand_sandfalls_dark
+    dock0 - dock2: DarkSuit | LightSuit
+    dock0 - dock1: DarkSuit | LightSuit  # unsure: dock1 7.5 above dock0
+    dock3 - dock4: DarkSuit | LightSuit
+    dock0 > dock3: DarkSuit | LightSuit
+    dock0 > dock4: DarkSuit | LightSuit
+    dock3 > dock0: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 15-unit climb from the low door
+    dock4 > dock0: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 7.5-unit climb, ramp not verified
+    dock3 > loc0x00190003: DarkSuit | LightSuit
+    ignore 0x00190274: safe zone crystal, not a barrier
+    ignore 0x00190277: safe zone crystal, not a barrier
+    ignore 0x00190279: safe zone crystal, not a barrier
+    ignore 0x0019027E: safe zone crystal, not a barrier
+    ignore 0x00190119: safe zone crystal, not a barrier
+    ignore 0x00190282: safe zone crystal, not a barrier
+    ignore 0x0019013F: safe zone crystal, not a barrier
+    ignore 0x0019004F: safe zone crystal, not a barrier
+
+area 0d_sand_hall_dark
+    dock1 > dock0: DarkSuit | LightSuit
+    dock0 > dock1: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 16.5-unit climb from dock0
+    dock1 > loc0x001B0120: DarkSuit | LightSuit
+
+area 05_portalpuzzle_dark
+    dock0 > dock1: DarkSuit | LightSuit
+    dock1 > dock0: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: dock0 15.6 above dock1
+    dock1 > dock2: LightBeam & MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: bomb slot near dock1 assumed to power the portal
+    dock2 > dock1: DarkSuit | LightSuit
+    covers 0x001C0019 0x001C00E4
+    ignore 0x001C00B8: safe zone crystal, not a barrier
+    ignore 0x001C00BC: safe zone crystal, not a barrier
+    ignore 0x001C00C7: safe zone crystal, not a barrier
+    ignore 0x001C00C9: safe zone crystal, not a barrier
+    ignore 0x001C00D5: safe zone crystal, not a barrier
+    ignore 0x001C0038: safe zone crystal, not a barrier
+
+area 0c_sand_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    ignore 0x001E0114: safe zone crystal, not a barrier
+    ignore 0x001E0116: safe zone crystal, not a barrier
+    ignore 0x001E011A: safe zone crystal, not a barrier
+    ignore 0x001E011B: safe zone crystal, not a barrier
+
+area 0g_sand_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    dock1 > loc0x001F004C: DarkSuit | LightSuit
+    ignore 0x001F0075: safe zone crystal, not a barrier
+    ignore 0x001F003E: safe zone crystal, not a barrier
+    ignore 0x001F0079: safe zone crystal, not a barrier
+
+area 00_save_sand_a_dark
+    # Single dock, nothing to collect.
+
+area 0n_sand_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+
+area 03_sand_temple_dark
+    # Dark Agon Temple (Amorbis). The three Dark Agon Keys open the arena;
+    # the doors stay locked until the boss falls. Its last phase is fought
+    # in Morph Ball with bombs. The layer-6 "Reflect Shots" barriers belong
+    # to the fight.
+    dock0 > @arena: AgonKey1 & AgonKey2 & AgonKey3 & (DarkSuit | LightSuit)  # unsure: where the key gate sits (assumed every arena entrance)
+    dock1 > @arena: AgonKey1 & AgonKey2 & AgonKey3 & (DarkSuit | LightSuit)  # unsure: as above
+    dock3 > @arena: AgonKey1 & AgonKey2 & AgonKey3 & (DarkSuit | LightSuit)  # unsure: as above
+    @arena > loc0x28240265: MorphBall & MorphBallBombs  # unsure: Amorbis assumed to need bombs for the Morph Ball phase
+    @arena > dock0: MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: doors assumed locked until Amorbis falls
+    @arena > dock1: MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: as above
+    @arena > dock3: MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: as above
+    covers 0x18240088 0x18240084 0x18240083 0x1824029F 0x18240087 0x182402A0
+    ignore 0x18240022: safe zone crystal, not a barrier
+    ignore 0x18240016: safe zone crystal, not a barrier
+    ignore 0x1824001A: safe zone crystal, not a barrier
+    ignore 0x18240027: safe zone crystal, not a barrier
+    ignore 0x1824001E: safe zone crystal, not a barrier
+    ignore 0x18240021: safe zone crystal, not a barrier
+    ignore 0x1C240073: safe zone crystal, not a barrier
+    ignore 0x1C240074: safe zone crystal, not a barrier
+
+area 06_sand_alamofront_dark
+    dock0 - dock2: DarkSuit | LightSuit
+    dock1 > dock0: DarkSuit | LightSuit
+    dock1 > dock2: DarkSuit | LightSuit
+    dock0 > dock1: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: dock1 12 above dock0
+    dock2 > dock1: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: dock1 10 above dock2
+    dock0 > loc0x002601DE: DarkSuit | LightSuit
+    # Temple Key in a War Chest 12 units above dock1.
+    dock1 > loc0x1826023E: ScrewAttack & SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: chest reach from dock1 not verified
+    covers 0x18260202
+    ignore 0x002601FA: safe zone crystal, not a barrier
+    ignore 0x002601F6: safe zone crystal, not a barrier
+    ignore 0x002601FD: safe zone crystal, not a barrier
+    ignore 0x002601FB: safe zone crystal, not a barrier
+    ignore 0x002601F8: safe zone crystal, not a barrier
+
+area 00_sand_generator_connect_dark
+    dock1 - dock0: MorphBall & MorphBallBombs & (DarkSuit | LightSuit)  # unsure: bomb slot assumed to open the generator door
+    covers 0x0029000E
+
+area 0h_sand_hall_dark
+    dock0 - dock4: DarkSuit | LightSuit
+    dock1 - dock3: DarkSuit | LightSuit
+    dock1 > dock4: DarkSuit | LightSuit
+    dock3 > dock4: DarkSuit | LightSuit
+    dock4 > dock3: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 12-unit climb to the upper doors
+    dock0 > dock1: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 8-unit climb, ramp not verified
+    ignore 0x002B0070: safe zone crystal, not a barrier
+    ignore 0x002B0126: safe zone crystal, not a barrier
+    ignore 0x002B0132: safe zone crystal, not a barrier
+
+area 00_sand_generator_dark
+    # Single dock (endgame), nothing to collect.
+    ignore 0x002F0065: safe zone crystal, not a barrier
+
+area 07_sand_alamoportalobservation_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    dock2 - dock3: DarkSuit | LightSuit
+    dock3 > dock0: DarkSuit | LightSuit
+    dock0 > dock3: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 8-unit climb to the upper doors
+    dock0 > dock4: LightBeam & (DarkSuit | LightSuit)
+    dock4 > dock0: DarkSuit | LightSuit
+    dock3 > loc0x00320283: DarkSuit | LightSuit
+    ignore 0x00320237: safe zone crystal, not a barrier
+    ignore 0x00320239: safe zone crystal, not a barrier
+    ignore 0x0032023C: safe zone crystal, not a barrier
+    ignore 0x0032023D: safe zone crystal, not a barrier
+    ignore 0x00320191: safe zone crystal, not a barrier
+    ignore 0x00320244: safe zone crystal, not a barrier
+    ignore 0x1C320199: layer 7 is off by default
+    ignore 0x20320013: safe zone crystal, not a barrier
+
+area 10_sand_alamostorage_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    # Power Bomb wall 24 units from dock3.
+    dock0 - dock3: MorphBall & Powerbomb & (DarkSuit | LightSuit)  # unsure: wall assumed to close the way to dock3
+    dock0 > dock4: LightBeam & (DarkSuit | LightSuit)
+    dock4 > dock0: DarkSuit | LightSuit
+    dock0 > loc0x143500B5: ScrewAttack & (DarkSuit | LightSuit)  # unsure: layer-5 Temple Key with a layer-5 War Chest beside it; when the layer turns on is not known
+    covers 0x0035004C 0x00350061
+    ignore 0x143500D5: layer 5 is off by default (folded into the TempleKey2 rule)
+    ignore 0x003500E1: safe zone crystal, not a barrier
+    ignore 0x0035002C: safe zone crystal, not a barrier
+
+area 0i_sand_hall_dark
+    # Dark webbing on both sides of the hall.
+    dock0 - dock1: (LightBeam | ScrewAttack) & (DarkSuit | LightSuit)
+    covers 0x003700E2 0x003700E3 0x003700A5 0x003700AC
+    ignore 0x0037000E: safe zone crystal, not a barrier
+    ignore 0x00370021: safe zone crystal, not a barrier
+
+area 0m_sand_hall_dark
+    dock1 - dock2: DarkSuit | LightSuit
+    ignore 0x003800AC: safe zone crystal, not a barrier
+    ignore 0x003800B0: safe zone crystal, not a barrier
+    ignore 0x003800B4: safe zone crystal, not a barrier
+
+area 0l_sand_hall_dark
+    dock0 > dock1: DarkSuit | LightSuit
+    dock1 > dock0: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: dock0 15 above dock1
+    ignore 0x003A00A8: safe zone crystal, not a barrier
+    ignore 0x003A00AB: safe zone crystal, not a barrier
+
+area 00_pickup_sand_d_dark
+    # Single dock, nothing to collect.
+    ignore 0x003B003C: safe zone crystal, not a barrier
+
+area 08_sand_casualpirates_dark
+    dock0 - dock2: DarkSuit | LightSuit
+    dock0 - dock1: DarkSuit | LightSuit
+    dock1 - dock2: DarkSuit | LightSuit
+    dock1 > loc0x003E0055: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: Power Bomb 13.6 below the lowest door; climb back assumed to need Space Jump
+    ignore 0x003E007F: safe zone crystal, not a barrier
+    ignore 0x003E02B2: safe zone crystal, not a barrier
+    ignore 0x003E00C5: safe zone crystal, not a barrier
+    ignore 0x003E00C9: safe zone crystal, not a barrier
+    ignore 0x003E0027: safe zone crystal, not a barrier
+    ignore 0x003E00CC: safe zone crystal, not a barrier
+    ignore 0x003E0143: safe zone crystal, not a barrier
+
+area 00_save_sand_c_dark
+    dock0 - dock1: DarkSuit | LightSuit
+
+area 0j_sand_hall_dark
+    dock0 - dock1: DarkSuit | LightSuit
+    ignore 0x004200D9: safe zone crystal, not a barrier
+    ignore 0x004200DB: safe zone crystal, not a barrier
+    ignore 0x004200DF: safe zone crystal, not a barrier
+    ignore 0x00420017: safe zone crystal, not a barrier
+    ignore 0x004200E2: safe zone crystal, not a barrier
+
+area 00_pickup_sand_b_dark
+    dock0 > loc0x00430061: DarkSuit | LightSuit
+
+area 0k_sand_hall_dark
+    # Rock Blockers near both doors.
+    dock0 - dock1: ((MorphBall & MorphBallBombs) | (MorphBall & Powerbomb) | (MorphBall & BoostBall) | ScrewAttack) & (DarkSuit | LightSuit)
+    covers 0x00440035 0x00440047
+    ignore 0x00440010: safe zone crystal, not a barrier
+
+area 09_sand_testtubepuzzle_dark
+    dock1 - dock2: DarkSuit | LightSuit
+    dock1 > dock0: DarkSuit | LightSuit
+    dock0 > dock1: SpaceJumpBoots & (DarkSuit | LightSuit)  # unsure: 22.5-unit climb over the crystal platforms
+    ignore 0x0046001D: safe zone crystal, not a barrier
+    ignore 0x00460155: safe zone crystal, not a barrier
+    ignore 0x0046015E: safe zone crystal, not a barrier
+    ignore 0x00460173: safe zone crystal, not a barrier
+    ignore 0x0046017C: safe zone crystal, not a barrier
+    ignore 0x0046001A: safe zone crystal, not a barrier
+    ignore 0x00460190: safe zone crystal, not a barrier
+    ignore 0x00460194: safe zone crystal, not a barrier
+    ignore 0x00460198: safe zone crystal, not a barrier
+
+area 00_pickup_sand_c_dark
+    dock0 > loc0x0047009E: DarkSuit | LightSuit

@@ -99,6 +99,11 @@ is no longer the only source of locations. Plan, each step checkable on its own:
      from. Temporary locks are ignored. Rules only describe movement inside a room.
    - When unsure whether a route works without an item, require the item. A rule that is too
      strict only shrinks the seed space; one that is too loose makes unbeatable seeds.
+   - State (2026-10-27): all five worlds have rules (284 areas). With every item, all 114
+     locations are reachable from the Landing Site. With the starting inventory and the vanilla
+     placement, only the first sphere (the `01_temple_hive01` Missile) opens: some early rules are
+     stricter than the game, since vanilla is beatable by definition. Elevator rooms need an explicit
+     `dock0 - telX` edge, or their world is cut off.
 5. **Non-pickup grants** - items a script grants (the energy controllers' translators, ...).
 6. **Save binding and the F1 page** - seed hash in the save, spoiler. The F1 Randomizer page is
    hidden (`platform/debug_ui/search.cpp`) until then.
