@@ -35,6 +35,16 @@ decompilation is incomplete, and it is what the shim queue is tracked against."
 # Aurora's dvd.cpp needs and fails every call. Aurora skips its own nod provider when a
 # `nod::nod` target already exists, so the alias below is the whole mechanism.
 option(MP_ANDROID_NOD_STUB "Use a non-functional nod stub for Android build probes" OFF)
+# As MP1: a system Abseil, fmt, libpng or freetype ties the binary to the build host's copies
+# (the macOS runner's Homebrew dylibs, absent on a player's Mac). Bundled, they are built from
+# source and linked statically.
+if(APPLE)
+    set(_mp_bundled_default ON)
+else()
+    set(_mp_bundled_default OFF)
+endif()
+option(MP_BUNDLED_DEPS "Build Abseil, fmt, SQLite, libpng and freetype from source and link them statically, ignoring system copies" ${_mp_bundled_default})
+set(AURORA_BUNDLED_DEPS ${MP_BUNDLED_DEPS})
 if(MP_ANDROID_NOD_STUB)
     if(NOT ANDROID AND NOT WIN32)
         message(FATAL_ERROR "MP_ANDROID_NOD_STUB is only valid for Android and Windows cross-compile probes")
