@@ -32,15 +32,16 @@ const DebugPage kDebugPages[] = {
     {"Game", DrawGameTab},
     {"Controls", DrawControlsTab},
     {"Video", DrawVideoTab},
+    {"Mods", DrawModsTab},
     {"Randomizer", DrawRandomizerTab},
-    {"Cheats", DrawCheatsTab},
     {"Save states", DrawSaveStatesTab},
     {"System", DrawSystemTab},
     {"Debug", DrawDebugTab},
 };
 const int kDebugPageCount = static_cast< int >(std::size(kDebugPages));
 
-// MP2_DEBUG_TAB=<page>[/<sub-tab>], case-insensitive.
+// MP2_DEBUG_TAB=<page>[/<sub-tab>], case-insensitive. The old page names are kept: Input, Render,
+// Performance, Extras and States.
 const StartTarget& GetStartTarget() {
   static const StartTarget target = [] {
     StartTarget t;
@@ -53,7 +54,28 @@ const StartTarget& GetStartTarget() {
       t.sub = raw.substr(slash + 1);
       raw.resize(slash);
     }
+    struct Alias {
+      const char* from;
+      const char* page;
+      const char* sub;
+    };
+    static const Alias kAliases[] = {
+        {"Input", "Controls", ""},
+        {"Render", "Video", ""},
+        {"Performance", "Video", "Frame rate"},
+        {"Extras", "Game", ""},
+        {"States", "Save states", ""},
+        {"Cheats", "Debug", ""}, // now a section of the Debug page
+    };
     t.page = raw;
+    for (const Alias& alias : kAliases) {
+      if (SDL_strcasecmp(raw.c_str(), alias.from) == 0) {
+        t.page = alias.page;
+        if (t.sub.empty()) {
+          t.sub = alias.sub;
+        }
+      }
+    }
     return t;
   }();
   return target;

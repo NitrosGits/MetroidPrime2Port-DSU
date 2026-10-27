@@ -3,6 +3,7 @@
 
 #include "debug_ui_internal.h"
 
+#include "port_build_info.h"
 #include "port_input_remap_ui.h"
 
 #include <imgui.h>
@@ -15,7 +16,6 @@ void DrawGameTab() {
   DrawCutscenesSection();
   DrawGameAudio();
   DrawSpeedrunSection();
-  DrawModsSection();
 }
 
 void DrawControlsTab() {
@@ -68,15 +68,21 @@ void DrawVideoTab() {
   ImGui::EndTabBar();
 }
 
+void DrawModsTab() {
+  DrawMods();
+  DrawTexturesSection();
+}
+
 void DrawSystemTab() {
   DrawOverlaySection();
   DrawSettingsSection();
-  DrawDiscImageSection();
   DrawMemoryCard();
   DrawDataFolder();
-  DrawDiscordSection();
   DrawLogSection();
+  DrawDiscImageSection();
+  DrawDiscordSection();
   ImGui::SeparatorText("About");
+  ImGui::TextDisabled("Version %s, build %s", MP_BUILD_VERSION, MP_BUILD_REVISION);
   ImGui::TextDisabled("Metroid Prime 2: Echoes native port (USA 1.00 code; G2ME01, PAL G2MP01)");
   ImGui::TextDisabled("Aurora (SDL3 / WebGPU), Dear ImGui");
 }

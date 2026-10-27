@@ -3,6 +3,7 @@
 
 #include "debug_ui_internal.h"
 
+#include "port_build_info.h"
 #include "port_env.h"
 #include "port_input_remap_ui.h"
 #include "port_mouse.h"
@@ -167,19 +168,18 @@ bool DrawPageWindow() {
     const char* const kTitle = "Metroid Prime 2 Port";
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(kTitle);
-    char fps[32];
-    std::snprintf(fps, sizeof(fps), "%.1f fps", static_cast< double >(sFps));
-    const float fpsWidth = ImGui::CalcTextSize(fps).x;
+    const char* const kBuild = MP_BUILD_REVISION;
+    const float buildWidth = ImGui::CalcTextSize(kBuild).x;
     if (ImGui::GetContentRegionAvail().x >
-        ImGui::CalcTextSize(kTitle).x + fpsWidth + closeWidth + style.ItemSpacing.x * 5.f) {
+        ImGui::CalcTextSize(kTitle).x + buildWidth + closeWidth + style.ItemSpacing.x * 5.f) {
       ImGui::SameLine(0.f, style.ItemSpacing.x * 2.f);
-      ImGui::TextDisabled("%s", fps);
+      ImGui::TextDisabled("%s", kBuild);
     }
 #if !defined(__ANDROID__)
-    // Only when it fits beside the title, the frame rate and the Close button.
+    // Only when it fits beside the title, the build and the Close button.
     const std::string keyHint = HotkeyHint();
     const char* const kKeys = keyHint.c_str();
-    if (ImGui::GetContentRegionAvail().x > ImGui::CalcTextSize(kTitle).x + fpsWidth +
+    if (ImGui::GetContentRegionAvail().x > ImGui::CalcTextSize(kTitle).x + buildWidth +
                                                ImGui::CalcTextSize(kKeys).x + closeWidth +
                                                style.ItemSpacing.x * 8.f) {
       ImGui::SameLine(0.f, style.ItemSpacing.x * 3.f);
@@ -251,9 +251,13 @@ bool DrawDesktopWindow() {
   if (ImGui::Begin("Metroid Prime 2 Port", &open, ImGuiWindowFlags_MenuBar)) {
     if (ImGui::BeginMenuBar()) {
       ImGui::TextUnformatted(HotkeyHint().c_str());
+      // Only when it fits beside the hotkey hint.
       const ImGuiStyle& style = ImGui::GetStyle();
-      ImGui::SameLine(0.f, style.ItemSpacing.x * 3.f);
-      ImGui::TextDisabled("%.1f fps", static_cast< double >(sFps));
+      if (ImGui::GetContentRegionAvail().x >
+          ImGui::CalcTextSize(MP_BUILD_REVISION).x + style.ItemSpacing.x * 3.f) {
+        ImGui::SameLine(0.f, style.ItemSpacing.x * 3.f);
+        ImGui::TextDisabled("%s", MP_BUILD_REVISION);
+      }
       ImGui::EndMenuBar();
     }
 

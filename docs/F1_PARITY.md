@@ -93,16 +93,16 @@ Statuses:
 
 | Item | MP1 | MP2 | Status |
 | --- | --- | --- | --- |
-| Page list | search.cpp:35-44: Game, Controls, Video, Mods, Randomizer, Archipelago, Tracker, Save states, System, Debug | search.cpp:32-39: Game, Controls, Video, Randomizer, Cheats, Save states, System, Debug | DIFF: no Mods page; extra Cheats page |
-| Mods page | tabs.cpp:256-259 | Game › Mods section, game_sections.cpp:347-393 | DIFF: section, not page |
-| Cheats | Debug page, behind the "Show cheats" checkbox (debug.cpp:149-157) | own page (search.cpp:36) | DIFF |
+| Page list | search.cpp:35-44: Game, Controls, Video, Mods, Randomizer, Archipelago, Tracker, Save states, System, Debug | search.cpp:32-39: Game, Controls, Video, Randomizer, Cheats, Save states, System, Debug | SAME (f1-frame): Game, Controls, Video, Mods, Randomizer, Save states, System, Debug; Archipelago and Tracker are MP1-ONLY |
+| Mods page | tabs.cpp:256-259 | own page: mods.cpp `DrawMods` + `DrawTexturesSection` (tabs.cpp `DrawModsTab`) | SAME (f1-frame) |
+| Cheats | Debug page, behind the "Show cheats" checkbox (debug.cpp:149-157) | Debug page behind "Show cheats (items, health, teleport)" (debug.cpp `DrawDebugTab`); `overlay cheats` and `MP2_DEBUG_TAB=Cheats` alias to Debug | SAME (f1-frame); the checkbox is not saved, as a cheat must not persist (MP1 saves it) |
 | Archipelago page | archipelago.cpp (290 lines) | — | MP1-ONLY: Archipelago has no Echoes world |
 | Tracker page | tracker.cpp (251 lines) | — | MP1-ONLY: the brief scopes it out. "Reveal map", "Show progress" and the visited counts could exist in Echoes. |
-| Search aliases | search.cpp:68-73 (Input, Render, Performance, Extras, States) | none | MISSING (the Session, Chat, Remastered and Dread aliases are MP1-ONLY) |
+| Search aliases | search.cpp:68-73 (Input, Render, Performance, Extras, States) | search.cpp `GetStartTarget`: Input, Render, Performance, Extras, States (+ Cheats) | SAME (f1-frame) (the Session, Chat, Remastered and Dread aliases are MP1-ONLY) |
 | Page-window / desktop-window switch | ui_common.cpp:51 PageLayout | ui_common.cpp:260 | SAME |
 | Touch scroll, ClearTouchHover | window.cpp:53-160 | window.cpp:36-140 | SAME |
-| Touch window title | window.cpp:182-197: "Metroid Prime Port" + build revision | window.cpp:163-177: "Metroid Prime 2 Port" + fps | DIFF: fps instead of revision |
-| Desktop menu bar | window.cpp:271-281: hotkey hint + revision | window.cpp:251-257: hotkey hint + "%.1f fps" | DIFF |
+| Touch window title | window.cpp:182-197: "Metroid Prime Port" + build revision | window.cpp: "Metroid Prime 2 Port" + build revision | SAME (f1-frame) |
+| Desktop menu bar | window.cpp:271-281: hotkey hint + revision | window.cpp: hotkey hint + build revision | SAME (f1-frame) |
 | Desktop size | 440x200 at (8,8); 520x620 with MP_DEBUG_TAB | same; MP2_DEBUG_TAB | SAME |
 | Tab bar | FittingPolicyScroll | same | SAME |
 | Touch style | ui_common.cpp:84-99 | ui_common.cpp:111-126 | SAME |
@@ -111,7 +111,7 @@ Statuses:
 | Prime palette and warn/good/bad colours | ui_common.cpp:153-296 | ui_common.cpp:45-110,323-334 | SAME |
 | Menu sounds | ui_common.cpp:320-385 | ui_common.cpp:371-430 | SAME |
 | Pad navigation | ui_common.cpp:465 | ui_common.cpp:269 | SAME |
-| DrawUI: toasts | window.cpp:351-358: stale import, disc read failed, update, note | — | DIFF: disc-read alert and note toast MISSING; the stale-import toast is MP1-ONLY (Remastered); the update toast goes with the Updates section |
+| DrawUI: toasts | window.cpp:351-358: stale import, disc read failed, update, note | — | DIFF (f1-frame skipped the disc-read alert and the note toast: Echoes has no `sDiscReadFailedLastSession` flag or note API to feed them, so a toast would never show); the stale-import toast is MP1-ONLY (Remastered); the update toast goes with the Updates section |
 | DrawUI: resume prompt | window.cpp:360 | window.cpp:305-358,407 | SAME |
 | DrawUI: IGT timer | (speedrun) | window.cpp:363-387 | SAME |
 | DrawUI: card/GPU picks, fullscreen hotkey, setting-change log | window.cpp:313-404 | partly in settings.cpp:693 LogSettingChanges | DIFF |
@@ -121,9 +121,9 @@ Statuses:
 
 | Item | MP1 | MP2 | Status |
 | --- | --- | --- | --- |
-| Section order | tabs.cpp:196-204: Original, Game, Cutscenes, Unlocks, Audio, Language, Speedrun | tabs.cpp:13-19: Game, Cutscenes, Audio, Speedrun, Mods | DIFF |
+| Section order | tabs.cpp:196-204: Original, Game, Cutscenes, Unlocks, Audio, Language, Speedrun | tabs.cpp `DrawGameTab`: Game, Cutscenes, Audio, Speedrun (Mods moved to its own page, f1-frame) | DIFF: no Original, Unlocks, Language sections |
 | Original experience | tabs.cpp:197 (own section) | inside Game, game_sections.cpp:100 | DIFF |
-| Restart to menu | tabs.cpp:38-80 | "Return to title", game_sections.cpp:69 | DIFF: label |
+| Restart to menu | tabs.cpp:38-80 | "Restart to menu" (`RequestReset`), game_sections.cpp | SAME (f1-frame) |
 | Screenshot / Photo mode buttons | tabs.cpp:38-80 | photo.cpp | SAME |
 | Exit game + "Exit game?" modal | tabs.cpp:38-80 | game_sections.cpp:77-82 | SAME |
 | Unlock beam doors once opened | game_sections.cpp:85 | — | MISSING |
@@ -178,10 +178,10 @@ Statuses:
 
 | Item | MP1 | MP2 | Status |
 | --- | --- | --- | --- |
-| Mods list, Load mods, Open mods folder | mods.cpp | game_sections.cpp:347-393 | SAME (in the Game section) |
+| Mods list, Load mods, Open mods folder | mods.cpp | mods.cpp (own page) | SAME (f1-frame) |
 | Reload mods | mods.cpp:533 | — | MISSING |
 | Other mods | mods.cpp:559 | — | MISSING |
-| Textures section | tabs.cpp:258 | game_sections.cpp:306-339 | SAME |
+| Textures section | tabs.cpp:258 | game_sections.cpp `DrawTexturesSection`, drawn under the Mods page | SAME (f1-frame) |
 | Prime Remastered and Metroid Dread importers | mods.cpp, remastered.cpp | — | MP1-ONLY: Prime 1 asset importers |
 
 ## Randomizer page
@@ -202,7 +202,7 @@ Statuses:
 
 | Item | MP1 | MP2 | Status |
 | --- | --- | --- | --- |
-| Section order | tabs.cpp:261-274: Overlay, Settings, Memory card, Data folder, Log, Disc check, Discord, Update, About | tabs.cpp:71-82: Overlay, Settings, Disc image, Memory card, Data folder, Discord, Log, About | DIFF |
+| Section order | tabs.cpp:261-274: Overlay, Settings, Memory card, Data folder, Log, Disc check, Discord, Update, About | tabs.cpp `DrawSystemTab`: Overlay, Settings, Memory card, Data folder, Log, Disc image, Discord, About (f1-frame) | SAME order; no Update section (see Game page, Updates) |
 | Overlay (floating window, Menu theme, Menu sounds) | game_sections.cpp | game_sections.cpp:415-427 | SAME |
 | Memory card, Import file, Import from Dolphin, Export to Dolphin, Open card folder | file_dialogs.cpp | card_data.cpp | SAME |
 | Emulator card (Choose…, Auto, Installed emulators, Share card, Copy port saves) | file_dialogs.cpp:542-603 | — | MISSING |
@@ -212,7 +212,7 @@ Statuses:
 | Disc image | debug.cpp | game_sections.cpp:522 | SAME |
 | Replace disc image… | debug.cpp:122 | — | MISSING |
 | Update | tabs.cpp:271 | — | MISSING (see Game › Updates) |
-| About | tabs.cpp:272-273: MP_BUILD_VERSION + MP_BUILD_REVISION | tabs.cpp:79-81: static text, no revision | DIFF |
+| About | tabs.cpp:272-273: MP_BUILD_VERSION + MP_BUILD_REVISION | tabs.cpp `DrawSystemTab`: "Version %s, build %s" (MP_BUILD_VERSION from android/app/build.gradle via cmake/BuildRevision.cmake) | SAME (f1-frame) |
 
 ## Debug page
 
