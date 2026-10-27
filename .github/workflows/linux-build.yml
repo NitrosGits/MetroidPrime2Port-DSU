@@ -1,0 +1,55 @@
+name: linux-build
+
+# Builds the game binary on Linux and runs the port's tests, on every push to
+# `port` and on pull requests. The release artefacts come from linux-release.yml.
+# build.yml.disable is upstream's matching-decomp build; it needs the retail
+# DOL, which this repository cannot have.
+on:
+  workflow_dispatch:
+  push:
+    branches: [port]
+  pull_request:
+
+# Pushes often arrive a few minutes apart; only the newest one's result matters.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Nothing here writes to the repository.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Dependencies
+        run: sudo apt-get update && sudo apt-get install -y ninja-build g++-14 libasound2-dev libpulse-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxfixes-dev libxss-dev libxtst-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev libgl-dev libfreetype-dev libpng-dev libudev-dev
+      - uses: hendrikmuhs/ccache-action@f09c25b45002a07be2955cbe52e8cee55643f89d # v1.2.24
+        with:
+          key: linux-build
+          # Every save is a new entry (the key gets a timestamp), and the
+          # repository's 10 GB of cache is shared; pull requests only restore.
+          save: ${{ github.event_name == 'push' }}
+          evict-old-files: job
+      # Configure downloads and unpacks about a dozen dependencies. Keep the
+      # unpacked sources and the stamps that say they are current; ccache
+      # covers the build directories beside them.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            build/native/_deps/*-src
+            build/native/_deps/*-subbuild
+          key: deps-linux-build-${{ hashFiles('CMakeLists.txt', 'extern/aurora/**/CMakeLists.txt', 'extern/aurora/**/*.cmake') }}
+      - name: Configure
+        run: |
+          export CC=gcc-14 CXX=g++-14
+          cmake -S . -B build/native -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DMP_SDK_HEADERS_ONLY=OFF -DAURORA_ENABLE_TESTS=ON \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      # Build, the port's tests and the GX FIFO regressions.
+      - uses: ./.github/actions/build-and-test
+        with:
+          build-dir: build/native
+          jobs: "-j 4"
