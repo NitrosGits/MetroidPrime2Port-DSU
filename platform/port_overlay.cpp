@@ -68,6 +68,7 @@ int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
 int sScanSpeed = PortOverlay::kScanSpeedDefault;
 int sLanguage = 0;
 int sElevatorRide = PortOverlay::kElevatorRide_Original;
+int sPortalTransition = PortOverlay::kPortalTransition_Original;
 bool sMinimapTap = true;
 int sPromptGlyphs = 0;
 bool sSwapVisors = false;
@@ -1817,6 +1818,32 @@ void SetElevatorRide(int mode) {
   ReadEnv();
   sElevatorRide = std::clamp(mode, static_cast< int >(kElevatorRide_Original),
                              static_cast< int >(kElevatorRide_Skip));
+  Persist();
+}
+
+int PortalTransition() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return kPortalTransition_Original;
+  }
+  const char* env = port::EnvString("MP2_PORTAL_TRANSITION");
+  if (env != nullptr && std::strcmp(env, "original") == 0) {
+    return kPortalTransition_Original;
+  }
+  if (env != nullptr && std::strcmp(env, "fast") == 0) {
+    return kPortalTransition_Fast;
+  }
+  if (env != nullptr && std::strcmp(env, "skip") == 0) {
+    return kPortalTransition_Skip;
+  }
+  return EnvIntIn("MP2_PORTAL_TRANSITION", sPortalTransition, kPortalTransition_Original,
+                  kPortalTransition_Skip);
+}
+
+void SetPortalTransition(int mode) {
+  ReadEnv();
+  sPortalTransition = std::clamp(mode, static_cast< int >(kPortalTransition_Original),
+                                 static_cast< int >(kPortalTransition_Skip));
   Persist();
 }
 

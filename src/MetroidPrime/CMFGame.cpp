@@ -259,7 +259,14 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
       mPortalTransitionTime += dt;
       if (mTransitionPhase >= kTP_Load && mTransitionPhase <= kTP_FadeIn &&
           !mPortalTransition.null()) {
+#ifdef TARGET_PC
+        // Port: "Portal transition > Fast" plays the ride at double speed.
+        mPortalTransition->Update(PortOverlay::PortalTransition() == PortOverlay::kPortalTransition_Fast
+                                      ? dt * 2.f
+                                      : dt);
+#else
         mPortalTransition->Update(dt);
+#endif
       }
       if (mStateManager->IsFullyInitialized()) {
         if (mPortalTransition.null() || mPortalTransition->IsFinished()) {
@@ -273,6 +280,10 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
             mStateManager->SetRandomAvailable(false);
             mStateManager->SetPendingDockArea(kInvalidAreaId);
             SetFlowState(kFS_InGame);
+#ifdef TARGET_PC
+            std::fprintf(stderr, "[portal] ride over after %.2f s (mode %d)\n",
+                         mPortalTransitionTime, PortOverlay::PortalTransition());
+#endif
             mPortalTransition = nullptr;
           }
         }
@@ -442,6 +453,11 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
             if (mStateManager->PortIsWarpHandoff() && !mPortalTransition.null()) {
               std::fprintf(stderr, "[warp] the game's transition is a warp's: dropping its portal "
                                    "transition\n");
+              mPortalTransition = nullptr;
+            }
+            // "Portal transition > Skip": no ride, so the hop is a dock crossing without one (kTP_Load
+            // then waits for nothing and the fade-in follows the load).
+            if (PortOverlay::PortalTransition() == PortOverlay::kPortalTransition_Skip) {
               mPortalTransition = nullptr;
             }
 #endif

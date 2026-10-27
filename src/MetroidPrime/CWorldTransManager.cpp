@@ -279,6 +279,11 @@ void CWorldTransManager::Update(float dt) {
   if (mTransType == kTT_Enabled && PortOverlay::ElevatorRide() == PortOverlay::kElevatorRide_Fast) {
     dt *= 2.f;
   }
+  // Fast portal: the portal ride's clock (animation, effects, camera, fade) runs at double speed.
+  if (mTransType == kTT_Portal &&
+      PortOverlay::PortalTransition() == PortOverlay::kPortalTransition_Fast) {
+    dt *= 2.f;
+  }
 #endif
   mCurTime += dt;
   switch (mTransType) {
@@ -307,6 +312,13 @@ void CWorldTransManager::UpdatePortalTransition(float dt) {
   if (mPortalTransition.null()) {
     return;
   }
+#ifdef TARGET_PC
+  // Skip portal: the load is done once the loader asks the transition to end (StartTextFadeOut).
+  if (mPortSkipPortal && mStopSoon) {
+    mTransitionFinished = true;
+    return;
+  }
+#endif
   if (mPortalTransition->IsReady()) {
     const float direction = mPortalTransition->IsFinished() ? -1.f : 1.f;
     mPortalFade = CMath::Clamp(0.f, mPortalFade + (dt / 2.f) * direction, 1.f);
@@ -705,6 +717,9 @@ void CWorldTransManager::EnableTransition(rstl::single_ptr< CPortalTransition >&
   mSubtitleData = nullptr;
   mVolume = volume;
   mPortalFade = 0.f;
+#ifdef TARGET_PC
+  mPortSkipPortal = PortOverlay::PortalTransition() == PortOverlay::kPortalTransition_Skip;
+#endif
   StartTransition();
   TouchModels();
 }

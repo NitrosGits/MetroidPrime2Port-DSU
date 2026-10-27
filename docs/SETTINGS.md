@@ -58,7 +58,7 @@ Game page:
 - `original_experience`: Cutscenes > Original experience (default off); env
   `MP2_ORIGINAL_EXPERIENCE`, console `original`. While on, the port's gameplay and cutscene tweaks read
   as retail and their rows are greyed: skippable cutscenes, world name on load, walk speed, hint
-  delay, scan speed, elevator ride, fast morph, spring ball, toggle lock-on, sticky charge, remastered
+  delay, scan speed, elevator ride, portal transition, fast morph, spring ball, toggle lock-on, sticky charge, remastered
   charge, auto-aim (on). Your saved values are kept and return when it is switched off. Mods, input,
   video and audio settings are not affected.
 - `skip_cinematics`: Cutscenes > Skippable cutscenes.
@@ -76,6 +76,12 @@ Game page:
 - `elevator_ride`: Cutscenes > Elevator ride (0 original, 1 fast, 2 skip); env `MP2_ELEVATOR_RIDE`
   (`original|fast|skip`). Fast runs the world-transition ride at double speed; Skip ends it as soon as
   the next world has loaded (the load itself still takes its time). Text transitions are unchanged.
+- `portal_transition`: Cutscenes > Portal transition (0 original, 1 fast, 2 skip); env
+  `MP2_PORTAL_TRANSITION` (`original|fast|skip`), console `portal`. The ride through a light/dark world
+  portal (`CPortalTransition`, run by `CMFGame` kFS_PortalTransition for a dock, or by `CWorldTransManager`
+  from a teleporter). Fast runs it at double speed; Skip drops it, so the fade-in follows the load
+  (about 10 s / 5.5 s / 2 s). Original
+  experience forces Original.
 - `language`: Cutscenes > Language (0 English, 1 German, 2 French, 3 Spanish, 4 Italian, 5 Dutch,
   6 Japanese); env `MP2_LANGUAGE`, console `language`. Picks the string-table language. Applied live:
   every STRG keeps all its sections and `GetString` picks the current one, so tables already loaded follow

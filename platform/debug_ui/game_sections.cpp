@@ -188,6 +188,15 @@ void DrawCutscenesSection() {
   }
   ItemHelp("The ride between worlds. Fast plays it at double speed; Skip leaves as soon as the next "
            "world has loaded. Applies from the next ride.");
+  int portalTransition = sPortalTransition;
+  if (ImGui::Combo("Portal transition", &portalTransition, "Original\0" "Fast\0" "Skip\0")) {
+    sPortalTransition = std::clamp(portalTransition,
+                                   static_cast< int >(PortOverlay::kPortalTransition_Original),
+                                   static_cast< int >(PortOverlay::kPortalTransition_Skip));
+    Changed(true);
+  }
+  ItemHelp("The ride through a light/dark world portal. Fast plays it at double speed; Skip leaves as "
+           "soon as the other world has loaded. Applies from the next portal.");
   int language = sLanguage;
   if (ImGui::Combo("Language", &language,
                    "English\0" "German\0" "French\0" "Spanish\0" "Italian\0" "Dutch\0"

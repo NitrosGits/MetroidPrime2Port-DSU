@@ -202,6 +202,8 @@ const SettingKey kSettingKeys[] = {
                                                                                   "400"),
     IntKey< &sElevatorRide, PortOverlay::kElevatorRide_Original, PortOverlay::kElevatorRide_Skip >(
         "elevator_ride", "0", "2"),
+    IntKey< &sPortalTransition, PortOverlay::kPortalTransition_Original,
+            PortOverlay::kPortalTransition_Skip >("portal_transition", "0", "2"),
     IntKey< &sPromptGlyphs, PortOverlay::kPromptGlyphs_Auto, PortOverlay::kPromptGlyphs_Keyboard >(
         "prompt_glyphs", "0", "5"),
     BoolKey< &sSwapVisors >("swap_visors"),
