@@ -12,6 +12,10 @@ cannot hold them. This tool is run by CMake (see mp_scope_modules in CMakeLists.
             RELMain/RELExit to mp_rel_<Name>_prolog/_epilog, and localize every other defined
             global/weak symbol except those that an object outside the module references and
             that nothing outside the module defines.
+  scope --format macho
+            macOS/iOS: the same per-object rename as coff, on Mach-O objects. Names keep their
+            leading underscore (_sym -> _mp_rel_<Name>__sym, _RELMain -> _mp_rel_<Name>_prolog),
+            so the C symbol mp_rel_<Name>_prolog resolves. No .drectve section exists.
   scope --format coff
             Windows (lld-link has no -r link). Each module object gets its own scoped copy,
             --outputs lists "Name;out;out..." (one output per input object, same order). Every
@@ -32,11 +36,16 @@ import re
 import subprocess
 import sys
 
-ENTRY = {"prolog": re.compile(r"^(_Z7RELMainv|RELMain|\?RELMain@@YAXXZ)$"),
-         "epilog": re.compile(r"^(_Z7RELExitv|RELExit|\?RELExit@@YAXXZ)$")}
+# The leading-underscore forms are Mach-O's (every C symbol carries one).
+ENTRY = {"prolog": re.compile(r"^(_Z7RELMainv|RELMain|\?RELMain@@YAXXZ|__Z7RELMainv|_RELMain)$"),
+         "epilog": re.compile(r"^(_Z7RELExitv|RELExit|\?RELExit@@YAXXZ|__Z7RELExitv|_RELExit)$")}
 # COFF symbols the linker or CRT resolve by name; never rename them if a module defines one.
 COFF_RESERVED = {"_tls_used", "_fltused", "__ImageBase", "_tls_index", "mainCRTStartup", "WinMainCRTStartup",
                  "main", "wmain", "WinMain", "DllMain"}
+# Mach-O symbols dyld or the linker resolve by name. Local labels (ltmp*, l_*, L*) are not
+# external, so nm -g never lists them and they are never renamed.
+MACHO_RESERVED = {"_main", "__mh_execute_header", "__mh_bundle_header", "__mh_dylib_header",
+                  "___dso_handle"}
 
 
 def read_modules(path):
@@ -155,6 +164,19 @@ def scope(args):
 
 
 def scope_coff(args):
+    scope_rename(args, "coff")
+
+
+def scope_macho(args):
+    scope_rename(args, "macho")
+
+
+def scope_rename(args, fmt):
+    macho = fmt == "macho"
+    reserved = MACHO_RESERVED if macho else COFF_RESERVED
+    # Mach-O names keep their leading underscore: _sym -> _mp_rel_<Name>__sym.
+    us = "_" if macho else ""
+
     mods = read_modules(args.modules)
     outputs = {n: o for n, o in read_modules(args.outputs)}
     others = [l for l in open(args.others).read().splitlines() if l.strip()]
@@ -185,11 +207,13 @@ def scope_coff(args):
             if other != name:
                 needed |= undef
         entry_names = {s for s in defined if any(rx.match(s) for rx in ENTRY.values())}
-        rename = {s: f"mp_rel_{name}__{s}" for s in defined
-                  if s not in entry_names and s not in COFF_RESERVED
+        rename = {s: (f"mp_rel_{name}__{s}" if not macho else
+                      f"_mp_rel_{name}__{s[1:]}" if s.startswith("_") else f"mp_rel_{name}__{s}")
+                  for s in defined
+                  if s not in entry_names and s not in reserved
                   and not (s in needed and s not in defined_outside)}
         for kind, sym in eps.items():
-            rename[sym] = f"mp_rel_{name}_{kind}"
+            rename[sym] = f"{us}mp_rel_{name}_{kind}"
         for (obj, out, (d, u)) in zip(objs, outputs[name], per):
             os.makedirs(os.path.dirname(out), exist_ok=True)
             mapfile = out + ".redefine"
@@ -198,6 +222,8 @@ def scope_coff(args):
             subprocess.run([args.objcopy, f"--redefine-syms={mapfile}", obj, tmp], check=True)
             os.replace(tmp, out)
             os.remove(mapfile)
+            if macho:
+                continue
             # Linker directives name symbols textually (/include:, /alternatename:); a renamed one
             # would silently dangle.
             drectve = out + ".drectve"
@@ -210,7 +236,7 @@ def scope_coff(args):
                         print(f"scope_module: warning: {obj}: .drectve names renamed symbol {s}", file=sys.stderr)
 
 
-SCOPERS = {"elf": scope, "coff": scope_coff}  # a "macho" scoper would be added here
+SCOPERS = {"elf": scope, "coff": scope_coff, "macho": scope_macho}
 
 
 def main():
