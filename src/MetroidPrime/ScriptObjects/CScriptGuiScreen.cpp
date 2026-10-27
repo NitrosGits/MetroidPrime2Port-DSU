@@ -415,7 +415,6 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
   }
 }
 
-// @ fn_60_4544
 #ifdef TARGET_PC
 namespace {
 // Port: Trilogy's slot details panes (see UpdateSaveSlots), per slot, with the title they follow.
@@ -426,6 +425,7 @@ const float kPortDetailsScale = 0.5f;
 } // namespace
 #endif
 
+// @ fn_60_4544
 void CScriptGuiFrontEndScreen::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
 #ifdef TARGET_PC
