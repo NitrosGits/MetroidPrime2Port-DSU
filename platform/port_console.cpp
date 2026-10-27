@@ -4066,6 +4066,60 @@ void CmdGrapple(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// lock <id> [d] [updates]: the real lock-on press on any actor (no forced orbit): puts the player d
+// (10) units away with the eye level with the actor's orbit point, facing it, has the candidate
+// lists rebuilt on the next update and holds L from the update after that (`orbit` shows the result).
+void CmdLock(CStateManager& mgr, const Args& args, std::string& out) {
+  const CEntity* ent = args.size() >= 2 ? ResolveObject(mgr, args[1]) : nullptr;
+  const CActor* actor = ent != nullptr ? TCastToConstPtr< CActor >(ent) : nullptr;
+  float dist = 10.f;
+  if (actor == nullptr || (args.size() > 2 && (!ParseFloat(args[2], dist) || !(dist > 2.f)))) {
+    Fail("usage: lock <actor id> [dist > 2] [updates]");
+    return;
+  }
+  CPlayer* player = mgr.GetPlayer(0);
+  if (player == nullptr) {
+    Fail("no player");
+    return;
+  }
+  const unsigned updates = args.size() > 3 ? static_cast< unsigned >(ArgToInt(args[3], 0)) : 0u;
+  const CVector3f target = actor->GetOrbitPosition(mgr);
+  CVector3f dir = player->GetTranslation() - target;
+  dir.SetZ(0.f);
+  dir = dir.CanBeNormalized() ? dir.AsNormalized() : CVector3f(0.f, -1.f, 0.f);
+  const float eyeHeight = player->GetEyePosition().GetZ() - player->GetTranslation().GetZ();
+  // The side the player came from may be behind a wall: take the first of 8 directions around the
+  // actor (starting there) whose eye-level line to the orbit point is clear for the lock-on filter.
+  const CMaterialFilter los = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid),
+      CMaterialList(kMT_ProjectilePassthrough, kMT_ScanPassthrough, kMT_Character, kMT_Player));
+  CVector3f pos = target + dir * dist;
+  for (int i = 0; i < 8; ++i) {
+    const float a = static_cast< float >(i) * (M_PIF / 4.f);
+    const float c = std::cos(a);
+    const float sn = std::sin(a);
+    const CVector3f d(dir.GetX() * c - dir.GetY() * sn, dir.GetX() * sn + dir.GetY() * c, 0.f);
+    const CVector3f p(target.GetX() + d.GetX() * dist, target.GetY() + d.GetY() * dist,
+                      target.GetZ() - eyeHeight);
+    if (mgr.RayCollideWorld(p + CVector3f(0.f, 0.f, eyeHeight), target, los, actor)) {
+      dir = d;
+      pos = p;
+      break;
+    }
+  }
+  pos.SetZ(target.GetZ() - eyeHeight);
+  player->Teleport(CTransform4f::LookAt(pos, pos - dir, CVector3f::Up()), mgr, true);
+  player->PortRefreshOrbitCandidates();
+  PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, updates, 2);
+  char line[192];
+  std::snprintf(line, sizeof(line),
+                "lock u%04x orbit point (%.1f, %.1f, %.1f): player at (%.1f, %.1f, %.1f), L held "
+                "from 2 updates on\n",
+                actor->GetUniqueId().value, target.GetX(), target.GetY(), target.GetZ(), pos.GetX(),
+                pos.GetY(), pos.GetZ());
+  out += line;
+}
+
 // scan <id> [d] [updates]: a scan of an actor without aiming. The orbit candidate lists rarely
 // offer a big actor whose orbit point is far above the player, so this puts the player d (40)
 // units from the actor on its level, facing it, locks the orbit on it (CPlayer::PortForceOrbit:
@@ -4650,6 +4704,8 @@ const CommandSpec kCommands[] = {
       "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"},
     {"grapple", CmdGrapple,
       "grapple <id> [d]            wake a grapple point, stand d (8) units from it facing it, hold L\n"},
+    {"lock", CmdLock,
+      "lock <id> [d] [updates]     face an actor d (10) units away, rebuild the candidates, hold L\n"},
     {"scan", CmdScan,
       "scan <id> [d] [updates]     scan an actor: d (40) units away, orbit locked, L held (alone: progress)\n"},
     {"stick", CmdStick,

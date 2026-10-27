@@ -148,6 +148,7 @@ casts the mode to CGMCoin). Prints the proxies reached.
 `grapple <id> [d]` (ids from `objs grapple`) wakes a grapple point, stands the player d (8) units
 from it and holds L: with `give grappleBeam 1` the player locks on and grapples (`status`: orbit 5).
 A bare `tp` + `press l` misses: the lock-on press needs the orbit candidate lists, rebuilt every 20 updates.
+`lock <id> [d] [updates]` is the real lock-on press on any actor: it takes the first of 8 sides (d, default 10, away) with a clear eye-level line to the actor, faces it, rebuilds the candidates and holds L (`orbit`: state 1). A blocked line (a wall between) is why a plain `press l` never locks.
 `scan <id> [d] [updates]` twice ~30 updates apart (scan visor + L, then tp d (40) units, forced orbit lock) scans an actor; `scan` alone prints progress (game state 1 = scan display up).
 `spawn <fourcc> [n] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [rules <id>] [wpsc <id>]
 [conn <state> <msg> <id>]... [model <id>|u<id>] [inactive] [prop <propid> <value>]...` creates n (1) script objects of a type through its `ScriptLoader` entry,
