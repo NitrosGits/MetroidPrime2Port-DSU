@@ -7,6 +7,7 @@
 
 #include "port_dynamic_res.h"
 #include "port_env.h"
+#include "port_gpu_driver.h"
 #include "port_overlay.h"
 #include "port_overlay_internal.h"
 #include "port_photo.h"
@@ -27,6 +28,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <string>
 
 using namespace PortOverlayState;
 
@@ -55,10 +57,14 @@ const char* sDriverWorkaroundsEnv = nullptr;
 bool sDriverWorkaroundsCleared = false;
 // A file in the user folder while a start with driver workarounds is under way: still there at the
 // next start means that one never reached its 60th frame, the same kind of marker kept for
-// OpenGL ES below.
+// OpenGL ES and OpenGL below.
 std::filesystem::path sDriverWorkaroundsMarker;
 std::filesystem::path sGlesMarker;
 bool sGlesStarting = false;
+// The same for a custom Vulkan driver (port_gpu_driver.h), and MP2_GPU_DRIVER when it overrides
+// the setting.
+std::filesystem::path sGpuDriverMarker;
+const char* sGpuDriverEnv = nullptr;
 
 std::atomic< bool > sGpuSelfTestRequested{false};
 
@@ -169,38 +175,81 @@ void BeginGpuStart(const std::string& userFolder, AuroraConfig& config) {
   sStorageClampAtStart = sStorageClamp;
   sLowPowerGpuAtStart = sLowPowerGpu;
 
-#if defined(_WIN32)
-  // The Windows renderer choice: Aurora tries it first and falls back to its own order. Read here,
-  // so a change applies after a restart. MP2_GRAPHICS_BACKEND overrides the setting for one run.
+#if defined(_WIN32) || (defined(__linux__) && !defined(__ANDROID__))
+  // The renderer choice: Aurora tries it first and falls back to its own order. Read here, so a
+  // change applies after a restart. MP2_GRAPHICS_BACKEND overrides the setting for one run.
   sGraphicsBackendAtStart = sGraphicsBackend;
   {
     const char* const env = PortGraphicsBackend::EnvRequest();
     const PortGraphicsBackend::Request request = PortGraphicsBackend::Resolve(sGraphicsBackend, env);
     if (request.rejected) {
-      std::fprintf(stderr,
-                   "[video] MP2_GRAPHICS_BACKEND=%s is not auto, d3d12, vulkan or d3d11; using graphics_backend=%s\n",
-                   env, PortGraphicsBackend::GraphicsBackendConfigName(request.backend));
+      // The names this build offers, so the warning can't suggest one it can't start.
+      std::string names;
+      for (const PortGraphicsBackend::EGraphicsBackend choice : PortGraphicsBackend::Choices()) {
+        names += names.empty() ? "" : ", ";
+        names += PortGraphicsBackend::GraphicsBackendConfigName(choice);
+      }
+      std::fprintf(stderr, "[video] MP2_GRAPHICS_BACKEND=%s is not one of %s; using graphics_backend=%s\n", env,
+                   names.c_str(), PortGraphicsBackend::GraphicsBackendConfigName(request.backend));
     }
     config.desiredBackend = PortGraphicsBackend::ToAurora(request.backend);
   }
 #endif
 
-  // A driver can crash outright while Dawn starts on OpenGL ES (Mesa does), and the setting would
-  // then crash every launch with no way back to the F1 menu. The marker outlives such a crash, so
-  // the next start turns the setting off and uses the default backend.
+  // A driver can crash outright while Dawn starts on OpenGL ES or OpenGL (Mesa does), and the
+  // setting would then crash every launch with no way back to the F1 menu. The marker outlives such
+  // a crash, so the next start turns the setting off (OpenGL: back to Auto) and uses the default
+  // backend. OpenGL ES, where offered, wins over the renderer choice.
   if (PortOverlay::OpenGles()) {
     config.desiredBackend = BACKEND_OPENGLES;
-    sGlesMarker = folder / "opengles_starting";
+  }
+  if (config.desiredBackend == BACKEND_OPENGLES || config.desiredBackend == BACKEND_OPENGL) {
+    const bool gles = config.desiredBackend == BACKEND_OPENGLES;
+    sGlesMarker = folder / (gles ? "opengles_starting" : "opengl_starting");
     if (std::filesystem::exists(sGlesMarker, ec)) {
-      std::fprintf(stderr, "[video] the last start on OpenGL ES did not finish; turning it off\n");
-      sOpenGles = false;
-      sOpenGlesAtStart = false;
+      if (gles) {
+        std::fprintf(stderr, "[video] the last start on OpenGL ES did not finish; turning it off\n");
+        sOpenGles = false;
+        sOpenGlesAtStart = false;
+      } else {
+        std::fprintf(stderr, "[video] the last start on OpenGL did not finish; using Auto\n");
+        sGraphicsBackend = PortGraphicsBackend::kGraphicsBackend_Auto;
+        sGraphicsBackendAtStart = sGraphicsBackend;
+      }
       PortOverlaySettings::MarkDirty();
       config.desiredBackend = BACKEND_AUTO;
       std::filesystem::remove(sGlesMarker, ec);
     } else {
       std::ofstream(sGlesMarker) << "1\n";
       sGlesStarting = true;
+    }
+  }
+
+  // A custom Vulkan driver (Turnip, Android only) can crash while it starts, just like OpenGL ES
+  // above; the same kind of marker sends the next start back to the system driver. MP1's main.cpp
+  // block. MP2_GPU_DRIVER=<id> (empty = the system's) overrides the setting for one run.
+  sGpuDriverAtStart = sGpuDriver;
+  sGpuDriverMarker = folder / "gpu_driver_starting";
+  sGpuDriverEnv = port::EnvString("MP2_GPU_DRIVER");
+  {
+    const std::string driver = sGpuDriverEnv != nullptr ? sGpuDriverEnv : sGpuDriver;
+    if (!driver.empty() && config.desiredBackend != BACKEND_OPENGLES && PortGpuDriver::Supported()) {
+      if (std::filesystem::exists(sGpuDriverMarker, ec)) {
+        std::fprintf(stderr, "[video] the last start with GPU driver %s crashed; using the system driver\n",
+                     driver.c_str());
+        sGpuDriver.clear();
+        PortOverlaySettings::MarkDirty();
+        PortGpuDriver::SetLoadError("it crashed last time; switched back to the system driver");
+        std::filesystem::remove(sGpuDriverMarker, ec);
+      } else {
+        std::ofstream(sGpuDriverMarker) << driver << '\n';
+        static std::string vulkanLibraryDir;
+        vulkanLibraryDir = PortGpuDriver::Prepare(driver);
+        config.vulkanLibraryDir = vulkanLibraryDir.empty() ? nullptr : vulkanLibraryDir.c_str();
+      }
+    } else {
+      // Left by a crash before the user switched back to System: don't hold it against the next driver.
+      std::filesystem::remove(sGpuDriverMarker, ec);
     }
   }
 
@@ -274,10 +323,24 @@ void BeginGpuStart(const std::string& userFolder, AuroraConfig& config) {
 }
 
 void GpuStarted() {
+  std::error_code ec;
   if (sGlesStarting) {
-    std::error_code ec;
     std::filesystem::remove(sGlesMarker, ec);
     sGlesStarting = false;
+  }
+  // Aurora went back to the system driver when Vulkan failed with the custom one.
+  if (aurora_vulkan_library_failed() && !PortGpuDriver::Active().empty()) {
+    std::fprintf(stderr, "[video] Vulkan failed with GPU driver %s; using the system driver\n",
+                 PortGpuDriver::Active().c_str());
+    if (sGpuDriverEnv == nullptr) {
+      sGpuDriver.clear();
+      PortOverlaySettings::MarkDirty();
+    }
+    PortGpuDriver::SetLoadError("Vulkan failed to start with it; switched back to the system driver");
+  }
+  // The driver started: only a crash before this point reverts it.
+  if (!sGpuDriverMarker.empty()) {
+    std::filesystem::remove(sGpuDriverMarker, ec);
   }
 }
 

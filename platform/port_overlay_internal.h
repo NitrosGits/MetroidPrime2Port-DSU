@@ -113,12 +113,14 @@ extern int sFpsCap;             // with the 60 FPS cap off; 0 = unlimited
 extern bool sShowShaderCompilation;
 extern bool sShowMenuHint;
 extern bool sPerPixelLighting;
-extern PortGraphicsBackend::EGraphicsBackend sGraphicsBackend; // Windows renderer choice
+extern PortGraphicsBackend::EGraphicsBackend sGraphicsBackend; // renderer choice (Windows, desktop Linux)
 extern PortGraphicsBackend::EGraphicsBackend sGraphicsBackendAtStart;
 extern bool sOpenGles;
 extern bool sOpenGlesAtStart;
 extern int sStorageClamp;       // -1 auto, 0 off, 1 on
 extern int sStorageClampAtStart;
+extern std::string sGpuDriver;        // Android custom Vulkan driver id (port_gpu_driver.h); "" = the system's
+extern std::string sGpuDriverAtStart;
 extern unsigned sDriverWorkarounds; // bit i = PortVideo::kDriverWorkarounds[i]
 extern unsigned sDriverWorkaroundsAtStart;
 extern bool sLowPowerGpu;

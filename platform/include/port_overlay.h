@@ -528,8 +528,8 @@ bool PerPixelLighting();
 // storage clamp (-1 auto; Aurora reads `MP2_STORAGE_CLAMP` itself), the Dawn driver workarounds
 // (`MP2_DRIVER_WORKAROUNDS`) and the low-power adapter (Aurora reads `MP2_GPU_POWER=low`).
 bool OpenGles();
-// The Windows renderer choice (`graphics_backend`, `MP2_GRAPHICS_BACKEND` overrides it for one run;
-// see port_graphics_backend.h). Stored on every platform, used only on Windows.
+// The renderer choice (`graphics_backend`, `MP2_GRAPHICS_BACKEND` overrides it for one run;
+// see port_graphics_backend.h). Stored on every platform, used on Windows and desktop Linux.
 PortGraphicsBackend::EGraphicsBackend GraphicsBackend();
 int StorageClamp();
 unsigned DriverWorkarounds();

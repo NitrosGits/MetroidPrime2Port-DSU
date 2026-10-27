@@ -165,8 +165,11 @@ android {
         externalNativeBuild {
             cmake {
                 arguments(*cmakeArguments)
-                // The one target the app loads; libmetroid_prime2_port.so.
-                targets "metroid_prime2_port"
+                // libmetroid_prime2_port.so is the one the app loads. The rest are loaded by
+                // path for custom Vulkan drivers (port_gpu_driver.cpp): the shim Dawn loads
+                // as libvulkan.so and libadrenotools' hook libraries.
+                targets "metroid_prime2_port", "mp2_vkshim", "hook_impl", "main_hook",
+                        "file_redirect_hook", "gsl_alloc_hook"
             }
         }
     }

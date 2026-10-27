@@ -50,9 +50,11 @@ static_assert(std::string_view{kDriverWorkarounds[3].key} == "validation");
 unsigned ParseDriverWorkarounds(std::string_view rest);
 
 // main.cpp, just before aurora_initialize: the backend (OpenGL ES, with MP1's crash marker), the
-// storage clamp and low-power adapter environment, and the driver workarounds' Dawn toggles.
+// storage clamp and low-power adapter environment, the driver workarounds' Dawn toggles, and on
+// Android the custom Vulkan driver (port_gpu_driver.h, with the same kind of crash marker).
 void BeginGpuStart(const std::string& userFolder, AuroraConfig& config);
-// Right after aurora_initialize: the OpenGL ES start finished.
+// Right after aurora_initialize: the OpenGL ES or custom-driver start finished (a custom driver
+// Vulkan failed with is switched back to the system's here).
 void GpuStarted();
 // What BeginGpuStart found, for the Compatibility tab.
 bool DriverChecksThisRun();

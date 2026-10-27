@@ -37,6 +37,11 @@ MP1's port ships this pipeline; it is the template.
   Aurora's Android support is already vendored here: `extern/aurora/cmake/AuroraSDL3Provider.cmake`
   (:164-176, needs `AURORA_SDL3_PROVIDER=vendor`), `AuroraDawnProvider.cmake` (:83-90 prebuilt
   `android-aarch64` Dawn, `AURORA_DAWN_PROVIDER=auto`).
+  The Gradle build does not download Dawn: it reads `build/android-deps/dawn_prebuilt`, which must
+  hold the release `AuroraDependencyVersions.cmake` pins (`dawn-android-aarch64.tar.gz` from
+  `Odrannnn/dawn` `v20261026.185535`, sha256 `6a3ac06c...`, unpacked there). The copy
+  `tools/android_probe.sh` falls back to (MP1's `build/android-deps`) was still the old
+  encounter/dawn build on 2026-10-27, so replace it by hand after a Dawn bump.
 - **Touch controls** (all Java + JNI, no assets): `TouchControlsView.java` (3148 lines, drawn in
   code) over the SDL surface; JNI glue `platform/debug_ui/android_jni.inc` -> a real SDL virtual
   gamepad (`platform/touch_pad.cpp`) plus the port's own input layer; layouts persisted as
@@ -438,6 +443,53 @@ bits (`PortInput::kTouchCount`; stock controls 0..35, ball page 40..44, added bu
 `PortInputDevices::SetTouchControl` feeds them, `BuildProfile` binds the added buttons
 (`PortInput::BindTouchButtons`) and the ball page rows. JNI: `nativeTouchControl`,
 `nativeTouchControlBound`, `nativeTouchBallLabel`, `nativeTouchButtonActions`.
+
+### Custom Vulkan drivers (2026-10-27, from MP1)
+
+On arm64 the port can load a custom Vulkan driver such as Mesa Turnip for Adreno GPUs through
+[libadrenotools](https://github.com/bylaws/libadrenotools) (`extern/adrenotools`,
+`platform/port_gpu_driver.cpp`), the same way Android emulators do, and takes the same driver zips
+(a `meta.json` naming the library, plus that library). None is bundled.
+
+F1 > Video > Compatibility > "Install driver (.zip)..." unpacks a zip into the app's internal
+storage (`gpu_drivers/<id>/`; dlopen refuses shared storage) and selects it. The "Vulkan driver"
+combo switches between installed drivers and System; `gpu_driver=<id>` (empty = System) takes
+effect at the next start, and `MP2_GPU_DRIVER=<id>` overrides it for one run. "Running:" shows what
+the GPU reports (e.g. `Mesa Turnip ...`), since adrenotools quietly falls back to the system driver
+when its hooks fail. The OpenGL ES backend always uses the system driver.
+
+While the GPU starts, `gpu_driver_starting` stays in the user folder, so a crash there reverts to
+System at the next start, like the OpenGL ES toggle. If Vulkan does not start with the chosen
+driver, Aurora retries with the system driver in the same run (`aurora_vulkan_library_failed`), and
+`PortVideo::GpuStarted` switches the setting back to System and shows the error under the combo. A
+driver that starts but draws garbage has to be switched back by hand.
+
+A library named `vulkan.*` is installed as `mportv.*` with its `vulkan.*` SONAME patched to match:
+Android's linker would otherwise return the system `vulkan.adreno.so` HWUI already loaded.
+
+How it reaches Dawn: Dawn opens `libvulkan.so` by name from its search paths only. The port copies
+`libmp2_vkshim.so` (exports only `vkGetInstanceProcAddr`, forwarding to the custom driver's) to
+`<internal>/vkshim/libvulkan.so`, loads it, points it at the driver adrenotools opened, and puts that
+folder first in Dawn's `additionalRuntimeSearchPaths` (`AuroraConfig::vulkanLibraryDir`). The shim
+and adrenotools' hook libraries (`libhook_impl.so`, `libmain_hook.so`, `libfile_redirect_hook.so`,
+`libgsl_alloc_hook.so`) are extra CMake targets in `android/app/build.gradle` and are loaded by path
+from the native library dir (`useLegacyPackaging`). Not yet run on a device.
+
+### Data folder move to shared storage (MP1 sync, gpu-misc)
+
+F1 > System > Data folder (`platform/port_data_folder.cpp`, Android only) moves `user/` (settings,
+memory card, save backups, mods, save states, texture pack) from app storage to
+`/storage/emulated/0/MetroidPrime2/`, and back. The cache folder and `disc.iso` stay in app storage.
+Flow: ask for "All files access" (`MANAGE_EXTERNAL_STORAGE`, Android 11+; the legacy storage permission
+on 9/10) through `MetroidPrime2Activity.hasStorageAccess/requestStorageAccess`, copy with a progress bar
+(each file under a `.mpcopy` name, renamed when complete; `.mpcopy_incomplete` marks a cut-short copy),
+offer "Use the data already there" when the target holds data, write the choice as the `user=` line of
+`port_paths.txt` (other lines kept; `WriteUserLine`), then `restartApp` (`RestartActivity`, own process).
+"Delete the old copy" frees app storage afterwards. If the chosen folder is unwritable at the next start
+(access revoked, reinstall), `ResolveAndroidPaths` (`platform/main.cpp`) runs from app storage that once and
+sets `MP2_USER_UNAVAILABLE`, which the panel reports with buttons to grant access again or stay. Unlike MP1 there is no
+startup dialog for that case and no `data_folder.txt`: `port_paths.txt` is the only marker. Engine test:
+`port_data_folder_tests`. Not run on a device (no installs from this lane).
 
 ## 5. Risks, worst first
 

@@ -1077,7 +1077,25 @@ static bool initialize_once(AuroraBackend auroraBackend, bool allowCpu) {
     // MP2_GPU_POWER=low asks for the integrated GPU on a machine that also has a discrete one.
     const char* power = std::getenv("MP2_GPU_POWER");
     const bool lowPower = power != nullptr && std::string_view{power} == "low";
+#ifdef WEBGPU_DAWN
+    // MP2_GL_VERSION=3.3 runs desktop OpenGL as 3.3 core even on a newer driver (the Dawn fork's
+    // gl_force_desktop_gl_33 adapter toggle), to try the 3.3 paths on hardware that has more.
+    const char* glVersion = std::getenv("MP2_GL_VERSION");
+    const bool forceGL33 = backend == wgpu::BackendType::OpenGL && glVersion != nullptr &&
+                           std::string_view{glVersion} == "3.3";
+    static constexpr std::array adapterToggles{"gl_force_desktop_gl_33"};
+    const wgpu::DawnTogglesDescriptor adapterTogglesDescriptor{wgpu::DawnTogglesDescriptor::Init{
+        .enabledToggleCount = adapterToggles.size(),
+        .enabledToggles = adapterToggles.data(),
+    }};
+    if (forceGL33) {
+      Log.info("MP2_GL_VERSION=3.3: forcing an OpenGL 3.3 core context");
+    }
+#endif
     const wgpu::RequestAdapterOptions options{
+#ifdef WEBGPU_DAWN
+        .nextInChain = forceGL33 ? &adapterTogglesDescriptor : nullptr,
+#endif
         .featureLevel = wgpu::FeatureLevel::Compatibility,
         .powerPreference = lowPower ? wgpu::PowerPreference::LowPower : wgpu::PowerPreference::HighPerformance,
         .backendType = backend,
@@ -1288,6 +1306,12 @@ static bool initialize_once(AuroraBackend auroraBackend, bool allowCpu) {
           feature == wgpu::FeatureName::TextureComponentSwizzle ||
           (feature == wgpu::FeatureName::DualSourceBlending && !dualSourceDisabled)) {
         if (feature == wgpu::FeatureName::CoreFeaturesAndLimits) {
+          // MP2_GPU_NO_CORE=1 leaves it out, so Dawn validates the device as a Compatibility one
+          // (to test those paths on a Vulkan desktop).
+          if (const char* noCore = std::getenv("MP2_GPU_NO_CORE"); noCore != nullptr && noCore[0] == '1') {
+            Log.info("MP2_GPU_NO_CORE=1: not requesting CoreFeaturesAndLimits");
+            continue;
+          }
           g_hasCoreFeatures = true;
         } else if (feature == wgpu::FeatureName::TextureCompressionBC) {
           g_bcTexturesSupported = true;
@@ -1392,11 +1416,17 @@ static bool initialize_once(AuroraBackend auroraBackend, bool allowCpu) {
     addToggles("MP2_DAWN_DISABLE", std::getenv("MP2_DAWN_DISABLE"), false, false);
     // GL is only the fallback for drivers that draw wrong on Vulkan, so it runs without
     // Dawn's blob cache: cached program binaries crashed Mesa in glProgramBinary.
+    // GL runs without Dawn's blob cache where Mesa drives it: cached program binaries crashed
+    // Mesa in glProgramBinary. Windows desktop GL (vendor drivers, through the Dawn fork's
+    // EGL-on-WGL shim) keeps it, or every launch recompiles every pipeline.
+#if _WIN32
+    const bool glWithoutCache = g_backendType == wgpu::BackendType::OpenGLES;
+#else
+    const bool glWithoutCache =
+        g_backendType == wgpu::BackendType::OpenGLES || g_backendType == wgpu::BackendType::OpenGL;
+#endif
     wgpu::DawnTogglesDescriptor togglesDescriptor(wgpu::DawnTogglesDescriptor::Init{
-        .nextInChain = g_backendType == wgpu::BackendType::OpenGLES ||
-                               g_backendType == wgpu::BackendType::OpenGL
-                           ? nullptr
-                           : &cacheDescriptor,
+        .nextInChain = glWithoutCache ? nullptr : &cacheDescriptor,
         .enabledToggleCount = enableToggles.size(),
         .enabledToggles = enableToggles.data(),
         .disabledToggleCount = disableToggles.size(),

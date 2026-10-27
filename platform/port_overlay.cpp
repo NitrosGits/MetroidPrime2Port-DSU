@@ -1585,6 +1585,8 @@ bool sOpenGles = false;
 bool sOpenGlesAtStart = false;
 int sStorageClamp = -1;
 int sStorageClampAtStart = -1;
+std::string sGpuDriver;
+std::string sGpuDriverAtStart;
 unsigned sDriverWorkarounds = 0;
 unsigned sDriverWorkaroundsAtStart = 0;
 bool sLowPowerGpu = false;

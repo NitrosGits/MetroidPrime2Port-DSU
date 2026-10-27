@@ -361,6 +361,25 @@ PortPaths ResolveAndroidPaths() {
     }
   }
 
+  // A `user=` the player moved the data to (F1 > System > Data folder, port_data_folder.h) in
+  // shared storage can stop being writable (the "All files access" grant revoked, a reinstall):
+  // run from app storage this once, and let the panel say so through MP2_USER_UNAVAILABLE.
+  {
+    std::error_code probe;
+    std::filesystem::create_directories(paths.user, probe);
+    const std::string test = paths.user + "/.port_write_test";
+    std::ofstream writable(test);
+    if (paths.user != base + "user" && (probe || !writable)) {
+      std::fprintf(stderr, "metroid_prime2_port: %s is not writable; using app storage\n",
+                   paths.user.c_str());
+      ::setenv("MP2_USER_UNAVAILABLE", paths.user.c_str(), 1);
+      paths.user = base + "user";
+    } else {
+      writable.close();
+      std::filesystem::remove(test, probe);
+    }
+  }
+
   // Created before the game can ask for them, so a first run has somewhere to write.
   std::error_code error;
   std::filesystem::create_directories(paths.user, error);

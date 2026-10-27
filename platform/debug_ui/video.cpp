@@ -4,24 +4,30 @@
 
 #include "debug_ui_internal.h"
 
+#include "port_gpu_driver.h"
 #include "port_input_remap_ui.h"
 #include "port_overlay.h"
 #include "port_savestate.h"
 #include "port_suit_colours.h"
 #include "port_video.h"
 
+#include <SDL3/SDL.h>
 #include <aurora/aurora.h>
 #include <aurora/gfx.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
 #include <algorithm>
+#include <atomic>
 #include <bit>
 #include <cmath>
 #include <cstdio>
+#include <mutex>
 #include <optional>
 #include <random>
+#include <span>
 #include <string>
+#include <vector>
 
 namespace PortDebug {
 
@@ -389,29 +395,193 @@ void DrawVideoQuality() {
   }
 }
 
+
+// Custom Vulkan drivers (port_gpu_driver.h, Android only): MP1's picker. The file dialog answers
+// on another thread, so its pick waits in sGpuDriverPick until the Compatibility tab draws next.
+namespace {
+std::mutex sGpuDriverPickMutex;
+std::optional< std::string > sGpuDriverPick;
+std::atomic< bool > sGpuDriverDialogOpen{false};
+std::string sGpuDriverStatus;
+std::vector< PortGpuDriver::Driver > sGpuDrivers;
+bool sGpuDriversListed = false;
+
+void OpenGpuDriverDialog() {
+  int windowCount = 0;
+  SDL_Window** windows = SDL_GetWindows(&windowCount);
+  SDL_Window* window = windows != nullptr && windowCount > 0 ? windows[0] : nullptr;
+  SDL_free(windows);
+  const SDL_DialogFileCallback done = [](void*, const char* const* files, int) {
+    std::lock_guard lock(sGpuDriverPickMutex);
+    // Empty = cancelled; a leading \x01 marks a failed dialog's error.
+    sGpuDriverPick = files != nullptr ? std::string(files[0] != nullptr ? files[0] : "")
+                                      : std::string("\x01") + SDL_GetError();
+    sGpuDriverDialogOpen = false;
+  };
+  sGpuDriverDialogOpen = true;
+  SDL_ShowOpenFileDialog(done, nullptr, window, nullptr, 0, nullptr, false);
+}
+
+void SetGpuDriver(const std::string& id) {
+  if (sGpuDriver != id) {
+    sGpuDriver = id;
+    Changed(true);
+  }
+}
+
+void ProcessGpuDriverPick() {
+  std::string path;
+  {
+    std::lock_guard lock(sGpuDriverPickMutex);
+    if (!sGpuDriverPick) {
+      return;
+    }
+    path = std::move(*sGpuDriverPick);
+    sGpuDriverPick.reset();
+  }
+  if (path.empty() || path[0] == '\x01') {
+    if (path.size() > 1) {
+      sGpuDriverStatus = "The file dialog failed: " + path.substr(1);
+    }
+    return;
+  }
+  std::string error;
+  const std::string id = PortGpuDriver::Install(path, error);
+  sGpuDriversListed = false;
+  if (id.empty()) {
+    sGpuDriverStatus = "Couldn't install it: " + error + ".";
+  } else {
+    SetGpuDriver(id);
+    sGpuDriverStatus = "Installed " + id + ".";
+  }
+}
+
+void DrawGpuDriver() {
+  if (!PortGpuDriver::Supported() || aurora_get_backend() != BACKEND_VULKAN) {
+    return;
+  }
+  ProcessGpuDriverPick();
+  if (!sGpuDriversListed) {
+    sGpuDrivers = PortGpuDriver::List();
+    sGpuDriversListed = true;
+  }
+  const auto label = [](const PortGpuDriver::Driver& d) {
+    return d.version.empty() ? d.name : d.name + " " + d.version;
+  };
+  std::string preview = "System";
+  for (const auto& d : sGpuDrivers) {
+    if (d.id == sGpuDriver) {
+      preview = label(d);
+    }
+  }
+  if (ImGui::BeginCombo("Vulkan driver", preview.c_str())) {
+    if (ImGui::Selectable("System", sGpuDriver.empty())) {
+      SetGpuDriver("");
+    }
+    for (const auto& d : sGpuDrivers) {
+      ImGui::PushID(d.id.c_str());
+      if (ImGui::Selectable(label(d).c_str(), d.id == sGpuDriver)) {
+        SetGpuDriver(d.id);
+      }
+      if (!d.description.empty()) {
+        ImGui::SetItemTooltip("%s", d.description.c_str());
+      }
+      ImGui::PopID();
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::SetItemTooltip(
+      "Loads a custom Vulkan driver instead of the phone's, such as Mesa Turnip for\n"
+      "Adreno GPUs, from a driver zip. Restart to apply; if it crashes at start, the\n"
+      "next start goes back to the system driver.");
+  // BeginGpuStart already switched a driver that crashed back to System: nothing to restart for.
+  const bool crashedBack = sGpuDriver.empty() && !PortGpuDriver::LoadError().empty();
+  if (sGpuDriver != sGpuDriverAtStart && !crashedBack) {
+    ImGui::SameLine();
+    ImGui::TextColored(ThemeWarnColor(), "Restart to apply");
+  }
+  ImGui::BeginDisabled(sGpuDriverDialogOpen);
+  if (ImGui::Button("Install driver (.zip)...")) {
+    sGpuDriverStatus.clear();
+    OpenGpuDriverDialog();
+  }
+  ImGui::EndDisabled();
+  const bool removable = !sGpuDriver.empty() && sGpuDriver != PortGpuDriver::Active();
+  if (removable) {
+    ImGui::SameLine();
+    if (ImGui::Button("Remove")) {
+      const std::string id = sGpuDriver;
+      sGpuDriverStatus = PortGpuDriver::Remove(id) ? "Removed " + id + "." : "Couldn't remove " + id + ".";
+      SetGpuDriver("");
+      sGpuDriversListed = false;
+    }
+  }
+  if (!PortGpuDriver::LoadError().empty() && !sGpuDriverAtStart.empty()) {
+    ImGui::TextColored(ThemeWarnColor(), "%s didn't load: %s", sGpuDriverAtStart.c_str(),
+                       PortGpuDriver::LoadError().c_str());
+  }
+  ImGui::TextDisabled("Running: %s", aurora_get_gpu_driver());
+  ImGui::SetItemTooltip("What the GPU reports now. A loaded custom driver says so here\n"
+                        "(Turnip: \"Mesa Turnip ...\").");
+  if (!sGpuDriverStatus.empty()) {
+    ImGui::TextWrapped("%s", sGpuDriverStatus.c_str());
+  }
+}
+} // namespace
+
 // What PortVideo::BeginGpuStart sets up before the GPU device is made (so after a restart), and the
-// GPU self-test. The Renderer combo is Windows only; MP1's Vulkan driver picker (Android, libadrenotools) is not here.
+// GPU self-test. The Renderer combo is Windows and desktop Linux; the Vulkan driver picker is Android only.
 void DrawVideoCompatibility() {
   ImGui::SeparatorText("Compatibility");
   ImGui::PushTextWrapPos(0.f);
   ImGui::TextDisabled("For GPU driver problems, such as a black world or a crash at start. Most of "
                       "these take effect after a restart.");
   ImGui::PopTextWrapPos();
-#if defined(_WIN32)
+#if defined(_WIN32) || (defined(__linux__) && !defined(__ANDROID__))
   // Which API to ask Aurora for. Read at window creation, so it takes a restart: Aurora tries the
   // choice first and falls back to its own order if it won't start, and the setting is left alone.
+  // Only this build's choices are listed, so an API it can't start is never offered.
   {
-    static const char* const kBackendNames[] = {"Auto", "Direct3D 12", "Vulkan", "Direct3D 11"};
-    int choice = static_cast< int >(sGraphicsBackend);
+    const std::span<const PortGraphicsBackend::EGraphicsBackend> choices = PortGraphicsBackend::Choices();
+    // The labels in Choices() order, NUL-separated as ImGui wants them, built from the choices so
+    // the list cannot drift from the span. Auto asks for nothing, so it is named as such.
+    static const std::string kBackendLabels = [] {
+      std::string labels;
+      for (const PortGraphicsBackend::EGraphicsBackend choice : PortGraphicsBackend::Choices()) {
+        labels += choice == PortGraphicsBackend::kGraphicsBackend_Auto
+                      ? "Auto"
+                      : PortGraphicsBackend::DisplayName(PortGraphicsBackend::ToAurora(choice));
+        labels.push_back('\0');
+      }
+      labels.push_back('\0');
+      return labels;
+    }();
+    // The combo's index is a position in Choices(), never an enum value. A saved choice this build
+    // doesn't offer (a file from another platform) shows as Auto and is kept until changed here.
+    int choice = 0;
+    for (size_t i = 0; i < choices.size(); ++i) {
+      if (choices[i] == sGraphicsBackend) {
+        choice = static_cast< int >(i);
+        break;
+      }
+    }
     ImGui::SetNextItemWidth(ImGui::GetFontSize() * 11.f);
-    if (ImGui::Combo("Renderer", &choice, kBackendNames, PortGraphicsBackend::kGraphicsBackendCount)) {
-      sGraphicsBackend = static_cast< PortGraphicsBackend::EGraphicsBackend >(choice);
+    if (ImGui::Combo("Renderer", &choice, kBackendLabels.c_str(), static_cast< int >(choices.size()))) {
+      sGraphicsBackend = choices[static_cast< size_t >(choice)];
       Changed(true);
     }
+#if defined(_WIN32)
     ImGui::SetItemTooltip("Which graphics API to start on. Auto tries Direct3D 12, then Vulkan, then\n"
-                          "Direct3D 11. Takes effect after a restart. If the driver can't start the chosen\n"
-                          "API, this run falls back to Auto and the setting is kept, so it can be changed\n"
-                          "here. MP2_GRAPHICS_BACKEND=auto|d3d12|vulkan|d3d11 overrides it for one run.");
+                          "Direct3D 11. OpenGL is Dawn's desktop GL (4.4 or newer). Takes effect after a\n"
+                          "restart. If the driver can't start the chosen API, this run falls back to Auto\n"
+                          "and the setting is kept, so it can be changed here.\n"
+                          "MP2_GRAPHICS_BACKEND=auto|d3d12|vulkan|d3d11|opengl overrides it for one run.");
+#else
+    ImGui::SetItemTooltip("Which graphics API to start on. Auto uses Vulkan. OpenGL (4.4 or newer) is for\n"
+                          "GPUs whose Vulkan driver is missing or draws wrong. Takes effect after a restart.\n"
+                          "If the driver can't start the chosen API, this run falls back to Auto and the\n"
+                          "setting is kept. MP2_GRAPHICS_BACKEND=auto|vulkan|opengl overrides it for one run.");
+#endif
     // What this run asked for is the resolution of the STARTUP selection, not the setting:
     // MP2_GRAPHICS_BACKEND outranks the file, and changing the combo must not pretend the API this
     // run started on was the one asked for.
@@ -456,6 +626,7 @@ void DrawVideoCompatibility() {
       ImGui::TextColored(ThemeWarnColor(), "OpenGL ES failed to start");
     }
   }
+  DrawGpuDriver();
   {
     static const char* const kClampNames[] = {"Auto", "Off", "On"};
     int clamp = sStorageClamp + 1;

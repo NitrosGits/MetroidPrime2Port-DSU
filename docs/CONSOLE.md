@@ -11,7 +11,7 @@ a line in this file.
 hp, hp_max, visor, beam, freecam) for scripts.
 
 ## Commands
-- `status [--json]` — world, area, player position, health, visor, beam, morph state; --json: one line for scripts
+- `status [--json]` — world, area, player position, health, visor, beam, morph state, frame/pipeline/texture totals and Dawn's GPU memory estimate (`dawn:` line); --json: one line for scripts
 - `areas` — the current world's area slots (index, MREA id, name if loaded)
 - `warp <slot|id|name>` — load an area of the current world (what MP2_TELEPORT takes)
 - `nextarea | prevarea` — the next or previous existing area of this world (also `prevarea`)
