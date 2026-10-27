@@ -238,6 +238,9 @@ On a Trilogy disc the combat HUD is `RS5_SamusHud{1,2,4}Combat`, the memo frame 
 energy-word and instant-fill commits do not apply: Echoes looks strings up by name, has no energy-word pane,
 and `UpdateEnergy` (0x80199774) picks Instant only for |delta|<1e-5. Combat shot: `/tmp/opencode/reports/trihud-combat.png`.
 
+## Trilogy scan lens (2026-10-27)
+Trilogy's Scan visor has no rectangular window: `CPlayerVisor::Draw` (0x80170a78) calls `DrawScanEffect` (0x80170e0c), which draws a lens in place of the dim (vignette rings, 360-degree flickering outline loop 0x80171dac-0x801723b0, spiky ticks, rotating arcs; helpers 0x80170cf8, 0x80170b2c) round the pointer. The pane and frame are drawn only while the window is open (gate 0x801723e8; same factor as MP1's `PortScanWindowOpen`). Port: `TriDrawScanLens` (`CPlayerVisor.cpp`, px = `fit`, the MP1 port's lens) plus a full-viewport scan window in `CInGameGuiManager::DrawScanVisor`, so `CCubeRenderer::DrawScanVisor` draws no grey outside rectangles (retail renderer's window size not located). The scan ring, brackets and progress are `CTargetReticles` (above). Shots: `/tmp/opencode/reports/scanhud-trilogy-{scan-idle,combat}.png`, GC unchanged `scanhud-gc-scan.png`.
+
 ## Trilogy reticles (2026-10-27)
 
 `CTargetReticles` (`mPortTri`, TARGET_PC + IsTrilogy) draws Trilogy's reticles from RS5.PAK: scan ring and brackets that follow the pointer (no GC scan box), lock fade timer (`CPlayer`), aiming arms, locked and next-target brackets, a locked reticle on every Seeker lock, and the 6-segment scan progress. Pure math is in `platform/include/port_tri_reticle.h` (`tests/port_tri_reticle.cpp`). Confirmed in `rs5mp2_p.dol`: 7 combat CMDLs, 3 arms at 120°, the -60° progress loop (0x8025e438). MP1-derived: colours, 0.15 s fade, arm/centre curves, segment colour/blend. Off-screen targets draw nothing. Shots: /tmp/opencode/reports/tricombat-*.png; console `lock <id>` gives a real lock-on press.

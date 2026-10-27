@@ -23,8 +23,15 @@
 #include <dolphin/gx/GXManage.h>
 #include <dolphin/gx/GXTexture.h>
 #ifdef TARGET_PC
+#include "port_entry.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
+#endif
+
+#ifdef TARGET_PC
+// Port: Trilogy's scan lens clock (rs5mp2_p CPlayerVisor +0x660 equivalent): reset as the scan
+// visor comes in, advanced by UpdateScanWindow; TriDrawScanLens animates by it.
+static float sPortTriLensTime = 0.f;
 #endif
 
 static const int skPixelsPerTileDimension16Bit = 4;
@@ -159,6 +166,9 @@ void CPlayerVisor::BeginTransitionIn(const CStateManager& mgr) {
         CSfxManager::kAllAreas, false, false, CSfxManager::kMedPriority);
     mScanDim.SetFilter(CCameraFilterPass::kFT_Multiply, CCameraFilterPass::kFS_Fullscreen, 0.f,
                        CColor::White(), kInvalidAssetId);
+#ifdef TARGET_PC
+    sPortTriLensTime = 0.f;
+#endif
     break;
   case CPlayerState::kPV_Echo:
     CSfxManager::SfxStart(
@@ -340,6 +350,152 @@ static float ScanWindowFit(int vpWidth, int vpHeight) {
 }
 #endif
 
+#ifdef TARGET_PC
+// Trilogy's scan lens (drawn by its DrawScanEffect, fn_801A3428, in place of the scan dim):
+// vignette rings and a flickering outline round the window that morph from a circle into the
+// window's square as it opens. Sizes are Wii view pixels, scaled here as the frame's 17 is.
+
+// fn_801A3314: the direction at `angle`, morphed toward the square of half-size `square`.
+static CVector2f TriLensDir(float angle, float morph, float square) {
+  const float x = CMath::FastCosR(angle);
+  const float y = CMath::FastSinR(angle);
+  const float s = square / rstl::max_val(fabsf(x), fabsf(y));
+  return CVector2f(x * (1.f - morph) + x * s * morph, y * (1.f - morph) + y * s * morph);
+}
+
+struct STriLensDir {
+  float x;
+  float y;
+};
+
+static void TriLensVertex(float cx, float cy, float r, const CVector2f& v) {
+  gpRender->PrimVertex(CVector3f(cx + r * v.GetX(), 0.f, cy + r * v.GetY()));
+}
+
+// fn_801A3148: a band between two radii over degrees start..end, turned by rot.
+static void TriLensArc(int start, int end, int rot, const CColor& color, const STriLensDir* table,
+                       float cx, float cy, float rIn, float rOut) {
+  gpRender->BeginTriangleStrip((end - start + 360) % 360 + 2);
+  gpRender->PrimColor(color);
+  for (int i = rot + start; i <= rot + end; i += 2) {
+    const CVector2f v(table[i % 360].x, table[i % 360].y);
+    TriLensVertex(cx, cy, rIn, v);
+    TriLensVertex(cx, cy, rOut, v);
+  }
+  gpRender->EndPrimitive();
+}
+
+// t: the visor transition; open: the window's open factor (ScanWindowCopySize's t); cx, cy: the
+// lens centre in the -4096..4096 ortho; px: view pixels per Wii pixel.
+static void TriDrawScanLens(float t, float open, float cx, float cy, float px) {
+  // lbl_804C3528, lbl_80474C58
+  static const float kRingRgb[3][3] = {{0.f, 0.f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 0.2f, 0.3f}};
+  static const float kRingClosed[3] = {100.f, 150.f, 400.f};
+  static const float kRingOpen[3] = {115.f, 120.f, 400.f};
+  static const float kRingAlpha[3] = {0.f, 0.67f, 0.f};
+  static const float kNoiseSpeed[4] = {1.f, -1.5f, 2.5f, -3.5f};
+  static const float kNoiseFreq[4] = {4.f, 6.f, 10.f, 14.f};
+  static const float kNoisePhase[4] = {0.f, 5.f, 7.f, 6.f};
+  const float time = sPortTriLensTime;
+  float radius[3];
+  for (int i = 0; i < 3; ++i)
+    radius[i] = px * ((1.f - open) * kRingClosed[i] + open * kRingOpen[i]);
+  gpRender->SetDepthReadWrite(false, false);
+  gpRender->SetBlendMode_AlphaBlended();
+  for (int ring = 0; ring < 2; ++ring) {
+    const float* rgbIn = kRingRgb[ring];
+    const float* rgbOut = kRingRgb[ring + 1];
+    const CColor inner(rgbIn[0], rgbIn[1], rgbIn[2], t * kRingAlpha[ring]);
+    const CColor outer(rgbOut[0], rgbOut[1], rgbOut[2], t * kRingAlpha[ring + 1]);
+    gpRender->BeginTriangleStrip(74);
+    for (int i = 0; i <= 36; ++i) {
+      const CVector2f d = TriLensDir(static_cast< float >(i % 36) * 0.17453292f, open, 0.72f);
+      gpRender->PrimColor(inner);
+      TriLensVertex(cx, cy, radius[ring], d);
+      gpRender->PrimColor(outer);
+      // The outer ring's rim is about the view's centre, not the lens's (as shipped).
+      if (ring == 0)
+        TriLensVertex(cx, cy, radius[1], d);
+      else
+        TriLensVertex(0.f, 0.f, radius[2], d);
+    }
+    gpRender->EndPrimitive();
+  }
+  const CColor arcColor(0.5f, 0.8f, 1.f, 0.3f * t * (1.f - open));
+  const CColor glowColor(0.2f, 0.2f, 0.2f, 0.1f * t);
+  const CColor clearColor(0.f, 0.f, 0.f, 0.f);
+  const float shadowRadius = px * 400.f * ((1.f - open) + open * 1.3888888f);
+  STriLensDir table[360];
+  bool on[360];
+  for (int deg = 0; deg < 360; ++deg) {
+    const float angle = static_cast< float >(deg) * 0.017453292f;
+    const CVector2f dir = TriLensDir(angle, open, 0.72f);
+    table[deg].x = dir.GetX();
+    table[deg].y = dir.GetY();
+    float noise = 0.f;
+    for (int i = 0; i < 4; ++i)
+      noise += CMath::FastSinR(kNoisePhase[i] + time * kNoiseSpeed[i] + kNoiseFreq[i] * angle);
+    on[deg] = noise > 0.5f;
+  }
+  const int rot1 = static_cast< int >(30.f * time) % 360;
+  TriLensArc(0, 160, rot1, arcColor, table, cx, cy, px * 115.f, px * 120.f);
+  TriLensArc(200, 246, rot1, arcColor, table, cx, cy, px * 115.f, px * 120.f);
+  TriLensArc(250, 350, rot1, arcColor, table, cx, cy, px * 115.f, px * 120.f);
+  const CColor& active = gpTweakGuiColors->GetScanWindowFrameActiveColor();
+  const CColor activeArc = active.WithAlphaOf(active.GetAlpha() * (t * (1.f - open)));
+  const int rot2 = 360 - static_cast< int >(45.f * time) % 360;
+  TriLensArc(100, 270, rot2, activeArc, table, cx, cy, px * 110.f, px * 112.f);
+  TriLensArc(290, 440, rot2, activeArc, table, cx, cy, px * 110.f, px * 112.f);
+  // The outline: each run of lit degrees is a band with a glow out to the shadow's radius and
+  // a tick at its middle as long as the run.
+  const float rIn = px * 122.f;
+  const float rOut = px * 124.f;
+  for (int deg = 0; deg < 360; ++deg) {
+    if (on[(deg + 359) % 360] || !on[deg])
+      continue;
+    int n = 1;
+    while (on[(deg + n) % 360] && n < 360)
+      ++n;
+    const int count = (n / 2 + 1) * 2;
+    gpRender->BeginTriangleStrip(count);
+    gpRender->PrimColor(arcColor);
+    for (int j = 0; j <= n; j += 2) {
+      const CVector2f v(table[(deg + j) % 360].x, table[(deg + j) % 360].y);
+      TriLensVertex(cx, cy, rIn, v);
+      TriLensVertex(cx, cy, rOut, v);
+    }
+    gpRender->EndPrimitive();
+    gpRender->BeginTriangleStrip(count);
+    for (int j = 0; j <= n; j += 2) {
+      const CVector2f v(table[(deg + j) % 360].x, table[(deg + j) % 360].y);
+      gpRender->PrimColor(glowColor);
+      TriLensVertex(cx, cy, rOut, v);
+      gpRender->PrimColor(clearColor);
+      TriLensVertex(0.f, 0.f, shadowRadius, v);
+    }
+    gpRender->EndPrimitive();
+    const float vx = table[(deg + n / 2) % 360].x;
+    const float vy = table[(deg + n / 2) % 360].y;
+    const float baseX = cx + rOut * vx;
+    const float baseY = cy + rOut * vy;
+    const float tipR = rOut + px * static_cast< float >(n);
+    const float tipX = cx + tipR * vx;
+    const float tipY = cy + tipR * vy;
+    // Across the band (3 either side at the base, 1 at the tip), set 0.5 inside it.
+    const float baseW = px * 3.f;
+    const float tipW = px * 1.f;
+    const float in = px * -0.5f;
+    gpRender->BeginTriangleStrip(4);
+    gpRender->PrimColor(arcColor);
+    gpRender->PrimVertex(CVector3f(baseX - baseW * vy + in * vx, 0.f, baseY + baseW * vx + in * vy));
+    gpRender->PrimVertex(CVector3f(baseX + baseW * vy + in * vx, 0.f, baseY - baseW * vx + in * vy));
+    gpRender->PrimVertex(CVector3f(tipX - tipW * vy, 0.f, tipY + tipW * vx));
+    gpRender->PrimVertex(CVector3f(tipX + tipW * vy, 0.f, tipY - tipW * vx));
+    gpRender->EndPrimitive();
+  }
+}
+#endif
+
 void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
                                   const CTargetingManager* const tgtMgr) const {
   const CViewport& viewport = CGraphics::GetViewport();
@@ -410,9 +566,25 @@ void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
 #endif
   GXCopyTex(buffer, GX_FALSE);
   GXPixModeSync();
+#ifdef TARGET_PC
+  // Trilogy (rs5mp2_p DrawScanEffect 0x80170e0c): the lens replaces the dim, and the window and
+  // its frame are drawn only while the window is open (r31 gate at 0x801723e8).
+  const bool trilogy = port::entry::IsTrilogy(port::entry::CurrentDiscVersion());
+  const float windowOpen = t;
+  const float windowFactor = trilogy ? windowOpen : 1.f;
+  const float windowAlpha = transFactor * windowFactor;
+  if (trilogy) {
+    gpRender->SetViewportOrtho(true, -4096.f, 4096.f);
+    TriDrawScanLens(transFactor, windowOpen, portPointer ? portShiftX : 0.f,
+                    portPointer ? -portShiftY : 0.f, fit);
+  }
+  if (!trilogy)
+#endif
   mScanDim.Draw();
   gpRender->SetViewportOrtho(true, -1.f, 1.f);
 #ifdef TARGET_PC
+  if (trilogy && fabsf(windowOpen) < 0.00001f)
+    return;
   // Moving the view the other way draws the window and its frame around the pointer.
   if (portPointer)
     CGraphics::SetViewPointMatrix(CTransform4f::Translate(-portShiftX, 0.f, portShiftY));
@@ -435,12 +607,20 @@ void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
     GXInvalidateTexAll();
     const CColor paneColor =
         CColor::Lerp(gpTweakGuiColors->GetScanWindowTintColor(), CColor::White(), mScanDimInterp)
+#ifdef TARGET_PC
+            .WithAlphaOf(windowAlpha);
+#else
             .WithAlphaOf(transFactor);
+#endif
     if (const CModel* pane = mScanFrameWindow.GetObject())
       pane->Draw(CModelFlags::AlphaBlended(paneColor).DontLoadTextures());
   }
   if (!CMath::IsEpsilon(mScanDimInterp, 1.f, 0.00001f)) {
+#ifdef TARGET_PC
+    const float paneAlpha = (1.f - mScanDimInterp) * windowFactor;
+#else
     const float paneAlpha = 1.f - mScanDimInterp;
+#endif
     const CColor paneColor = CColor::White().WithAlphaOf(paneAlpha);
     if (const CModel* pane = mScanFrameWindow.GetObject())
       pane->Draw(CModelFlags::AlphaBlended(paneColor).DepthCompareUpdate(false, false));
@@ -449,7 +629,11 @@ void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
   CColor frameColor =
       CColor::Lerp(gpTweakGuiColors->GetScanWindowFrameBaseColor(),
                    gpTweakGuiColors->GetScanWindowFrameActiveColor(), mScanFrameColorInterp);
+#ifdef TARGET_PC
+  frameColor = frameColor.WithAlphaOf(windowAlpha);
+#else
   frameColor = frameColor.WithAlphaOf(transFactor);
+#endif
   const CColor impulseColor =
       CColor::Modulate(gpTweakGuiColors->GetScanWindowFrameFlashAddColor(),
                        CColor(mScanFrameColorImpulseInterp, mScanFrameColorImpulseInterp,
@@ -563,6 +747,9 @@ CPlayerVisor::GetDesiredScanWindowState(const CStateManager& mgr) const {
 }
 
 void CPlayerVisor::UpdateScanWindow(float dt, const CStateManager& mgr) {
+#ifdef TARGET_PC
+  sPortTriLensTime += dt;
+#endif
   const CPlayer* player = mgr.GetPlayer(mPlayerIndex);
   CPlayer::EPlayerScanState scanState = player->GetPlayerScanState();
   float scanTimer = player->GetScanningTime();
