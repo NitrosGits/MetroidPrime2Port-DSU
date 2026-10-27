@@ -2165,6 +2165,7 @@ void CSwampBossStage2::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   case kSM_Delete:
     if (mWaterSfx) {
       CSfxManager::RemoveEmitter(mWaterSfx);
+      mWaterSfx = CSfxHandle::NullHandle(); // 0xB6AC stw r0, 0xf08(r29) with r0 = 0
     }
     if (!mCollisionMgr.null()) {
       mCollisionMgr->Destroy(mgr);
@@ -2372,9 +2373,11 @@ void CSwampBossStage2::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr
 // finally the bubble telegraph generator. fn_79_460/4A0/4C0 are the CModelData copy internals, so
 // the stored models are used directly.
 void CSwampBossStage2::AddToRenderer(const CStateManager& mgr) const {
-  // TODO(uncertain): retail only draws when bit 0 of the CActor flag word at actor+0x150 is clear;
-  // no host member matches that gate (host 0x150 is mNextNonLoopingSfxHandle), so the common path
-  // is taken unconditionally.
+  // The whole body is skipped while the actor is pre-render clipped (bit 0 of actor+0x150,
+  // `clrlwi. r0, r0, 31; bne .L_A748` at 0xA5C8/0xA5CC, which lands on the epilogue).
+  if (GetPreRenderClipped()) {
+    return;
+  }
   CPatterned::AddToRenderer(mgr);
   if (IsBeingSnatched()) {
     RenderIngSnatchingTransition(mgr);
