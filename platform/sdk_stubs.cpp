@@ -143,8 +143,10 @@ extern "C" void OSGetSavedRegion(void** start, void** end) {
         *end = nullptr;
     }
 }
+// The IPL's sound setting: stereo, as MP1's port reports. Mono here forced the game's options to
+// Mono at every start (CGameOptions::InitSoundMode).
 extern "C" u32 OSGetSoundMode(void) {
-    return 0;
+    return OS_SOUND_MODE_STEREO;
 }
 // OSLink, OSLinkFixed and OSUnlink are not defined, on purpose: a no-op that
 // returned TRUE would silently fake module loading. Retail's module manager
