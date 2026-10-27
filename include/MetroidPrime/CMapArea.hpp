@@ -47,6 +47,7 @@ public:
   void BuildDisplayLists(); // Guessed name
 #ifdef TARGET_PC
   static void BuildHostSurface(CMapAreaSurface& surf, const uchar* rec, uchar* buf);
+  bool PortIsNeverMapped() const { return mVisibilityMode == kVM_Never; }
 #endif
   bool GetIsVisibleToAutoMapper(bool worldVis, bool areaVis) const;
   bool IsInDarkWorld() const; // Guessed name

@@ -48,7 +48,7 @@ struct SRoomEntry {
   std::string english;               // the English name alone, empty until it has loaded
   // Light or Dark Aether, from the area's map (CMapArea bit 0, what the map screen splits by);
   // unknown until that MAPA has loaded, and for an area the map does not cover.
-  enum class EDimension { kUnknown, kLight, kDark };
+  enum class EDimension { kUnknown, kLight, kDark, kCutscene }; // kCutscene: not in the lists
   EDimension dimension;
   TToken< CMapArea >* mapArea; // pending map-area load, freed once read
 };

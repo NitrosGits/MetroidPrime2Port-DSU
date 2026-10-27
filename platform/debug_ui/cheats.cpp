@@ -302,7 +302,8 @@ void DrawCheatsSection() {
     };
 
     // One list per dimension, split by each area's map (SRoomEntry::dimension); a room whose map
-    // has not loaded yet, or that the map does not cover, is listed with Light Aether's.
+    // has not loaded yet, or that the map does not cover, is listed with Light Aether's. Cutscene
+    // stages (SRoomEntry::EDimension::kCutscene) are left out: warping there shows a white screen.
     const auto isDark = [](int index) {
       return sRooms[index].dimension == SRoomEntry::EDimension::kDark;
     };
@@ -328,7 +329,8 @@ void DrawCheatsSection() {
         ImGui::SetNextItemWidth(-FLT_MIN);
         ImGui::InputTextWithHint("##roomfilter", "Filter rooms", sRoomFilter, sizeof(sRoomFilter));
         for (int i = 0; i < areaCount; ++i) {
-          if (!roomExists(i) || isDark(i) != dark) {
+          if (!roomExists(i) || isDark(i) != dark ||
+              sRooms[i].dimension == SRoomEntry::EDimension::kCutscene) {
             continue;
           }
           const std::string label = roomLabel(i);

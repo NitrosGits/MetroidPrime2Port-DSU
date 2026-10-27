@@ -265,8 +265,11 @@ void ReadDimension(SRoomEntry& room) {
   }
   const CMapArea* map = **room.mapArea;
   if (map != nullptr) {
-    room.dimension =
-        map->IsInDarkWorld() ? SRoomEntry::EDimension::kDark : SRoomEntry::EDimension::kLight;
+    // A light-world area the map never shows is a cutscene stage (the temples' energy controllers,
+    // game_end_part*, 00_scandummy); 01_temple_hive03_dark is the one never-mapped real room.
+    room.dimension = map->IsInDarkWorld()       ? SRoomEntry::EDimension::kDark
+                     : map->PortIsNeverMapped() ? SRoomEntry::EDimension::kCutscene
+                                                : SRoomEntry::EDimension::kLight;
   }
   delete room.mapArea;
   room.mapArea = nullptr;
@@ -472,6 +475,7 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
     // The same world: its area table cannot have changed under it, only name loads finish.
     int light = 0;
     int dark = 0;
+    int cutscene = 0;
     int pending = 0;
     for (int i = 0; i < static_cast< int >(sRooms.size()); ++i) {
       SRoomEntry& room = sRooms[i];
@@ -479,12 +483,16 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
       ReadDimension(room);
       light += room.dimension == SRoomEntry::EDimension::kLight ? 1 : 0;
       dark += room.dimension == SRoomEntry::EDimension::kDark ? 1 : 0;
+      cutscene += room.dimension == SRoomEntry::EDimension::kCutscene ? 1 : 0;
       pending += room.mapArea != nullptr ? 1 : 0;
     }
     if (pending == 0 && !sRoomsSplitLogged) {
       sRoomsSplitLogged = true;
-      std::fprintf(stderr, "[rooms] %08x: %d Light Aether, %d Dark Aether, %d without a map\n",
-                   roomWorld, light, dark, static_cast< int >(sRooms.size()) - light - dark);
+      std::fprintf(stderr,
+                   "[rooms] %08x: %d Light Aether, %d Dark Aether, %d cutscene (hidden), %d without "
+                   "a map\n",
+                   roomWorld, light, dark, cutscene,
+                   static_cast< int >(sRooms.size()) - light - dark - cutscene);
     }
     for (int i = 0; i < static_cast< int >(sRooms.size()); ++i) {
       SRoomEntry& room = sRooms[i];
