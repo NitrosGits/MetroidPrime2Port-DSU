@@ -25,9 +25,18 @@ public:
 #ifdef TARGET_PC
   // Port: the model's local bounds, for the widescreen HUD spread. False until the frame has loaded.
   bool PortGetBounds(CAABox& out) const;
-  // Port: the first texture of the model's first surface and the box its texture coordinates
-  // span, {umin, vmin, umax, vmax} (the touch wheels' HUD icons); null until the frame has loaded it.
-  const CTexture* PortFirstTexture(float uv[4]) const;
+  // Port (the touch wheels' HUD icons): one textured quad of the model. xz/uv are its four corners
+  // in the display list's order (model-space x/z, and the texture coordinates there).
+  struct PortIconLayer {
+    const CTexture* tex;
+    float xz[4][2];
+    float uv[4][2];
+  };
+  // The quads of the model's surfaces (normal ones first, then the sorted ones: the draw order),
+  // at most `max`; 0 until the frame has loaded. An icon can be several layers (the Annihilator
+  // Beam's centre triangle is a second surface with its own texture). The first layer is the
+  // icon's cell in the shared atlas.
+  int PortIconLayers(PortIconLayer* out, int max) const;
 #endif
   static void BeginDraw();                        // Guessed name
   static void EndDraw();                          // Guessed name

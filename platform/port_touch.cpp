@@ -743,20 +743,28 @@ void CaptureWheelIcons(int wheel, CGuiWidget* const* icons) {
     if (icons[i] == nullptr || icons[i]->GetWidgetTypeID() != 'MODL') {
       continue;
     }
-    float uv[4] = {};
-    const CTexture* tex = static_cast< const CGuiModel* >(icons[i])->PortFirstTexture(uv);
-    if (tex == nullptr) {
+    CGuiModel::PortIconLayer layers[4];
+    const int layerCount = static_cast< const CGuiModel* >(icons[i])->PortIconLayers(layers, 4);
+    if (layerCount == 0) {
       continue;
     }
+    // The first layer is this icon's cell in the shared atlas (one 256x128 texture), mapped
+    // bottom row first (v = 0 is the bottom): cut it out and flip it upright.
     uint32_t w = 0;
     uint32_t h = 0;
     std::vector< uint8_t > rgba(256 * 256 * 4);
+    const CTexture* tex = layers[0].tex;
     if (!aurora_gx_texobj_rgba8(tex->PortTexObj(), &w, &h, rgba.data(), rgba.size()) || w == 0 ||
         h == 0) {
       continue;
     }
-    // The HUD icons share an atlas (one 256x128 texture); cut this model's cell out of it. The
-    // models map it bottom row first (v = 0 is the bottom), so flip to upright.
+    float uv[4] = {1e9f, 1e9f, -1e9f, -1e9f};
+    for (const auto& corner : layers[0].uv) {
+      uv[0] = std::min(uv[0], corner[0]);
+      uv[1] = std::min(uv[1], corner[1]);
+      uv[2] = std::max(uv[2], corner[0]);
+      uv[3] = std::max(uv[3], corner[1]);
+    }
     const int x0 = std::max(0, int(std::floor(uv[0] * w + 0.5f)));
     const int x1 = std::min(int(w), int(std::floor(uv[2] * w + 0.5f)));
     const int y0 = std::max(0, int(std::floor((1.f - uv[3]) * h + 0.5f)));
@@ -773,6 +781,89 @@ void CaptureWheelIcons(int wheel, CGuiWidget* const* icons) {
         const uint8_t* c = &rgba[(size_t(h - 1 - (y0 + y)) * w + (x0 + x)) * 4];
         icon.argb[size_t(y) * icon.w + x] =
             uint32_t(c[3]) << 24 | uint32_t(c[0]) << 16 | uint32_t(c[1]) << 8 | c[2];
+      }
+    }
+    // Further layers (the Annihilator Beam's centre triangle is a second surface with its own
+    // texture and its own rotation of it) are drawn over the first, so put each over the cell.
+    // The canvas is the first quad's x/z box; a layer's texture coordinates are affine in x/z.
+    float xzMin[2] = {1e9f, 1e9f};
+    float xzMax[2] = {-1e9f, -1e9f};
+    for (const auto& corner : layers[0].xz) {
+      for (int axis = 0; axis < 2; ++axis) {
+        xzMin[axis] = std::min(xzMin[axis], corner[axis]);
+        xzMax[axis] = std::max(xzMax[axis], corner[axis]);
+      }
+    }
+    for (int l = 1; l < layerCount; ++l) {
+      const auto& layer = layers[l];
+      uint32_t lw = 0;
+      uint32_t lh = 0;
+      std::vector< uint8_t > lrgba(256 * 256 * 4);
+      if (!aurora_gx_texobj_rgba8(layer.tex->PortTexObj(), &lw, &lh, lrgba.data(), lrgba.size()) ||
+          lw == 0 || lh == 0) {
+        continue;
+      }
+      const float e1x = layer.xz[1][0] - layer.xz[0][0];
+      const float e1z = layer.xz[1][1] - layer.xz[0][1];
+      const float e2x = layer.xz[3][0] - layer.xz[0][0];
+      const float e2z = layer.xz[3][1] - layer.xz[0][1];
+      const float det = e1x * e2z - e1z * e2x;
+      if (std::fabs(det) < 1e-12f || xzMax[0] <= xzMin[0] || xzMax[1] <= xzMin[1]) {
+        continue;
+      }
+      for (int y = 0; y < icon.h; ++y) {
+        for (int x = 0; x < icon.w; ++x) {
+          const float px = xzMin[0] + (x + 0.5f) / icon.w * (xzMax[0] - xzMin[0]) - layer.xz[0][0];
+          const float pz = xzMax[1] - (y + 0.5f) / icon.h * (xzMax[1] - xzMin[1]) - layer.xz[0][1];
+          const float s = (px * e2z - pz * e2x) / det; // along corner 0 -> 1
+          const float t = (e1x * pz - e1z * px) / det; // along corner 0 -> 3
+          const float u = layer.uv[0][0] + s * (layer.uv[1][0] - layer.uv[0][0]) +
+                          t * (layer.uv[3][0] - layer.uv[0][0]);
+          const float v = layer.uv[0][1] + s * (layer.uv[1][1] - layer.uv[0][1]) +
+                          t * (layer.uv[3][1] - layer.uv[0][1]);
+          // Bilinear, texel centres at k + 0.5; rgba rows run bottom first (row = v * height).
+          const float fx = u * lw - 0.5f;
+          const float fy = v * lh - 0.5f;
+          const int ix = int(std::floor(fx));
+          const int iy = int(std::floor(fy));
+          const float ax = fx - ix;
+          const float ay = fy - iy;
+          float sample[4] = {};
+          for (int k = 0; k < 4; ++k) {
+            const int cx = std::clamp(ix + (k & 1), 0, int(lw) - 1);
+            const int cy = std::clamp(iy + (k >> 1), 0, int(lh) - 1);
+            const float wgt = ((k & 1) ? ax : 1.f - ax) * ((k >> 1) ? ay : 1.f - ay);
+            for (int ch = 0; ch < 4; ++ch) {
+              sample[ch] += wgt * lrgba[(size_t(cy) * lw + cx) * 4 + ch];
+            }
+          }
+          // Source-over: the texture's alpha is the layer's coverage.
+          uint32_t& dst = icon.argb[size_t(y) * icon.w + x];
+          const float sa = sample[3] / 255.f;
+          const float da = float(dst >> 24) / 255.f;
+          const float oa = sa + da * (1.f - sa);
+          uint32_t out = uint32_t(std::lround(oa * 255.f)) << 24;
+          for (int ch = 0; ch < 3; ++ch) {
+            const float dc = float((dst >> (16 - 8 * ch)) & 0xff);
+            const float c = oa > 0.f ? (sample[ch] * sa + dc * da * (1.f - sa)) / oa : 0.f;
+            out |= uint32_t(std::lround(std::min(255.f, c))) << (16 - 8 * ch);
+          }
+          dst = out;
+        }
+      }
+    }
+    if (const char* dumpDir = std::getenv("MP2_DUMP_WHEEL_ICONS")) {
+      // Debug: the finished icon as a PAM (RGB_ALPHA), icon_<wheel>_<item>.pam.
+      char name[512];
+      std::snprintf(name, sizeof(name), "%s/icon_%d_%d.pam", dumpDir, wheel, i);
+      if (FILE* f = std::fopen(name, "wb")) {
+        std::fprintf(f, "P7\nWIDTH %d\nHEIGHT %d\nDEPTH 4\nMAXVAL 255\nTUPLTYPE RGB_ALPHA\nENDHDR\n",
+                     icon.w, icon.h);
+        for (uint32_t px : icon.argb) {
+          const uint8_t o[4] = {uint8_t(px >> 16), uint8_t(px >> 8), uint8_t(px), uint8_t(px >> 24)};
+          std::fwrite(o, 1, 4, f);
+        }
+        std::fclose(f);
       }
     }
     std::fprintf(stderr, "[touch] wheel icon %d/%d: %dx%d of %ux%u fmt %d\n", wheel, i, icon.w,

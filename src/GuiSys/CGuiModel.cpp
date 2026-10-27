@@ -209,61 +209,77 @@ void CGuiModel::DrawModel(const CModelFlags& flags) const {
 }
 
 #ifdef TARGET_PC
-const CTexture* CGuiModel::PortFirstTexture(float uv[4]) const {
+int CGuiModel::PortIconLayers(PortIconLayer* out, int max) const {
   const CGuiFrameModelDatabase* db = GetParentFrame()->GetModelDatabase();
   const CCubeModel* model = db != nullptr ? db->GetModel(mModelIndex) : nullptr;
-  if (model == nullptr) {
-    return nullptr;
+  if (model == nullptr || model->GetPositions() == nullptr) {
+    return 0;
   }
-  CCubeSurface surface = model->GetNormalSurfaces();
-  if (!surface.IsValid()) {
-    surface = model->GetAlphaSurfaces();
-  }
-  if (!surface.IsValid()) {
-    return nullptr;
-  }
-  const uint* mat = reinterpret_cast< const uint* >(model->GetMaterial(surface).GetData());
-  if (CBasics::SwapBytes(mat[1]) == 0) {
-    return nullptr;
-  }
-  // The frame's icons share one atlas: the model's texture coordinates (big-endian F32 UV pairs)
-  // pick its cell (the first four pairs are the quad; the array is padded with zeros).
   const CCubeModel::ModelInstance& instance = model->GetModelInstance();
   const uint* coords = static_cast< const uint* >(instance.GetTCPointer());
-  uint pairs = instance.GetTCSize() / (2 * sizeof(uint));
-  if (pairs > 4) {
-    pairs = 4;
+  const uint* positions = static_cast< const uint* >(model->GetPositions());
+  const uint pairs = instance.GetTCSize() / (2 * sizeof(uint));
+  const uint vertices = instance.GetVertexSize() / (3 * sizeof(uint));
+  const rstl::vector< TCachedToken< CTexture > >& textures = model->GetTextures();
+  if (coords == nullptr) {
+    return 0;
   }
-  if (coords == nullptr || pairs == 0) {
-    return nullptr;
-  }
-  for (uint i = 0; i < pairs; ++i) {
-    for (int axis = 0; axis < 2; ++axis) {
-      union {
-        uint u;
-        float f;
-      } value;
-      value.u = CBasics::SwapBytes(coords[i * 2 + axis]);
-      if (i == 0 || value.f < uv[axis]) {
-        uv[axis] = value.f;
+  auto f32 = [](uint raw) {
+    union {
+      uint u;
+      float f;
+    } value;
+    value.u = CBasics::SwapBytes(raw);
+    return value.f;
+  };
+  int count = 0;
+  for (int list = 0; list < 2; ++list) {
+    CCubeSurface surface = list == 0 ? model->GetNormalSurfaces() : model->GetAlphaSurfaces();
+    for (; surface.IsValid() && count < max; surface = surface.GetNextSurface()) {
+      const uint* mat = reinterpret_cast< const uint* >(model->GetMaterial(surface).GetData());
+      // A quad: one fan/strip/quads command of four vertices, each a big-endian u16 position
+      // index, a u16 (unused) and a u16 texture-coordinate index (vertex descriptor 0x30f).
+      const uchar* dl = static_cast< const uchar* >(surface.GetDisplayList());
+      const uint cmd = dl[0] & 0xf8;
+      if (CBasics::SwapBytes(mat[1]) == 0 || model->GetMaterial(surface).GetVertexDesc() != 0x30f ||
+          (cmd != 0x80 && cmd != 0xa0) || ((dl[1] << 8) | dl[2]) != 4) {
+        continue;
       }
-      if (i == 0 || value.f > uv[2 + axis]) {
-        uv[2 + axis] = value.f;
+      const uint index = CBasics::SwapBytes(mat[2]);
+      if (index >= textures.size()) {
+        continue;
+      }
+      PortIconLayer layer;
+      bool ok = true;
+      for (int v = 0; v < 4; ++v) {
+        const uchar* vertex = dl + 3 + v * 6;
+        const uint pos = (vertex[0] << 8) | vertex[1];
+        const uint tc = (vertex[4] << 8) | vertex[5];
+        if (pos >= vertices || tc >= pairs) {
+          ok = false;
+          break;
+        }
+        layer.xz[v][0] = f32(positions[pos * 3]);
+        layer.xz[v][1] = f32(positions[pos * 3 + 2]);
+        layer.uv[v][0] = f32(coords[tc * 2]);
+        layer.uv[v][1] = f32(coords[tc * 2 + 1]);
+      }
+      if (!ok) {
+        continue;
+      }
+      // Not drawn yet (an icon the player doesn't own): load it now, it is tiny.
+      TCachedToken< CTexture >& token = const_cast< TCachedToken< CTexture >& >(textures[index]);
+      if (!token.TryCache()) {
+        token.Lock();
+        token.ForceCache();
+      }
+      layer.tex = token.GetObject();
+      if (layer.tex != nullptr) {
+        out[count++] = layer;
       }
     }
   }
-  const uint index = CBasics::SwapBytes(mat[2]);
-  const rstl::vector< TCachedToken< CTexture > >& textures = model->GetTextures();
-  if (index >= textures.size()) {
-    return nullptr;
-  }
-  // Not drawn yet (an icon the player doesn't own): load it now, it is tiny.
-  TCachedToken< CTexture >& token = const_cast< TCachedToken< CTexture >& >(textures[index]);
-  if (!token.TryCache()) {
-    token.Lock();
-    token.ForceCache();
-  }
-  return token.GetObject();
+  return count;
 }
 
 bool CGuiModel::PortGetBounds(CAABox& out) const {
