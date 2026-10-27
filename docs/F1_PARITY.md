@@ -111,7 +111,7 @@ Statuses:
 | Prime palette and warn/good/bad colours | ui_common.cpp:153-296 | ui_common.cpp:45-110,323-334 | SAME |
 | Menu sounds | ui_common.cpp:320-385 | ui_common.cpp:371-430 | SAME |
 | Pad navigation | ui_common.cpp:465 | ui_common.cpp:269 | SAME |
-| DrawUI: toasts | window.cpp:351-358: stale import, disc read failed, update, note | — | DIFF (f1-frame skipped the disc-read alert and the note toast: Echoes has no `sDiscReadFailedLastSession` flag or note API to feed them, so a toast would never show); the stale-import toast is MP1-ONLY (Remastered); the update toast goes with the Updates section |
+| DrawUI: toasts | window.cpp:351-358: stale import, disc read failed, update, note | window.cpp: disc read failed (`DrawDiscReadFailedAlert`), note (`DrawNoteToast`, `PortDebug::ShowNote`) | SAME for the two (f1-alerts): `main.cpp` registers `aurora_dvd_set_read_error_callback` (the Echoes tree's Aurora already calls it on a failed image read), writes `<user>/disc-read-failed` naming the image, and the next launch calls `NoteDiscReadFailedLastSession`, refuses that image like MP1 and shows the red alert for 20 s. `ShowNote` has no Echoes caller: MP1's only callers are the Remastered toggle (MP1-ONLY). The stale-import toast is MP1-ONLY (Remastered); the update toast goes with the Updates section |
 | DrawUI: resume prompt | window.cpp:360 | window.cpp:305-358,407 | SAME |
 | DrawUI: IGT timer | (speedrun) | window.cpp:363-387 | SAME |
 | DrawUI: card/GPU picks, fullscreen hotkey, setting-change log | window.cpp:313-404 | partly in settings.cpp:693 LogSettingChanges | DIFF |

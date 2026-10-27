@@ -1,6 +1,7 @@
 #ifndef METROID_PRIME_PORT_PORT_DEBUG_H
 #define METROID_PRIME_PORT_PORT_DEBUG_H
 #include <cstdint>
+#include <string>
 
 union SDL_Event;
 
@@ -163,6 +164,10 @@ bool Visible();
 // Writes the settings file now instead of waiting for the next overlay frame,
 // so a disc chosen during startup is remembered even if no frame is drawn yet.
 void SaveSettingsNow();
+// A note at the top of the screen for a few seconds. Thread-safe.
+void ShowNote(const std::string& text);
+// The last session ended on a failed disc read: the F1 overlay says so, in red, for a while.
+void NoteDiscReadFailedLastSession();
 // Thread-safe snapshot of the overlay's visibility, for the Android touch
 // controls. Unlike Visible() it performs no lazy initialization, so it is safe
 // to call from the UI thread.

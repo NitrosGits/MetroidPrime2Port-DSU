@@ -44,6 +44,8 @@
 #include <unistd.h>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <string>
 // SDL owns the app's private directories on Android, where the port's own three are resolved
 // beneath them, and shows the disc message and picker everywhere. The include directory is
@@ -70,6 +72,7 @@ extern void* gPortGameHeapHi;
 #include "port_settings.h"
 #include "port_build_info.h"
 #include "port_console.h"
+#include "port_debug.h"
 #include "port_disc_verify.h"
 #include "port_entry.h"
 #ifdef MP_PORT_COVERAGE
@@ -732,6 +735,42 @@ SDL_Window* DiscDialogWindow() {
   return window;
 }
 
+// A read of the image that fails mid-game (damage the mount check missed) ends the session, and
+// the same image would end every later one. So the failure is noted in a file naming the image,
+// and the next launch refuses that image and asks for another (MP1's main.cpp:520-560). Aurora
+// calls this once, from whichever thread read.
+std::string sDiscReadFailedMarker;
+std::string sMountedDisc;
+
+void NoteDiscReadFailure() {
+  std::fprintf(stderr, "metroid_prime2_port: a read of the disc image failed\n");
+  if (sDiscReadFailedMarker.empty()) {
+    return;
+  }
+  if (FILE* file = std::fopen(sDiscReadFailedMarker.c_str(), "wb"); file != nullptr) {
+    std::fputs(sMountedDisc.c_str(), file);
+    std::fclose(file);
+  }
+}
+
+// Whether the last session failed to read this image. Clears the note, and has the overlay say
+// why the last session ended whichever image it was.
+bool DiscReadFailedLastTime(const std::string& path) {
+  if (sDiscReadFailedMarker.empty()) {
+    return false;
+  }
+  std::ifstream in(sDiscReadFailedMarker, std::ios::binary);
+  if (!in) {
+    return false;
+  }
+  const std::string failed((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+  in.close();
+  std::error_code ec;
+  std::filesystem::remove(sDiscReadFailedMarker, ec);
+  PortDebug::NoteDiscReadFailedLastSession();
+  return failed == path;
+}
+
 // Says on screen why the disc was refused (without it a refused disc looks like a crash on
 // start) and asks whether to pick another (true) or close the game. With offerPick false the
 // box only has Close.
@@ -1142,6 +1181,9 @@ int main(int argc, char** argv) {
   // A disc that will not open, is not the one game this runs, or is cut short is said on screen
   // and, on the desktop, asked for again (MP1's loop). A scripted or headless run, and Android
   // (whose picker ran before Aurora), print the reason and end as before.
+  if (touchUser != nullptr && touchUser[0] != '\0') {
+    sDiscReadFailedMarker = std::string(touchUser) + "/disc-read-failed";
+  }
   for (;;) {
     std::string problem;
     if (!aurora_dvd_open(discImage.c_str())) {
@@ -1160,6 +1202,11 @@ int main(int argc, char** argv) {
       // paks by bare name, so MP2/ becomes the root (docs/TRILOGY.md).
       std::fprintf(stderr, "metroid_prime2_port: the Trilogy disc has no MP2 directory or rs5mp2_p.dol\n");
       problem = "This Metroid Prime Trilogy image has no Echoes (MP2) data.";
+      aurora_dvd_close();
+    } else if (DiscReadFailedLastTime(discImage)) {
+      std::fprintf(stderr, "metroid_prime2_port: refused the disc image: a read of it failed last session\n");
+      problem = "Part of this disc image couldn't be read last time, so it's damaged.\n"
+                "Copy the file again, or check it in Dolphin (Properties > Verify).";
       aurora_dvd_close();
     } else if (const std::string unreadable = FindUnreadableDiscFile(); !unreadable.empty()) {
       std::fprintf(stderr, "metroid_prime2_port: disc image is incomplete: %s can't be read\n", unreadable.c_str());
@@ -1197,6 +1244,8 @@ int main(int argc, char** argv) {
 #endif
   }
   std::printf("metroid_prime2_port: disc mounted: %s\n", discImage.c_str());
+  sMountedDisc = discImage;
+  aurora_dvd_set_read_error_callback(NoteDiscReadFailure);
   // F1 > System > Disc image checks the file the game is playing (platform/port_disc_verify.cpp).
   PortDiscVerify::SetImagePath(discImage);
   // The mods folder layers over the disc through Aurora's overlays; the game caches PAK tables
