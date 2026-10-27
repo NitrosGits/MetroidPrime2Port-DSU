@@ -18,4 +18,20 @@ inline float ScaleStep(float value, float target) {
 inline float FadeStep(float t, bool on, float dt, float fadeIn, float fadeOut) {
   return Clamp(t + (on ? dt / fadeIn : -dt / fadeOut), 0.f, 1.f);
 }
+// Locked-reticle timing from the time a target has been locked (MP1 fn_8023B228; the 0.25 s
+// steps and 3 -> 0.35 base scale are not confirmed in the Echoes DOL).
+inline float LockBaseScale(float lockTime) {
+  const float u = Clamp(lockTime / .25f, 0.f, 1.f);
+  return 3.f * (1.f - u) + .35f * u;
+}
+inline float LockBracketAlpha(float lockTime) { return Clamp((lockTime - .25f) / .25f, 0.f, 1.f) * (50.f / 255.f); }
+inline float LockTechTime(float lockTime) { return Clamp(.5f * ((lockTime - .25f) / .25f), 0.f, .496f); }
+inline bool LockTechSpins(float lockTime) { return (lockTime - .25f) / .25f >= 1.f; }
+// Lock arm alpha: 200/255 until 0.25 s, then decays to 0.35.
+inline float LockArmAlpha(float alpha, float lockTime, float dt) {
+  return lockTime >= .25f ? Clamp(alpha - dt * (200.f / 255.f) / 3.5f, .35f, 200.f / 255.f) : 200.f / 255.f;
+}
+// Scan progress segments (rs5mp2_p.dol 0x8025e438): six of them, segment i at -60*i degrees,
+// value clamp(6 * progress - 5 + i, 0, 1) (fmuls 6*progress, fsel pair at 0x8025e46c/0x8025e484).
+inline float ScanSegment(float progress, int i) { return Clamp(6.f * progress - 5.f + static_cast< float >(i), 0.f, 1.f); }
 } // namespace PortTriReticle
