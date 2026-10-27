@@ -36,8 +36,8 @@ decompilation is incomplete, and it is what the shim queue is tracked against."
 # `nod::nod` target already exists, so the alias below is the whole mechanism.
 option(MP_ANDROID_NOD_STUB "Use a non-functional nod stub for Android build probes" OFF)
 if(MP_ANDROID_NOD_STUB)
-    if(NOT ANDROID)
-        message(FATAL_ERROR "MP_ANDROID_NOD_STUB is only valid for Android builds")
+    if(NOT ANDROID AND NOT WIN32)
+        message(FATAL_ERROR "MP_ANDROID_NOD_STUB is only valid for Android and Windows cross-compile probes")
     endif()
     add_library(mp_android_nod_stub STATIC platform/android_probe/nod_stub.c)
     target_include_directories(mp_android_nod_stub PUBLIC platform/android_probe/include)

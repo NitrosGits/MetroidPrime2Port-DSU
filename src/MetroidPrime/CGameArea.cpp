@@ -6,6 +6,7 @@
 #include "Kyoto/Graphics/CCubeSurface.hpp"
 #include "port_pipeline_context.h"
 #include "port_savestate.h"
+#include <cstdlib>
 #endif
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/Graphics/CTexture.hpp"

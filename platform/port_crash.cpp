@@ -15,17 +15,30 @@
 #include <string>
 #include <typeinfo>
 
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#else
 #include <cxxabi.h>
 #include <dlfcn.h>
 #include <unistd.h>
-#if defined(__APPLE__)
+#endif
+#if defined(_WIN32)
+#elif defined(__APPLE__)
 #include <pthread.h>
 #include <sys/ucontext.h> // <ucontext.h> refuses to compile there without _XOPEN_SOURCE
 #else
 #include <sys/syscall.h>
 #include <ucontext.h>
 #endif
+#if !defined(_WIN32)
 #include <unwind.h>
+#endif
 
 namespace PortCrash {
 namespace {
@@ -100,6 +113,7 @@ void CrashTest() {
   }
 }
 
+#if !defined(_WIN32)
 // The handlers that were there before, which the signal goes on to: the default
 // one (a core dump), or on Android the one that writes the tombstone.
 constexpr int kSignals[] = {SIGSEGV, SIGBUS, SIGFPE, SIGILL, SIGABRT, SIGTRAP};
@@ -107,12 +121,14 @@ constexpr int kSignalCount = sizeof(kSignals) / sizeof(kSignals[0]);
 // What RequestStack sends; not a crash, so it has no previous handler to chain to.
 constexpr int kStackSignal = SIGUSR2;
 struct sigaction sPrevious[kSignalCount];
+#endif
 
 void Emit(Line& line) {
   line.text[line.used++] = '\n';
   PortLogFile::WriteRaw(line.text, line.used);
 }
 
+#if !defined(_WIN32)
 const char* SignalName(int signal) {
   switch (signal) {
   case SIGSEGV:
@@ -235,9 +251,46 @@ _Unwind_Reason_Code CountFrame(_Unwind_Context*, void* argument) {
   ++*static_cast< int* >(argument);
   return _URC_NO_REASON;
 }
+#else
+const char* CodeName(DWORD code) {
+  switch (code) {
+  case EXCEPTION_ACCESS_VIOLATION:
+    return "access violation";
+  case EXCEPTION_STACK_OVERFLOW:
+    return "stack overflow";
+  case EXCEPTION_ILLEGAL_INSTRUCTION:
+    return "illegal instruction";
+  case EXCEPTION_INT_DIVIDE_BY_ZERO:
+    return "integer divide by zero";
+  case EXCEPTION_BREAKPOINT:
+    return "breakpoint";
+  default:
+    return "exception";
+  }
+}
+
+LONG WINAPI OnException(EXCEPTION_POINTERS* info) {
+  if (sCrashing.exchange(true)) {
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+  const EXCEPTION_RECORD* record = info->ExceptionRecord;
+  Line line;
+  line.Add("port: crashed: ").Add(CodeName(record->ExceptionCode)).Add(" (").Hex(record->ExceptionCode).Add(") at ")
+      .Hex(reinterpret_cast< uintptr_t >(record->ExceptionAddress));
+  Emit(line);
+  if (sAfterReport != nullptr) {
+    sAfterReport(static_cast< int >(record->ExceptionCode), record->ExceptionAddress);
+  }
+  return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif
 } // namespace
 
 void Install() {
+#if defined(_WIN32)
+  SetUnhandledExceptionFilter(OnException);
+  CrashTest();
+#else
   // The main thread's stack overflowing leaves no stack for the handler.
   static char alternate[64 * 1024];
   stack_t stack{};
@@ -262,11 +315,16 @@ void Install() {
     sigaction(kSignals[i], &action, &sPrevious[i]);
   }
   CrashTest();
+#endif
 }
 
 void SetAfterReport(void (*afterReport)(int signal, const void* address)) { sAfterReport = afterReport; }
 
 bool RequestStack(long threadId) {
+#if defined(_WIN32)
+  (void)threadId; // no per-thread stack request on Windows
+  return false;
+#else
   // A library loaded later (a GPU driver) may have taken the signal; don't run its handler.
   struct sigaction current {};
   if (threadId == 0 || sigaction(kStackSignal, nullptr, &current) != 0 || current.sa_sigaction != OnStackSignal) {
@@ -277,6 +335,7 @@ bool RequestStack(long threadId) {
   return pthread_kill(reinterpret_cast< pthread_t >(threadId), kStackSignal) == 0;
 #else
   return syscall(SYS_tgkill, getpid(), static_cast< pid_t >(threadId), kStackSignal) == 0;
+#endif
 #endif
 }
 
@@ -289,12 +348,14 @@ void AbortOnException(const char* where) {
   } catch (...) {
   }
   const char* type = "unknown type";
+#if !defined(_WIN32)
   char* demangled = nullptr;
   if (const std::type_info* info = abi::__cxa_current_exception_type(); info != nullptr) {
     int status = 0;
     demangled = abi::__cxa_demangle(info->name(), nullptr, nullptr, &status);
     type = demangled != nullptr ? demangled : info->name();
   }
+#endif
   Line line;
   line.Add("port: uncaught C++ exception in ").Add(where).Add(": ").Add(type).Add(": ").Add(what.c_str());
   Emit(line);

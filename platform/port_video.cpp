@@ -255,11 +255,11 @@ void BeginGpuStart(const std::string& userFolder, AuroraConfig& config) {
 
   // The Adreno storage clamp: Aurora reads MP2_STORAGE_CLAMP, so a user's own variable wins.
   if (sStorageClamp >= 0 && port::EnvString("MP2_STORAGE_CLAMP") == nullptr) {
-    ::setenv("MP2_STORAGE_CLAMP", sStorageClamp > 0 ? "1" : "0", 1);
+    port::SetEnv("MP2_STORAGE_CLAMP", sStorageClamp > 0 ? "1" : "0");
   }
   // The low-power adapter: Aurora reads MP2_GPU_POWER=low.
   if (sLowPowerGpu && port::EnvString("MP2_GPU_POWER") == nullptr) {
-    ::setenv("MP2_GPU_POWER", "low", 1);
+    port::SetEnv("MP2_GPU_POWER", "low");
   }
 
   // Driver workarounds.
