@@ -23,6 +23,17 @@
 #include <fstream>
 #include <mutex>
 
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <shlobj.h>
+#endif
+
 namespace PortSave {
 
 namespace {
@@ -258,6 +269,27 @@ std::vector< std::filesystem::path > AutoEmulatorRoots() {
   std::vector< fs::path > roots;
 #if defined(__ANDROID__)
   // No emulator to find.
+#elif defined(_WIN32)
+  // Dolphin's own rule: the registry's UserConfigPath, else Documents.
+  HKEY key;
+  if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Dolphin Emulator", 0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
+    wchar_t value[MAX_PATH] = {};
+    DWORD size = sizeof(value) - sizeof(wchar_t);
+    if (RegQueryValueExW(key, L"UserConfigPath", nullptr, nullptr, reinterpret_cast< LPBYTE >(value), &size) ==
+            ERROR_SUCCESS &&
+        value[0] != 0) {
+      roots.emplace_back(value);
+    }
+    RegCloseKey(key);
+  }
+  PWSTR documents = nullptr;
+  if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &documents))) {
+    roots.push_back(fs::path(documents) / L"Dolphin Emulator");
+  }
+  CoTaskMemFree(documents);
+  if (const char* appdata = std::getenv("APPDATA"); appdata != nullptr) {
+    roots.push_back(fs::path(appdata) / "Dolphin Emulator");
+  }
 #else
   const char* appdata = std::getenv("APPDATA");
   const char* xdg = std::getenv("XDG_DATA_HOME");

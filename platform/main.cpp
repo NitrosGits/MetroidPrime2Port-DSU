@@ -919,7 +919,30 @@ static void PortCrashAfterReport(int sig, const void* faultAddress) {
 }
 #endif
 
+#if defined(_WIN32)
+// A GUI-subsystem exe has no console; when started from a terminal, print to that one (as MP1's
+// PortLogFile::AttachParentConsole). Left alone when stderr already goes somewhere.
+static void AttachParentConsole() {
+  const HANDLE error = GetStdHandle(STD_ERROR_HANDLE);
+  if ((error != nullptr && error != INVALID_HANDLE_VALUE) || !AttachConsole(ATTACH_PARENT_PROCESS)) {
+    return;
+  }
+  FILE* reopened = nullptr;
+  freopen_s(&reopened, "CONOUT$", "w", stdout);
+  freopen_s(&reopened, "CONOUT$", "w", stderr);
+  SetStdHandle(STD_OUTPUT_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stdout))));
+  SetStdHandle(STD_ERROR_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stderr))));
+}
+#endif
+
 int main(int argc, char** argv) {
+#if defined(_WIN32)
+  AttachParentConsole();
+#endif
+  if (argc == 2 && std::strcmp(argv[1], "--version") == 0) {
+    std::printf("Metroid Prime 2 native port %s (%s)\n", MP_BUILD_VERSION, MP_BUILD_REVISION);
+    return 0;
+  }
   // Android first, before anything can print: from here on fd 1 and fd 2 reach logcat, which
   // is the only place a device run leaves a record. A no-op on the desktop.
   PortLogBegin();
@@ -1019,7 +1042,7 @@ int main(int argc, char** argv) {
 #if defined(__ANDROID__)
   PortCrash::SetAfterReport(PortCrashAfterReport);
 #endif
-  PortCrash::Install();
+  PortCrash::Install(touchUser != nullptr ? touchUser : std::string());
   // Into that log, as MP1 does: every setting in effect and the MP2_* variables, then (from a
   // background thread) how much space each folder the port writes to takes.
   PortOverlaySettings::LogSettings();
@@ -1064,6 +1087,8 @@ int main(int argc, char** argv) {
       .allowTextureDumps = port::EnvFlag("MP2_DUMP_TEXTURES"),
       .windowWidth = static_cast< uint32_t >(widescreen ? 1280 : 960),
       .windowHeight = 720u,
+      .windowPosX = -1, // centred, as the Prime 1 port
+      .windowPosY = -1,
       .mem1Size = MEM1_DEFAULT_SIZE,
       .mem2Size = ARAM_DEFAULT_SIZE,
   };
@@ -1143,7 +1168,7 @@ int main(int argc, char** argv) {
   // that, so whenever an X display is available ask for the X11 backend instead. SDL_VIDEODRIVER
   // still wins, which is also how anyone who wants Wayland opts back in, and MP2_HEADLESS's
   // "offscreen" above is honoured the same way.
-#if !defined(__ANDROID__)
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__APPLE__)
   {
     const char* requested = SDL_GetHint(SDL_HINT_VIDEO_DRIVER);
     const char* x11 = std::getenv("DISPLAY");

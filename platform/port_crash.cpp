@@ -23,6 +23,8 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+// dbghelp.h needs windows.h first.
+#include <dbghelp.h>
 #else
 #include <cxxabi.h>
 #include <dlfcn.h>
@@ -123,12 +125,12 @@ constexpr int kStackSignal = SIGUSR2;
 struct sigaction sPrevious[kSignalCount];
 #endif
 
+#if !defined(_WIN32)
 void Emit(Line& line) {
   line.text[line.used++] = '\n';
   PortLogFile::WriteRaw(line.text, line.used);
 }
 
-#if !defined(_WIN32)
 const char* SignalName(int signal) {
   switch (signal) {
   case SIGSEGV:
@@ -252,6 +254,21 @@ _Unwind_Reason_Code CountFrame(_Unwind_Context*, void* argument) {
   return _URC_NO_REASON;
 }
 #else
+// Prepared at Install: the crash may have left the heap unusable.
+std::wstring sDumpPath;
+std::string sDumpPathUtf8;
+std::wstring sExeFolder;
+
+void Emit(Line& line) {
+  line.text[line.used++] = '\n';
+  // The log's pipe while the log runs; the copier drains it after the game has gone.
+  const HANDLE error = GetStdHandle(STD_ERROR_HANDLE);
+  DWORD wrote = 0;
+  if (error != nullptr && error != INVALID_HANDLE_VALUE) {
+    WriteFile(error, line.text, static_cast< DWORD >(line.used), &wrote, nullptr);
+  }
+}
+
 const char* CodeName(DWORD code) {
   switch (code) {
   case EXCEPTION_ACCESS_VIOLATION:
@@ -260,37 +277,226 @@ const char* CodeName(DWORD code) {
     return "stack overflow";
   case EXCEPTION_ILLEGAL_INSTRUCTION:
     return "illegal instruction";
+  case EXCEPTION_PRIV_INSTRUCTION:
+    return "privileged instruction";
   case EXCEPTION_INT_DIVIDE_BY_ZERO:
     return "integer divide by zero";
+  case EXCEPTION_IN_PAGE_ERROR:
+    return "in-page error (the file behind the memory could not be read)";
   case EXCEPTION_BREAKPOINT:
     return "breakpoint";
+  case 0xC0000374:
+    return "heap corruption";
+  case 0xE06D7363:
+    return "uncaught C++ exception";
   default:
     return "exception";
   }
 }
 
-LONG WINAPI OnException(EXCEPTION_POINTERS* info) {
+// "module+0xoffset", the form a symbolizer takes.
+void Describe(Line& line, uintptr_t pc) {
+  HMODULE module = nullptr;
+  char path[MAX_PATH];
+  if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                         reinterpret_cast< LPCSTR >(pc), &module) &&
+      GetModuleFileNameA(module, path, MAX_PATH) > 0) {
+    line.Add(BaseName(path)).Add("+").Hex(pc - reinterpret_cast< uintptr_t >(module));
+  } else {
+    line.Hex(pc);
+  }
+}
+
+// Function and line, when the module's PDB was found.
+void AddSymbol(Line& line, HANDLE process, uintptr_t pc) {
+  alignas(SYMBOL_INFO) char storage[sizeof(SYMBOL_INFO) + 256];
+  auto* symbol = reinterpret_cast< SYMBOL_INFO* >(storage);
+  std::memset(storage, 0, sizeof(storage));
+  symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+  symbol->MaxNameLen = 255;
+  DWORD64 displacement = 0;
+  if (SymFromAddr(process, pc, &displacement, symbol)) {
+    line.Add(" ").Add(symbol->Name).Add("+").Hex(static_cast< uintptr_t >(displacement));
+    IMAGEHLP_LINE64 source{};
+    source.SizeOfStruct = sizeof(source);
+    DWORD column = 0;
+    if (SymGetLineFromAddr64(process, pc, &column, &source)) {
+      line.Add(" (").Add(BaseName(source.FileName)).Add(":").Dec(source.LineNumber).Add(")");
+    }
+  }
+}
+
+struct Report {
+  EXCEPTION_POINTERS* pointers;
+  DWORD threadId;
+  const char* what; // instead of the exception code, for abort and the like
+};
+
+DWORD WINAPI WriteReport(void* argument) {
+  const Report& report = *static_cast< const Report* >(argument);
+  const EXCEPTION_RECORD& record = *report.pointers->ExceptionRecord;
+  Line header;
+  header.Add("port: crashed: ");
+  if (report.what != nullptr) {
+    header.Add(report.what);
+  } else {
+    header.Add(CodeName(record.ExceptionCode)).Add(" (").Hex(record.ExceptionCode).Add(")");
+    if (record.ExceptionCode == EXCEPTION_ACCESS_VIOLATION && record.NumberParameters >= 2) {
+      const ULONG_PTR kind = record.ExceptionInformation[0];
+      header.Add(kind == 0 ? " reading " : kind == 1 ? " writing " : " executing ")
+          .Hex(static_cast< uintptr_t >(record.ExceptionInformation[1]));
+    }
+  }
+  Emit(header);
+  Line at;
+  at.Add("port: at ");
+  Describe(at, reinterpret_cast< uintptr_t >(record.ExceptionAddress));
+  Emit(at);
+  Line build;
+  build.Add("port: build ").Add(MP_BUILD_REVISION).Add(", thread ").Dec(report.threadId);
+  Emit(build);
+
+  const HANDLE process = GetCurrentProcess();
+  SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS |
+                SYMOPT_NO_PROMPTS);
+  const bool symbols = SymInitializeW(process, sExeFolder.empty() ? nullptr : sExeFolder.c_str(), TRUE) != FALSE;
+  const HANDLE thread = OpenThread(THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION, FALSE, report.threadId);
+  CONTEXT context = *report.pointers->ContextRecord; // StackWalk64 changes it
+  STACKFRAME64 frame{};
+  DWORD machine = 0;
+#if defined(_M_ARM64)
+  machine = IMAGE_FILE_MACHINE_ARM64;
+  frame.AddrPC.Offset = context.Pc;
+  frame.AddrFrame.Offset = context.Fp;
+  frame.AddrStack.Offset = context.Sp;
+#else
+  machine = IMAGE_FILE_MACHINE_AMD64;
+  frame.AddrPC.Offset = context.Rip;
+  frame.AddrFrame.Offset = context.Rbp;
+  frame.AddrStack.Offset = context.Rsp;
+#endif
+  frame.AddrPC.Mode = AddrModeFlat;
+  frame.AddrFrame.Mode = AddrModeFlat;
+  frame.AddrStack.Mode = AddrModeFlat;
+  Line title;
+  Emit(title.Add("port: stack:"));
+  for (int n = 0; n < kMaxFrames; ++n) {
+    if (!StackWalk64(machine, process, thread != nullptr ? thread : GetCurrentThread(), &frame, &context, nullptr,
+                     SymFunctionTableAccess64, SymGetModuleBase64, nullptr) ||
+        frame.AddrPC.Offset == 0) {
+      break;
+    }
+    const auto pc = static_cast< uintptr_t >(frame.AddrPC.Offset);
+    Line line;
+    line.Add("port:   #").Dec(static_cast< unsigned long >(n)).Add(" ");
+    Describe(line, pc);
+    if (symbols) {
+      // A return address is the instruction after the call; look up the call.
+      AddSymbol(line, process, n == 0 ? pc : pc - 1);
+    }
+    Emit(line);
+  }
+  if (thread != nullptr) {
+    CloseHandle(thread);
+  }
+
+  if (!sDumpPath.empty()) {
+    const HANDLE file = CreateFileW(sDumpPath.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                                    FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file != INVALID_HANDLE_VALUE) {
+      MINIDUMP_EXCEPTION_INFORMATION exception{report.threadId, report.pointers, FALSE};
+      const bool wrote = MiniDumpWriteDump(process, GetCurrentProcessId(), file,
+                                           // Indirectly referenced memory: the bytes around each pointer on
+                                           // the stacks, so a heap block being freed (and its header) is in
+                                           // the dump without taking the whole heap.
+                                           static_cast< MINIDUMP_TYPE >(MiniDumpNormal | MiniDumpWithThreadInfo |
+                                                                        MiniDumpWithUnloadedModules |
+                                                                        MiniDumpWithIndirectlyReferencedMemory),
+                                           &exception, nullptr, nullptr) != FALSE;
+      CloseHandle(file);
+      Line line;
+      Emit(line.Add(wrote ? "port: crash dump written to " : "port: cannot write a crash dump to ")
+               .Add(sDumpPathUtf8.c_str()));
+    }
+  }
+  if (symbols) {
+    SymCleanup(process);
+  }
+  return 0;
+}
+
+void RunReport(EXCEPTION_POINTERS* pointers, const char* what) {
+  Report report{pointers, GetCurrentThreadId(), what};
+  // On a thread of its own, with a stack of its own: the crashed thread may have
+  // run out of stack, and StackWalk64 must not walk the thread it runs on.
+  const HANDLE thread = CreateThread(nullptr, 1 << 20, WriteReport, &report, 0, nullptr);
+  if (thread != nullptr) {
+    WaitForSingleObject(thread, 60000);
+    CloseHandle(thread);
+  }
+}
+
+LONG WINAPI OnException(EXCEPTION_POINTERS* pointers) {
+  if (!sCrashing.exchange(true)) {
+    RunReport(pointers, nullptr);
+  }
+  return EXCEPTION_CONTINUE_SEARCH; // on to Windows Error Reporting
+}
+
+// For the ways out that raise no exception: the report starts at the caller.
+void ReportHere(const char* what) {
   if (sCrashing.exchange(true)) {
-    return EXCEPTION_CONTINUE_SEARCH;
+    return;
   }
-  const EXCEPTION_RECORD* record = info->ExceptionRecord;
-  Line line;
-  line.Add("port: crashed: ").Add(CodeName(record->ExceptionCode)).Add(" (").Hex(record->ExceptionCode).Add(") at ")
-      .Hex(reinterpret_cast< uintptr_t >(record->ExceptionAddress));
-  Emit(line);
-  if (sAfterReport != nullptr) {
-    sAfterReport(static_cast< int >(record->ExceptionCode), record->ExceptionAddress);
-  }
-  return EXCEPTION_CONTINUE_SEARCH;
+  CONTEXT context{};
+  RtlCaptureContext(&context);
+  EXCEPTION_RECORD record{};
+#if defined(_M_ARM64)
+  record.ExceptionAddress = reinterpret_cast< void* >(context.Pc);
+#else
+  record.ExceptionAddress = reinterpret_cast< void* >(context.Rip);
+#endif
+  EXCEPTION_POINTERS pointers{&record, &context};
+  RunReport(&pointers, what);
+}
+
+// abort(), which std::terminate and Aurora's FATAL end in. The C runtime ends
+// the process once this returns.
+void OnAbort(int) { ReportHere("abort() was called"); }
+
+void OnInvalidParameter(const wchar_t*, const wchar_t*, const wchar_t*, unsigned, uintptr_t) {
+  ReportHere("invalid parameter passed to a C runtime function");
+  std::abort(); // what the default handler does, in effect
 }
 #endif
 } // namespace
 
-void Install() {
+void Install(const std::string& dumpFolder) {
 #if defined(_WIN32)
+  if (!dumpFolder.empty()) {
+    sDumpPathUtf8 = dumpFolder + "/metroid_prime2_port.dmp";
+    const int size = MultiByteToWideChar(CP_UTF8, 0, sDumpPathUtf8.c_str(), -1, nullptr, 0);
+    if (size > 0) {
+      sDumpPath.resize(static_cast< size_t >(size));
+      MultiByteToWideChar(CP_UTF8, 0, sDumpPathUtf8.c_str(), -1, sDumpPath.data(), size);
+      sDumpPath.pop_back(); // the terminator
+    }
+  }
+  wchar_t exe[4096];
+  const DWORD exeSize = GetModuleFileNameW(nullptr, exe, 4096);
+  if (exeSize > 0 && exeSize < 4096) {
+    sExeFolder.assign(exe, exeSize);
+    sExeFolder.erase(sExeFolder.find_last_of(L"\\/") + 1);
+  }
+  // Leaves room on the main thread's stack for the filter after a stack overflow.
+  ULONG guarantee = 64 * 1024;
+  SetThreadStackGuarantee(&guarantee);
   SetUnhandledExceptionFilter(OnException);
+  std::signal(SIGABRT, OnAbort);
+  _set_invalid_parameter_handler(OnInvalidParameter);
   CrashTest();
 #else
+  (void)dumpFolder;
   // The main thread's stack overflowing leaves no stack for the handler.
   static char alternate[64 * 1024];
   stack_t stack{};
