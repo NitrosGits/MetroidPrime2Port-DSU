@@ -214,3 +214,10 @@ game ignores SIGPIPE, the copier ignores SIGTERM/SIGHUP, and Aurora logs through
   matches the `userData` `CTexture` sets with `GXInitTexObjUserData` (re-set in `Load`). A re-vendor must
   keep the key overload. The hint memo's button blinks on purpose (game behaviour): screenshot several
   frames. `kKeys` (texel hashes) still serves the few prompt textures without an asset id.
+- **Save files were purged from public history on 2026-10-28** (`tests/data/01-G2ME-MetroidPrime2.gci`,
+  `tests/fixtures/trilogy/*.bin`): `port`, `ios`, `portable`, `portable-ci` and `winparity` were rewritten with
+  filter-branch (upstream commits excluded) and force-pushed; old `origin/port` 3ad668104 is now d4a0e1681.
+  Local branches and worktrees cut before that still carry the files: rebase or cherry-pick their own commits
+  onto the new `origin/port`, never merge them. The shared `.git/hooks/pre-push` rejects any push that carries
+  those paths. The files stay on disk (gitignored); the tests that use them skip when they're missing.
+  Backup of the old refs: `../mp2-purge-2026-10-28/pre-purge-all.bundle`.
