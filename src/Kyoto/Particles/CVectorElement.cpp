@@ -29,7 +29,18 @@ static inline int GetKeyframeIndex(int frame, bool loop, int loopStart, int loop
 }
 
 static inline int GetKeyframeTime(float value, float start, float rate) {
+#ifdef TARGET_PC
+  // Retail's fctiwz saturates a too-large float to INT_MAX, so the index lands on the last frame;
+  // x86's cvttss2si gives INT_MIN for it, which max(0, ..) turned into frame 0. A negative
+  // overflow and NaN are INT_MIN on both, so only the positive side needs handling.
+  const float scaled = rate * (value - start);
+  if (scaled >= 2147483648.f) {
+    return 0x7FFFFFFF;
+  }
+  return rstl::max_val(0, CCast::ToInt32(scaled));
+#else
   return rstl::max_val(0, CCast::ToInt32(rate * (value - start)));
+#endif
 }
 
 static inline const CParticleElectric::CParticleElectricManager* GetCurrentElectricManager() {
