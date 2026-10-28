@@ -269,16 +269,16 @@ CEmperorIngStage1::CEmperorIngStage1(TUniqueId uid, const rstl::string& name,
 , xa9c_(CSfxHandle::NullHandle())                                  // guest 0xA9C, cleared
 , xaa0_(CVector3f::Zero())                                        // guest 0xAA0, the zero vector
 {
-  // The retail constructor stops the actor drawing a shadow (SetDrawShadow(this, 0) at
-  // 0x000095E0) and calls the DOL's EnableAllAnimReactions(&this->0x620, 0) at 0x000095EC; the
-  // port's CAiKnockBackMgr has no such call yet, so that half is missing.
+  // The retail constructor (fn_16_900C) stops the actor drawing a shadow (SetDrawShadow(this, 0)
+  // at 0x000095E0), then calls EnableAllAnimReactions(&this->0x620, 0) at 0x000095EC.
   // The shock-wave block at guest 0xC40 and the two tokens at guest 0xBB8 and 0xBE0 belong to
   // attacks the port has not reached yet.
   // 0x917C..0x91AC: the flag byte (guest 0xA74) has its bits 0x80, 0x40, 0x20, 0x10 and 0x08
   // cleared one at a time. The host's heap is not zeroed, so the byte is zeroed in the member
   // list; the mask says the same.
   xa74_ &= ~0xF8;
-  SetDrawShadow(false);
+  SetDrawShadow(false);                            // 0x000095E0
+  KnockBackController().EnableAllAnimReactions(false); // 0x000095E4..0x000095EC: this +0x620, li r4,0
 }
 
 // fn_16_8B80 (vtable slot 0): only the member destruction the collision managers need is here -
