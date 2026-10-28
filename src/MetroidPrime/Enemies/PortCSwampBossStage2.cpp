@@ -453,7 +453,8 @@ void CSwampBossStage2::Activate(CStateManager& mgr) {
   BodyController()->Activate(mgr, pas::kAS_Invalid);
   mCollisionMgr->SetActive(mgr, true);
   SetGrowthsActive(mgr, false);
-  mgr.SetBossParams(GetUniqueId(), HealthInfo()->GetHP(),
+  // Retail loads CHealthInfo +0 (initial HP), 0x000026F4 `lfs f31, 0x0(r3)`.
+  mgr.SetBossParams(GetUniqueId(), HealthInfo()->GetInitialHP(),
                     gpStringTable->GetStringIndex("BossSwampBossStage2"));
 }
 
