@@ -141,7 +141,7 @@
 {"Video", "Display", "HUD and view", "Dark HUD opacity", "visor opacity alpha transparency dark visor hud"},
 {"Video", "Display", "HUD and view", "Scan HUD opacity", "visor opacity alpha transparency scan visor hud"},
 {"Video", "Display", "HUD and view", "Crosshair opacity", "reticle cursor alpha transparency"},
-{"Video", "Display", "HUD and view", "Crosshair style", "reticle cursor classic remastered"},
+{"Video", "Display", "HUD and view", "Crosshair style", "reticle cursor classic remastered gamecube"},
 {"Video", "Display", "HUD and view", "Custom crosshair colour", "reticle cursor colour color tint custom"},
 {"Video", "Display", "HUD and view", "Hide helmet", "visor frame face"},
 {"Video", "Display", "HUD and view", "Hide visor effects", "visor rain fog steam overlay"},

@@ -376,6 +376,9 @@ const int kCrosshairOpacityMin = 0;
 const int kCrosshairOpacityMax = 100;
 const int kCrosshairStyle_Classic = 0;
 const int kCrosshairStyle_Remastered = 1;
+// On a Trilogy disc: the GameCube crosshair model in place of Trilogy's aiming cursor; Classic on
+// a GameCube disc.
+const int kCrosshairStyle_GameCube = 2;
 int CrosshairStyle();
 void SetCrosshairStyle(int style);
 int CrosshairSize();

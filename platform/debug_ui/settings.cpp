@@ -441,7 +441,7 @@ const SettingKey kSettingKeys[] = {
      false, "plain", "auto"},
     BoolKey< &sAimCrosshair >("aim_crosshair"),
     IntKey< &sCrosshairStyle, PortOverlay::kCrosshairStyle_Classic,
-            PortOverlay::kCrosshairStyle_Remastered >("crosshair_style", "0", "1"),
+            PortOverlay::kCrosshairStyle_GameCube >("crosshair_style", "0", "2"),
     IntKey< &sCrosshairSize, PortOverlay::kCrosshairSizeMin, PortOverlay::kCrosshairSizeMax >(
         "crosshair_size", "25", "100"),
     IntKey< &sCrosshairOpacity, PortOverlay::kCrosshairOpacityMin,
