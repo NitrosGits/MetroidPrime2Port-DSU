@@ -5138,7 +5138,140 @@ void CStateManager::PortDarkWorldTick() {
 // once it is done: CMFGame clears mPendingDockArea when its transition finishes, and it never spawns
 // the player itself (a dock crossing keeps the player where they were standing), so a warp has to do
 // it - the area the player came from is unloaded, so their position means nothing here.
+// A warp's arrival (the debug menu's area list, the console's `area`, the sweep's NEXTAREA): put
+// the player inside `target`. The old scan took the first active first-spawn point of *any* loaded
+// area, and a room without one left the player at the old coordinates, outside the new room. Order:
+// the target's own first spawn point (SpawnPlayer: it also applies the spawn's inventory, as the
+// game's own arrival does), any active, then any spawn point of the area (Teleport only, looking
+// along its forward with Z flattened as the MP1 port's debug teleport does), then a doorway of the
+// area, then the area's AABB centre; the last two stand on the floor found by a ray down.
+void CStateManager::PortPlaceAtArrival(TAreaId target) {
+  CPlayer* player = GetPlayer(0);
+  CWorld* world = World();
+  if (player == nullptr || world == nullptr || !world->DoesAreaExist(target)) {
+    return;
+  }
+  CScriptSpawnPoint* firstSpawn = nullptr;
+  CScriptSpawnPoint* activeSpawn = nullptr;
+  CScriptSpawnPoint* anySpawn = nullptr;
+  CScriptDock* dock = nullptr;
+  CObjectList* objects = mObjectLists[kOL_All].get();
+  for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
+    CEntity* entity = (*objects)[i];
+    if (CScriptSpawnPoint* spawn = TCastToPtr< CScriptSpawnPoint >(entity)) {
+      if (spawn->GetCurrentAreaId() != target) {
+        continue;
+      }
+      if (spawn->GetActive() && spawn->IsFirstSpawn() && firstSpawn == nullptr) {
+        firstSpawn = spawn;
+      }
+      if (spawn->GetActive() && activeSpawn == nullptr) {
+        activeSpawn = spawn;
+      }
+      if (anySpawn == nullptr) {
+        anySpawn = spawn;
+      }
+    } else if (CScriptDock* d = TCastToPtr< CScriptDock >(entity)) {
+      if (dock == nullptr && !d->IsVirtual() && d->GetCurrentAreaId() == target) {
+        dock = d;
+      }
+    }
+  }
+  const char* kind = "first spawn";
+  CScriptSpawnPoint* plain = activeSpawn != nullptr ? activeSpawn : anySpawn;
+  if (firstSpawn != nullptr) {
+    SpawnPlayer(*firstSpawn, 0);
+  } else if (plain != nullptr) {
+    kind = activeSpawn != nullptr ? "active spawn" : "inactive spawn";
+    const CVector3f position = plain->GetTransform().GetTranslation();
+    CVector3f look = plain->GetTransform().GetForward();
+    look.SetZ(0.f);
+    if (!look.CanBeNormalized()) {
+      look = CVector3f(0.f, 1.f, 0.f);
+    }
+    player->Teleport(CTransform4f::LookAt(position, position + look, CVector3f::Up()), *this,
+                     true);
+  } else {
+    CVector3f point = CVector3f::Zero();
+    CVector3f look = CVector3f(0.f, 1.f, 0.f);
+    const CAABox& bounds = world->GetArea(target)->GetAABB();
+    if (dock != nullptr) {
+      kind = "dock";
+      // A dock's forward points to the area it connects to, so standing back along it is inside.
+      const CVector3f forward = dock->GetTransform().GetForward();
+      point = dock->GetTranslation() - forward * 5.f;
+      look = forward;
+      look.SetZ(0.f);
+      if (!look.CanBeNormalized()) {
+        look = CVector3f(0.f, 1.f, 0.f);
+      }
+    } else {
+      kind = "area centre";
+      point = bounds.GetCenterPoint();
+    }
+    // Floor under the point: from a little above it, then from the top of the area's bounds.
+    CRayCastResult hit = RayStaticIntersection(point + CVector3f(0.f, 0.f, 1.5f),
+                                               CVector3f::Down(), 300.f, CMaterialFilter());
+    if (!hit.IsValid()) {
+      hit = RayStaticIntersection(CVector3f(point.GetX(), point.GetY(), bounds.GetMaxPoint().GetZ()),
+                                  CVector3f::Down(), 600.f, CMaterialFilter());
+    }
+    if (hit.IsValid()) {
+      point = hit.GetPoint() + CVector3f(0.f, 0.f, 1.f);
+    }
+    player->Teleport(CTransform4f::LookAt(point, point + look, CVector3f::Up()), *this, true);
+  }
+  std::fprintf(stderr, "[warp] placed via %s in area %d\n", kind, target.Value());
+  mPortArrivalCheckArea = target;
+  mPortArrivalCheckFrame = mUpdateFrameIdx + 110;
+  mPortArrivalStage = 0;
+  {
+    const CVector3f q = player->GetTranslation();
+    std::fprintf(stderr, "[warp] placed at %.1f %.1f %.1f\n", q.GetX(), q.GetY(), q.GetZ());
+  }
+}
+
+// About two seconds after a warp's arrival: is the player inside the area's bounds and grounded?
+void CStateManager::PortArrivalCheckTick() {
+  if (mPortArrivalCheckArea == kInvalidAreaId || mUpdateFrameIdx < mPortArrivalCheckFrame) {
+    return;
+  }
+  const TAreaId area = mPortArrivalCheckArea;
+  CWorld* world = World();
+  CPlayer* player = GetPlayer(0);
+  if (world == nullptr || player == nullptr || !world->DoesAreaExist(area)) {
+    mPortArrivalCheckArea = kInvalidAreaId;
+    return;
+  }
+  if (mPortArrivalStage == 0) {
+    // Settled means the height no longer changes over the next ten updates.
+    mPortArrivalStage = 1;
+    mPortArrivalZ = player->GetTranslation().GetZ();
+    mPortArrivalCheckFrame = mUpdateFrameIdx + 10;
+    return;
+  }
+  mPortArrivalCheckArea = kInvalidAreaId;
+  const float dz = player->GetTranslation().GetZ() - mPortArrivalZ;
+  const CAABox& b = world->GetArea(area)->GetAABB();
+  const CVector3f p = player->GetTranslation();
+  const bool inside = p.GetX() >= b.GetMinPoint().GetX() - 1.f &&
+                      p.GetX() <= b.GetMaxPoint().GetX() + 1.f &&
+                      p.GetY() >= b.GetMinPoint().GetY() - 1.f &&
+                      p.GetY() <= b.GetMaxPoint().GetY() + 1.f &&
+                      p.GetZ() >= b.GetMinPoint().GetZ() - 1.f &&
+                      p.GetZ() <= b.GetMaxPoint().GetZ() + 1.f;
+  std::fprintf(stderr,
+               "[warp] arrival check area %d: %s grounded=%d current=%d dz=%.2f pos %.1f %.1f %.1f bounds "
+               "%.1f %.1f %.1f / %.1f %.1f %.1f\n",
+               area.Value(), inside ? "inside" : "OUTSIDE",
+               (player->IsOnGround() || (dz > -0.05f && dz < 0.05f)) ? 1 : 0,
+               world->GetCurrentAreaId().Value(), dz, p.GetX(), p.GetY(), p.GetZ(),
+               b.GetMinPoint().GetX(), b.GetMinPoint().GetY(), b.GetMinPoint().GetZ(),
+               b.GetMaxPoint().GetX(), b.GetMaxPoint().GetY(), b.GetMaxPoint().GetZ());
+}
+
 void CStateManager::PortPlaceArrivalTick() {
+  PortArrivalCheckTick();
   if (mPortSpawnAtArea == kInvalidAreaId) {
     return;
   }
@@ -5176,16 +5309,8 @@ void CStateManager::PortPlaceArrivalTick() {
   }
   PortSetDarkWorldFromArea(area);
 
-  CObjectList* objects = mObjectLists[kOL_All].get();
-  for (int i = PortPlaceKeptTransform() ? -1 : objects->GetFirstObjectIndex(); i != -1;
-       i = objects->GetNextObjectIndex(i)) {
-    if (CScriptSpawnPoint* spawn = TCastToPtr< CScriptSpawnPoint >((*objects)[i])) {
-      if (spawn->GetActive() && spawn->IsFirstSpawn()) {
-        SpawnPlayer(*spawn, 0);
-        std::fprintf(stderr, "[warp] spawned at the area's first spawn point\n");
-        break;
-      }
-    }
+  if (!PortPlaceKeptTransform()) {
+    PortPlaceAtArrival(area);
   }
   for (uint i = 0; i < mNumPlayers; ++i) {
     mCameraManagers[i]->ResetCameras(*this);
@@ -5347,16 +5472,8 @@ void CStateManager::PortWarpSettle() {
   }
   PortSetDarkWorldFromArea(target);
 
-  CObjectList* objects = mObjectLists[kOL_All].get();
-  for (int i = PortPlaceKeptTransform() ? -1 : objects->GetFirstObjectIndex(); i != -1;
-       i = objects->GetNextObjectIndex(i)) {
-    if (CScriptSpawnPoint* spawn = TCastToPtr< CScriptSpawnPoint >((*objects)[i])) {
-      if (spawn->GetActive() && spawn->IsFirstSpawn()) {
-        SpawnPlayer(*spawn, 0);
-        std::fprintf(stderr, "[warp] spawned at the area's first spawn point\n");
-        break;
-      }
-    }
+  if (!PortPlaceKeptTransform()) {
+    PortPlaceAtArrival(target);
   }
   for (uint i = 0; i < mNumPlayers; ++i) {
     mCameraManagers[i]->ResetCameras(*this);

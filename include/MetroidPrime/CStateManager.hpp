@@ -199,6 +199,14 @@ public:
   TAreaId PortDimensionCounterpart(TAreaId aid, const CVector3f& pos);
   // Places the player once a dimension warp arrives, in place of the area's first spawn point.
   bool PortPlaceKeptTransform();
+  // Places the player inside a warp's target area (spawn point, doorway, area centre) and starts
+  // the arrival check that logs whether they stand inside it and grounded ~2 s later.
+  void PortPlaceAtArrival(TAreaId target);
+  void PortArrivalCheckTick();
+  TAreaId mPortArrivalCheckArea = kInvalidAreaId;
+  int mPortArrivalCheckFrame = 0;
+  int mPortArrivalStage = 0;
+  float mPortArrivalZ = 0.f;
   bool mPortWarpKeepPlace = false;
   CTransform4f mPortWarpPlace = CTransform4f::Identity();
   // Port: activate a layer of an area (the `LAYER<layer>` input token). A module whose actors live
