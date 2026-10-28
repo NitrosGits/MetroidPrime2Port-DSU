@@ -493,7 +493,8 @@ bool sPendingValid = false;
 std::mutex sMutex;
 float sRect[4] = {};
 bool sValid = false;
-int sRequested = 0;
+// Written by the Android UI thread (RequestTap), consumed on the game thread (TakeTap).
+std::atomic< int > sRequested{0};
 } // namespace
 
 bool Enabled() { return PortOverlay::MinimapTap(); }
@@ -539,16 +540,17 @@ bool RectFraction(float out4[4]) {
   return true;
 }
 
-void RequestTap() { ++sRequested; }
+void RequestTap() { sRequested.fetch_add(1, std::memory_order_relaxed); }
 
 bool TakeTap() {
   if (!Enabled() || !sValid) {
-    sRequested = 0;
+    sRequested.store(0, std::memory_order_relaxed);
     return false;
   }
-  if (sRequested > 0) {
-    --sRequested;
-    return true;
+  for (int pending = sRequested.load(std::memory_order_relaxed); pending > 0;) {
+    if (sRequested.compare_exchange_weak(pending, pending - 1, std::memory_order_relaxed)) {
+      return true;
+    }
   }
   PortPointer::Recognizer& g = PortPointer::Gestures();
   PortPointer::Click click;
