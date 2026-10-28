@@ -1,6 +1,8 @@
 #include "MetroidPrime/CEchoEmitter.hpp"
 
+#ifdef TARGET_PC
 #include "Kyoto/Basics/CBasics.hpp"
+#endif
 
 #include "Kyoto/Graphics/CGX.hpp"
 #include "Kyoto/Graphics/CGraphics.hpp"

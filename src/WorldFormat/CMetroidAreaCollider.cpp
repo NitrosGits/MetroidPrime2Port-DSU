@@ -1245,8 +1245,8 @@ CCachedCollisionSurface::CCachedCollisionSurface(const CCollisionSurface& surfac
 
 void CCollisionCacheWriter::AddTriangle(const CCollisionSurface& surface, ushort triangleIndex) {
   ++*mTriangleCount;
-  const int words = sizeof(SCachedCollisionSlot) / sizeof(ushort);
 #ifdef TARGET_PC
+  const int words = sizeof(SCachedCollisionSlot) / sizeof(ushort);
   // Port: make room *before* constructing the payload. Retail could get away with building it
   // past the end and reserving afterwards, because its reserve never moved the buffer; the host
   // vector does move it, which both dropped the surface's data and left the writer's cursors
@@ -1260,7 +1260,7 @@ void CCollisionCacheWriter::AddTriangle(const CCollisionSurface& surface, ushort
 #else
   int size = mCache.mData.size();
   new (mCache.mData.data() + size) CCachedCollisionSurface(surface, triangleIndex);
-  size += words;
+  size += sizeof(SCachedCollisionSlot) / sizeof(ushort);
   if (size > mCache.mData.size()) {
     mCache.mData.reserve(size);
   }

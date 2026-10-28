@@ -1,6 +1,8 @@
 #include "MetroidPrime/CFluidPlaneCPU.hpp"
 
+#ifdef TARGET_PC
 #include "Kyoto/Basics/CBasics.hpp"
+#endif
 
 #include "Kyoto/Alloc/CMemory.hpp"
 #include "Kyoto/CFrameDelayedKiller.hpp"
@@ -48,9 +50,11 @@ static inline void PortFluidLoadTexMtxImm(const void* mtx, u32 id, GXTexMtxType 
   GXLoadTexMtxImm(mtx, PortFluidTexMtx(id), type);
 }
 #define GXLoadTexMtxImm PortFluidLoadTexMtxImm
+#ifdef TARGET_PC
 #define FLUID_TEXMTX(id) static_cast< GXTexMtx >(PortFluidTexMtx(id))
 #else
-#define FLUID_TEXMTX(id) static_cast< GXTexMtx >(id)
+#define static_cast< GXTexMtx >(id) static_cast< GXTexMtx >(PortFluidTexMtx(id))
+#endif
 #endif
 
 CFluidPlaneCPU::CFluidPlaneCPU(const CVector2f& extent, CAssetId colorMap, const CColor& baseColor,
@@ -387,7 +391,11 @@ void CFluidPlaneCPU::RenderSetup(const CStateManager& mgr, float alpha, const CT
   glossMtx2[1][1] = glossScale2 * height;
   glossMtx2[1][3] = uvOffsets[3][1];
   texCoordIds[3] = GX_TEXCOORD1;
+#ifdef TARGET_PC
   CGX::SetTexCoordGen(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_POS, FLUID_TEXMTX(32), GX_FALSE,
+#else
+  CGX::SetTexCoordGen(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_POS, static_cast< GXTexMtx >(32), GX_FALSE,
+#endif
                       GX_PTIDENTITY);
   GXLoadTexMtxImm(glossMtx2, 32, GX_MTX2x4);
 
@@ -398,7 +406,11 @@ void CFluidPlaneCPU::RenderSetup(const CStateManager& mgr, float alpha, const CT
   colorMtx[1][1] = colorScale * height;
   colorMtx[1][3] = uvOffsets[0][1];
   texCoordIds[0] = GX_TEXCOORD2;
+#ifdef TARGET_PC
   CGX::SetTexCoordGen(GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_POS, FLUID_TEXMTX(34), GX_FALSE,
+#else
+  CGX::SetTexCoordGen(GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_POS, static_cast< GXTexMtx >(34), GX_FALSE,
+#endif
                       GX_PTIDENTITY);
   GXLoadTexMtxImm(colorMtx, 34, GX_MTX2x4);
 
@@ -409,7 +421,11 @@ void CFluidPlaneCPU::RenderSetup(const CStateManager& mgr, float alpha, const CT
   warpMtx[1][1] = warpScale * height;
   warpMtx[1][3] = uvOffsets[1][1];
   texCoordIds[1] = GX_TEXCOORD3;
+#ifdef TARGET_PC
   CGX::SetTexCoordGen(GX_TEXCOORD3, GX_TG_MTX2x4, GX_TG_POS, FLUID_TEXMTX(36), GX_FALSE,
+#else
+  CGX::SetTexCoordGen(GX_TEXCOORD3, GX_TG_MTX2x4, GX_TG_POS, static_cast< GXTexMtx >(36), GX_FALSE,
+#endif
                       GX_PTIDENTITY);
   GXLoadTexMtxImm(warpMtx, 36, GX_MTX2x4);
   int nextCoord = 4;
@@ -429,7 +445,11 @@ void CFluidPlaneCPU::RenderSetup(const CStateManager& mgr, float alpha, const CT
     GXLoadTexMtxImm(envMtx, texMtx, GX_MTX2x4);
     texCoordIds[6] = static_cast< GXTexCoordID >(nextCoord);
     CGX::SetTexCoordGen(static_cast< GXTexCoordID >(nextCoord++), GX_TG_MTX2x4, GX_TG_POS,
+#ifdef TARGET_PC
                         FLUID_TEXMTX(texMtx), GX_FALSE, GX_PTIDENTITY);
+#else
+                        static_cast< GXTexMtx >(texMtx), GX_FALSE, GX_PTIDENTITY);
+#endif
     texMtx += 2;
   }
 
@@ -445,7 +465,11 @@ void CFluidPlaneCPU::RenderSetup(const CStateManager& mgr, float alpha, const CT
       CalculateLightmapMtx(areaXf, xf, bounds, texMtx, mUVScale, mUVOffset);
       texCoordIds[4] = static_cast< GXTexCoordID >(nextCoord);
       CGX::SetTexCoordGen(static_cast< GXTexCoordID >(nextCoord++), GX_TG_MTX2x4, GX_TG_POS,
+#ifdef TARGET_PC
                           FLUID_TEXMTX(texMtx), GX_FALSE, GX_PTIDENTITY);
+#else
+                          static_cast< GXTexMtx >(texMtx), GX_FALSE, GX_PTIDENTITY);
+#endif
     } else if (nextWater != nullptr && nextWater->GetFluidPlane().HasLightMap()) {
       const CFluidPlaneCPU& next = nextWater->GetFluidPlane();
       if (close_enough(water->GetMorphFactor(), 1.f) || mLightMapId == next.mLightMapId) {
@@ -454,20 +478,32 @@ void CFluidPlaneCPU::RenderSetup(const CStateManager& mgr, float alpha, const CT
         next.CalculateLightmapMtx(areaXf, xf, bounds, texMtx, mUVScale, mUVOffset);
         texCoordIds[4] = static_cast< GXTexCoordID >(nextCoord);
         CGX::SetTexCoordGen(static_cast< GXTexCoordID >(nextCoord++), GX_TG_MTX2x4, GX_TG_POS,
+#ifdef TARGET_PC
                             FLUID_TEXMTX(texMtx), GX_FALSE, GX_PTIDENTITY);
+#else
+                            static_cast< GXTexMtx >(texMtx), GX_FALSE, GX_PTIDENTITY);
+#endif
       } else {
         texMapIds[4] = static_cast< GXTexMapID >(nextTexMap);
         (*mLightMap)->Load(static_cast< GXTexMapID >(nextTexMap++), CTexture::kCM_Repeat);
         CalculateLightmapMtx(areaXf, xf, bounds, texMtx, mUVScale, mUVOffset);
         texCoordIds[4] = static_cast< GXTexCoordID >(nextCoord);
         CGX::SetTexCoordGen(static_cast< GXTexCoordID >(nextCoord++), GX_TG_MTX2x4, GX_TG_POS,
+#ifdef TARGET_PC
                             FLUID_TEXMTX(texMtx), GX_FALSE, GX_PTIDENTITY);
+#else
+                            static_cast< GXTexMtx >(texMtx), GX_FALSE, GX_PTIDENTITY);
+#endif
         texMapIds[5] = static_cast< GXTexMapID >(nextTexMap);
         (*next.mLightMap)->Load(static_cast< GXTexMapID >(nextTexMap), CTexture::kCM_Repeat);
         next.CalculateLightmapMtx(areaXf, xf, bounds, texMtx + 2, mUVScale, mUVOffset);
         texCoordIds[5] = static_cast< GXTexCoordID >(nextCoord);
         CGX::SetTexCoordGen(static_cast< GXTexCoordID >(nextCoord++), GX_TG_MTX2x4, GX_TG_POS,
+#ifdef TARGET_PC
                             FLUID_TEXMTX(texMtx + 2), GX_FALSE, GX_PTIDENTITY);
+#else
+                            static_cast< GXTexMtx >(texMtx + 2), GX_FALSE, GX_PTIDENTITY);
+#endif
         const float morphVal = darkLevel * water->GetMorphFactor();
         lightmapAlpha = (1.f - water->GetMorphFactor()) / (1.f - morphVal);
         CGX::SetTevKColor(GX_KCOLOR3, CColor(morphVal, morphVal, morphVal, 1.f).GetGXColor());

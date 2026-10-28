@@ -1316,9 +1316,11 @@ void CAutoMapper::ProcessMapPanInput(const CFinalInput& input, const CStateManag
       const CMapWorld* mapWorld = mWorld->IGetMapWorld();
       const CMapArea* area = mapWorld->GetMapArea(mCurAreaId.value);
       CMapArea* transformArea = mapWorld->GetMapArea(mCurAreaId.value);
+#ifdef TARGET_PC
       if (area == nullptr || transformArea == nullptr) {
         return; // the map data for this area is not resident yet (see the mini-map guard)
       }
+#endif
       CVector3f worldPoint = transformArea->GetAreaPostTransform(*mWorld, mCurAreaId.value) *
                              area->GetAreaCenterPoint();
       CVector3f viewPoint = worldPoint - mRenderState0.mAreaPoint;
@@ -1467,14 +1469,23 @@ void CAutoMapper::Draw(const CStateManager& mgr, const CTransform4f& xf, float a
                    mRenderState0.mDrawDepth2, mDarkWorldBlend, false);
   }
 
+#ifdef TARGET_PC
   CMapArea* const nextMapArea =
       universeInterp > 0.f ? mgr.GetWorld()->GetMapWorld()->GetMapArea(mgr.GetNextAreaId().value)
                            : nullptr;
   if (universeInterp > 0.f && nextMapArea != nullptr) {
+#else
+  if (universeInterp > 0.f) {
+#endif
     const CWorld* world = mgr.GetWorld();
     const int areaId = mgr.GetNextAreaId().value;
     CMapUniverse* mapu = mMapu.GetObject();
+#ifdef TARGET_PC
     const CTransform4f areaXf = nextMapArea->GetAreaPostTransform(*world, areaId);
+#else
+    const CTransform4f areaXf =
+        world->GetMapWorld()->GetMapArea(areaId)->GetAreaPostTransform(*world, areaId);
+#endif
     const CMapUniverse::CMapWorldData& worldData =
         mapu->GetMapWorldDataByWorldId(gpGameState->CurrentWorldAssetId());
     const CTransform4f universeAreaXf = worldData.GetWorldTransform() * areaXf;
@@ -1506,6 +1517,7 @@ void CAutoMapper::Draw(const CStateManager& mgr, const CTransform4f& xf, float a
       const CEulerAngles eulers = CEulerAngles::FromTransform(
           mgr.GetCameraManager(mPlayerIndex)->GetCurrentCameraTransform(mgr, 1));
       const float angle = CMath::ClampRadians(eulers.GetYaw());
+#ifdef TARGET_PC
       CMapArea* const nextArea = GetMapArea(*mWorld, mgr.GetNextAreaId().value);
       if (nextArea == nullptr) {
         return; // the destination's map data is not resident yet
@@ -1513,6 +1525,11 @@ void CAutoMapper::Draw(const CStateManager& mgr, const CTransform4f& xf, float a
       const CVector3f playerPos =
           nextArea->GetAreaPostTranslate(*mWorld) +
           mgr.GetPlayer(mPlayerIndex)->GetTranslation();
+#else
+      const CVector3f playerPos =
+          GetMapArea(*mWorld, mgr.GetNextAreaId().value)->GetAreaPostTranslate(*mWorld) +
+          mgr.GetPlayer(mPlayerIndex)->GetTranslation();
+#endif
       gpRender->SetModelMatrix(
           mapXf * CTransform4f(CMatrix3f::RotateZ(CRelAngle::FromRadians(angle)), playerPos) *
           CTransform4f::Scale(scale * (0.25f * pulse + 0.75f)));
@@ -2621,12 +2638,16 @@ float CAutoMapper::GetDesiredMiniMapCameraDistance(const CStateManager& mgr) con
   for (int i = -1; i < (oneMiniMapArea ? 0 : static_cast< int >(area->IGetNumAttachedAreas()));
        ++i) {
     const int areaId = i == -1 ? mCurAreaId.Value() : area->IGetAttachedAreaId(i).Value();
+#ifdef TARGET_PC
     CMapArea* attachedArea = areaId < 0 || areaId >= static_cast< int >(mapWorld->GetNumAreas())
                                  ? nullptr
                                  : mapWorld->GetMapArea(areaId);
     if (attachedArea == nullptr) {
       continue;
     }
+#else
+    CMapArea* attachedArea = mapWorld->GetMapArea(areaId);
+#endif
     if (attachedArea->GetIsVisibleToAutoMapper(
             info->IsWorldVisible(TAreaId(areaId), attachedArea->IsInDarkWorld()),
             info->IsAreaVisible(TAreaId(areaId)))) {

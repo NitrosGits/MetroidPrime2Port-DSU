@@ -3374,6 +3374,9 @@ void CCubeRenderer::DrawScanVisor(float scanTime, float width, float height, con
   const rstl::pair< CVector2f, CVector2f > screen = SetViewportOrtho(true, -4096.f, 4096.f);
   CGX::SetChanCtrl(CGX::Channel0, false, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE,
                    GX_AF_NONE);
+#ifndef TARGET_PC
+  void* const spare = CGraphics::GetDolphinSpareBuffer();
+#endif
   const CViewport& viewport = CGraphics::GetViewport();
   const int vpWidth = viewport.mWidth;
   const int vpHeight = viewport.mHeight;
@@ -3391,8 +3394,6 @@ void CCubeRenderer::DrawScanVisor(float scanTime, float width, float height, con
   static const bool sScanPaletteReadBack = std::getenv("MP2_DEBUG_SCAN_PALETTE") != nullptr;
   if (sScanPaletteReadBack)
     PortEfbCopy::Request(spare, vpWidth, vpHeight, 1);
-#else
-  void* const spare = CGraphics::GetDolphinSpareBuffer();
 #endif
   GXCopyTex(spare, false);
   CGraphicsPalette scanPalette(kPF_RGB565, paletteSize * 4);

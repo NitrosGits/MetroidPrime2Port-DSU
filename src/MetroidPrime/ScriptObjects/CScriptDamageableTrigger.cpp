@@ -202,10 +202,10 @@ const CDamageVulnerability* CScriptDamageableTrigger::GetDamageVulnerability() c
 EWeaponCollisionResponseTypes
 CScriptDamageableTrigger::GetCollisionResponseType(const CVector3f&, const CVector3f&,
                                                    const CWeaponMode& weapon, int) const {
-  #ifdef TARGET_PC
+#ifdef TARGET_PC
   const CDamageVulnerability& vulnerability = *PortActiveVulnerability();
-#else
-  const CDamageVulnerability& vulnerability = mVulnerability;
-#endif
   return vulnerability.WeaponHits(weapon, 0) ? kWCR_OtherProjectile : kWCR_Unknown15;
+#else
+  return mVulnerability.WeaponHits(weapon, 0) ? kWCR_OtherProjectile : kWCR_Unknown15;
+#endif
 }

@@ -1283,10 +1283,12 @@ void CStateManager::SetupViewForDraw(const CViewport& viewport) {
   // Port: photo mode's field of view (0 keeps the camera's own).
   const float fovDegrees =
       PortFreeCam::FovOverride() > 0.f ? PortFreeCam::FovOverride() : camera->GetRenderFov();
-#else
-  const float fovDegrees = camera->GetFov();
 #endif
+#ifdef TARGET_PC
   const float tangent = static_cast< float >(tan(CMath::Deg2Rad(0.5f * fovDegrees)));
+#else
+  const float tangent = static_cast< float >(tan(CMath::Deg2Rad(0.5f * camera->GetFov())));
+#endif
   const float fieldOfView = 2.f * static_cast< float >(atan(tangent * heightScale));
 
   gpRender->SetViewport(left, top, width, height);

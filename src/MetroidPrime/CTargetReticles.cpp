@@ -15,7 +15,9 @@
 #ifdef TARGET_PC
 #include "MetroidPrime/CAnimData.hpp"
 #endif
+#ifdef TARGET_PC
 #include "MetroidPrime/CCollisionActor.hpp"
+#endif
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/CEulerAngles.hpp"
 #include "MetroidPrime/CGameArea.hpp"
@@ -2007,9 +2009,13 @@ CColor PortRemasteredCrosshairColor(EReticleState state, float targetT) {
 
 void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
                                             const CStateManager& mgr) const {
+#ifdef TARGET_PC
   if (mNoDrawTicks > 0 || mCrosshairsDrawScale <= 0.f) {
     return;
   }
+#else
+  if (mNoDrawTicks <= 0 && mCrosshairsDrawScale > 0.f) {
+#endif
 #ifdef TARGET_PC
   // The Prime port's two styles, from the same place it draws them (its DrawOrbitZoneGroup):
   // `remastered` replaces the game's reticle model with the cursor drawn procedurally below, and
@@ -2095,6 +2101,9 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
                            CTransform4f::Scale(mCrosshairsDrawScale));
   model->Draw(CModelFlags::Additive(color.WithAlphaModulatedBy(mCrosshairsDrawScale))
                   .DepthCompareUpdate(false, false));
+#endif
+#ifndef TARGET_PC
+  }
 #endif
 }
 

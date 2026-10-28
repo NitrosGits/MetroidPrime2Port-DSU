@@ -501,9 +501,7 @@ u32 CDSPStreamManager::UpdateStream(void* buf1, u32 len1, void* buf2, u32 len2, 
   }
   CDSPStreamManager* stream = &sStreams[user];
 #else
-  CDSPStreamManager* stream = reinterpret_cast< CDSPStreamManager* >(
-      u32
-      (user));
+  CDSPStreamManager* stream = reinterpret_cast< CDSPStreamManager* >(user);
 #endif
   len1 += len2;
   u32 half = sVoices[stream->mVoices[0]].mNumSamples / 2;

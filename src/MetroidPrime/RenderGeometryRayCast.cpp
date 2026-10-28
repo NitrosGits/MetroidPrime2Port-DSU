@@ -2,7 +2,9 @@
 
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CollisionUtil.hpp"
+#ifdef TARGET_PC
 #include "Kyoto/Basics/CBasics.hpp"
+#endif
 #include "Kyoto/Graphics/CCubeMaterial.hpp"
 #include "Kyoto/Graphics/CCubeSurface.hpp"
 #include "Kyoto/Math/CLine.hpp"

@@ -27,8 +27,6 @@ static inline U1 T_round_up(U2 val, int align) {
 // so the decomp build keeps the literal it always compiled (Alloc is in main.dol).
 #ifdef TARGET_PC
 static const int kGameAllocGranule = sizeof(CGameAllocator::SGameMemInfo);
-#else
-static const int kGameAllocGranule = 32;
 #endif
 
 CGameAllocator::SGameMemInfo* CGameAllocator::GetMemInfoFromBlockPtr(const void* ptr) const {
@@ -243,7 +241,11 @@ void* CGameAllocator::Alloc(size_t size, const EHint hint, const EScope scope, c
   }
 
   const bool topOfHeap = (hint & kHI_TopOfHeap) != 0;
+#ifdef TARGET_PC
   uint roundedSize = T_round_up< uint, size_t >(size, kGameAllocGranule);
+#else
+  uint roundedSize = T_round_up< uint, size_t >(size, 32);
+#endif
   SGameMemInfo* info = nullptr;
 
   if (topOfHeap) {

@@ -24,7 +24,9 @@
 #include "MetroidPrime/Tweaks/CTweakPlayerRes.hpp"
 
 #include "GuiSys/CAuiBitmapMeter.hpp"
+#ifdef TARGET_PC
 #include "GuiSys/CGuiCamera.hpp"
+#endif
 #include "GuiSys/CGuiFrame.hpp"
 #include "GuiSys/CGuiFrameLoader.hpp"
 #include "GuiSys/CGuiTextPane.hpp"

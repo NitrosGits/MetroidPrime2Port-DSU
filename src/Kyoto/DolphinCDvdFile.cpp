@@ -115,8 +115,6 @@ void PortARAMARAMXferCallback(uintptr_t addr) {
 }
 } // namespace
 #define ARAMARAM_XFER_CALLBACK PortARAMARAMXferCallback
-#else
-#define ARAMARAM_XFER_CALLBACK ARAMARAMXferCallback
 #endif
 
 void CDvdFile::HandleARAMInterrupt() {
@@ -165,7 +163,7 @@ void CDvdFile::PingARAMTransfer() {
   ARQPostRequest(&aramFile->mARQRequest, 0, ARQ_TYPE_MRAM_TO_ARAM, ARQ_PRIORITY_HIGH,
                  reinterpret_cast< u32 >(aramFile->mBuffers[aramFile->mBufferIndex].get()),
                  reinterpret_cast< u32 >(mARAMBuffer + aramFile->mAramOffset), length,
-                 ARAMARAM_XFER_CALLBACK);
+                 ARAMARAMXferCallback);
 #endif
 
   aramFile->mBufferLen -= length;
