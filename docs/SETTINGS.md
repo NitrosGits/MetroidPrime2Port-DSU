@@ -297,8 +297,10 @@ Video > Compatibility (read once, when the GPU starts: a change applies after a 
   unless that is already set.
 - `low_power_gpu`: Low-power GPU (no MP1 row); sets Aurora's `MP2_GPU_POWER=low` unless set.
 - `driver_workarounds`: Driver workarounds, comma-separated `keep_depth`, `gpu_constants`,
-  `unmonitored_fence`, `validation` (validation lasts one start). `MP2_DRIVER_WORKAROUNDS` replaces
-  them for a run; a start that fails leaves `driver_workarounds_starting` and the next start
+  `unmonitored_fence`, `validation` (validation lasts one start), `no_bc` ("Decode compressed
+  textures on the CPU"; sets `AURORA_NO_BC=1`, so the device is made without BC texture compression
+  and CMPR textures are decoded to RGBA8; Remastered BC replacements are then skipped).
+  `MP2_DRIVER_WORKAROUNDS` replaces them for a run; a start that fails leaves `driver_workarounds_starting` and the next start
   clears them.
 - `gpu_driver` (Android arm64 only, MP1 port): Vulkan driver, the id of a driver installed under
   `gpu_drivers/<id>/` (empty = System). Env `MP2_GPU_DRIVER` overrides it for one run. A start that

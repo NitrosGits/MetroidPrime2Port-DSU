@@ -304,6 +304,10 @@ void BeginGpuStart(const std::string& userFolder, AuroraConfig& config) {
     if (bits & (1u << i)) {
       append(enable, kDriverWorkarounds[i].enable);
       append(disable, kDriverWorkarounds[i].disable);
+      if (const char* var = kDriverWorkarounds[i].env; var != nullptr && port::EnvString(var) == nullptr) {
+        port::SetEnv(var, "1");
+        std::fprintf(stderr, "[video] driver workaround %s sets %s=1\n", kDriverWorkarounds[i].key, var);
+      }
     }
   }
   // A run on MP2_DRIVER_WORKAROUNDS says nothing about the ticked boxes: it leaves the marker alone.
