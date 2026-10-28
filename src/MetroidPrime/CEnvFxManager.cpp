@@ -225,7 +225,12 @@ void CEnvFxManagerGrid::RenderParticleTrails(EEnvFxType type) {
     } else if (lifetime > 0.8f) {
       color.SetAlpha(color.GetAlpha() * (1.f - lifetime) / 0.2f);
     }
+#ifdef TARGET_PC
+    // Retail passes reg id 1 (GX_TEVREG0), the register SetupParticleTrailTevs reads (C0/A0).
+    GXSetTevColor(GX_TEVREG0, color.GetGXColor());
+#else
     GXSetTevColor(GX_TEVREG1, color.GetGXColor());
+#endif
     CGX::Begin(GX_LINESTRIP, GX_VTXFMT6, 8);
     for (int point = 0; point < 8; ++point) {
       if (--segment < 0) {
