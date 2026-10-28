@@ -28,6 +28,7 @@
 #include <dolphin/gx/GXAurora.h>
 
 #include <algorithm>
+#include <clocale>
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -913,23 +914,25 @@ bool DiscReadFailedLastTime(const std::string& path) {
 // Says on screen why the disc was refused (without it a refused disc looks like a crash on
 // start) and asks whether to pick another (true) or close the game. With offerPick false the
 // box only has Close.
-bool ShowDiscError(const std::string& problem, const std::string& path, bool offerPick) {
+bool ShowDiscError(const std::string& problem, const std::string& path, bool offerPick,
+                   const char* title = "Metroid Prime 2: wrong disc image",
+                   const char* pickLabel = "Pick another disc") {
   SDL_Window* window = DiscDialogWindow();
   if (window == nullptr) {
     return false;
   }
   // Short lines: some message boxes do not wrap (SDL's X11 one).
-  const std::string message = problem + "\n\n" + path + "\n\n" + kSupportedDisc;
+  const std::string message = problem + "\n\n" + (path.empty() ? "" : path + "\n\n") + kSupportedDisc;
   enum { kClose, kPick };
   const SDL_MessageBoxButtonData buttons[] = {
-      {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, kPick, "Pick another disc"},
+      {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, kPick, pickLabel},
       {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT | (offerPick ? 0u : SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT), kClose,
        "Close"},
   };
   SDL_MessageBoxData data{};
   data.flags = SDL_MESSAGEBOX_ERROR;
   data.window = window;
-  data.title = "Metroid Prime 2: wrong disc image";
+  data.title = title;
   data.message = message.c_str();
   data.numbuttons = offerPick ? 2 : 1;
   data.buttons = offerPick ? buttons : buttons + 1;
@@ -943,14 +946,17 @@ bool ShowDiscError(const std::string& problem, const std::string& path, bool off
 }
 
 #if !defined(__ANDROID__)
-// The desktop's file dialog for another image, for this launch only (the desktop's disc comes
-// from the command line, MP2_DISC or the executable's folder, so nothing is remembered). SDL
-// answers on another thread, so this pumps events until it does; a quit or five minutes give up.
+// The platform's file dialog for a disc image; main remembers a pick that mounts (settings.cfg
+// `disc_path`, as F1 > System > Disc image > Replace does). SDL answers on another thread, so this
+// pumps events until it does; a quit or five minutes give up, and set sDiscPickGaveUp.
+bool sDiscPickGaveUp = false;
+
 std::string PickDiscImage() {
   static std::atomic<bool> answered{false};
   static std::string chosen;
   answered.store(false);
   chosen.clear();
+  sDiscPickGaveUp = false;
   SDL_Window* window = DiscDialogWindow();
   if (window == nullptr) {
     return {};
@@ -985,11 +991,13 @@ std::string PickDiscImage() {
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_EVENT_QUIT) {
         std::fprintf(stderr, "metroid_prime2_port: disc selection cancelled\n");
+        sDiscPickGaveUp = true;
         return {};
       }
     }
     if (SDL_GetTicks() > deadline) {
       std::fprintf(stderr, "metroid_prime2_port: disc selection timed out\n");
+      sDiscPickGaveUp = true;
       return {};
     }
     SDL_Delay(10);
@@ -998,6 +1006,18 @@ std::string PickDiscImage() {
     std::fprintf(stderr, "metroid_prime2_port: no disc image picked\n");
   }
   return chosen;
+}
+
+// Asks until a disc is picked or the user closes the game: a dialog closed without a pick used to
+// end the game at once, which looked like a crash (MP1's PickDisc).
+std::string PickDiscUntilChosen() {
+  for (;;) {
+    std::string disc = PickDiscImage();
+    if (!disc.empty() || sDiscPickGaveUp || DiscDialogWindow() == nullptr ||
+        !ShowDiscError("No disc image was picked.", "", true, "Metroid Prime 2: no disc image", "Pick a disc")) {
+      return disc;
+    }
+  }
 }
 #endif
 
@@ -1302,6 +1322,10 @@ int main(int argc, char** argv) {
   // adapter and the driver workarounds' Dawn toggles, all read when the GPU device is made.
   PortVideo::BeginGpuStart(config.userPath != nullptr ? config.userPath : "", config);
   aurora_initialize(argc, argv, &config);
+  // The settings file, JSON and the logs read and write numbers in the "C" format. A toolkit loaded
+  // with the window (a GTK decoration plugin, an input method) may call setlocale(LC_ALL, ""), and
+  // under a comma-decimal locale "1.5" would then read as 1 (MP1's main.cpp:1304).
+  std::setlocale(LC_NUMERIC, "C");
   PortVideo::GpuStarted();
   // Keep the internal framebuffer at the game's aspect rather than the window's,
   // so a mismatched window shape letterboxes instead of stretching.
@@ -1372,12 +1396,18 @@ int main(int argc, char** argv) {
                                        : ExecutableDir(argc > 0 ? argv[0] : nullptr));
 #endif
 #endif
-#if defined(SDL_PLATFORM_IOS)
-  if (discImage.empty()) {
-    // First start: the system document picker (nothing answers it in a scripted run, see
+  [[maybe_unused]] bool discPicked = false;
+#if !defined(__ANDROID__)
+  // A disc named on the command line or by MP2_DISC would win again on the next launch, so a
+  // refused one only offers Close (MP1's discFromArgs).
+  bool discFromArgs = !discImage.empty() &&
+                      discImage == port::entry::ResolveDiscPath(argc, argv, std::getenv("MP2_DISC"), std::string());
+  if (discImage.empty() && DiscDialogWindow() != nullptr) {
+    // First start: the platform's file dialog (nothing answers it in a scripted run, see
     // DiscDialogWindow, which then falls through to the message below).
     std::fprintf(stderr, "metroid_prime2_port: no disc image found; asking for one\n");
-    discImage = PickDiscImage();
+    discImage = PickDiscUntilChosen();
+    discPicked = !discImage.empty();
   }
 #endif
   if (discImage.empty()) {
@@ -1434,7 +1464,15 @@ int main(int argc, char** argv) {
 #if defined(__ANDROID__)
     constexpr bool kCanPick = false;
 #else
-    constexpr bool kCanPick = true;
+    const bool kCanPick = !discFromArgs;
+#endif
+#if !defined(__ANDROID__)
+    if (PortOverlaySettings::DiscPath() == discImage) {
+      // A refused remembered disc would be refused again on every launch (MP1's main.cpp:498).
+      PortOverlaySettings::SetDiscPath({});
+      PortOverlaySettings::SaveSettings();
+      std::fprintf(stderr, "metroid_prime2_port: forgot the remembered disc image\n");
+    }
 #endif
     if (!ShowDiscError(problem, discImage, kCanPick)) {
       aurora_shutdown();
@@ -1443,16 +1481,27 @@ int main(int argc, char** argv) {
     }
 #if !defined(__ANDROID__)
     std::fprintf(stderr, "metroid_prime2_port: asking for the disc image again\n");
-    discImage = PickDiscImage();
+    discImage = PickDiscUntilChosen();
     if (discImage.empty()) {
       ReportNoDisc(argc > 0 ? argv[0] : nullptr);
       aurora_shutdown();
       PortLogDrain();
       return 1;
     }
+    discPicked = true;
+    discFromArgs = false;
 #endif
   }
   std::printf("metroid_prime2_port: disc mounted: %s\n", discImage.c_str());
+#if !defined(__ANDROID__) && !defined(SDL_PLATFORM_IOS)
+  if (discPicked) {
+    // The next launch starts without asking (DesktopDiscFallback). Saved now: the overlay only
+    // saves from its draw path. iOS keeps a picked file's grant for this launch only.
+    PortOverlaySettings::SetDiscPath(discImage);
+    PortOverlaySettings::SaveSettings();
+    std::fprintf(stderr, "metroid_prime2_port: remembered the disc image\n");
+  }
+#endif
   sMountedDisc = discImage;
   aurora_dvd_set_read_error_callback(NoteDiscReadFailure);
   // F1 > System > Disc image checks the file the game is playing (platform/port_disc_verify.cpp).
