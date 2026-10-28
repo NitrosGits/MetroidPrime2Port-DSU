@@ -73,6 +73,9 @@ private:
   bool mRenderedThisFrame : 1;
   bool mSuppressBobbing : 1;
   bool mBlinkOut : 1;
+#ifdef TARGET_PC
+  bool mPortTicked : 1;
+#endif
 };
 CHECK_SIZEOF(CScriptPickup, 0x1d8)
 

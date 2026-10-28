@@ -88,7 +88,11 @@ CScriptPickup::CScriptPickup(TUniqueId uid, const rstl::string& name, const CEnt
 , mAutoSpin(autoSpin)
 , mRenderedThisFrame(true)
 , mSuppressBobbing(false)
-, mBlinkOut(blinkOut) {
+, mBlinkOut(blinkOut)
+#ifdef TARGET_PC
+, mPortTicked(false)
+#endif
+{
   static bool homingInitialized = false;
   if (!homingInitialized) {
     homingInitialized = true;
@@ -119,8 +123,19 @@ void CScriptPickup::PreRenderAllViewports(CStateManager& mgr) {
     mRenderedThisFrame = false;
     mFramesSinceLastSeen = 0;
   } else {
+#ifdef TARGET_PC
+    // Count unseen frames per tick, not per drawn frame: uncapped rendering would
+    // otherwise stop the off-screen animation after one tick instead of ~5.
+    if (mPortTicked) {
+      mFramesSinceLastSeen += 1;
+    }
+#else
     mFramesSinceLastSeen += 1;
+#endif
   }
+#ifdef TARGET_PC
+  mPortTicked = false;
+#endif
 }
 
 void CScriptPickup::PreRender(CStateManager& mgr) {
@@ -139,6 +154,9 @@ bool CScriptPickup::IsVisible() const {
 
 void CScriptPickup::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
+#ifdef TARGET_PC
+  mPortTicked = true;
+#endif
   if (!GetActive()) {
     return;
   }
