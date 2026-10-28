@@ -75,6 +75,9 @@ Scripts: `tools/audit/` (see its README).
 | A6-3 | render (copy dest) | CCameraFilter.cpp:767; CElementGen.cpp:69; CInGameGuiManager.cpp:459; CCubeRenderer.cpp:1262, 3397 | render | minor | spare-buffer copies not routed through PortEfbCopy::Destination; two same-size same-format copies in one frame share one texture (as the one spare buffer does on GC); no colliding pair shown | suspected |
 | A6-4 | render (copy dest) | CCubeRenderer.cpp:1261, 2992 | render | minor | reflection copies (incl. RGB5A3) into the shared spare buffer with no Destination; same shape as A6-3, safe today because each is loaded right after the copy | suspected |
 | A6-5 | render (fog copies) | CCubeRenderer.cpp:1674-1717 | perf | minor | fog-volume chunk copies create a texture per chunk size; churn only, no visible failure | suspected |
+| A6-6 | render (copy dest) | CCubeRenderer.cpp:3585 | render | visual | binds the shared spare as I8 while this frame's scan-visor A8 copy went to a private Destination, so the spare's registered copy may be stale (A6-2 class) | suspected |
+| A6-7 | render (copy dest) | CGameResultsScreen.cpp:574 | render | visual | samples the shared spare at half-viewport RGB565 with no copy found before it on its path; relies on an older copy | suspected |
+| A6-8 | render (Aurora) | extern/aurora/lib/dolphin/gx/GXFrameBuffer.cpp (copyTextures) | render | minor | copyTextures[dest] outlives the game buffer; a reused address of the same size could bind a stale GPU copy | suspected |
 
 ## Sweep log
 
@@ -97,3 +100,4 @@ Scripts: `tools/audit/` (see its README).
 | 7 platform (3) | audit-platform-3.md | — | 2026-10-28 | port_radial (B8 cleared), ImportTrilogy body, custom actions, remap UI (labels only), input devices (no rumble/threads), vkshim (clean) → A7-11..14; Aurora PAD layer not read |
 | 6 render (1) | audit-render-1.md | — | 2026-10-28 | GX_TEVREG sites (all set before use; regs persist in g_gxState.colorRegs as GX), Aurora copy-clear rules match GX → A6-1..3; EFB-copy call sites only partly read |
 | 6 render (2) | audit-render-1.md (Slice 2) | — | 2026-10-28 | copy sites: rift portal, death shrink, CElementGen, fluid plane, morph shadow, mip chain, visor overlays OK; CWorldTransManager has none → A6-2 refined, A6-4, A6-5; not reached: CCubeRenderer 3449/3585/3794/3835/4001/4400, shadows, flares, CGameResultsScreen |
+| 6 render (3) | audit-render-1.md (Slice 3) | — | 2026-10-28 | remaining copy sites: CCubeRenderer 3794/3835/4001/4400, depth copies (PortScanTarget), shadows, flares OK; texture frees follow GXDrawDone → A6-6..8; copy-site coverage complete; Aurora conversion shaders (R8/A8/Z16/Z8L/R4) unchecked |
