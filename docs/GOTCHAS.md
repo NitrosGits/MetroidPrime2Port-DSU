@@ -189,6 +189,14 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   the read-back buffers *after* releasing `g_mutex`: freeing one with a map pending runs its
   callback at once, which takes the same lock and deadlocks the exit (`932feb7c4`). Keep both on a
   re-vendor. Its depth words come back byte-swapped (big-endian in memory), like the GX Z16 copy.
+- **Scan IDs must not use an averaged MSAA colour resolve (issue #4).** `scan_peek` reads
+  sample zero from both the original EFB colour attachment and depth, then renders the requested
+  region to single-sample RGBA8/R32Float read-back targets. Alpha is a discrete scan ID: averaging
+  samples can invent another target's ID at an edge. Keep both source attachment stores alive
+  when a peek follows the pass, even if the next pass clears them. Core devices use the region
+  conversion at 1x too: WebGPU forbids partial texture-to-buffer copies of depth subresources.
+  Compatibility devices retain their previous 1x path (no multisampled depth texture binding).
+  Preserve this resolve, its encoder input view and the store guards on an Aurora re-vendor.
 - **A model shadow's light mask is built from the actor-light array slot, not the area-light index.**
   `CWorldShadow::EnableModelProjectedShadow` does `const uchar lightMask = 1 << lightIndex` and hands
   it to `CCubeModel::EnableShadowMaps`, so the index must be the slot in the actor's light array

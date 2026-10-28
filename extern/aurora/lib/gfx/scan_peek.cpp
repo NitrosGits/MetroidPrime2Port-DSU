@@ -11,6 +11,7 @@
 #include <atomic>
 #include <cmath>
 #include <mutex>
+#include <string>
 #include <vector>
 
 namespace aurora::gfx::scan_peek {
@@ -35,6 +36,9 @@ enum class SlotState : uint8_t {
 struct Slot {
   wgpu::Buffer colorBuffer;
   wgpu::Buffer depthBuffer;
+  wgpu::Texture resolvedColor;
+  wgpu::Texture resolvedDepth;
+  wgpu::Buffer resolveParams;
   uint64_t bytes = 0;
   uint32_t rowBytes = 0;
   uint32_t rows = 0;
@@ -54,6 +58,114 @@ std::atomic<uint64_t> g_writtenGeneration{0};
 uint64_t g_peekCount = 0;
 uint32_t g_skippedWarned = 0;
 bool g_loggedFirstRequest = false;
+std::array<wgpu::RenderPipeline, 2> g_resolvePipelines;
+
+// Alpha is an integer scan ID, not opacity. A normal MSAA colour resolve averages IDs into
+// unrelated IDs at silhouettes. Pick sample zero for BOTH ID and depth, as GX depth copies do.
+// Resolve only the requested region into copyable single-sample textures; never alter the EFB.
+constexpr std::string_view ResolveShader = R"(
+@group(0) @binding(0) var color: texture_multisampled_2d<f32>;
+@group(0) @binding(1) var depth: texture_depth_multisampled_2d;
+@group(0) @binding(2) var<uniform> origin: vec2u;
+
+@vertex fn vs_main(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
+    var corners = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+    return vec4f(corners[i], 0.0, 1.0);
+}
+struct Output {
+    @location(0) color: vec4f,
+    @location(1) depth: f32,
+};
+@fragment fn fs_main(@builtin(position) pos: vec4f) -> Output {
+    let coord = vec2i(pos.xy) + vec2i(origin);
+    return Output(textureLoad(color, coord, 0), textureLoad(depth, coord, 0));
+}
+)";
+
+wgpu::RenderPipeline resolve_pipeline(bool multisampled) {
+  auto& pipeline = g_resolvePipelines[multisampled ? 1 : 0];
+  if (pipeline) {
+    return pipeline;
+  }
+  std::string shader{ResolveShader};
+  if (!multisampled) {
+    const std::string colorType = "texture_multisampled_2d<f32>";
+    const std::string depthType = "texture_depth_multisampled_2d";
+    shader.replace(shader.find(colorType), colorType.size(), "texture_2d<f32>");
+    shader.replace(shader.find(depthType), depthType.size(), "texture_depth_2d");
+  }
+  const wgpu::ShaderSourceWGSL source{wgpu::ShaderSourceWGSL::Init{.code = shader.c_str()}};
+  const wgpu::ShaderModuleDescriptor moduleDesc{.nextInChain = &source, .label = "Scan Peek Resolve"};
+  const auto module = g_device.CreateShaderModule(&moduleDesc);
+  const std::array targets{
+      wgpu::ColorTargetState{.format = wgpu::TextureFormat::RGBA8Unorm},
+      wgpu::ColorTargetState{.format = wgpu::TextureFormat::R32Float},
+  };
+  const wgpu::FragmentState fragment{
+      .module = module, .entryPoint = "fs_main", .targetCount = targets.size(), .targets = targets.data()};
+  const wgpu::RenderPipelineDescriptor descriptor{
+      .label = "Scan Peek Resolve",
+      .vertex = {.module = module, .entryPoint = "vs_main"},
+      .fragment = &fragment,
+  };
+  pipeline = g_device.CreateRenderPipeline(&descriptor);
+  return pipeline;
+}
+
+void resolve_snapshot(const wgpu::CommandEncoder& cmd, Slot& slot, const wgpu::TextureView& color,
+                      const wgpu::Texture& depth, const Request& req, bool multisampled) {
+  const auto pipeline = resolve_pipeline(multisampled);
+  const uint32_t width = static_cast<uint32_t>(req.srcWidth);
+  const uint32_t height = static_cast<uint32_t>(req.srcHeight);
+  if (!slot.resolvedColor || slot.resolvedColor.GetWidth() != width || slot.resolvedColor.GetHeight() != height) {
+    wgpu::TextureDescriptor descriptor{
+        .label = "Scan Peek Resolved ID",
+        .usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc,
+        .size = {width, height, 1},
+        .format = wgpu::TextureFormat::RGBA8Unorm,
+    };
+    slot.resolvedColor = g_device.CreateTexture(&descriptor);
+    descriptor.label = "Scan Peek Resolved Depth";
+    descriptor.format = wgpu::TextureFormat::R32Float;
+    slot.resolvedDepth = g_device.CreateTexture(&descriptor);
+  }
+  if (!slot.resolveParams) {
+    const wgpu::BufferDescriptor descriptor{
+        .label = "Scan Peek Resolve Origin",
+        .usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst,
+        .size = 8,
+    };
+    slot.resolveParams = g_device.CreateBuffer(&descriptor);
+  }
+  const std::array origin{static_cast<uint32_t>(req.srcX), static_cast<uint32_t>(req.srcY)};
+  g_device.GetQueue().WriteBuffer(slot.resolveParams, 0, origin.data(), sizeof(origin));
+  const wgpu::TextureViewDescriptor depthDescriptor{.aspect = wgpu::TextureAspect::DepthOnly};
+  const std::array entries{
+      wgpu::BindGroupEntry{.binding = 0, .textureView = color},
+      wgpu::BindGroupEntry{.binding = 1, .textureView = depth.CreateView(&depthDescriptor)},
+      wgpu::BindGroupEntry{.binding = 2, .buffer = slot.resolveParams, .size = 8},
+  };
+  const wgpu::BindGroupDescriptor bindGroupDescriptor{
+      .layout = pipeline.GetBindGroupLayout(0), .entryCount = entries.size(), .entries = entries.data()};
+  const auto bindGroup = g_device.CreateBindGroup(&bindGroupDescriptor);
+  const std::array attachments{
+      wgpu::RenderPassColorAttachment{.view = slot.resolvedColor.CreateView(),
+                                      .loadOp = wgpu::LoadOp::Clear,
+                                      .storeOp = wgpu::StoreOp::Store},
+      wgpu::RenderPassColorAttachment{.view = slot.resolvedDepth.CreateView(),
+                                      .loadOp = wgpu::LoadOp::Clear,
+                                      .storeOp = wgpu::StoreOp::Store},
+  };
+  const wgpu::RenderPassDescriptor passDescriptor{
+      .label = "Scan Peek Resolve",
+      .colorAttachmentCount = attachments.size(),
+      .colorAttachments = attachments.data()};
+  const auto pass = cmd.BeginRenderPass(&passDescriptor);
+  pass.SetPipeline(pipeline);
+  pass.SetBindGroup(0, bindGroup);
+  pass.Draw(3);
+  pass.End();
+}
 
 uint32_t align_up(uint32_t value, uint32_t alignment) noexcept {
   return (value + alignment - 1) & ~(alignment - 1);
@@ -82,7 +194,7 @@ bool ensure_slot(Slot& slot, const wgpu::Texture& color, const wgpu::Texture& de
   const uint32_t rows = static_cast<uint32_t>(req.srcHeight);
   const uint64_t bytes = static_cast<uint64_t>(rowBytes) * rows;
 
-  if (slot.colorBuffer && slot.bytes == bytes) {
+  if (slot.colorBuffer && slot.depthBuffer && slot.rowBytes == rowBytes && slot.rows == rows) {
     return true;
   }
 
@@ -233,14 +345,14 @@ void complete_map(size_t slotIdx, bool isColor, wgpu::MapAsyncStatus status, wgp
 } // namespace
 
 void encode(const wgpu::CommandEncoder& cmd, const wgpu::Texture& color, const wgpu::Texture& depth,
-            uint32_t msaaSamples, const Request& request) noexcept {
+            uint32_t msaaSamples, const Request& request, const wgpu::TextureView& multisampledColor) noexcept {
   if (request.sequenceOut == nullptr || request.idOut == nullptr || request.width == 0 ||
       request.height == 0) {
     return;
   }
-  if (msaaSamples > 1) {
+  if (msaaSamples > 1 && (!webgpu::g_hasCoreFeatures || !multisampledColor)) {
     if (g_skippedWarned++ == 0) {
-      Log.warn("Scan peek skipped: the EFB is multisampled ({} samples)", msaaSamples);
+      Log.warn("Scan peek skipped: multisampled readback requires Core features and an EFB color view");
     }
     return;
   }
@@ -287,20 +399,27 @@ void encode(const wgpu::CommandEncoder& cmd, const wgpu::Texture& color, const w
     }
   }
 
-  const Slot& slot = g_slots[slotIdx];
+  auto& slot = g_slots[slotIdx];
+  const bool multisampled = msaaSamples > 1;
+  // Even at 1x, WebGPU only permits whole-subresource copies from depth formats. Convert the
+  // requested depth region to R32Float before copying it; this also handles HDR colour safely.
+  const bool resolved = webgpu::g_hasCoreFeatures;
+  if (resolved) {
+    resolve_snapshot(cmd, slot, multisampled ? multisampledColor : color.CreateView(), depth, req, multisampled);
+  }
   const wgpu::Extent3D copySize{
       .width = static_cast<uint32_t>(req.srcWidth),
       .height = static_cast<uint32_t>(req.srcHeight),
       .depthOrArrayLayers = 1,
   };
   const wgpu::Origin3D origin{
-      .x = static_cast<uint32_t>(req.srcX),
-      .y = static_cast<uint32_t>(req.srcY),
+      .x = resolved ? 0u : static_cast<uint32_t>(req.srcX),
+      .y = resolved ? 0u : static_cast<uint32_t>(req.srcY),
       .z = 0,
   };
   {
     const wgpu::TexelCopyTextureInfo source{
-        .texture = color,
+        .texture = resolved ? slot.resolvedColor : color,
         .mipLevel = 0,
         .origin = origin,
         .aspect = wgpu::TextureAspect::All,
@@ -319,10 +438,10 @@ void encode(const wgpu::CommandEncoder& cmd, const wgpu::Texture& color, const w
   }
   {
     const wgpu::TexelCopyTextureInfo source{
-        .texture = depth,
+        .texture = resolved ? slot.resolvedDepth : depth,
         .mipLevel = 0,
         .origin = origin,
-        .aspect = wgpu::TextureAspect::DepthOnly,
+        .aspect = resolved ? wgpu::TextureAspect::All : wgpu::TextureAspect::DepthOnly,
     };
     const wgpu::TexelCopyBufferInfo destination{
         .layout =
@@ -377,6 +496,7 @@ void after_submit() noexcept {
 }
 
 void shutdown() noexcept {
+  g_resolvePipelines = {};
   // The buffers are released after the lock: releasing one with a map still pending runs
   // complete_map at once, which takes g_mutex (it then sees an Available slot and returns).
   std::array<Slot, SlotCount> released;
