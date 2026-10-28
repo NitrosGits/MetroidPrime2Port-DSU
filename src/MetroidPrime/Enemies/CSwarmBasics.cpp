@@ -2022,7 +2022,12 @@ void CSwarmBasics::UpdateEffects(CStateManager& mgr, CAnimData& animData, int vo
           const uint soundId = node.GetSoundId();
           const int area = GetCurrentAreaId().Value();
           const ushort sfx = soundId;
+#ifdef TARGET_PC
+          // Port: `% size` with every boid inactive is a SIGFPE on x86 (silent on PPC); no emitter.
+          if ((soundId & 0x80000000) == 0 && !mActiveBoidIndices.empty()) {
+#else
           if ((soundId & 0x80000000) == 0) {
+#endif
             const CBoid& boid =
                 mBoids[mActiveBoidIndices[mgr.Random()->Next() % mActiveBoidIndices.size()]];
             const CVector3f pos = boid.GetTranslation();
