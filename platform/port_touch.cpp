@@ -28,6 +28,7 @@
 #include "MetroidPrime/Player/CPlayerState.hpp"
 
 #include <SDL3/SDL.h>
+#include "port_touch_activity.h"
 #include <aurora/gfx.h>
 
 #include <algorithm>
@@ -88,6 +89,7 @@ bool sPadAttachFailed = false; // guarded by sPadMutex: the failure is logged on
 
 std::atomic< bool > sEditRequested{false};
 std::atomic< bool > sPhysicalInput{false};
+PortTouch::Activity sActivity;
 std::atomic< bool > sRealPad{false};
 std::atomic< bool > sDeviceXbox{false};
 
@@ -923,6 +925,7 @@ bool PauseScreenOpen() { return PortHarness::FlowState() == kPaused; }
 bool OverlayVisible() { return PortOverlay::Visible() || PortPhoto::Active(); }
 
 void NoteDevice(bool xboxLayout) {
+  sActivity.Touch();
   // The prompt icons follow the on-screen layout while touch is the active input.
   sDeviceXbox.store(xboxLayout, std::memory_order_release);
   PortPrompts::NoteTouchInput(xboxLayout);
@@ -930,7 +933,18 @@ void NoteDevice(bool xboxLayout) {
 
 bool DeviceIsXbox() { return sDeviceXbox.load(std::memory_order_acquire); }
 
-void NotePhysicalInput() { sPhysicalInput.store(true, std::memory_order_release); }
+bool Active() {
+#if defined(PORT_TOUCH_CONTROLS)
+  return sActivity.Active(true, PortOverlay::Visible());
+#else
+  return false;
+#endif
+}
+
+void NotePhysicalInput() {
+  sActivity.Physical();
+  sPhysicalInput.store(true, std::memory_order_release);
+}
 
 bool TakePhysicalInput() {
   const bool event = sPhysicalInput.exchange(false, std::memory_order_acq_rel);

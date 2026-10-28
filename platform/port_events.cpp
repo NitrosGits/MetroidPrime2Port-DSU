@@ -24,6 +24,7 @@
 #include "port_savestate.h"
 #include "port_textures.h"
 #include "port_touch.h"
+#include "port_touch_activity.h"
 #include "port_warp.h"
 #include "port_watchdog.h"
 
@@ -454,17 +455,16 @@ bool PortPumpEvents() {
       // game consumes the resulting aim in CPlayer/CFirstPersonCamera.
       PortMouse::AddMotion(event->sdl.motion.xrel, event->sdl.motion.yrel);
     }
-    // Anything physical - a key or a mouse button - means the on-screen controls should step
-    // aside, which is what the overlay's own poll acts on. A *gamepad* is deliberately not
-    // listed here: the overlay's own pad arrives as an added device too, and treating that as
-    // physical hid the controls the moment they attached. Physical pads are found instead by
-    // the scan in `PortTouch::BeginFrame`, which can tell a virtual device from a real one.
-    // Nor is a click SDL makes from a touch (pointer screens hand their fingers to SDL).
-    if (event->type == AURORA_SDL_EVENT &&
-        (event->sdl.type == SDL_EVENT_KEY_DOWN ||
-         (event->sdl.type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
-          event->sdl.button.which != SDL_TOUCH_MOUSEID && event->sdl.button.which != SDL_PEN_MOUSEID))) {
-      PortTouch::NotePhysicalInput();
+    // Match MP1's last-used-input policy, excluding virtual pads and drift.
+    if (event->type == AURORA_SDL_EVENT) {
+      const SDL_Event& input = event->sdl;
+      const bool virtualPad = input.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN
+                                  ? SDL_IsJoystickVirtual(input.gbutton.which)
+                                  : input.type == SDL_EVENT_GAMEPAD_AXIS_MOTION &&
+                                        SDL_IsJoystickVirtual(input.gaxis.which);
+      if (PortTouch::PhysicalEvent(input, PortOverlay::Visible(), virtualPad)) {
+        PortTouch::NotePhysicalInput();
+      }
     }
     // MP1's F10: the 60 FPS cap on and off.
     if (event->type == AURORA_SDL_EVENT && event->sdl.type == SDL_EVENT_KEY_DOWN &&

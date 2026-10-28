@@ -11,26 +11,32 @@ the player already consumes both stick axes and turns the body for yaw, but nati
 free-look is suppressed in twin-stick mode, leaving no path to apply pitch otherwise.
 Enabling mouse aim alongside twin-stick was a code-derived workaround, not a device-tested one.
 
-Two further reports are diagnosed but not yet fixed:
+The menu and trigger reports are fixed too:
 
 - Separate menu buttons: `platform/input/port_input_devices.cpp::MenuButtonsActive`
-  requires `!PortTouch::ControlsEnabled()`. `platform/port_touch.cpp::Settings::controls`
+  previously required `!PortTouch::ControlsEnabled()`. `platform/port_touch.cpp::Settings::controls`
   defaults to true on desktop too (only `aim` has a mobile-specific default). Therefore
-  `ApplyMenuButtons` removes all Menu actions despite the separate-menu setting being on.
-  Desktop runs should not inherit the mobile touch-layout exclusion. The context path
-  does recognize front-end and paused menus; map and scan-text contexts need a separate
+  `ApplyMenuButtons` removed all Menu actions despite the separate-menu setting being on.
+  It now uses last-used touch activity, as MP1 does: `NoteDevice` activates touch,
+  real controller/keyboard/mouse input deactivates it; virtual pads, stick drift and
+  synthetic touch/pen mouse events do not. Builds without touch always report inactive.
+  The context path recognizes front-end and paused menus; map and scan-text contexts need a separate
   completeness review.
 - Trigger capture: Aurora's `PADGetRawState` reports an analog trigger axis and synthetic
-  half-pull/click buttons. `port_input_remap_ui.cpp::DownInputs` enumerates both the
-  buttons and the axes; `UpdateCapture` retains every distinct input until release.
-  Thus one right-trigger pull records `RT + RT click + RT`, exactly as reported.
-  Capture needs to canonicalize these aliases without removing runtime pull/click support
-  or swallowing intentional chords involving distinct controls.
+  half-pull/click buttons. The recorder previously enumerated both the buttons and
+  axes, retaining every distinct input until release (`UpdateCapture`).
+  Thus one right-trigger pull recorded `RT + RT click + RT`, exactly as reported.
+  Capture now skips the four synthetic trigger-button aliases and records the positive
+  analog axis alone. Runtime pull/click support and manual bindings are unchanged;
+  chords involving distinct controls still record normally.
 
 These findings come from source tracing against v0.6.0 and the port branch, not a Steam Deck run.
 Verification: game linked; `port_radial_mouse_tests`, `port_input_engine_tests` and
 `port_input_bindings_tests` passed (these cover the aim/input machinery, not the camera
 integration); matching build reported `87 files OK`; generated source manifest check passed.
+`port_controller_regressions` additionally passes touch/physical transitions, desktop/F1 gates,
+virtual-pad/drift/synthetic-mouse filtering, full-trigger capture across thresholds, both
+triggers together, shoulder+trigger chords, ordinary stick axes and keyboard/mouse inputs.
 
 ## 2026-10-26 (port orchestrator): widescreen gaps, ball glow, suit colours, FOV, scan copies
 
