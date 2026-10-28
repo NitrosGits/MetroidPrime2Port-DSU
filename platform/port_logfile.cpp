@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <string>
 
 #if defined(__ANDROID__)
 #include <SDL3/SDL.h>
@@ -31,6 +32,7 @@
 #endif
 #if !defined(_WIN32)
 #include <fcntl.h>
+#include <sys/file.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -267,16 +269,55 @@ std::string JoinFile(const std::string& directory) {
   return directory + (slash ? "" : "/") + kFileName;
 }
 
-// Rotates the previous run's log aside, and makes the directory it lives in.
-void PreparePath(const std::string& path) {
+// Holds an advisory lock on "<log>.lock" for the life of the process; false when another live
+// instance already holds it (two instances on one user folder). A lock that cannot be made at
+// all counts as free, so a read-only folder keeps its old behaviour.
+bool TakeInstanceLock(const std::filesystem::path& file) {
+  std::filesystem::path lock = file;
+  lock += ".lock";
+#if defined(_WIN32)
+  // Share mode 0: a second open fails with a sharing violation while the first is alive.
+  const HANDLE handle = CreateFileW(lock.c_str(), GENERIC_WRITE, 0, nullptr, OPEN_ALWAYS,
+                                    FILE_ATTRIBUTE_NORMAL, nullptr);
+  return handle != INVALID_HANDLE_VALUE || GetLastError() != ERROR_SHARING_VIOLATION;
+#else
+  const int fd = open(lock.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+  if (fd < 0) {
+    return true;
+  }
+  if (flock(fd, LOCK_EX | LOCK_NB) != 0 && errno == EWOULDBLOCK) {
+    close(fd);
+    return false;
+  }
+  return true; // fd stays open: the lock lasts until the process exits
+#endif
+}
+
+// Rotates the previous run's log aside, and makes the directory it lives in. A second live
+// instance on the same folder must not rotate the first one's log away: it writes to a log
+// named after its pid instead (path is updated).
+void PreparePath(std::string& path) {
   if (path.empty()) {
     return;
   }
   std::error_code ec;
-  const std::filesystem::path file(std::u8string(path.begin(), path.end()));
+  std::filesystem::path file(std::u8string(path.begin(), path.end()));
   // On a first start the user folder may not exist yet, and that run is the one most likely to
   // need a log.
   std::filesystem::create_directories(file.parent_path(), ec);
+  if (!TakeInstanceLock(file)) {
+    std::filesystem::path other = file;
+    other.replace_extension("." + std::to_string(
+#if defined(_WIN32)
+                                       GetCurrentProcessId()
+#else
+                                       getpid()
+#endif
+                                           ) + ".log");
+    const std::u8string text = other.u8string();
+    path.assign(text.begin(), text.end());
+    return;
+  }
   if (std::filesystem::exists(file, ec)) {
     std::filesystem::path old = file;
     old.replace_extension(".old.log");
