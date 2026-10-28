@@ -35,17 +35,34 @@ uint RotationAndOffsetStorage::DataSizeInBytes(uint rotationsPerFrame, uint offs
          numFrames;
 }
 
+#ifdef TARGET_PC
+// Port: an empty (missing-pak) ANIM has numFrames 0; x / 0 is a SIGFPE on x86, silent on PPC.
+RotationAndOffsetStorage::RotationAndOffsetStorage(const CRotationAndOffsetVectors& vectors,
+                                                   uint numFrames)
+: mStorage(GetRotationsAndOffsets(vectors.mRotations, vectors.mOffsets, numFrames))
+, mNumFrames(numFrames)
+, mRotationsPerFrame(numFrames != 0 ? vectors.mRotations.size() / numFrames : 0)
+, mOffsetsPerFrame(numFrames != 0 ? vectors.mOffsets.size() / numFrames : 0) {}
+#else
 RotationAndOffsetStorage::RotationAndOffsetStorage(const CRotationAndOffsetVectors& vectors,
                                                    uint numFrames)
 : mStorage(GetRotationsAndOffsets(vectors.mRotations, vectors.mOffsets, numFrames))
 , mNumFrames(numFrames)
 , mRotationsPerFrame(vectors.mRotations.size() / numFrames)
 , mOffsetsPerFrame(vectors.mOffsets.size() / numFrames) {}
+#endif
 
 rstl::auto_ptr< uint >
 RotationAndOffsetStorage::GetRotationsAndOffsets(const rstl::vector< CQuaternion >& rotations,
                                                  const rstl::vector< CVector3f >& offsets,
                                                  uint numFrames) {
+#ifdef TARGET_PC
+  if (numFrames == 0) {
+    mRotationsPerFrame = 0;
+    mOffsetsPerFrame = 0;
+    return rstl::auto_ptr< uint >(rs_new uint[1]);
+  }
+#endif
   mRotationsPerFrame = rotations.size() / numFrames;
   mOffsetsPerFrame = offsets.size() / numFrames;
   rstl::auto_ptr< uint > storage(rs_new uint[DataSizeInBytes(rotations.size() / numFrames, //
@@ -62,6 +79,11 @@ RotationAndOffsetStorage::GetRotationsAndOffsets(const rstl::vector< CQuaternion
 void RotationAndOffsetStorage::CopyRotationsAndOffsets(const rstl::vector< CQuaternion >& rotations,
                                                        const rstl::vector< CVector3f >& offsets,
                                                        const uint numFrames, float* buf) {
+#ifdef TARGET_PC
+  if (numFrames == 0) {
+    return;
+  }
+#endif
   const uint rotationsPerFrame = rotations.size() / numFrames;
   const uint offsetsPerFrame = offsets.size() / numFrames;
 
