@@ -3897,8 +3897,8 @@ void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
 //
 // On update (the guest's message 1, 0x00008770) the timer falls by the frame time; when it is over
 // the animation state goes "over" (guest this+0x6B4 = 3), and so does it when the flag byte at
-// guest this+0xC64 has its 0x04 bit. Then the byte at guest this+0xC66's 0x20 bit stops the state,
-// and the module's own helper fn_9_3CBC asks the target for its aim position (the module's member
+// guest this+0xC64 has its 0x04 bit. Then, only while the byte at guest this+0xC66 has its 0x20 bit
+// (extrwi. 1,26 at 0x000087B0, beq past the turn at 0x000087B4), the module's own helper fn_9_3CBC asks the target for its aim position (the module's member
 // at guest this+0xB94, with the frame time 0.0f): the commando turns towards it when the angle
 // between its facing and the direction to the target is over 20 degrees (rodata_4B4).
 //
@@ -3935,7 +3935,7 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
       mAnimationState.SetState(CAnimationState::kAS_Over);  // 0x000087A4
       break;
     }
-    if ((xc66_ & 0x20) != 0) {                       // 0x000087B0
+    if ((xc66_ & 0x20) == 0) {                       // 0x000087B0..0x000087B4
       break;
     }
     if (!x3CBC_(mgr, xb94_, 0.f)) {                   // 0x000087C0 (the guest's own helper)
