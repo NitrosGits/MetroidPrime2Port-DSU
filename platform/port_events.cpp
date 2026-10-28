@@ -16,6 +16,7 @@
 #include "port_input.h"
 #include "port_input_pad.h"
 #include "port_mouse.h"
+#include "port_input_gate.h"
 #include "port_overlay.h"
 #include "port_pointer.h"
 #include "port_prompts.h"
@@ -492,7 +493,16 @@ bool PortPumpEvents() {
   PortInputDevices::PollPortActions();
   PortInputDevices::PollGyro();
   sPad0 = PortInputDevices::Poll();
+  static PortInputGate::Gate<PADStatus> sGate;
+  sGate.Apply(PortOverlay::Visible(), sPad0);
   sPad0Valid = true;
+  // While the F1 overlay is open the game reads a neutral pad (keyboard, mouse buttons, pad and
+  // the console's virtual pad alike; the overlay navigates with the keyboard and the pad). Held
+  // input reads as released; on closing, the gate (buttons, sticks, triggers) and Aurora's own
+  // unblock suppression keep whatever is still held masked until it is released, so the key used
+  // in the menu (Enter, Space, arrows) or a held walk key does not fire in the game.
+  // PollPortActions above is not gated: the F1 toggle, screenshot and the remap capture still work.
+  PADBlockInput(PortOverlay::Visible());
   PADSetPortOverride(0, &sPad0);
   // A device or pack change requested since the last iteration swaps the replacement set here,
   // and the binding icons follow the input used last (both throttle themselves).
