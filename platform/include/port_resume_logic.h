@@ -63,8 +63,9 @@ inline bool UnwrapContainer(const std::string& in, Header& h, std::string& state
   return true;
 }
 
-// A resume may load only into the card it came from.
-inline bool Matches(const Header& h, uint64_t cardSerial) { return h.cardSerial == cardSerial; }
+// A resume may load only into the card it came from. Serial 0 is no card: a resume written
+// without one is never offered.
+inline bool Matches(const Header& h, uint64_t cardSerial) { return h.cardSerial != 0 && h.cardSerial == cardSerial; }
 
 // What to write when the game closes: a fresh capture when the game is in a safe moment, else the
 // snapshot already held, else nothing.
