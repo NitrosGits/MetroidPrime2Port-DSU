@@ -34,6 +34,12 @@ void CScriptGuiMenu::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) 
     BuildItemList(mgr);
     return;
   case kSM_Activate: {
+#ifdef TARGET_PC
+    // Port: a menu with no connected items has nothing to activate (retail reads past the empty list).
+    if (mSelection < 0 || mSelection >= static_cast< int >(mItems.size())) {
+      return;
+    }
+#endif
     TUniqueId id = mItems[mSelection];
     CEntity* item = mgr.ObjectById(id);
     mgr.SendScriptMsg(item, GetUniqueId(), kSM_Activate);
@@ -229,6 +235,12 @@ void CScriptGuiMenu::SetSelection(int idx, CStateManager& mgr) {
 // @ fn_60_84DC
 void CScriptGuiMenu::SelectPrevious(CStateManager& mgr) {
   const int count = mItems.size();
+#ifdef TARGET_PC
+  // Port: `% count` with no items is a SIGFPE on x86 (silent on PPC); nothing to select.
+  if (count == 0) {
+    return;
+  }
+#endif
   if (mWrapSelection) {
     for (int i = (mSelection + count - 1) % count; i != mSelection; i = (i + count - 1) % count) {
       if (!IsItemLocked(i, mgr)) {
@@ -249,6 +261,11 @@ void CScriptGuiMenu::SelectPrevious(CStateManager& mgr) {
 // @ fn_60_83D0
 void CScriptGuiMenu::SelectNext(CStateManager& mgr) {
   const int count = mItems.size();
+#ifdef TARGET_PC
+  if (count == 0) {
+    return;
+  }
+#endif
   if (mWrapSelection) {
     for (int i = (mSelection + 1) % count; i != mSelection; i = (i + 1) % count) {
       if (!IsItemLocked(i, mgr)) {
