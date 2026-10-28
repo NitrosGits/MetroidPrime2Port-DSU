@@ -831,12 +831,10 @@ void MarkRestoreOffered() {
   }
 }
 
-bool Backup(std::string* written, std::string& error) {
-  const std::vector<std::string> files = Files();
-  if (files.empty()) {
-    error = "the card has no save file to copy";
-    return false;
-  }
+namespace {
+
+// Copies `source` into the backups folder.
+bool BackupFile(const std::string& source, std::string* written, std::string& error) {
   const std::string dir = BackupsDirectory();
   if (dir.empty()) {
     error = "no user directory for the backups folder";
@@ -846,7 +844,7 @@ bool Backup(std::string* written, std::string& error) {
   std::filesystem::create_directories(dir, ec);
   std::vector<uint8_t> bytes;
   const std::string target = Unique(dir + "/card-" + Stamp() + ".gci");
-  if (!ReadAll(files.front(), bytes, error) || !WriteAll(target, bytes, error)) {
+  if (!ReadAll(source, bytes, error) || !WriteAll(target, bytes, error)) {
     return false;
   }
   PruneBackups();
@@ -854,6 +852,17 @@ bool Backup(std::string* written, std::string& error) {
     *written = target;
   }
   return true;
+}
+
+} // namespace
+
+bool Backup(std::string* written, std::string& error) {
+  const std::vector<std::string> files = Files();
+  if (files.empty()) {
+    error = "the card has no save file to copy";
+    return false;
+  }
+  return BackupFile(files.front(), written, error);
 }
 
 std::vector<std::string> Backups() { return BackupsOf("card-"); }
@@ -1032,7 +1041,8 @@ static bool ImportTrilogy(const std::string& saveBin, std::string& message) {
     return false;
   }
   std::string backup;
-  if (!existing.empty() && !Backup(&backup, message)) {
+  // The file about to be overwritten, not the card's first file.
+  if (!existing.empty() && !BackupFile(existing.front(), &backup, message)) {
     return false; // keep the existing save untouched; message holds the backup error
   }
   const std::string target = existing.empty()
