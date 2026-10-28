@@ -29,9 +29,18 @@ Verification (isolated cards under `/tmp/opencode/issue3-*`; no live saves chang
   accepted that saved card into the running world and exited normally at update 180.
 - Trilogy container/payload tests passed on the local fixture set (0 failures).
 - Matching build: `87 files OK`; generated source manifest check passed.
+- Actual emulator test: Dolphin 2512 (`/usr/games/dolphin-emu-nogui`, JIT64/OpenGL)
+  booted the owned G2ME01 disc using an isolated `-u /tmp/opencode/issue3-dolphin`
+  folder and a copy of the file produced by the native save-station test above.
+  Selecting Single Player loaded Temple Grounds into first-person gameplay; screenshot
+  `/tmp/opencode/issue3-dolphin-loaded.png` (cropped from `screen-30.png`). Dolphin
+  repaired the legacy header CRC to big-endian, but both data copies (GCI bytes
+  `0x2040..end`) remained byte-identical to the port-written source. This was not a
+  deleted/recreated card. The emulator ran on a dedicated Xvfb display and was stopped;
+  the normal emulator user directory was not used.
 
-This is native integration plus console-format validation, not a run on Steam Deck or
-an actual PrimeHack load. No GitHub comment, push or release was made.
+Native integration, console-format validation and an actual Dolphin load passed.
+Steam Deck and PrimeHack specifically remain untested. No GitHub comment, push or release was made.
 
 ## 2026-10-28: issue #2 controller bindings
 
