@@ -33,6 +33,8 @@
 #endif
 
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/HUD/CSamusHud.hpp"
+#include "MetroidPrime/HUD/CHUDMemoParms.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/CMemoryCard.hpp"
 
@@ -1061,6 +1063,25 @@ void CmdFastMorph(CStateManager&, const Args& args, std::string& out) {
 void CmdHintShow(CStateManager&, const Args&, std::string& out) {
   PortOverlay::RequestShowHint();
   out += "hint requested\n";
+}
+
+// memo <0|1> <text...>: a HUD memo; 1 makes it a hint memo (the framed box with the button ring).
+void CmdMemo(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() < 3) {
+    Fail("usage: memo <0|1> <text...>");
+    return;
+  }
+  const bool hint = ArgToInt(args[1], 0) != 0;
+  std::wstring wide = L"&just=center;";
+  for (size_t i = 2; i < args.size(); ++i) {
+    if (i > 2) {
+      wide += L' ';
+    }
+    wide.append(args[i].begin(), args[i].end());
+  }
+  CSamusHud::DisplayHudMemo(rstl::wstring(wide.c_str()),
+                            CHUDMemoParms(hint ? 0.f : 5.f, true, false, hint, 1, true));
+  out += hint ? "hint memo shown\n" : "memo shown\n";
 }
 
 // walkspeed [50..200]: on-foot movement speed in percent (walk_speed); no argument prints it.
@@ -4727,6 +4748,7 @@ const CommandSpec kCommands[] = {
     {"maptap", CmdMapTap, "maptap                      tap the minimap: opens the map screen\n"},
     {"hintshow", CmdHintShow,
       "hintshow                    show the hint the game would show next (F1 Show current hint)\n"},
+    {"memo", CmdMemo, "memo <0|1> <text...>        show a HUD memo; 1 = hint memo (framed, button ring)\n"},
     {"walkspeed", CmdWalkSpeed,
       "walkspeed [50..200]         on-foot movement speed in percent (walk_speed); no argument prints it\n"},
     {"scanspeed", CmdScanSpeed,
