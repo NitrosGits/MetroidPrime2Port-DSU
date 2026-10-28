@@ -45,6 +45,7 @@ Scripts: `tools/audit/` (see its README).
 | A1-2 | DarkSamus | src/MetroidPrime/Enemies/PortCDarkSamusFsm.cpp:1944 | asset-name | visual | effect BoostThingy in no effect table; silent no-op | not-a-bug (string is in retail DarkSamus.rel at the cited call) |
 | A1-3 | SpankWeed | src/MetroidPrime/Enemies/CSpankWeed.cpp:125 | asset-name | visual | Arm_11/Arm_12/Arm_end, no disc placement to attribute | not-a-bug (strings in retail SpankWeed.rel) |
 | A1-4 | EmperorIng Stage1 | PortCEmperorIngStage1*.cpp (lookups on heart/target actors) | asset-name | minor | brainSpine_scale, sphere_base, Damage, Telegraph checked only disc-wide | not-a-bug (strings in retail EmperorIngStage1.rel) |
+| A5b-3 | Splinter | src/MetroidPrime/Enemies/CSplinter.cpp:2169 | upstream | minor | CanSeePlayer Range upper bound 0.08f (0x3DA3D70A); retail rodata_F0 = 0x3DA3D70B (fn_74_8E64 0x8F34 lfs), one ULP off | confirmed (no visible effect) |
 
 ## Sweep log
 
@@ -56,3 +57,4 @@ Scripts: `tools/audit/` (see its README).
 | 5b phase 1 | audit-upstream-units.md (+ -inventory.md, .json) | eb2c98828 | 2026-10-28 | 525 unlinked units, 502 flagged defs + 80 annotations in matching units (review queue); 10 DOL units compared, 2 confirmed; no REL units yet |
 | 5b phase 2 | audit-upstream-units.md (Phase 2) | eb2c98828 | 2026-10-28 | 10 units (DOL: CCollidableAABox, CCollidableSphere, COBBox, CSpatialPrimitive, CollisionUtil; REL: AIMannedTurret, AtomicAlpha, AtomicBeta, BacteriaSwarm, Blogg): no findings; selected-body triage; REL linker helper failed, asm read from the matching build |
 | 1 asset names | audit-asset-names.md | eb2c98828 | 2026-10-28 | 667 lookups: 631 hit, 41 miss (all retail strings), 346 unchecked (runtime names, unplaced modules); sound/particle-resource lookups not scanned |
+| 5b phase 3 | audit-upstream-units.md (Phase 3) | eb2c98828 | 2026-10-28 | 15 tier-(b) defs in matching units (none skip retail behaviour) + REL EmperorIngStage2Tentacle, SwarmBasics, FlyerSwarm, MysteryFlyer, DarkCommando, Splinter: A5b-3 minor. Plan-order bosses are Port*.cpp (Review 5). tools/rel_pseudo/link_rel.sh fails: ld --just-symbols main.elf 'multiple definition of no symbol' |
