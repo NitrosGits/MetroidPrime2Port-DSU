@@ -36,6 +36,9 @@ public:
   // Port: MP1's fixed-step clock. With the 60 FPS cap off, UpdateTicks runs the whole 1/60 s ticks
   // the elapsed time holds; the leftover fraction is how far the drawn frame is toward the next.
   float GetTickInterpolation() const { return mPortTickClock.Interpolation(); }
+  // Port: seconds of game time the last UpdateTicks ran (ticks / 60; exactly 1/60 on the retail
+  // path under the cap), for the audio managers' per-loop Update.
+  float GetPortAudioDt() const { return mPortAudioDt; }
 #endif
 
 private:
@@ -53,6 +56,7 @@ private:
   bool mInfiniteLoopAlarmSet;
 #ifdef TARGET_PC
   PortTiming::FixedStepClock mPortTickClock;
+  float mPortAudioDt = 1.f / 60.f;
 #endif
 };
 CHECK_SIZEOF(CGameArchitectureSupport, 0xa8)

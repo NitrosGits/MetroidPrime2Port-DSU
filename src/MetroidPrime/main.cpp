@@ -402,6 +402,7 @@ bool CGameArchitectureSupport::UpdateTicks() {
       mIoWinMgr.PumpMessages(mArchQueue);
     }
     CGraphics::PortAdvanceRenderTimings(ticks);
+    mPortAudioDt = static_cast< float >(ticks) * (1.f / 60.f);
     // The wall clock kept no time while held, so resuming does not burst.
     mTickRemainder = 0.f;
     mPreviousTickRemainder2 = 0.f;
@@ -436,6 +437,7 @@ bool CGameArchitectureSupport::UpdateTicks() {
     // MP1's GUI clock by tick: GUI frames and HUD materials advance with the game, not the frame
     // rate (BeginScene skips its per-frame step after this).
     CGraphics::PortAdvanceRenderTimings(ticks);
+    mPortAudioDt = static_cast< float >(ticks) * (1.f / 60.f);
     // Back to the cap starts the retail remainder afresh.
     mTickRemainder = 0.f;
     mPreviousTickRemainder2 = 0.f;
@@ -445,6 +447,7 @@ bool CGameArchitectureSupport::UpdateTicks() {
   }
   // Leaving the clock idle under the cap: no leftover is carried into the next uncapped frame.
   mPortTickClock.Advance(0.0, true);
+  mPortAudioDt = 1.f / 60.f; // retail: one Update(1/60) per loop
 #endif
   bool keepLooping = true;
   mArchQueue.Push(MakeMsg::CreateFrameBegin(kAMT_Game, mGameFrameCount));
@@ -904,8 +907,16 @@ int CMain::RsMain(int argc, const char* const* argv) {
         gpResourceFactory->AsyncIdle(1000000, false);
       }
       architecture->Update();
+#ifdef TARGET_PC
+      // Port: the audio managers advance by the game time this loop ran (ticks / 60; 0 on a loop
+      // that ran no tick still does their housekeeping), not a fixed 1/60 per loop. Under the cap
+      // this is exactly 1/60 as before.
+      CSfxManager::Update(architecture->GetPortAudioDt());
+      CStreamAudioManager::Update(architecture->GetPortAudioDt());
+#else
       CSfxManager::Update(1.f / 60.f);
       UpdateStreamedAudio();
+#endif
 #ifdef TARGET_PC
       // Port: there is no AI interrupt; run the AI DMA callbacks (movie audio) on the main thread.
       AIPortPoll();
