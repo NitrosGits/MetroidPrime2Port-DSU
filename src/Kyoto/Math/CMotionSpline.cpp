@@ -465,8 +465,14 @@ CVector3f CMotionSpline::GetPositionInSegment(uint index, float t) const {
       return mControlPoints[0];
     }
     if (count == 2) {
+#ifdef TARGET_PC
+      // The clamped segment, not the raw index: index >= 2 read past the two points.
+      const CVector3f a = mControlPoints[segment];
+      const CVector3f b = mControlPoints[(segment + 1) % count];
+#else
       const CVector3f a = mControlPoints[index];
       const CVector3f b = mControlPoints[(index + 1) % count];
+#endif
       return a + t * (b - a);
     }
     if (mType == kST_Bezier) {
