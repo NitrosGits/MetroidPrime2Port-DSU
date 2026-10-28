@@ -40,6 +40,7 @@ int main() {
     REQUIRE(UnwrapContainer(WrapContainer(h, ""), back, state) && state.empty());
   }
   REQUIRE(Matches(Header{0, 5, 0}, 5) && !Matches(Header{0, 5, 0}, 6));
+  REQUIRE(!Matches(Header{0, 0, 0}, 0));
   // What a closing game writes.
   REQUIRE(ChooseWrite(true, true) == Write::Fresh);
   REQUIRE(ChooseWrite(true, false) == Write::Fresh);

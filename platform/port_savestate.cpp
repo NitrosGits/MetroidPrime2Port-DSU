@@ -708,6 +708,11 @@ const char* ResumeSkipReason(CStateManager& mgr) {
 
 // Captures the running game into the held snapshot and writes it.
 bool TakeSnapshot(CStateManager& mgr) {
+  // No card serial: a save state loaded from the title, or "continue without saving". No card
+  // file can take such a state at the title, so it isn't kept.
+  if (gpGameState->GetCardSerial() == 0) {
+    return false;
+  }
   State s;
   std::string error;
   if (!Capture(mgr, s, error)) {
@@ -1234,7 +1239,9 @@ void Tick(CStateManager& mgr) {
   if (sResumeSnapshotRequest.exchange(false)) {
     SetMessage(TakeSnapshot(mgr) ? "resume: snapshot written"
                                   : std::string("resume: no snapshot - ") +
-                                        (ResumeSkipReason(mgr) != nullptr ? ResumeSkipReason(mgr) : "capture failed"));
+                                        (ResumeSkipReason(mgr) != nullptr ? ResumeSkipReason(mgr)
+                                          : gpGameState->GetCardSerial() == 0 ? "the game has no memory card"
+                                                                              : "capture failed"));
   }
   if (sResumeLoadRequest.exchange(false)) {
     DoLoad(mgr, kResumeSlot);

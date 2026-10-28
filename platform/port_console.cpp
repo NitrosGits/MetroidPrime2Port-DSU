@@ -1066,9 +1066,31 @@ void CmdHintShow(CStateManager&, const Args&, std::string& out) {
 }
 
 // memo <0|1> <text...>: a HUD memo; 1 makes it a hint memo (the framed box with the button ring).
-void CmdMemo(CStateManager&, const Args& args, std::string& out) {
+// memo pause <strg>: the boxed memo a paused HUDMemo opens (CMessageScreen), as for "Map data acquired".
+void CmdMemo(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() == 3 && args[1] == "pause") {
+    CAssetId id = kInvalidAssetId;
+    const std::string text(args[2]);
+    char* end = nullptr;
+    const unsigned long value = std::strtoul(text.c_str(), &end, 0);
+    if (end != nullptr && *end == '\0' && end != text.c_str()) {
+      id = static_cast< CAssetId >(value);
+    } else if (gpResourceFactory != nullptr) {
+      const SObjectTag* tag = gpResourceFactory->GetResourceIdByName(text.c_str());
+      if (tag != nullptr) {
+        id = tag->id;
+      }
+    }
+    if (id == kInvalidAssetId) {
+      Fail("no such resource '" + text + "'");
+      return;
+    }
+    mgr.ShowPausedHUDMemo(id, 0.f);
+    out += "paused memo requested\n";
+    return;
+  }
   if (args.size() < 3) {
-    Fail("usage: memo <0|1> <text...>");
+    Fail("usage: memo <0|1> <text...> | memo pause <strg>");
     return;
   }
   const bool hint = ArgToInt(args[1], 0) != 0;
@@ -4748,7 +4770,8 @@ const CommandSpec kCommands[] = {
     {"maptap", CmdMapTap, "maptap                      tap the minimap: opens the map screen\n"},
     {"hintshow", CmdHintShow,
       "hintshow                    show the hint the game would show next (F1 Show current hint)\n"},
-    {"memo", CmdMemo, "memo <0|1> <text...>        show a HUD memo; 1 = hint memo (framed, button ring)\n"},
+    {"memo", CmdMemo, "memo <0|1> <text...>        show a HUD memo; 1 = hint memo (framed, button ring)\n"
+      "memo pause <strg>           show a string table as the boxed memo a paused HUDMemo opens\n"},
     {"walkspeed", CmdWalkSpeed,
       "walkspeed [50..200]         on-foot movement speed in percent (walk_speed); no argument prints it\n"},
     {"scanspeed", CmdScanSpeed,
