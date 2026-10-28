@@ -134,6 +134,9 @@ private:
   CActor* FindTarget(CStateManager& mgr);
   void UpdateGunOrientation(CStateManager& mgr, CSegId seg, bool aim, float dt);
   void UpdateGunPose(CStateManager& mgr, float dt);
+#ifdef TARGET_PC
+  void PortUpdateTopTransform(CStateManager& mgr);
+#endif
   void LowerGun(float dt);
   void RaiseGun(float dt);
   bool InDetectionHeight(const CActor& actor, float up, float down) const;
@@ -232,6 +235,9 @@ private:
   CAABox x9b4_;
   bool mAlert : 1;
   bool mOccluded : 1;
+#ifdef TARGET_PC
+  float mPortPoseDt = 0.f; // tick time since the last PreRender's UpdateGunPose
+#endif
 };
 CHECK_SIZEOF(CGunTurretBase, 0x9d0)
 

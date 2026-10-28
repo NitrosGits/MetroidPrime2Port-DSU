@@ -658,7 +658,19 @@ void CGunTurretBase::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {}
 // @ fn_28_4668
 void CGunTurretBase::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
+#ifdef TARGET_PC
+  // Port: retail runs UpdateGunPose(1/60) here, once per drawn frame, after every Think. Keep it
+  // here (same target position) but advance it by the tick time Think accumulated: exactly 1/60
+  // per frame under the cap, N/60 after N ticks, and no extra turning on a frame without a tick.
+  if (mPortPoseDt > 0.f) {
+    UpdateGunPose(mgr, mPortPoseDt);
+    mPortPoseDt = 0.f;
+  } else {
+    PortUpdateTopTransform(mgr);
+  }
+#else
   UpdateGunPose(mgr, 1.f / 60.f);
+#endif
 }
 
 // @ fn_28_4604
@@ -670,6 +682,9 @@ void CGunTurretBase::Render(const CStateManager& mgr) const {
 
 // @ fn_28_3EA4
 void CGunTurretBase::Think(float dt, CStateManager& mgr) {
+#ifdef TARGET_PC
+  mPortPoseDt += dt; // consumed by PreRender (Think only runs for active turrets, as in retail)
+#endif
   if (GetActive()) {
     if (mgr.GetWorld()->GetArea(GetCurrentAreaId())->GetOcclusionState() ==
         CGameArea::kOS_Occluded) {
@@ -821,6 +836,20 @@ void CGunTurretBase::UpdateGunPose(CStateManager& mgr, float dt) {
     top->SetTransform(topXf);
   }
 }
+
+#ifdef TARGET_PC
+// Port: the render-only tail of UpdateGunPose (the top follows the gun locator).
+void CGunTurretBase::PortUpdateTopTransform(CStateManager& mgr) {
+  const CSegId seg = GetAnimationData()->GetLocatorSegId(rstl::string_l(skConnectLocator));
+  if (seg == CSegId(0xFF)) {
+    return;
+  }
+  if (CGunTurretTop* top = TCastToPtr< CGunTurretTop >(mgr.ObjectById(mTopId))) {
+    const CTransform4f topXf = GetTransform() * GetScaledLocatorTransform(seg);
+    top->SetTransform(topXf);
+  }
+}
+#endif
 
 // @ fn_28_3520
 void CGunTurretBase::UpdateGunOrientation(CStateManager& mgr, CSegId seg, bool aim, float dt) {
