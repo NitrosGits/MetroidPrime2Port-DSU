@@ -336,6 +336,9 @@ private:
   CRandom16 mRandom;      // 0x18C
   float mUnknown190;      // 0x190
   float mUnknown194;      // 0x194
+  // Port: retail's PreRender runs once per 1/60 s tick; uncapped rendering runs it more often, so
+  // the count and the two colour rolls advance only after a Think (the depth copy still runs).
+  bool mPortTicked = true;
   bool mOpening;          // 0x198
 
   // Port: the depth read-back that stands in for reading the GXCopyTex result (see above).
@@ -436,6 +439,7 @@ CSplitterBeamEffect::~CSplitterBeamEffect() {
 // @ fn_75_10DC4
 void CSplitterBeamEffect::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
+  mPortTicked = true;
   if (!GetActive()) {
     return;
   }
@@ -468,7 +472,11 @@ void CSplitterBeamEffect::Think(float dt, CStateManager& mgr) {
 // (gkPVSEnabled is const 1).
 // @ fn_75_10F1C
 void CSplitterBeamEffect::PreRender(CStateManager& mgr) {
-  ++mUnknown184; // 0x10F4C-0x10F58
+  const bool portAdvance = mPortTicked;
+  mPortTicked = false;
+  if (portAdvance) {
+    ++mUnknown184; // 0x10F4C-0x10F58
+  }
 
   // 0x10F5C-0x10FF4: the projection state, view matrix, viewport and depth range are saved.
   const CGraphics::CProjectionState savedProjection = CGraphics::GetProjectionState();
@@ -583,8 +591,10 @@ void CSplitterBeamEffect::PreRender(CStateManager& mgr) {
                         savedViewport.mHeight);
 
   SetPreRenderClipped(!mgr.IsActorVisible(*this)); // 0x115FC-0x1161C
-  mUnknown190 = mRandom.Float();                   // 0x11618-0x11624
-  mUnknown194 = mRandom.Float();                   // 0x11628-0x11634
+  if (portAdvance) {
+    mUnknown190 = mRandom.Float(); // 0x11618-0x11624
+    mUnknown194 = mRandom.Float(); // 0x11628-0x11634
+  }
 }
 
 // fn_75_10EF0 (AddToRenderer, 0x10EF0-0x10F1C): unless the actor is out of the frustum (0x150's
