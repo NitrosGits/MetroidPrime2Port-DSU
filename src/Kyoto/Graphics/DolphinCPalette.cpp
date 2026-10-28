@@ -19,6 +19,11 @@ CGraphicsPalette::CGraphicsPalette(EPaletteFormat format, int numEntries)
 , mEntries(static_cast< ushort* >(
       CMemory::Alloc(numEntries * sizeof(ushort), IAllocator::kHI_RoundUpLen)))
 , mLocked(false) {
+#ifdef TARGET_PC
+  // Retail leaves mFrameLoaded uninitialised; "never loaded" (>= 2 frames ago) lets the destructor
+  // free the entries at once instead of reading garbage.
+  mFrameLoaded = sCurrentFrameCount - 2;
+#endif
   GXInitTlutObj(&mTlutObj, mEntries.get(), format_to_format(mFmt), mEntryCount);
 }
 
@@ -28,6 +33,9 @@ CGraphicsPalette::CGraphicsPalette(CInputStream& in)
 , mEntries(static_cast< ushort* >(
       CMemory::Alloc(mEntryCount * sizeof(ushort), IAllocator::kHI_RoundUpLen)))
 , mLocked(false) {
+#ifdef TARGET_PC
+  mFrameLoaded = sCurrentFrameCount - 2; // see the first constructor
+#endif
   in.Get(reinterpret_cast< uchar* >(mEntries.get()), mEntryCount * sizeof(ushort));
   GXInitTlutObj(&mTlutObj, mEntries.get(), format_to_format(mFmt), mEntryCount);
   DCFlushRange(mEntries.get(), mEntryCount * sizeof(ushort));
