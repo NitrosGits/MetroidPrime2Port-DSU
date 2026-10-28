@@ -382,14 +382,12 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
         mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea;
     mPathFindSearch.SetArea(mPathArea);
     mPointPathFindSearch = CPathFindPointSearch(mPathArea);
-    JoinTeam(mgr);
     break;
   case kSM_Alert:
     // 0x0000E2F4: ALRT sets CPatterned 0x420 bit 7; mAlert (0x11ED 0x08) is Lurk's (0x0000A12C).
     SetHitByPlayerProjectile(true);
     break;
   case kSM_Activate:
-    JoinTeam(mgr);
     // 0x0000E134: only when it was inactive; each manager is on for its own form.
     if (!wasActive) {
       mCollisionActorManager0->SetActive(mgr, mForm == kForm_Corporeal); // 0x0000E150
