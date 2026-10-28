@@ -487,6 +487,8 @@ public:
   bool PortEmptyLockKeepsPitch() const;
   // Lock-on free aim: a combat lock a pointer moves under (MP1's PortLockFreeAim).
   bool PortLockFreeAim(const CStateManager& mgr) const;
+  // The port's free-aim crosshair is forced open (not over Trilogy's own cursor).
+  bool PortAimCrosshairsOpen() const;
   bool PortDirectAimControls() const;
   void UpdateMouseAim(CStateManager& mgr, float dt);
   // The right stick, cached from ProcessInput for UpdateMouseAim (twin-stick aim).

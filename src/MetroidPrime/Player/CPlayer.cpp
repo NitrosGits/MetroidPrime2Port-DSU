@@ -101,6 +101,7 @@
 #include <string.h>
 
 #ifdef TARGET_PC
+#include "port_entry.h"
 #include "port_mouse.h"
 #include "port_radial.h"
 #include "MetroidPrime/PortScanTarget.hpp"
@@ -1499,7 +1500,7 @@ void CPlayer::UpdateCrosshairsState(const CFinalInput& input) {
   // the touch drag own the view instead - so the reticle would stay faded out for the whole game
   // (on the phone it is the only way to play). PortMouse::Aiming is true on exactly the ticks the
   // port turned the body to the aim, so a lock-on, the morph ball or a cinematic still hide it.
-  if (PortMouse::Aiming() && PortOverlay::AimCrosshair()) {
+  if (PortAimCrosshairsOpen()) {
     mDrawCrosshairs = true;
   }
 #endif
@@ -2931,6 +2932,17 @@ bool CPlayer::MouseAimAllowed(const CStateManager& mgr) const {
 
 bool CPlayer::PortEmptyLockKeepsPitch() const {
   return PortDirectAimControls() && mOrbitState == kOS_OrbitPoint;
+}
+
+// The port's free-aim crosshair (mouse, twin-stick or touch aim, MP1's PortAimCrosshairsOpen).
+// On a Trilogy disc the reticle this opens is drawn beside Trilogy's own aiming cursor, which
+// already marks the aim: two crosshairs (MP1 #219). There only the crosshair input opens it, as
+// on the Wii.
+bool CPlayer::PortAimCrosshairsOpen() const {
+  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    return false;
+  }
+  return PortMouse::Aiming() && PortOverlay::AimCrosshair();
 }
 
 bool CPlayer::PortLockFreeAim(const CStateManager& mgr) const {
