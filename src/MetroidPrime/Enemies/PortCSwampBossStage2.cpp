@@ -1857,7 +1857,8 @@ void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
             player->DisableControls(mgr, 0xe2, GetUniqueId(), 1.f, CGameHint::kBHT_None);
           }
           // Retail tests the pending flag again here, so the push is always the blow push.
-          const float push = mBlowWindowOpen ? mData.blowPush : mData.breakStunDamage;
+          // fn_79_7E24 0x80B0 (0x9AC) / 0x80B8 (0x9A8)
+          const float push = mBlowWindowOpen ? mData.blowPush : mData.blowTelegraphPush;
           player->ApplyImpulseWR(forward * (push * player->GetMass()), CAxisAngle::Identity());
         }
         if (mBlowing) {
