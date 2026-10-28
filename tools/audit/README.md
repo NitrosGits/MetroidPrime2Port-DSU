@@ -10,3 +10,6 @@ usage in its header.
 | 2 | `frame_rate.py` | per-frame state (counters, cooldowns) on render/frame-begin paths |
 | 3 | `host_safety.py` | ctor init gaps, LP64 casts, raw disc reads, `new(retail size)`, data-fed divisors and indices |
 | 5b | `upstream_units.py` | NonMatching/unlinked units and NONMATCHING/TODO/guessed functions, ranked for review |
+
+- `disc_scan.py {poi|chog|splinter}`: confirms/clears A3-2..4 against disc data (run with `python3 -I`).
+- `host_safety.py --cat 6`: narrowed to indexes whose value comes from a disc/script/stream read with no bound check.
