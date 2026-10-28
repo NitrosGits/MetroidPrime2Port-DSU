@@ -503,6 +503,20 @@ void PortTriDrawModel(const TCachedToken< CModel >& token, const CTransform4f& x
     model->Draw(CModelFlags(CModelFlags::kT_Blend, 0, static_cast< CModelFlags::EFlags >(0), color));
   }
 }
+
+// The port's crosshair settings on Trilogy's aiming cursor, as on GC's: a custom colour replaces
+// theirs, opacity scales their alpha (100%, the default, is retail) and size scales them under
+// direct aim (MP1's PortTriXhairColor/Alpha/Size).
+CColor PortTriXhairColor(const CColor& color) {
+  float rgb[3];
+  return PortOverlay::CrosshairColor(rgb) ? CColor(rgb[0], rgb[1], rgb[2], color.GetAlpha()) : color;
+}
+float PortTriXhairAlpha(float alpha) {
+  return alpha * static_cast< float >(PortOverlay::CrosshairOpacity()) / 100.f;
+}
+float PortTriXhairSize() {
+  return PortMouse::Aiming() ? static_cast< float >(PortOverlay::CrosshairSize()) / 100.f : 1.f;
+}
 } // namespace
 
 // The point on the 1.25-depth plane in front of the camera along the ray to `world`
@@ -713,22 +727,26 @@ void CCompoundTargetReticle::PortTriDrawLocked(const CMatrix3f& rotation) const 
 
 void CCompoundTargetReticle::PortTriDrawAiming(const CMatrix3f& rotation,
                                                const CStateManager& mgr) const {
-  if (mNoDrawTicks > 0 || mPortTriAimArmAlpha <= 0.f) {
+  // The Remastered style replaces the cursor (DrawCrosshairs draws it).
+  if (mNoDrawTicks > 0 || mPortTriAimArmAlpha <= 0.f ||
+      PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_Remastered) {
     return;
   }
   const CCameraManager* camMgr = mgr.GetCameraManager(mPlayerIndex);
   const CTransform4f cam = camMgr->GetCurrentCameraTransform(mgr, true);
   const CVector3f dir = PortTriPointerDir(cam, *camMgr->GetCurrentCamera(mgr, true));
   const CVector3f pos = cam.GetTranslation() + dir * (1.25f / CVector3f::Dot(dir, cam.GetForward()));
-  const CTransform4f base(rotation, pos);
+  const CTransform4f base = CTransform4f(rotation, pos) * CTransform4f::Scale(PortTriXhairSize());
   PortTriDrawModel(mPortTriAimCenter, base * CTransform4f::Scale(.45f * mPortTriAimCenterScale),
-                   mPortTriAimCenterColor, mPortTriAimCenterAlpha);
+                   PortTriXhairColor(mPortTriAimCenterColor),
+                   PortTriXhairAlpha(mPortTriAimCenterAlpha));
   for (int i = 0; i < 3; ++i) {
     PortTriDrawModel(mPortTriAimArm,
                      base * CTransform4f::RotateY(CRelAngle::FromDegrees(i * 120.f)) *
                          CTransform4f::Scale(.45f) * CTransform4f::Translate(0.f, 0.f, .25f) *
                          CTransform4f::Scale(1.f, 1.f, mPortTriAimArmScale),
-                     mPortTriAimArmColor, mPortTriAimArmAlpha);
+                     PortTriXhairColor(mPortTriAimArmColor),
+                     PortTriXhairAlpha(mPortTriAimArmAlpha));
   }
 }
 
@@ -1971,8 +1989,10 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
   // `remastered` replaces the game's reticle model with the cursor drawn procedurally below, and
   // that path runs before the model is looked up because this port's classic model never loads
   // (`mCrosshairs.GetObject()` is null), so the classic style draws nothing here.
-  // While Trilogy's own aiming cursor is up (PortTriDrawAiming), it is the crosshair.
-  if (mPortTri && mPortTriAimArmAlpha > 0.f) {
+  // While Trilogy's own aiming cursor is up (PortTriDrawAiming), it is the crosshair, unless the
+  // Remastered style replaces it.
+  if (mPortTri && mPortTriAimArmAlpha > 0.f &&
+      PortOverlay::CrosshairStyle() != PortOverlay::kCrosshairStyle_Remastered) {
     return;
   }
   float scale = mCrosshairsDrawScale;

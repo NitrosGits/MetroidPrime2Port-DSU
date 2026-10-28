@@ -212,6 +212,10 @@ Video > Display:
 - `crosshair_style`, `crosshair_opacity`: HUD and view > Crosshair style, Crosshair opacity.
 - `crosshair_color`, `crosshair_custom_color`: HUD and view > Custom crosshair colour (off: the
   game's own), which shows the colour picker; env `MP2_CROSSHAIR_COLOR`.
+- On Trilogy discs these crosshair settings act on Trilogy's own aiming cursor (centre and arms):
+  a custom colour replaces their colour, opacity scales their alpha (the default 100% leaves them
+  as on the Wii), the size slider scales them under mouse/pointer aim, and `remastered` draws the
+  Remastered cursor where the aiming cursor is (MP1 2ee5a757c).
 - `no_helmet`, `no_visor_fx`: HUD and view > Hide helmet, Hide visor effects; env
   `MP2_NO_HELMET`, `MP2_NO_VISOR_FX`.
 - `cinema_bars` (default on, env `MP2_CINEMA_BARS`): HUD and view > Cutscene black bars; off drops
