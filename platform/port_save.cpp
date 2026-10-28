@@ -34,6 +34,9 @@
 #endif
 #include <windows.h>
 #include <shlobj.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 namespace PortSave {
@@ -100,7 +103,49 @@ bool ReadAll(const std::string& path, std::vector<uint8_t>& out, std::string& er
   return true;
 }
 
-// Written beside the target and renamed over it, so a failed write leaves no half file.
+// Pushes a closed file's bytes to the disk, so a rename of it cannot land before its data does.
+bool SyncFile(const std::filesystem::path& file) {
+#if defined(_WIN32)
+  HANDLE handle = CreateFileW(file.c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                              nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if (handle == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+  const bool ok = FlushFileBuffers(handle) != 0;
+  CloseHandle(handle);
+  return ok;
+#else
+  const int fd = open(file.c_str(), O_RDONLY);
+  if (fd < 0) {
+    return false;
+  }
+  const bool ok = fsync(fd) == 0;
+  close(fd);
+  return ok;
+#endif
+}
+
+// Pushes the rename itself to the disk. Best effort: some file systems cannot sync a directory,
+// and the rename has happened either way.
+void SyncDirectory(const std::filesystem::path& file) {
+#if !defined(_WIN32)
+  std::filesystem::path dir = file.parent_path();
+  if (dir.empty()) {
+    dir = ".";
+  }
+  const int fd = open(dir.c_str(), O_RDONLY);
+  if (fd >= 0) {
+    fsync(fd);
+    close(fd);
+  }
+#else
+  (void)file; // the rename below is MOVEFILE_WRITE_THROUGH
+#endif
+}
+
+// Written beside the target and renamed over it, so a failed write leaves no half file. The data is
+// synced before the rename and the directory after, so a power loss leaves the old file or the new
+// one, not an empty one.
 bool WriteAll(const std::string& path, const std::vector<uint8_t>& bytes, std::string& error) {
   const std::string temp = path + ".tmp";
   {
@@ -121,13 +166,30 @@ bool WriteAll(const std::string& path, const std::vector<uint8_t>& bytes, std::s
       return false;
     }
   }
+  if (!SyncFile(PortUtf8::FromUtf8(temp))) {
+    std::error_code ignored;
+    std::filesystem::remove(temp, ignored);
+    error = "cannot flush " + path + " to disk";
+    return false;
+  }
   std::error_code ec;
+#if defined(_WIN32)
+  // std::filesystem::rename is MoveFileExW(REPLACE_EXISTING); add write-through.
+  if (!MoveFileExW(PortUtf8::FromUtf8(temp).c_str(), PortUtf8::FromUtf8(path).c_str(),
+                   MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+    std::filesystem::remove(PortUtf8::FromUtf8(temp), ec);
+    error = "cannot write " + path;
+    return false;
+  }
+#else
   std::filesystem::rename(temp, path, ec);
   if (ec) {
     std::filesystem::remove(temp, ec);
     error = "cannot write " + path;
     return false;
   }
+  SyncDirectory(PortUtf8::FromUtf8(path));
+#endif
   return true;
 }
 
