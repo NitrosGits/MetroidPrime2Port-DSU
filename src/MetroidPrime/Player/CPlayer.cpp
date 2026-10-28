@@ -3315,7 +3315,12 @@ void CPlayer::Render(const CStateManager& mgr) const {
       doRender = mMorphBallState == kMS_Morphed && (camera->GetFlags() & 0x40);
     }
   }
-  if ((mCameraState == kCS_FirstPerson || !doRender) &&
+  // Port: the free and photo cameras show the body the first-person view leaves out (MP1 773191a7a).
+  if ((mCameraState == kCS_FirstPerson
+#ifdef TARGET_PC
+           && !PortFreeCam::ShowPlayer()
+#endif
+       || !doRender) &&
       !mCameraManager->ShouldBypassInterpolationCamera()) {
     return;
   }

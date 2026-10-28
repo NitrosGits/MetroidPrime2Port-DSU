@@ -1028,6 +1028,29 @@ void CmdMpForce(CStateManager&, const Args& args, std::string& out) {
 }
 
 void CmdFreeCam(CStateManager& mgr, const Args& args, std::string& out) {
+  // freecam player 0|1 | pos <x> <y> <z> | look <yaw> <pitch>: Samus's body and the pose (as MP1).
+  if (args.size() >= 3 && args[1] == "player") {
+    PortFreeCam::SetShowPlayer(ArgToInt(args[2], 1) != 0);
+    out += PortFreeCam::ShowPlayer() ? "player shown\n" : "player hidden\n";
+    return;
+  }
+  if (args.size() >= 5 && args[1] == "pos") {
+    PortFreeCam::Pose pose = PortFreeCam::GetPose();
+    pose.x = static_cast< float >(std::atof(std::string(args[2]).c_str()));
+    pose.y = static_cast< float >(std::atof(std::string(args[3]).c_str()));
+    pose.z = static_cast< float >(std::atof(std::string(args[4]).c_str()));
+    PortFreeCam::SetPose(pose);
+    out += "pose set\n";
+    return;
+  }
+  if (args.size() >= 4 && args[1] == "look") {
+    PortFreeCam::Pose pose = PortFreeCam::GetPose();
+    pose.yaw = static_cast< float >(std::atof(std::string(args[2]).c_str()));
+    pose.pitch = static_cast< float >(std::atof(std::string(args[3]).c_str()));
+    PortFreeCam::SetPose(pose);
+    out += "pose set\n";
+    return;
+  }
   const bool enabled = args.size() < 2 ? !PortFreeCam::Active() : ArgToInt(args[1], 1) != 0;
   PortFreeCam::SetActive(enabled, &mgr);
   out += enabled ? "free camera on\n" : "free camera off\n";
@@ -1039,13 +1062,19 @@ void CmdFreeCam(CStateManager& mgr, const Args& args, std::string& out) {
 // later; its result is logged as `[photo] ...`.
 void CmdPhoto(CStateManager& mgr, const Args& args, std::string& out) {
   const std::string arg = args.size() < 2 ? std::string() : std::string(args[1]);
-  if (!arg.empty() && arg != "on" && arg != "off" && arg != "1" && arg != "2" && arg != "4") {
-    out += "usage: photo [on|off|1|2|4]\n";
+  if (!arg.empty() && arg != "on" && arg != "off" && arg != "1" && arg != "2" && arg != "4" &&
+      arg != "samus") {
+    out += "usage: photo [on|off|1|2|4|samus 0|1]\n";
     return;
   }
   if (arg == "off") {
     PortPhoto::Exit();
     out += "photo mode off\n";
+    return;
+  }
+  if (args.size() >= 3 && args[1] == "samus") {
+    PortPhoto::SetShowSamus(ArgToInt(args[2], 1) != 0);
+    out += PortPhoto::ShowSamus() ? "samus shown\n" : "samus hidden\n";
     return;
   }
   if (!PortPhoto::Active()) {
