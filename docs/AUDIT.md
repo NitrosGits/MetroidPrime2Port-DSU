@@ -48,6 +48,8 @@ Scripts: `tools/audit/` (see its README).
 | A1-18 | AutoMapper | src/MetroidPrime/CAutoMapper.cpp:1892 | asset-name | visual | `GetString("Teleport_Destination")`; retail main.dol has `Teleport Destination` (space) next to `AutoMapperPaneMode`; no underscore form in retail. Miss gives skInvalidString in the teleporter pane. Upstream typo | confirmed |
 | A1-26 | RadialHud | src/MetroidPrime/HUD/PortRadialHud.cpp:72 | asset-name | minor | FindWidget(`model_inner_ring`): not in DOL (widget names live in the FRME); needs a check against the Trilogy FRME | open (unverified) |
 | A5b-3 | Splinter | src/MetroidPrime/Enemies/CSplinter.cpp:2169 | upstream | minor | CanSeePlayer Range upper bound 0.08f (0x3DA3D70A); retail rodata_F0 = 0x3DA3D70B (fn_74_8E64 0x8F34 lfs), one ULP off | confirmed (no visible effect) |
+| A5-1 | SpacePirate | src/MetroidPrime/Enemies/PortCSpacePirate.cpp:1378-1380 | logic | minor | kSM_Escape (`ESCP`) in AcceptScriptMsg (fn_72_E498:149-154): retail returns while inactive (`-1 < *(char*)(this+0x20)`) before fn_72_51C8 TrooperWarpOut; port calls TrooperWarpOut unconditionally | confirmed |
+| A5-2 | SpacePirate | src/MetroidPrime/Enemies/PortCSpacePirate.cpp:1571-1573 | logic | gameplay | KnockBack (fn_72_C684:17-18): retail also requires mAttachedActor (+0xA84) == kInvalidUniqueId; port omits it, so an attached pirate takes knockback | confirmed |
 
 ## Sweep log
 
@@ -61,3 +63,4 @@ Scripts: `tools/audit/` (see its README).
 | 1 asset names | audit-asset-names.md | eb2c98828 | 2026-10-28 | 667 lookups: 631 hit, 41 miss (all retail strings), 346 unchecked (runtime names, unplaced modules); sound/particle-resource lookups not scanned |
 | 1 follow-up | audit-asset-names.md (Follow-up) | e4ac24546 | 2026-10-28 | `asset_names.py --rel`: every literal vs its module's retail REL/main.dol strings: 4946 checked, 3854 retail, 1066 port-only (34 Trilogy), 26 triaged → A1-18, A1-26; FRME widget and STRG names not covered |
 | 5b phase 3 | audit-upstream-units.md (Phase 3) | eb2c98828 | 2026-10-28 | 15 tier-(b) defs in matching units (none skip retail behaviour) + REL EmperorIngStage2Tentacle, SwarmBasics, FlyerSwarm, MysteryFlyer, DarkCommando, Splinter: A5b-3 minor. Plan-order bosses are Port*.cpp (Review 5). link_rel.sh works with its default MP2_ARCHIVE (archive/decomp build); it fails only when pointed at upstream's build/G2ME01/main.elf (lane set MP2_ARCHIVE=$PWD) |
+| 5 SpacePirate (1) | audit-r5-spacepirate.md | b25d99ba4 | 2026-10-28 | triggers, Think, AcceptScriptMsg, attack/weapon, Death, KnockBack, Touch, DoUserAnimEvent vs pseudo-C → A5-1, A5-2; states, CheckForProjectiles, Listen, ctor/loader, Render, remaining triggers next |
