@@ -85,6 +85,12 @@ constexpr PromptKey kKeys[] = {
     {PAD_BUTTON_X, 32, 32, 0x4fc1d5a59b4da757ull, "5"},       // Trilogy gray X
     {PAD_TRIGGER_Z, 64, 32, 0x72cef9d70719af16ull, "5"},      // Trilogy blue Z bar
     {PAD_TRIGGER_Z, 32, 32, 0x86475f276fb14e06ull, "5"},  // Trilogy "1" (RS5 override of 3AA65ECD), the map hint
+    // The Data Network (logbook) node buttons: A selects, B goes back (R3ME01; 64x64 and 32x32).
+    {PAD_BUTTON_A, 64, 64, 0xfefe12c9bdfa636eull, "5"},       // logbook A node
+    {PAD_BUTTON_B, 32, 32, 0x47f0b125bc328818ull, "5"},       // logbook B node
+    // The HUD memo box's dismiss button (Echoes' own art on G2ME01 and Trilogy): A.
+    {PAD_BUTTON_A, 32, 32, 0xfd38631c4cfd1732ull, "14"},      // memo box A, lit
+    {PAD_BUTTON_A, 32, 32, 0x00901119431a3e6aull, "14"},      // memo box A, the dark ring variant
     // The control stick. The map screen draws the frame for the way the stick
     // is pushed; the diagonals take the stick's own icon.
     {PROMPT_STICK, 64, 32, 0x2d26352b420db007ull, "5"},        // LStickN
