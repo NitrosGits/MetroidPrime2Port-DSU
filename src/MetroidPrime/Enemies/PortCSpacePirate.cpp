@@ -1572,7 +1572,8 @@ void CSpacePirate::Death(CStateManager& mgr, const CVector3f& direction,
 // Retail fn_72_C684.
 // @ fn_72_C684
 void CSpacePirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
-  if ((x8f4_25_ceilingAmbush && mAlive) || xb30_ragDoll.get() != nullptr) {
+  if ((x8f4_25_ceilingAmbush && mAlive) || xb30_ragDoll.get() != nullptr ||
+      mAttachedActor != kInvalidUniqueId) { // fn_72_C684:17-18
     return;
   }
   mKnockBackController.EnableKnockBackPhysics(!x8f4_31_noKnockbackImpulseReset);
