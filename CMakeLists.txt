@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.25)
 project(metroid_prime2_port LANGUAGES C CXX)
+if(IOS)
+    enable_language(OBJCXX)  # platform/port_ios.mm (disc picker, Documents folder)
+endif()
 
 # Native-PC port scaffold for Metroid Prime 2: Echoes (`G2ME01`), a fork of the
 # PrimeDecomp/echoes matching decompilation, built the same way as the Metroid
@@ -434,6 +437,20 @@ target_include_directories(mp_platform PRIVATE
 target_compile_definitions(mp_platform PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC
     MUSY_VERSION_MAJOR=2 MUSY_VERSION_MINOR=0 MUSY_VERSION_PATCH=3)
 
+# Touch controls: Android draws them in Java (TouchControlsView); iOS draws them in C++
+# (platform/debug_ui/touch_overlay.cpp). The desktop switch builds that overlay on a host build so
+# it can be tried without a device; the console's `finger` command sends the touches.
+option(MP_TOUCH_OVERLAY_DESKTOP "Draw the touch controls on a desktop build (testing)" OFF)
+if(ANDROID OR IOS)
+    target_compile_definitions(mp_platform PRIVATE PORT_TOUCH_CONTROLS)
+endif()
+if(IOS)
+    target_compile_definitions(mp_platform PRIVATE PORT_TOUCH_OVERLAY)
+endif()
+if(MP_TOUCH_OVERLAY_DESKTOP AND NOT ANDROID)
+    target_compile_definitions(mp_platform PRIVATE PORT_TOUCH_CONTROLS PORT_TOUCH_OVERLAY)
+endif()
+
 # The gcov flush hook of a coverage build: a run must leave its .gcda behind however it ends (a
 # clean quit, the harness's SIGTERM, a Ctrl-C). It is compiled only into a coverage build, so
 # the normal build does not even see the file. See platform/port_coverage.cpp.
@@ -622,7 +639,7 @@ if(AURORA_SDL3_TARGET)
         platform/debug_ui/game_sections.cpp platform/debug_ui/mods.cpp platform/debug_ui/performance.cpp platform/debug_ui/randomizer.cpp
         platform/debug_ui/savestates.cpp platform/debug_ui/search.cpp platform/debug_ui/settings.cpp
         platform/debug_ui/photo.cpp platform/debug_ui/tabs.cpp platform/debug_ui/ui_common.cpp platform/debug_ui/video.cpp
-        platform/debug_ui/window.cpp
+        platform/debug_ui/window.cpp platform/debug_ui/touch_overlay.cpp
         platform/port_touch.cpp platform/port_touch_jni.cpp platform/touch_pad.cpp
         platform/input/port_input_remap_ui.cpp
         platform/input/port_input_devices.cpp
@@ -644,6 +661,13 @@ if(AURORA_SDL3_TARGET)
     if(MP_PORT_COVERAGE)
         # port_console.cpp's `covdump` (platform/port_coverage.cpp).
         target_compile_definitions(mp_port_audio PRIVATE MP_PORT_COVERAGE=1)
+    endif()
+    # The F1 overlay and the touch overlay (platform/debug_ui) are built here, not in mp_platform.
+    if(ANDROID OR IOS OR MP_TOUCH_OVERLAY_DESKTOP)
+        target_compile_definitions(mp_port_audio PRIVATE PORT_TOUCH_CONTROLS)
+    endif()
+    if(IOS OR (MP_TOUCH_OVERLAY_DESKTOP AND NOT ANDROID))
+        target_compile_definitions(mp_port_audio PRIVATE PORT_TOUCH_OVERLAY)
     endif()
     mp_signed_char(mp_port_audio)
     mp_websocket_tls(mp_port_audio)
@@ -863,6 +887,25 @@ endif()
 mp_scope_modules(mp_game mp_platform mp_port_entry mp_port_audio)
 if(ANDROID)
     add_library(metroid_prime2_port SHARED)
+elseif(IOS)
+    # A flat .app: the executable, Info.plist and the textures folder in one directory.
+    # tools/ios_package.sh adds the icons, licences and signature (docs/IOS.md).
+    file(STRINGS android/app/build.gradle _mp_version_line REGEX "versionName \"[^\"]+\"" LIMIT_COUNT 1)
+    string(REGEX REPLACE ".*versionName \"([^\"]+)\".*" "\\1" MP_APP_VERSION "${_mp_version_line}")
+    add_executable(metroid_prime2_port MACOSX_BUNDLE platform/port_ios.mm)
+    set_source_files_properties(platform/port_ios.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    target_include_directories(metroid_prime2_port PRIVATE platform/include
+        $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)
+    target_link_libraries(metroid_prime2_port PRIVATE
+        ${AURORA_SDL3_TARGET} "-framework UIKit" "-framework UniformTypeIdentifiers")
+    set_target_properties(metroid_prime2_port PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/packaging/ios/Info.plist.in"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "io.github.odrannnn.metroidprime2port"
+        MACOSX_BUNDLE_BUNDLE_NAME "Metroid Prime 2 Port"
+        MACOSX_BUNDLE_EXECUTABLE_NAME "metroid_prime2_port"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${MP_APP_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${MP_APP_VERSION}"
+        MACOSX_BUNDLE_LONG_VERSION_STRING "${MP_APP_VERSION}")
 else()
     add_executable(metroid_prime2_port)
 endif()
@@ -974,7 +1017,7 @@ endif()
 
 # Install rules (desktop only): the executable, and for Linux menus and software centres the desktop
 # entry (Categories=Game), its icon under the app id, and the AppStream metainfo (category Game).
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT IOS)
     include(GNUInstallDirs)
     install(TARGETS metroid_prime2_port RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/textures DESTINATION ${CMAKE_INSTALL_BINDIR})

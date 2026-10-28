@@ -1,6 +1,7 @@
 // F1 overlay: Pages and sub-tabs, and the settings search (index, jumps, results). State and
 // helpers shared with the other parts are in debug_ui_internal.h.
 
+#include "port_mobile.h"
 #include "debug_ui_internal.h"
 
 #include "port_env.h"
@@ -348,7 +349,7 @@ void DrawSearchField() {
   if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_F)) {
     ImGui::SetKeyboardFocusHere();
   }
-#if defined(__ANDROID__)
+#if defined(PORT_MOBILE)
   const char* const kHint = "Search settings";
 #else
   const char* const kHint = "Search settings (Ctrl+F)";

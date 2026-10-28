@@ -4,6 +4,7 @@
 // MP1's "Export as" Wii Trilogy (save.bin) choice and the Trilogy mirror; MP1's raw-image Dolphin
 // cards have no counterpart here. The file dialogs answer on another thread, so a pick waits in
 // sPicks until the next frame.
+#include "port_mobile.h"
 #include "debug_ui_internal.h"
 
 #include "port_data_folder.h"
@@ -135,7 +136,7 @@ void PathRow(const char* label, const std::string& path) {
 // emulators, and sharing its card. Sharing mounts <folder>/GC as the card base at launch
 // (CMemoryCardSys::Initialize), so it takes effect on the next start.
 void DrawEmulatorCard() {
-#if !defined(__ANDROID__)
+#if !defined(PORT_MOBILE)
   const bool inGame = sWorldId != 0;
   const std::string chosen = PortSave::EmulatorFolder();
   std::string found = "none found";

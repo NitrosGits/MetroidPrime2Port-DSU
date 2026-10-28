@@ -2,6 +2,7 @@
 // is drawn by game_sections.cpp. State and helpers shared with the other parts are in
 // debug_ui_internal.h.
 
+#include "port_mobile.h"
 #include "debug_ui_internal.h"
 
 #include "port_mods.h"
@@ -44,7 +45,7 @@ void DrawMods() {
   ImGui::EndDisabled();
   ImGui::SetItemTooltip("Reads the mods folder again and rebuilds the room, so replaced models,\n"
                         "textures and sounds show without a restart. Needs a running game.");
-#if !defined(__ANDROID__)
+#if !defined(PORT_MOBILE)
   ImGui::SameLine();
   if (ImGui::Button("Open mods folder") && !status.folder.empty()) {
     const std::string url = "file://" + status.folder;

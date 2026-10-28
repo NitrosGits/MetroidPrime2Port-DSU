@@ -2,6 +2,7 @@
 // health, teleport and the room's layers. State and helpers shared with the other parts are in
 // debug_ui_internal.h.
 
+#include "port_mobile.h"
 #include "debug_ui_internal.h"
 
 #include "port_collision_view.h"
@@ -321,7 +322,7 @@ void DrawCheatsSection() {
       const bool here = currentValid && isDark(current) == dark;
       if (ImGui::BeginCombo(id, here ? roomLabel(current).c_str() : "(pick a room)",
                             ImGuiComboFlags_HeightLarge)) {
-#if !defined(__ANDROID__) // it would raise the on-screen keyboard every time
+#if !defined(PORT_MOBILE) // it would raise the on-screen keyboard every time
         if (ImGui::IsWindowAppearing()) {
           ImGui::SetKeyboardFocusHere();
         }

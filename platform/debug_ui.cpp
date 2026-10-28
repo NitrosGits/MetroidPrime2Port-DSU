@@ -3,6 +3,7 @@
 // to build the windows between aurora_begin_frame and aurora_end_frame.
 
 #include "port_debug.h"
+#include "debug_ui/debug_ui_internal.h"
 #include "port_prompts.h"
 #include "port_mouse.h"
 #include "port_textures.h"

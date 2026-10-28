@@ -2,6 +2,7 @@
 // (ItemHelp) and the menu sounds. The Prime 1 port's debug_ui/ui_common.cpp, with its Prime and
 // Plain themes (no Remastered) and its menu sounds, without its GPU self-test. State and helpers
 // shared with the other parts are in debug_ui_internal.h.
+#include "port_mobile.h"
 #include "debug_ui_internal.h"
 
 #include "port_env.h"
@@ -223,7 +224,7 @@ void UpdateUiScale(float userScale) {
   if (!(displayScale > 0.f)) {
     displayScale = 1.f;
   }
-#if defined(__ANDROID__)
+#if defined(PORT_MOBILE)
   // 3 made the nine page rows taller than the list and Bindings sat below the fold; 2 keeps the
   // page list on screen and still thumb-sized.
   displayScale = std::min(displayScale, 2.f);
@@ -258,7 +259,7 @@ void ApplyThemeIfChanged() {
 // The overlay is a full-screen panel with a page list instead of tabs. The desktop can go back to
 // the old floating tabbed window (`overlay_windowed`); MP_TOUCH_UI forces the page layout.
 bool PageLayout() {
-#if defined(__ANDROID__)
+#if defined(PORT_MOBILE)
   return true;
 #else
   static const bool sForced = port::EnvFlag("MP_TOUCH_UI");
@@ -270,6 +271,9 @@ void UpdateControllerNav() {
   if (ImGui::GetCurrentContext() == nullptr) {
     return;
   }
+#if defined(PORT_TOUCH_OVERLAY)
+  InstallTouchOverlay(); // idempotent; the SDL event filter that feeds the touch controls
+#endif
   ImGuiIO& io = ImGui::GetIO();
   io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;

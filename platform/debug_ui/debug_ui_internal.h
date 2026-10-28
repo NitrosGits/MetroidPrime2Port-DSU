@@ -7,6 +7,7 @@
 // page or section in its own file inside namespace PortDebug.
 #pragma once
 
+#include "port_mobile.h"
 #include "../port_overlay_internal.h"
 
 #include <imgui.h>
@@ -122,12 +123,17 @@ void UpdateUiScale(float userScale);
 void ApplyThemeIfChanged();
 // Gamepad navigation from pad 0; the only writer of ImGui's gamepad keys. Every frame.
 void UpdateControllerNav();
+#if defined(PORT_TOUCH_OVERLAY)
+// touch_overlay.cpp: the SDL event filter that feeds it, and its draw
+void InstallTouchOverlay();
+void DrawTouchOverlay();
+#endif
 ImVec4 ThemeWarnColor(const ImVec4& plain = ImVec4(1.f, 0.8f, 0.3f, 1.f));
 ImVec4 ThemeGoodColor(const ImVec4& plain = ImVec4(0.4f, 1.f, 0.4f, 1.f));
 ImVec4 ThemeBadColor(const ImVec4& plain = ImVec4(1.f, 0.5f, 0.3f, 1.f));
 // What a setting does. A tooltip on the desktop; a tap shows none, so Android
 // prints it, dimmed, under the setting instead.
-#if defined(__ANDROID__)
+#if defined(PORT_MOBILE)
 inline constexpr bool kInlineHelp = true;
 #else
 inline constexpr bool kInlineHelp = false;

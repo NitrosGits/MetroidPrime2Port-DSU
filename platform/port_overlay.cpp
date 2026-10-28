@@ -5,6 +5,7 @@
 //
 // Built by `mp_port_audio` (it needs ImGui, which Aurora brings in with SDL).
 
+#include "port_mobile.h"
 #include "port_overlay.h"
 #include "port_discord.h"
 
@@ -149,7 +150,7 @@ int sUiScale = 100;
 bool sVsync = false;
 // Fullscreen (`MP2_FULLSCREEN`): Android hides the status and navigation bars by default, a desktop
 // starts windowed (MP1's sFullscreen).
-#if defined(__ANDROID__)
+#if defined(PORT_MOBILE)
 bool sFullscreen = true;
 #else
 bool sFullscreen = false;
@@ -182,7 +183,7 @@ bool sHudWide = true;
 int sHudSpreadMax = 1;
 // Scan panel spread in percent (`MP2_SCAN_SPREAD`): the touch controls cover the screen edges on
 // Android, so a phone starts them at their 4:3 place.
-#if defined(__ANDROID__)
+#if defined(PORT_MOBILE)
 int sScanSpread = PortOverlay::kScanSpreadMin;
 #else
 int sScanSpread = PortOverlay::kScanSpreadMax;

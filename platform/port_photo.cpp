@@ -1,4 +1,5 @@
 // Photo mode (F8, F1 > Game, console `photo`); see port_photo.h.
+#include "port_mobile.h"
 #include "port_photo.h"
 
 #include "port_freecam.h"
@@ -502,14 +503,14 @@ void SetPanelShown(bool shown) {
 }
 // Held right mouse button: the mouse looks around even with the panel up.
 static bool RightMouseHeld() {
-#ifdef __ANDROID__
+#if defined(PORT_MOBILE)
   return false;
 #else
   return (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_RMASK) != 0;
 #endif
 }
 bool MouseLook() {
-#ifdef __ANDROID__
+#if defined(PORT_MOBILE)
   return false;
 #else
   return sActive && sPhase == Phase::Idle && (!sPanelShown || RightMouseHeld());

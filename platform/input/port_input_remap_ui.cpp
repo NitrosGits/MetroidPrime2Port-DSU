@@ -1,3 +1,4 @@
+#include "port_mobile.h"
 #include "port_input_remap_ui.h"
 #include "port_strings.h"
 
@@ -111,10 +112,10 @@ uint64_t sSeenVersion = 0; // the bindings version sWork matches
 // bindings) or a controller profile's match ("type:..." / "guid:..."). Keyboard
 // and touch always edit the Default profile.
 std::string sPadDevice = "pads";
-#ifdef __ANDROID__
+#if defined(PORT_MOBILE)
 constexpr bool kShowTouch = true;
 #else
-constexpr bool kShowTouch = false; // the touch overlay is Android's
+constexpr bool kShowTouch = false; // the touch overlay is the phones'
 #endif
 constexpr int kEditNone = -1;
 constexpr int kEditNew = -2;
