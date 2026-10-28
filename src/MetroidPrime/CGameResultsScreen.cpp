@@ -1,5 +1,9 @@
 #include "MetroidPrime/CGameResultsScreen.hpp"
 
+#ifdef TARGET_PC
+#include "MetroidPrime/PortEfbCopy.hpp"
+#endif
+
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Animation/CPASDatabase.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
@@ -571,8 +575,18 @@ void CGameResultsScreen::Draw() const {
   gpRender->SetViewportOrtho(false, -4096.f, 4096.f);
   gpRender->SetDepthReadWrite(false, false);
   const CViewport viewport = CGraphics::GetViewport();
+#ifdef TARGET_PC
+  // The backdrop is CMFGame's CCameraBlurPass::GetFbCopy of the last game frame, which copies into
+  // the blur's own destination (A6-2), not the shared spare buffer: name the same one.
+  CGraphics::LoadDolphinSpareTexture(
+      viewport.mWidth >> 1, viewport.mHeight >> 1, GX_TF_RGB565,
+      PortEfbCopy::Destination(CGraphics::GetDolphinSpareBuffer(), viewport.mWidth >> 1,
+                               viewport.mHeight >> 1, 2),
+      GX_TEXMAP0);
+#else
   CGraphics::LoadDolphinSpareTexture(viewport.mWidth >> 1, viewport.mHeight >> 1, GX_TF_RGB565,
                                      CGraphics::GetDolphinSpareBuffer(), GX_TEXMAP0);
+#endif
   CGraphics::SetTevOp(kTS_Stage0, CGraphics::kEnvModulate);
   CGraphics::SetTevOp(kTS_Stage1, CGraphics::kEnvPassthru);
   const float left = static_cast< float >(viewport.mLeft);
