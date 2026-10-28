@@ -730,7 +730,9 @@ void CIng::CollisionActorDamage(CStateManager& mgr, TUniqueId sender) {
 
   // The hit comes from the weapon the actor last touched, or from the player (morph ball).
   CVector3f direction = GetTransform().GetForward(); // 0x27A0: the Ing's own forward
-  TUniqueId attacker = kInvalidUniqueId;
+  // asm 0x2778-0x27AC: the attacker starts as the touched id (0x24(r1) copied to 0x20(r1)); only
+  // the weapon arm (0x2914) replaces it, with the owner.
+  TUniqueId attacker = touched;
   CDamageInfo damage = IngDefaultDamageInfo(); // fn_29_2AE0 (asm 0x2744)
   if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
     direction = weapon->GetTransform().GetForward();
@@ -3626,13 +3628,15 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     CreateLight(mgr);  // fn_29_4B4C, asm 0xCBA8
     break;
   case kSM_Delete:
-    // Retail deletes the blob object (0xd5c, never spawned on the host), stops the sounds,
-    // destroys the collision actor manager, then deletes the light (0xd68, unported) and the
-    // exit effect.
+    // Retail deletes the blob object (0xd5c, asm 0x0000CBB0-0x0000CBC0), stops the sounds,
+    // destroys the collision actor manager, then deletes the light (0xd68, asm 0x0000CBD8-
+    // 0x0000CBE8) and the exit effect.
+    mgr.DeleteObjectRequest(mBlobId); // asm 0x0000CBC0
     StopSfx(); // fn_29_2194, asm 0x0000CBC8
     if (!mCollisionActorManager.null()) {
       mCollisionActorManager->Destroy(mgr); // asm 0x0000CBD4
     }
+    mgr.DeleteObjectRequest(mLightId); // asm 0x0000CBE8
     if (mD76Id != kInvalidUniqueId) { // asm 0x0000CBF8
       mgr.DeleteObjectRequest(mD76Id);
     }
@@ -3651,10 +3655,15 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   case kSM_Activate:
     // Retail handles ACTV only when the entity was inactive before the base class ran (asm
-    // 0x0000CC3C) and turns the collision actors on only for the corporeal form. The light at
-    // 0xd68 (asm 0x0000CC6C) is unported.
-    if (!wasActive && !mCollisionActorManager.null()) {
-      mCollisionActorManager->SetActive(mgr, mForm == kForm_Corporeal); // asm 0x0000CC50
+    // 0x0000CC3C) and turns the collision actors on only for the corporeal form. It then
+    // activates the light at 0xd68 (asm 0x0000CC5C-0x0000CC88: vtable slot 0x1c, SetActive(true)).
+    if (!wasActive) {
+      if (!mCollisionActorManager.null()) {
+        mCollisionActorManager->SetActive(mgr, mForm == kForm_Corporeal); // asm 0x0000CC50
+      }
+      if (CEntity* light = mgr.ObjectById(mLightId)) {
+        light->SetActive(true); // asm 0x0000CC88
+      }
     }
     break;
   case kSM_Deactivate:
@@ -3665,6 +3674,13 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       mCollisionActorManager->SetActive(mgr, false); // asm 0x0000CCAC
     }
     LeaveTeam(mgr, mTeamId, GetUniqueId()); // fn_29_3684, asm 0x0000CCB8
+    if (CEntity* light = mgr.ObjectById(mLightId)) {
+      light->SetActive(false); // asm 0x0000CCBC-0x0000CCE8: vtable slot 0x1c
+    }
+    if (CEntity* blob = mgr.ObjectById(mBlobId)) {
+      // asm 0x0000CCEC-0x0000CD10: fn_25_256C(blob, 0.0f)
+      static_cast< CCollisionTracker* >(blob)->SetParticleEmissionRateScalar(0.f);
+    }
     StopSfx(); // fn_29_2194, asm 0x0000CD18
     break;
   case kSM_AIUpdateDisabled:

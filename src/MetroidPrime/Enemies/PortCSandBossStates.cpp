@@ -1048,7 +1048,8 @@ void CSandBoss::BeginStampedeCode(CStateManager&, float) { mStampedeActive = tru
 void CSandBoss::EndStampede(CStateManager&, float) { mStampedeActive = false; }
 
 // @ fn_55_8F94
-// Head-armour explosion at the Head_1 locator plus the IS02 waypoint taking the boss's transform.
+// Head-armour explosion at the Head_1 locator plus the IS02 waypoint taking the boss's transform
+// with its translation replaced by the Head_1 locator's.
 void CSandBoss::PlayHeadArmorExplosion(CStateManager& mgr, float) {
   const CTransform4f xf = GetLctrTransform(mHeadLocator); // 0xF08
   if (mHeadArmorExplosion.valid()) {                      // 0xE50
@@ -1061,7 +1062,11 @@ void CSandBoss::PlayHeadArmorExplosion(CStateManager& mgr, float) {
     }
   }
   if (CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(mIS02Target))) {
-    waypoint->SetTransform(GetTransform()); // 0x24
+    // asm 0x91BC-0x9200: copy of the boss transform (0x24) whose translation column
+    // (0xA4/0xB4/0xC4) is overwritten with the Head_1 locator translation, then SetTransform.
+    CTransform4f wxf = GetTransform();
+    wxf.SetTranslation(xf.GetTranslation());
+    waypoint->SetTransform(wxf);
     SendScriptMsgs(kSS_InternalState2, mgr, GetUniqueId(), kSM_None);
   }
 }
