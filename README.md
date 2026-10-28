@@ -1,18 +1,19 @@
-# Metroid Prime 2: Echoes — native port
+# Echoes Unbound - Metroid Prime 2 native port
 
 **FIRST ALPHA RELEASE COMING 28/10/2026**
 
-**Looking for the first game? See the [Metroid Prime native port](https://github.com/Odrannnn/MetroidPrimePort).**
+**Looking for the first game? See the [Metroid Prime Unbound](https://github.com/Odrannnn/MetroidPrimePort).**
 
 **You can find all new features and enhancements in the F1 menu (or start + back on controller)**
+**I recommend checking out Portal Transition Skip in F1 > Game!**
 
 [![Linux build](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml/badge.svg?branch=port)](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml)
 
 A native build of **Metroid Prime 2: Echoes** for Linux, Windows, macOS, Android and (experimentally) iOS,
 rendered through Aurora (SDL3/WebGPU). There's no emulator involved. Supported
-discs: the USA GameCube release (`G2ME01`), the PAL release (`G2MP01`, experimental) and
-the Wii's Metroid Prime Trilogy (`R3ME01` USA, `R3MP01` PAL).
-This is a pre-release: expect rough edges, and please report what you hit.
+discs: USA GameCube (`G2ME01`), PAL (`G2MP01`) and
+Trilogy (`R3ME01` USA, `R3MP01` PAL).
+This is a pre-release: please report what issues you find.
 
 **No game content is included.** You need your own copy of the game: the port
 reads it from a disc image and never ships any of its assets. This repository
@@ -21,36 +22,34 @@ ships no disc image, and neither does any package or release built from it.
 ## What it adds over the console release
 
 - **Cutscene skip** Switching between the dark and light world has never been so fast! Also try the warp cheat in Debug to swap world without portal!
-- **Widescreen** with a widescreen-aware HUD, **render scale**, vsync, a frame
-  cap you can lift, and **frame interpolation**
+- **Widescreen** with a widescreen-aware HUD, **render scale**, vsync and high fps support with **frame interpolation**
 - **Graphics:** first-person FOV, MSAA, anisotropic filtering, dynamic resolution,
   HUD scale, arm cannon offset, toggles to hide the helmet and visor effects
-- **Controls:** mouse and twin-stick aim, gyro aim, lock-on free aim, pointer aim,
-  full rebinding with presets
+- **Controls:** mouse and twin-stick aim, gyro aim, lock-on free aim, pointer aim, everything rebindable
 - **Optional tweaks:** Fast Morph, Spring Ball, Toggle Lock-On, Sticky Charge,
   walk speed, scan speed, hint delay, elevator ride; an **Original experience**
   switch puts the retail behaviour back
 - **Skippable cutscenes**
 - **Language** switching on PAL and Trilogy discs
 - **Save states** and **quick resume** after quitting
-- **Saves:** import and export the memory card file, with Dolphin and PrimeHack
-  card folders, backed up before every write
-- **Metroid Prime Trilogy:** run Echoes from a Wii disc, with Trilogy's HUD frames,
-  reticles and, opt-in, its radial beam and visor menus (mouse, pad and touch)
-- **Suit colours** for the Varia, Dark and Light suits
+- **Saves:** import and export memory card files, with Dolphin and PrimeHack
+  card folders
+- **Metroid Prime Trilogy:** Trilogy's HUD frames,
+  reticles and, opt-in, its radial beam and visor menus (mouse, pad and touch support)
+- **Suit colours** Change colours of Varia, Dark and Light suits
 - **Mods:** drop-in mod folders that replace disc data or single resources, and
   an HD texture pack ([docs/MODS.md](docs/MODS.md))
 - **Photo mode** with a free camera and high-resolution capture
-- **Speedrun tools:** an in-game time display and LiveSplit
-- **Discord Rich Presence** on desktop, and a **touch overlay** with a layout
-  editor on Android
-- **F1 overlay** (Or Start + Back combo) It has every setting!
+- **In-game time display*
+- **Discord Rich Presence**
+- **Mobile touch overlay**
+- **F1 overlay** (Or Start + Back combo) This is the menu housing every setting!
 
 ## Downloads
 
 Releases are published on the
 [GitHub releases page](https://github.com/Odrannnn/MetroidPrime2Port/releases).
-Every build needs your own disc image; none of them contains one.
+**Every build needs your own disc image; none of them contains one.**
 
 | Platform | Asset |
 |---|---|
@@ -144,7 +143,7 @@ with Nintendo and Retro Studios, and ships no game data.
 | `docs/CONSOLE.md` | The debug console (`MP2_CONSOLE`) |
 | `docs/ANDROID.md` | The Android port's status and build |
 | `docs/RELEASING.md` | What a release contains and must carry |
-| `docs/DECOMP_README.md` | Upstream PrimeDecomp/echoes README (decomp build) |
+| `docs/DECOMP_README.md` | PrimeDecomp/echoes README (decomp build) |
 | `PORT_NOTES.md` | How the port works and non-obvious facts |
 
 ## AI assistance
