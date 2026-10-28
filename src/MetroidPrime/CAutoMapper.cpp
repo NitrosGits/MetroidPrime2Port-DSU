@@ -1888,8 +1888,14 @@ void CAutoMapper::Update(float dt, CStateManager& mgr) {
       mTextpaneXicon1->TextSupport().SetText(rstl::wstring_l(L""));
       mTextpaneRight3->TextSupport().SetText(rstl::wstring_l(L""));
       mTextpaneRight->TextSupport().SetText(rstl::wstring_l(L""));
+#ifdef TARGET_PC
+      // Retail main.dol CAutoMapper string is "Teleport Destination" (space).
+      mTextpaneTeleporter->TextSupport().SetText(
+          rstl::wstring(gpStringTable->GetString("Teleport Destination")));
+#else
       mTextpaneTeleporter->TextSupport().SetText(
           rstl::wstring(gpStringTable->GetString("Teleport_Destination")));
+#endif
     }
   }
 
