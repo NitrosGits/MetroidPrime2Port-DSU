@@ -1376,6 +1376,9 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     x8f9_26_started = true;
     break;
   case kSM_Escape:
+    if (!GetActive()) { // fn_72_E498:149-154
+      return;
+    }
     TrooperWarpOut(mgr, true);
     break;
   default:
