@@ -923,7 +923,15 @@ void CGraphics::BeginScene() { ClearBackAndDepthBuffers(); }
 bool CGraphics::PortSceneOpen() { return s_auroraFrameOpen; }
 void CGraphics::PortSetHoldFrame(bool hold) { s_portHoldFrame = hold; }
 bool CGraphics::PortFrameHeld() { return s_portHoldFrame; }
-void CGraphics::PortPaceHeldFrame() { PaceVideoRate(); }
+// A held frame presents nothing, so no vsync waits on it: uncapped, it would spin. Pace it at the
+// video rate.
+void CGraphics::PortPaceHeldFrame() {
+  if (!PortHarness::Unpaced() && !PortOverlay::FrameLimit() && PortOverlay::FpsCap() <= 0) {
+    PaceFrame(CGraphics::Is50Hz() ? 20000 : 16667);
+  } else {
+    PaceVideoRate();
+  }
+}
 #endif
 
 void CGraphics::SwapBuffers() {

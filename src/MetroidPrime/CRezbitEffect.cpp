@@ -45,6 +45,9 @@ private:
   EFramePhase mFramePhase;
   bool mSavedClearFramebuffer;
   bool mExitRequested;
+#ifdef TARGET_PC
+  bool mPortTicked;
+#endif
 };
 CHECK_SIZEOF(CRezbitEffectIOWin, 0x20)
 
@@ -185,7 +188,12 @@ CRezbitEffectIOWin::CRezbitEffectIOWin()
 , mFrameCount(0)
 , mFramePhase(kFP_Idle)
 , mSavedClearFramebuffer(false)
-, mExitRequested(false) {}
+, mExitRequested(false)
+#ifdef TARGET_PC
+, mPortTicked(false)
+#endif
+{
+}
 
 void CRezbitEffectIOWin::Draw() const {}
 
@@ -200,10 +208,25 @@ void CRezbitEffectIOWin::RequestExit() {
 
 CIOWin::EMessageReturn CRezbitEffectIOWin::OnMessage(const CArchitectureMessage& msg,
                                                      CArchitectureQueue& queue) {
+#ifdef TARGET_PC
+  if (msg.GetType() == kAM_TimerTick) {
+    mPortTicked = true;
+  }
+#endif
   if (msg.GetType() == kAM_FrameBegin) {
+#ifdef TARGET_PC
+    // Uncapped, a frame begins every loop and a held frame neither presents nor waits on vsync,
+    // so counting frames ended the freeze in milliseconds. Count only frames a game tick ran in:
+    // the retail 60 Hz frames.
+    if (mFrameCount != 0 && mPortTicked) {
+      --mFrameCount;
+    }
+    mPortTicked = false;
+#else
     if (mFrameCount != 0) {
       --mFrameCount;
     }
+#endif
 
     if (mFrameCount == 0 && mFramePhase == kFP_PreservingFrame) {
       mFramePhase = kFP_RestoringFrame;
