@@ -35,8 +35,10 @@ struct Request {
 
 // Copies a snapshot of a region of `color` and `depth` to the buffers in `req`, once the frame
 // being encoded has been submitted. Called from the frame encoder, between passes.
+// At >1 samples, `color` is the ordinary resolve (for dimensions), while `multisampledColor`
+// views the original EFB. Read ID and depth from sample zero, never average integer scan IDs.
 void encode(const wgpu::CommandEncoder& cmd, const wgpu::Texture& color, const wgpu::Texture& depth,
-            uint32_t msaaSamples, const Request& req) noexcept;
+            uint32_t msaaSamples, const Request& req, const wgpu::TextureView& multisampledColor = {}) noexcept;
 
 void after_submit() noexcept;
 void shutdown() noexcept;

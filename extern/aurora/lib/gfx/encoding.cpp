@@ -436,7 +436,7 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
 
   if (passInfo.scanPeek.has_value()) {
     scan_peek::encode(cmd, passInfo.copySourceTexture, passInfo.copySourceDepthTexture, passInfo.msaaSamples,
-                      *passInfo.scanPeek);
+                      *passInfo.scanPeek, passInfo.colorAttachments[SceneColorAttachmentIndex].view);
   }
 
   if (passInfo.snapshotColorDst) {

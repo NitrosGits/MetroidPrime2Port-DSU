@@ -123,6 +123,32 @@ Verification (isolated cards under `/tmp/opencode/issue3-*`; no live saves chang
 Native integration, console-format validation and an actual Dolphin load passed.
 Steam Deck and PrimeHack specifically remain untested. No GitHub comment, push or release was made.
 
+## 2026-10-29: issue #4 scan readback with anti-aliasing
+
+- `scan_peek::encode` previously dropped every multisampled EFB request. The encoder now
+  supplies the original colour attachment view, and a scan-only render pass reads sample zero
+  from both colour and depth into single-sample RGBA8/R32Float region targets. It does not
+  average integer scan IDs or change the game's EFB. Recording preserves the source stores
+  even when the following pass clears the EFB.
+- Core-device 1x readback uses the same conversion: validation-enabled testing exposed an
+  existing invalid partial depth texture-to-buffer copy. It also normalizes HDR colour to the
+  four-byte readback layout. The Compatibility-device fallback is unchanged.
+- `ScanPeekMsaaTest` renders per-sample IDs/depths and a spatial pattern on Vulkan, then checks
+  actual CPU output (not just pipeline validation): 1x/4x, BGRA, HDR, clipped regions, slot reuse,
+  AA toggling and attachment-store retention. The old MSAA early return was temporarily restored
+  as a negative control: 4x fails while the 1x control passes. No negative-control code remains.
+- Graphics suite: 112 tests pass using lavapipe with validation enabled; native game links;
+  matching build: `87 files OK`. Evidence: `/tmp/opencode/issue4-all-gfx-tests.log`,
+  `issue4-negative-tests.log`, `issue4-matching.log`.
+- Native rendered integration check on RX 7900 XTX/RADV: Dark Trooper `e000b000c` in Temple
+  Grounds area 11 completed its 1.50-second scan at 4x, after combat/scan visor re-entry, at
+  1x, and after switching back to 4x. Each check reacquired with ordinary held L, not
+  `PortForceOrbit`. The initial console `scan` pair was only camera positioning. The harness
+  boot was stuck morphed; a temporary console setup forced `SetMorphBallState(Unmorphed, 0)`
+  and first-person camera once before positioning. That setup was removed and the final native
+  binary rebuilt. Logs: `/tmp/opencode/issue4-game4.log`, `issue4-game-results4.log`; screenshots:
+  `/tmp/opencode/issue4-scan-aa-{1,2}.png`. No Windows, Android or reporter-specific driver test.
+
 ## 2026-10-29: scan visor widescreen registration and model proportions
 
 - Reproduced the reported detached background with a completed Dark Trooper logbook scan
