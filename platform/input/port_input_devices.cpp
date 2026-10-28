@@ -1280,6 +1280,14 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
     // The F1 Controls page is recording an input: it reaches no direct action (a bound
     // PortMenu would close the page mid-capture). The pad still reads it, as before the engine.
     r.status = Synthesize(out);
+  } else if (PortOverlay::Visible()) {
+    // The F1 overlay owns the keyboard and pad: the direct actions (beam/visor picks, the
+    // radial selectors, Spring Ball) reach the game outside the pad, so they wait too. The
+    // status is still synthesized so the held state tracks, and PortPumpEvents blocks the pad.
+    PortRadial::Transport().SetAvailable(false);
+    PortRadial::Cancel();
+    sConsumeRadialPoll = false;
+    r.status = Synthesize(out);
   } else {
     RouteDirectActions(out, nowMs / 1000.0);
     r.status = Synthesize(out);

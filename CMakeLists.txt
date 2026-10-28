@@ -830,6 +830,11 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_input_pad_tests PRIVATE platform/include)
     add_test(NAME port_input_pad_tests COMMAND port_input_pad_tests)
     set_tests_properties(port_input_pad_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # Header-only (port_input_gate.h): pad 0's neutral-while-F1-is-open gate.
+    add_executable(port_input_gate_tests tests/port_input_gate.cpp)
+    target_include_directories(port_input_gate_tests PRIVATE platform/include)
+    add_test(NAME port_input_gate_tests COMMAND port_input_gate_tests)
+    set_tests_properties(port_input_gate_tests PROPERTIES TIMEOUT 30 LABELS port)
     # Quick resume's pure rules (platform/include/port_resume_logic.h). Header-only.
     add_executable(port_resume_logic_tests tests/port_resume_logic.cpp)
     target_include_directories(port_resume_logic_tests PRIVATE platform/include)
