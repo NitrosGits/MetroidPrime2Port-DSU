@@ -35,6 +35,7 @@
 #include <windows.h>
 #include <shlobj.h>
 #else
+#include <cerrno>
 #include <fcntl.h>
 #include <unistd.h>
 #endif
@@ -119,7 +120,8 @@ bool SyncFile(const std::filesystem::path& file) {
   if (fd < 0) {
     return false;
   }
-  const bool ok = fsync(fd) == 0;
+  // A file system that cannot sync (EINVAL, ENOTSUP) still gets the write; only an I/O error fails.
+  const bool ok = fsync(fd) == 0 || errno == EINVAL || errno == ENOTSUP;
   close(fd);
   return ok;
 #endif
@@ -168,7 +170,7 @@ bool WriteAll(const std::string& path, const std::vector<uint8_t>& bytes, std::s
   }
   if (!SyncFile(PortUtf8::FromUtf8(temp))) {
     std::error_code ignored;
-    std::filesystem::remove(temp, ignored);
+    std::filesystem::remove(PortUtf8::FromUtf8(temp), ignored);
     error = "cannot flush " + path + " to disk";
     return false;
   }
