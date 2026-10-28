@@ -1740,7 +1740,7 @@ void CEmperorIngStage1::Render(const CStateManager& mgr) const {
 // event type is the index); the default entry (fn_16_7F8C+0x58C) and every type above 28 (the
 // bgt at 0x7FAC) call the base's own DoUserAnimEvent (the call at 0x8524).
 // The hook pass dispatched all 29 event types: the retail's six case bodies (the types 0, 7,
-// 17, 23, 27 and 28) and, for the other 23, the base's own handling.
+// 17, 22, 27 and 28) and, for the other 23, the base's own handling.
 // @ fn_16_7F8C
 void CEmperorIngStage1::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                         EUserEventType type, float dt) {
