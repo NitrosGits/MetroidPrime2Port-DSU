@@ -8,6 +8,15 @@ Annihilator/Scan, lower left Dark/Dark, lower right Light/Echo. Current/unowned 
 pause/F1/morph and other gameplay interruptions cancel. See [TRILOGY.md](TRILOGY.md#native-desktop-beam--visor-selectors-opt-in)
 for binding examples, lifecycle rules, harness commands and desktop-only limitations.
 
+- GameCube controller adapters (issue #222): Nintendo's adapter and Mayflash's
+  in Wii U mode (USB `057E:0337`) work as in Dolphin, four ports with rumble,
+  read by SDL through libusb. On Windows, install the WinUSB driver for the
+  adapter once with [Zadig](https://zadig.akeo.ie/) ("WUP-028"; Options > List
+  All Devices); the Windows package ships `libusb-1.0.dll`, without which the
+  adapter is not seen. On Linux the device needs a udev rule giving your user
+  access, the same one Dolphin documents. A Mayflash adapter switched to PC
+  mode shows up as ordinary controllers instead, one per port, without any
+  driver.
 - F1: the settings overlay (the Prime 1 port's `platform/debug_ui/` layout). Pages: Game,
   Controls (Options, Mouse settings, Controller settings, Touch & gyro, Remap), Video (Display,
   Quality, Frame rate), Randomizer, Cheats, Save states, System, Debug.
