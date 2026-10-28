@@ -2871,8 +2871,9 @@ void CDigitalGuardian::CrippledReaction(CStateManager& mgr, EStateMsg msg, float
   }
   case kStateMsg_Update:
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Fall)) {
+      // The hit direction is the transform's column 1 (asm 0x7F24-0x7F30: lfs +0x28/+0x38/+0x48), not the position.
       BodyController()->CommandMgr().DeliverCmd(
-          CBCKnockDownCmd(GetTranslation(), pas::kS_Two, false));
+          CBCKnockDownCmd(GetTransform().GetForward(), pas::kS_Two, false));
     }
     break;
   case kStateMsg_Deactivate:
