@@ -4817,11 +4817,13 @@ void CDarkSamus::UpdateAttackPick(CStateManager& mgr) {
 // fn_10_1B5E4 (0x0001B5E4, 0x74 bytes): mAttackHistory's erase. A position outside
 // [begin, end) (the cmplw pair at 0x0001B5EC/0x0001B604) answers end; otherwise the later ids move
 // down one (0x0001B614..0x0001B630), the count drops (0x0001B63C) and the position is answered.
+// The loop bound (0x0001B620..0x0001B62C) is the vector base + count * 4; the elements start at
+// base + 4, so that is &data[count - 1], and the last shift reads the last element, not one past it.
 uint* CDarkSamus::EraseFinishedAttack(uint* pos) {
   if (pos < mAttackHistory || pos >= mAttackHistory + mAttackHistoryCount) {
     return mAttackHistory + mAttackHistoryCount;
   }
-  for (uint* it = pos; it < mAttackHistory + mAttackHistoryCount; ++it) {
+  for (uint* it = pos; it + 1 < mAttackHistory + mAttackHistoryCount; ++it) {
     it[0] = it[1];
   }
   mAttackHistoryCount--;
