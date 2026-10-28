@@ -83,7 +83,13 @@ inline char ToInt8(float in) { return static_cast< char >(in); }
 #endif
 inline uchar ToUint8(int c) { return static_cast<uchar>(c); }
 inline float ToReal32(uchar in) { return static_cast< float >(in); }
-inline short FtoS(float in) { return static_cast< short >(in); }
+// psq_st with OS_FASTCAST_S16 saturates; a plain cast of an out-of-range float is undefined.
+inline short FtoS(float in) {
+  if (!(in == in)) {
+    return 0;
+  }
+  return in >= 32767.f ? 32767 : (in <= -32768.f ? -32768 : static_cast< short >(in));
+}
 inline ushort FtoUS(float in) { return static_cast< ushort >(in); }
 inline float StoF(const short& in) { return static_cast< float >(in); }
 inline int FtoL(float in) { return static_cast< int >(in); }
