@@ -6,6 +6,7 @@
 #include "port_controls.h"
 #include "port_custom_actions.h"
 #include "port_input_bindings.h"
+#include "port_input_capture.h"
 #include "port_input_devices.h"
 #include "port_overlay.h"
 #include "port_savestate.h"
@@ -40,7 +41,6 @@ using PortInput::UserProfile;
 
 constexpr uint64_t kCaptureTimeoutMs = 8000;
 constexpr uint64_t kCaptureStaleMs = 250; // the page wasn't drawn for this long
-constexpr float kAxisCapture = 0.6f;
 
 struct STriggerInfo {
   Trigger trigger;
@@ -318,27 +318,6 @@ std::vector<SDeviceEntry> PadEntries() {
   return out;
 }
 
-// The inputs down now, in a fixed order (keys, mouse, pad buttons, axes).
-// Touch can't be read: the overlay hides while F1 is open.
-std::vector<Input> DownInputs(const PortInput::RawState& raw) {
-  std::vector<Input> down;
-  for (int k = 0; k < PortInput::kKeyCount; ++k) {
-    if (raw.keys.test(size_t(k)) && k != SDL_SCANCODE_ESCAPE) down.push_back({Device::Key, 0, 50, uint16_t(k)});
-  }
-  for (int m = 0; m < PortInput::kMouseButtonCount; ++m) {
-    if ((raw.mouseButtons >> m) & 1u) down.push_back({Device::MouseButton, 0, 50, uint16_t(m)});
-  }
-  for (int b = 0; b < PortInput::kPadButtonCount; ++b) {
-    if ((raw.padButtons >> b) & 1u) down.push_back({Device::PadButton, 0, 50, uint16_t(b)});
-  }
-  for (int a = 0; a < PortInput::kPadAxisCount; ++a) {
-    if (std::fabs(raw.padAxes[a]) >= kAxisCapture) {
-      down.push_back({Device::PadAxis, int8_t(raw.padAxes[a] > 0.f ? 1 : -1), 50, uint16_t(a)});
-    }
-  }
-  return down;
-}
-
 // Whether every input of a binding comes from one family (keyboard and mouse are one).
 bool OneFamily(const Binding& b) {
   for (int i = 1; i < b.count; ++i) {
@@ -375,7 +354,7 @@ void UpdateCapture() {
     EndCapture();
     return;
   }
-  std::vector<Input> down = DownInputs(raw);
+  std::vector<Input> down = PortInputCapture::DownInputs(raw);
   const bool started = !sCapture.chord.empty();
   const Family family = started ? PortInput::FamilyOf(sCapture.chord[0].device) : Family::Keyboard;
   const ImGuiIO& io = ImGui::GetIO();
@@ -390,16 +369,7 @@ void UpdateCapture() {
     sCapture.armed = down.empty();
     return;
   }
-  for (const Input& in : down) {
-    if (!sCapture.chord.empty() && PortInput::FamilyOf(in.device) != PortInput::FamilyOf(sCapture.chord[0].device)) {
-      continue;
-    }
-    if (std::find(sCapture.chord.begin(), sCapture.chord.end(), in) == sCapture.chord.end() &&
-        sCapture.chord.size() < size_t(PortInput::kMaxChord)) {
-      sCapture.chord.push_back(in);
-    }
-  }
-  if (!sCapture.chord.empty() && down.empty()) FinishCapture();
+  if (PortInputCapture::Accumulate(sCapture.chord, down)) FinishCapture();
 }
 
 bool sAdvancedSync = false; // set the editor's Advanced node from the draft on the next draw

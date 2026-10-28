@@ -1100,10 +1100,9 @@ static void BindMenuDefaults(Profile& p) {
   }
 }
 
-// MP1's "Separate menu buttons" setting (MenuStandardButtons, off under touch). MP2 has no such
-// setting yet, so it is off: menus read the gameplay layout, as they did before the engine.
-// MP1's: the touch controls keep the gameplay layout in menus.
-static bool MenuButtonsActive() { return PortOverlay::MenuStandardButtons() && !PortTouch::ControlsEnabled(); }
+// As in MP1, only active touch input keeps the gameplay layout in menus.
+// A saved touch setting must not disable separate bindings on desktop or a pad.
+static bool MenuButtonsActive() { return PortOverlay::MenuStandardButtons() && !PortTouch::Active(); }
 
 // With the option on, menus and the map read the Menu rows instead of the gameplay
 // layout: pad bindings meant for everywhere stop applying there for the buttons

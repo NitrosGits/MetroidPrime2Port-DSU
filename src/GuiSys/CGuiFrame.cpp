@@ -166,16 +166,19 @@ void CGuiFrame::SetSpreadAnchor(const CGuiWidget* member, const CGuiWidget* anch
   }
 }
 
-void CGuiFrame::SetSpreadAnchorTree(const CGuiWidget* root) {
+void CGuiFrame::SetSpreadAnchorTree(const CGuiWidget* root, const CGuiWidget* anchor) {
   if (root == nullptr) {
     return;
   }
-  SetSpreadAnchor(root, root);
+  if (anchor == nullptr) {
+    anchor = root;
+  }
+  SetSpreadAnchor(root, anchor);
   for (rstl::vector< CGuiWidget* >::const_iterator it = mWidgets.begin(); it != mWidgets.end();
        ++it) {
     for (const CGuiObject* obj = (*it)->GetParent(); obj != nullptr; obj = obj->GetParent()) {
       if (obj == root) {
-        SetSpreadAnchor(*it, root);
+        SetSpreadAnchor(*it, anchor);
         break;
       }
     }

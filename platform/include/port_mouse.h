@@ -54,6 +54,26 @@ inline float AxisForce(float input, float velocity, float maxSpeed, float fricti
   return (fraction < -1.f ? -1.f : fraction > 1.f ? 1.f : fraction) * acceleration;
 }
 
+// Apply the forward force law once along the movement vector, not once per
+// component: its friction-compensation term is nonlinear in the input.
+inline Planar MovementForce(Planar input, Planar velocity, float maxSpeed, float friction,
+                            float mass, float dt, float acceleration) {
+  input = ClampPlanar(input, 1.f);
+  const float length = std::hypot(input.right, input.forward);
+  if (length <= 0.00001f) return {0.f, 0.f};
+  const Planar direction{input.right / length, input.forward / length};
+  const float along = direction.right * velocity.right + direction.forward * velocity.forward;
+  const float force = AxisForce(length, along, maxSpeed, friction, mass, dt, acceleration);
+  return {direction.right * force, direction.forward * force};
+}
+
+inline Planar DampMovement(Planar velocity, float friction, float maxSpeed) {
+  const float length = std::hypot(velocity.right, velocity.forward);
+  if (length <= 0.00001f) return {0.f, 0.f};
+  const float speed = std::fmin(std::fmax(length - friction, 0.f), maxSpeed);
+  return {velocity.right * speed / length, velocity.forward * speed / length};
+}
+
 struct AimState {
   float yaw = 0.f;
   float pitch = 0.f;

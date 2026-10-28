@@ -1,0 +1,22 @@
+# Use with direct_movement.input, WORLD=0b_sand_hall and MP2_MOUSE_AIM=1.
+# Same grounded start and world-space path, with forward, sideways and diagonal
+# inputs respectively. Rotating aim removes terrain direction as a confounder.
+# Compare the +15 and +30 samples; all must actually jump, not merely walk.
+@f240 tp 351.881 107.951 19.399; aim 90 0
+@f250 status --json
+@f265 status --json
+@f280 status --json
+@f295 status --json
+@f309 status --json
+@f440 tp 351.881 107.951 19.399; aim 0 0
+@f450 status --json
+@f465 status --json
+@f480 status --json
+@f495 status --json
+@f509 status --json
+@f640 tp 351.881 107.951 19.399; aim 45 0
+@f650 status --json
+@f665 status --json
+@f680 status --json
+@f695 status --json
+@f709 status --json

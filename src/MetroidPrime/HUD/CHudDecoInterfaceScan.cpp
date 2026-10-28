@@ -188,6 +188,18 @@ void CHudDecoInterfaceScan::InitializeFlatFrame(const CStateManager& mgr) {
   mLoadedFlatFrame->SetSpreadWeightTree(static_cast< const CGuiWidget* >(mLoadedFlatFrame->GetRootWidget()), [] { return 0.f; });
   mLoadedFlatFrame->SetSpreadWeightTree(mHistoryLeft, scanSpread);
   mLoadedFlatFrame->SetSpreadWeightTree(mHistoryRight, scanSpread);
+  // The six rows are siblings of the background trees, not children of them. Both trees and
+  // their rows must share a side anchor: the roots are at the origin, while the label/percent
+  // widgets straddle the spread threshold. Independent anchors would pull each panel apart.
+  const CGuiWidget* leftAnchor = mHistoryWidgets[0].mHistory;
+  const CGuiWidget* rightAnchor = mHistoryWidgets[3].mHistory;
+  mLoadedFlatFrame->SetSpreadAnchorTree(mHistoryLeft, leftAnchor);
+  mLoadedFlatFrame->SetSpreadAnchorTree(mHistoryRight, rightAnchor);
+  for (int i = 0; i < mHistoryWidgets.size(); ++i) {
+    mLoadedFlatFrame->SetSpreadWeightTree(mHistoryWidgets[i].mRoot, scanSpread);
+    mLoadedFlatFrame->SetSpreadAnchorTree(mHistoryWidgets[i].mRoot,
+                                         i < 3 ? leftAnchor : rightAnchor);
+  }
 #endif
   if (mHistoryRoot != nullptr) {
     mHistoryRoot->SetVisibility(false, kTM_Children);

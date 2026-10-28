@@ -898,6 +898,13 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_input_engine_tests PRIVATE platform/include)
     add_test(NAME port_input_engine_tests COMMAND port_input_engine_tests)
     set_tests_properties(port_input_engine_tests PROPERTIES TIMEOUT 30 LABELS port)
+    add_executable(port_controller_regressions tests/port_controller_regressions.cpp
+        platform/input/port_input_engine.cpp platform/input/port_input_bindings.cpp)
+    target_include_directories(port_controller_regressions PRIVATE platform/include extern/aurora/include)
+    target_compile_definitions(port_controller_regressions PRIVATE TARGET_PC)
+    target_link_libraries(port_controller_regressions PRIVATE ${AURORA_SDL3_TARGET})
+    add_test(NAME port_controller_regressions COMMAND port_controller_regressions)
+    set_tests_properties(port_controller_regressions PROPERTIES TIMEOUT 30 LABELS port)
     # The gyro filter (platform/port_gyro_motion.cpp, MP1's): calibration, manual calibration,
     # spaces, smoothing and tightening over GamepadMotionHelpers. No SDL, Aurora or game.
     add_executable(port_gyro_motion_tests tests/port_gyro_motion.cpp platform/port_gyro_motion.cpp)

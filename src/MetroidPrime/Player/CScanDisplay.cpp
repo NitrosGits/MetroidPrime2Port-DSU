@@ -1,5 +1,9 @@
 #include "MetroidPrime/Player/CScanDisplay.hpp"
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
+
 #include "GuiSys/CAuiBitmapMeter.hpp"
 #include "GuiSys/CGuiCamera.hpp"
 #include "GuiSys/CGuiFrame.hpp"
@@ -545,7 +549,21 @@ void CScanDisplay::Draw(const CStateManager& mgr) const {
   const CTransform4f xf = CTransform4f::Translate(cameraOffset) * CTransform4f::RotateZ(yaw) *
                           CTransform4f::Scale(modelScale) * orientation.BuildTransform4f() *
                           CTransform4f::Translate(position) * mModelRotation.BuildTransform4f();
+#ifdef TARGET_PC
+  // The preview bypasses CGuiCamera::Draw: apply the same aspect, HUD scale and fit-width
+  // projection here, otherwise the scanned model stretches with the window behind a square HUD.
+  const float widen = PortOverlay::AspectWiden();
+  float projectionScale = widen < 1.f ? 1.f / widen : 1.f;
+  if (PortOverlay::HudScalingActive()) {
+    projectionScale *= 100.f / static_cast< float >(PortOverlay::HudScale());
+  }
+  const float previewFov = projectionScale == 1.f ? fov :
+      2.f * atanf(tanf(0.5f * fov * 3.14159265f / 180.f) * projectionScale) *
+          180.f / 3.14159265f;
+  CGraphics::SetPerspective(previewFov, camera->GetParms().mPerspective.mAspect * widen,
+#else
   CGraphics::SetPerspective(fov, camera->GetParms().mPerspective.mAspect,
+#endif
                             camera->GetParms().mPerspective.mNear,
                             camera->GetParms().mPerspective.mFar);
   CGraphics::SetDepthRange(1.f / 512.f, 1.f / 256.f);

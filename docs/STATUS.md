@@ -123,6 +123,26 @@ Verification (isolated cards under `/tmp/opencode/issue3-*`; no live saves chang
 Native integration, console-format validation and an actual Dolphin load passed.
 Steam Deck and PrimeHack specifically remain untested. No GitHub comment, push or release was made.
 
+## 2026-10-29: scan visor widescreen registration and model proportions
+
+- Reproduced the reported detached background with a completed Dark Trooper logbook scan
+  (`e000b000c`, Temple Grounds area 11), at a 2000x781 window and `scanspread 100`.
+  Generic non-logbook scans do not exercise the hierarchy panels.
+- `basewidget_crazyleft/right` contain only the background; the six category rows are sibling
+  trees. Register both the background and rows for the live scan-spread weight, and give every
+  piece of each side the same label anchor. The BWIG roots themselves are at the origin and
+  cannot serve as side anchors. `CGuiFrame::SetSpreadAnchorTree` now accepts an optional anchor;
+  existing one-argument callers retain their original behavior.
+- The model preview bypassed `CGuiCamera::Draw` and used its authored aspect unchanged. Apply
+  the GUI's aspect widening, fit-width FOV and HUD scaling to its custom projection too: wide
+  windows no longer flatten the scanned model.
+- Verified on Linux/Xvfb with an actual completed logbook entry: spread 0/50/100 at 2000x781,
+  plus 1280x720, 1680x720, 960x720, 720x960, and HUD scale 70%. Evidence is under
+  `/tmp/opencode/scanfix/` (`logbook-before-100.png`, `logbook-before-0.png`, `final-0.png`
+  through `final-8.png`, `checked-matrix.png`). Test-only forced unmorph setup and widget
+  probes were removed; neither is part of the fix. Native game links; matching build passes
+  all 87 checks. Windows/Android device rendering has not been rerun.
+
 ## 2026-10-28: issue #2 controller bindings
 
 The twin-stick-only camera path omitted `PortMouse::StickEnabled()` when applying aim
@@ -131,26 +151,60 @@ the player already consumes both stick axes and turns the body for yaw, but nati
 free-look is suppressed in twin-stick mode, leaving no path to apply pitch otherwise.
 Enabling mouse aim alongside twin-stick was a code-derived workaround, not a device-tested one.
 
-Two further reports are diagnosed but not yet fixed:
+The menu and trigger reports are fixed too:
 
 - Separate menu buttons: `platform/input/port_input_devices.cpp::MenuButtonsActive`
-  requires `!PortTouch::ControlsEnabled()`. `platform/port_touch.cpp::Settings::controls`
+  previously required `!PortTouch::ControlsEnabled()`. `platform/port_touch.cpp::Settings::controls`
   defaults to true on desktop too (only `aim` has a mobile-specific default). Therefore
-  `ApplyMenuButtons` removes all Menu actions despite the separate-menu setting being on.
-  Desktop runs should not inherit the mobile touch-layout exclusion. The context path
-  does recognize front-end and paused menus; map and scan-text contexts need a separate
+  `ApplyMenuButtons` removed all Menu actions despite the separate-menu setting being on.
+  It now uses last-used touch activity, as MP1 does: `NoteDevice` activates touch,
+  real controller/keyboard/mouse input deactivates it; virtual pads, stick drift and
+  synthetic touch/pen mouse events do not. Builds without touch always report inactive.
+  The context path recognizes front-end and paused menus; map and scan-text contexts need a separate
   completeness review.
 - Trigger capture: Aurora's `PADGetRawState` reports an analog trigger axis and synthetic
-  half-pull/click buttons. `port_input_remap_ui.cpp::DownInputs` enumerates both the
-  buttons and the axes; `UpdateCapture` retains every distinct input until release.
-  Thus one right-trigger pull records `RT + RT click + RT`, exactly as reported.
-  Capture needs to canonicalize these aliases without removing runtime pull/click support
-  or swallowing intentional chords involving distinct controls.
+  half-pull/click buttons. The recorder previously enumerated both the buttons and
+  axes, retaining every distinct input until release (`UpdateCapture`).
+  Thus one right-trigger pull recorded `RT + RT click + RT`, exactly as reported.
+  Capture now skips the four synthetic trigger-button aliases and records the positive
+  analog axis alone. Runtime pull/click support and manual bindings are unchanged;
+  chords involving distinct controls still record normally.
 
 These findings come from source tracing against v0.6.0 and the port branch, not a Steam Deck run.
 Verification: game linked; `port_radial_mouse_tests`, `port_input_engine_tests` and
 `port_input_bindings_tests` passed (these cover the aim/input machinery, not the camera
 integration); matching build reported `87 files OK`; generated source manifest check passed.
+`port_controller_regressions` additionally passes touch/physical transitions, desktop/F1 gates,
+virtual-pad/drift/synthetic-mouse filtering, full-trigger capture across thresholds, both
+triggers together, shoulder+trigger chords, ordinary stick axes and keyboard/mouse inputs.
+
+## 2026-10-29: issue #2 diagonal movement/jumps
+
+Input normalization did not fix the force law: each horizontal axis independently added
+the retail friction-compensation offset and independently saturated its force. A diagonal
+could therefore receive two full forces even with unit-length input. Direct-aim movement
+now evaluates the forward law once along the input direction, with planar damping/speed
+limiting instead of component damping and a forward-only cap. Strafe gets the same 0.8
+full-travel scaling as forward. Jump and double-jump acceleration use the same planar
+movement magnitude rather than only the forward/back component. These changes are PC-only
+and confined to unlocked direct aim; native controls and locked-on dash code are unchanged.
+
+Verified: game linked; four targeted input/aim tests passed; matching build `87 files OK`;
+generated source manifest check passed. The mouse test reproduces the old diagonal force
+boost and checks the production force/damping helpers across sixteen headings, three stick
+magnitudes, ground friction and air drag over 240 ticks each.
+
+Headless native-game check: `tools/drivers/direct_movement.con` with
+`tools/drivers/direct_movement.input`, a fresh user directory, `MP2_NEW_GAME=1`,
+`WORLD=0b_sand_hall`, `MP2_MOUSE_AIM=1`, `MP2_FRAME_LIMIT=0`,
+`MP2_TICKS_PER_FRAME=1`, `FRAMES=740` (RUNNING.md's console driver recipe).
+The fixture changes facing so all three input directions jump along the same world-space
+path from the same grounded start. At +15 ticks the horizontal distances were 1.001,
+1.001 and 1.003 units, with the same sampled height (21.041, from 19.399); at +30,
+1.423, 1.423 and 1.427 units. The diagonal boost is gone. Later samples hit corridor
+geometry, so they are not an unobstructed landing-range measurement. An initial attempt
+teleported above the room and never actually jumped; that run is not jump verification.
+Device-specific Steam Deck and Android testing remains unperformed. Nothing posted on GitHub.
 
 ## 2026-10-26 (port orchestrator): widescreen gaps, ball glow, suit colours, FOV, scan copies
 

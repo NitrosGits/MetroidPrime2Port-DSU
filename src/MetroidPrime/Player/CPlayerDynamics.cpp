@@ -64,6 +64,21 @@ static float WalkScale() { return static_cast< float >(PortOverlay::WalkSpeed())
 CVector3f CPlayer::GetDampedClampedVelocityWR() const {
   const float acceleration = GetAcceleration();
   CVector3f localVelocity = GetTransform().TransposeRotate(GetVelocityWR());
+#ifdef TARGET_PC
+  if (PortDirectAimControls() && mOrbitState == kOS_NoOrbit) {
+    float friction = GetTweakPlayer()->GetPlayerTranslationFriction(GetSurfaceRestraint()) * WalkScale();
+    if (GetSurfaceRestraint() == kSR_Air) {
+      friction = 3.5f * CVector2f(localVelocity.GetX(), localVelocity.GetY()).Magnitude() / GetMass();
+    }
+    const float maxSpeed = GetTweakPlayer()->GetPlayerTranslationMaxSpeed(GetSurfaceRestraint()) * WalkScale();
+    const PortMouse::Planar velocity = PortMouse::DampMovement(
+        {localVelocity.GetX(), localVelocity.GetY()}, friction * acceleration, maxSpeed / acceleration);
+    localVelocity.SetX(velocity.right);
+    localVelocity.SetY(velocity.forward);
+    if (mMovementState == NPlayer::kMS_OnGround) localVelocity.SetZ(0.f);
+    return GetTransform().Rotate(localVelocity);
+  }
+#endif
   if (mOrbitState == kOS_NoOrbit) {
 #ifdef TARGET_PC
     float friction = GetTweakPlayer()->GetPlayerTranslationFriction(GetSurfaceRestraint()) * WalkScale();
@@ -357,6 +372,18 @@ void CPlayer::ComputeDash(const CFinalInput& input, float dt, CStateManager& mgr
   }
 }
 
+#ifdef TARGET_PC
+CVector3f CPlayer::PortMovementInput(const CFinalInput& input) const {
+  const float forward = ForwardInput(input, 0.f);
+  // Match forward's full travel at 0.8, then limit the pair, not each force.
+  const float strafe = CMath::Clamp(-1.f,
+      (mControlMapper.GetAnalogInput(CControlMapper::kC_StrafeRight, input) -
+       mControlMapper.GetAnalogInput(CControlMapper::kC_StrafeLeft, input)) / 0.8f, 1.f);
+  const PortMouse::Planar axes = PortMouse::ClampPlanar({strafe, forward}, 1.f);
+  return CVector3f(axes.right, axes.forward, 0.f);
+}
+#endif
+
 void CPlayer::ComputeMovement(const CFinalInput& input, CStateManager& mgr, float dt) {
   const float jumpInput = JumpInput(input, mgr);
 #ifdef TARGET_PC
@@ -371,13 +398,9 @@ void CPlayer::ComputeMovement(const CFinalInput& input, CStateManager& mgr, floa
   float forwardInput = ForwardInput(input, turnInput);
   float strafeInput = StrafeInput(input);
   if (portAimMovement) {
-    strafeInput = mControlMapper.GetAnalogInput(CControlMapper::kC_StrafeRight, input) -
-                  mControlMapper.GetAnalogInput(CControlMapper::kC_StrafeLeft, input);
-    // A diagonal must not outrun a straight line: clamp the pair to the unit circle, as the
-    // Prime port does, and let the stick reach full speed in every direction.
-    const PortMouse::Planar axes = PortMouse::ClampPlanar({strafeInput, forwardInput}, 1.f);
-    strafeInput = axes.right;
-    forwardInput = axes.forward;
+    const CVector3f axes = PortMovementInput(input);
+    strafeInput = axes.GetX();
+    forwardInput = axes.GetY();
     // No leftover spin: the aim owns the body's heading while it is in charge.
     SetAngularVelocityOR(CAxisAngle::Identity());
   }
@@ -498,6 +521,18 @@ void CPlayer::ComputeMovement(const CFinalInput& input, CStateManager& mgr, floa
   } else {
     strafeForce = 0.f;
   }
+#ifdef TARGET_PC
+  if (portAimMovement) {
+    const CVector3f velocity = GetTransform().TransposeRotate(GetVelocityWR());
+    const PortMouse::Planar force = PortMouse::MovementForce(
+        {strafeInput, forwardInput}, {velocity.GetX(), velocity.GetY()},
+        GetTweakPlayer()->GetPlayerTranslationMaxSpeed(GetSurfaceRestraint()) * WalkScale(),
+        GetTweakPlayer()->GetPlayerTranslationFriction(GetSurfaceRestraint()) * WalkScale(),
+        GetMass(), dt, GetTweakPlayer()->GetMaxTranslationalAcceleration(GetSurfaceRestraint()) * WalkScale());
+    strafeForce = force.right * GetAcceleration();
+    forwardForce = force.forward * GetAcceleration();
+  }
+#endif
   if (mOrbitState != kOS_NoOrbit && gkFreeLookPreventsOrbitMovement && mLookButtonHeld) {
     forwardForce = 0.f;
     strafeForce = 0.f;
@@ -708,6 +743,10 @@ float CPlayer::JumpInput(const CFinalInput& input, CStateManager& mgr) {
         if (inputMagnitude < mControlMapper.GetAnalogInput(CControlMapper::kC_Backward, input)) {
           inputMagnitude = mControlMapper.GetAnalogInput(CControlMapper::kC_Backward, input);
         }
+#ifdef TARGET_PC
+        if (MouseAimAllowed(mgr) && mOrbitState == kOS_NoOrbit)
+          inputMagnitude = PortMovementInput(input).Magnitude();
+#endif
         return waterScale *
                ((verticalDoubleJumpAccel -
                  inputMagnitude * (verticalDoubleJumpAccel - horizontalDoubleJumpAccel)) *
@@ -754,6 +793,10 @@ float CPlayer::JumpInput(const CFinalInput& input, CStateManager& mgr) {
     if (inputMagnitude < mControlMapper.GetAnalogInput(CControlMapper::kC_Backward, input)) {
       inputMagnitude = mControlMapper.GetAnalogInput(CControlMapper::kC_Backward, input);
     }
+#ifdef TARGET_PC
+    if (MouseAimAllowed(mgr) && mOrbitState == kOS_NoOrbit)
+      inputMagnitude = PortMovementInput(input).Magnitude();
+#endif
     return waterScale *
            ((verticalJumpAccel - inputMagnitude * (verticalJumpAccel - horizontalJumpAccel)) *
             GetMass());
