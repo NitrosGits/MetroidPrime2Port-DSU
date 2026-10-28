@@ -340,7 +340,7 @@ void PickAsync() {
   SDL_SetNumberProperty(props, SDL_PROP_FILE_DIALOG_NFILTERS_NUMBER, 2);
   SDL_SetPointerProperty(props, SDL_PROP_FILE_DIALOG_WINDOW_POINTER, window);
   SDL_SetStringProperty(props, SDL_PROP_FILE_DIALOG_TITLE_STRING,
-                        "Select your Metroid Prime 2: Echoes disc image (GameCube, USA v1.00)");
+                        "Select your Metroid Prime 2: Echoes disc image (GameCube USA or PAL, or Metroid Prime Trilogy)");
   SDL_ShowFileDialogWithProperties(
       SDL_FILEDIALOG_OPENFILE,
       [](void*, const char* const* files, int) {

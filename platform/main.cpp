@@ -142,7 +142,7 @@ std::string ExecutableDir(const char* argv0) {
 void ReportNoDisc(const char* argv0) {
   std::fprintf(stderr,
                "metroid_prime2_port: no disc image given.\n"
-               "  usage: %s <path to Metroid Prime 2: Echoes (USA) (v1.00).iso>\n"
+               "  usage: %s <path to a Metroid Prime 2: Echoes (USA or PAL) or Metroid Prime Trilogy disc image>\n"
                "  or set MP2_DISC, or place the image next to the executable.\n",
                argv0 != nullptr ? argv0 : "metroid_prime2_port");
 }
@@ -972,7 +972,7 @@ std::string PickDiscImage() {
   SDL_SetNumberProperty(props, SDL_PROP_FILE_DIALOG_NFILTERS_NUMBER, 2);
   SDL_SetPointerProperty(props, SDL_PROP_FILE_DIALOG_WINDOW_POINTER, window);
   SDL_SetStringProperty(props, SDL_PROP_FILE_DIALOG_TITLE_STRING,
-                        "Select your Metroid Prime 2: Echoes disc image (GameCube, USA v1.00)");
+                        "Select your Metroid Prime 2: Echoes disc image (GameCube USA or PAL, or Metroid Prime Trilogy)");
   const SDL_DialogFileCallback onAnswer = [](void*, const char* const* files, int) {
     if (files != nullptr && files[0] != nullptr) {
       chosen = files[0];
