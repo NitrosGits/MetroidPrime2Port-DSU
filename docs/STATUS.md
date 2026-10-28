@@ -43,17 +43,46 @@ Evidence: `/tmp/opencode/issue3-mirror-{out,in}/`,
 `/tmp/opencode/issue3-trilogy-games.png`. This tests USA G2ME card <-> USA Trilogy
 NAND sharing, not PAL conversion.
 
-**Separate failure found: the port's Trilogy-disc card cannot mirror.** Created a real
+**Trilogy-disc failure reproduced, then fixed:** created a real
 native `01-R3ME-MetroidPrime2.gci` by mounting the Trilogy disc in the port, starting
 a new game and saving at the station. Re-entering the native front end with sharing
 and mirroring enabled logged `Trilogy mirror: import failed: there is no Echoes save
 on the card to put the Trilogy file into: save once in the port first`. Both files
-remained unchanged. `GameFilesNewest()` filters headers by the first three bytes
+remained unchanged. The old `GameFilesNewest()` filtered headers by the first three bytes
 `G2M`, so the existing R3ME file is ignored before conversion. The payload converter
 does support R3ME/R3MP; the wrapper's file selection does not. Reproduction:
 `/tmp/opencode/log_issue3-mirror-r3-enabled.log`, isolated data
-`/tmp/opencode/issue3-mirror-r3/`. This failure is recorded in the project backlog;
-no mirror source changes were made during this test request.
+`/tmp/opencode/issue3-mirror-r3/`. That test-only checkpoint was superseded by the fix below.
+
+### R3ME mirror fix
+
+`GameFilesNewest()` now selects the mounted release's exact four-byte game code and
+maker `01`, through `port_save_mirror.h::IsCardForRelease`. Simply admitting all R3M
+files would still choose the wrong layout when a newer GameCube card shares the same
+region folder. Both sync direction detection and the actual import/export now use
+the mounted release only. G2MP conversion remains explicitly unsupported, as before.
+
+Verification:
+
+- `port_save_mirror_tests` covers the full G2ME/G2MP/R3ME/R3MP selection matrix,
+  wrong makers, unrelated games, malformed codes and truncated headers. It and the
+  framing/conversion tests passed through CTest; the selector also passed ASan/UBSan.
+- Actual front-end mirror tests on native Trilogy data passed in both directions
+  under `/tmp/opencode/issue3-r3-fixed-{out,in}/`, with a **newer G2ME decoy** in the
+  same card folder. The decoy stayed byte-identical; selected card/bin mtimes became
+  equal. Export touched only the target Echoes slot, summary and CRC, and kept an
+  exact NAND backup. Import kept an exact R3ME backup and did not change the NAND.
+- The imported R3ME card loaded 100% / 06:13 progress into native gameplay at update
+  273, exit 0 (`/tmp/opencode/log_issue3-r3-fixed-load.log`).
+- Dolphin 2512 loaded the actual R3ME mirror export into retail Trilogy gameplay
+  in Temple Grounds (99 energy, 5 missiles). The Echoes payload remained identical
+  to the exported file. Screenshot: `/tmp/opencode/issue3-r3-mirror-loaded.png`;
+  isolated emulator: `/tmp/opencode/issue3-r3-dolphin/`.
+- G2ME mirror import and export also passed with a newer R3ME decoy left unchanged
+  (`/tmp/opencode/issue3-g2-regression-{out,in}/`).
+- Full native game link and source manifest check passed; the Trilogy fixture suite
+  still reports 0 failures. Retail matching artifacts remain unchanged (87 hashes pass).
+  PAL selection is unit-tested; no actual R3MP disc test was performed.
 
 ### GameCube framing fix
 

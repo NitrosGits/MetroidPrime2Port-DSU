@@ -8,6 +8,7 @@
 #include "port_env.h"
 #include "port_overlay.h"
 #include "port_save_convert.h"
+#include "port_save_mirror.h"
 
 #include "Kyoto/CCrc32.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
@@ -953,7 +954,7 @@ void BeforeCardWrite(const char* fileName) {
 
 // ---- Metroid Prime Trilogy's save.bin (port_save_trilogy.h) ----------------------------------------
 // MP1's PortGci::ExportTrilogy / SyncTrilogy / SyncTrilogyShare. The container is port_save_trilogy.cpp and the
-// slot stream conversion (G2ME .gci <-> the bin's parts A/B, by asset ID) is port_save_trilogy_payload.cpp.
+// slot stream conversion (G2ME/R3ME/R3MP .gci <-> the bin's parts A/B) is port_save_trilogy_payload.cpp.
 // An import needs a card save to take the framing from; a G2MP (PAL Echoes) card file is refused.
 
 namespace {
@@ -975,13 +976,14 @@ std::string FindTrilogyBin(bool pal) {
 
 bool IsPal() { return port::entry::IsPalRegion(port::entry::CurrentDiscVersion()); }
 
-// The card's own G2ME/G2MP files, newest first by modification time.
+// The mounted release's files, newest first by modification time. G2ME and R3ME
+// can coexist in USA/Card A (and G2MP/R3MP in EUR); never import into the other's layout.
 std::vector<std::string> GameFilesNewest() {
   std::vector<std::string> out;
   for (const std::string& path : Files()) {
     std::ifstream in(PortUtf8::FromUtf8(path), std::ios::binary);
-    char head[3];
-    if (in.read(head, sizeof head) && std::memcmp(head, "G2M", 3) == 0) {
+    char head[6];
+    if (in.read(head, sizeof head) && Mirror::IsCardForRelease({head, sizeof head}, GameCode())) {
       out.push_back(path);
     }
   }

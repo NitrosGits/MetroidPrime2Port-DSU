@@ -782,6 +782,11 @@ if(AURORA_SDL3_TARGET)
     add_test(NAME port_save_framing_tests COMMAND port_save_framing_tests)
     set_tests_properties(port_save_framing_tests PROPERTIES TIMEOUT 30 LABELS port)
 
+    add_executable(port_save_mirror_tests tests/port_save_mirror.cpp)
+    target_include_directories(port_save_mirror_tests PRIVATE platform/include tests)
+    add_test(NAME port_save_mirror_tests COMMAND port_save_mirror_tests)
+    set_tests_properties(port_save_mirror_tests PROPERTIES TIMEOUT 30 LABELS port)
+
     # G2ME <-> G2MP save conversion round trip on tests/data/01-G2ME-MetroidPrime2.gci (a real
     # save, untracked like the Trilogy fixtures: registered only where a copy is present).
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/01-G2ME-MetroidPrime2.gci)
