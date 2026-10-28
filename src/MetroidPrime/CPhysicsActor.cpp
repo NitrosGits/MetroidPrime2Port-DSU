@@ -351,10 +351,19 @@ CAABox CPhysicsActor::GetMotionVolume(float dt) const {
   aabox.AccumulateBounds(aabox.GetMinPoint() + dv);
 
   float up = rstl::max_val(GetStepUpHeight(), 0.f);
+#ifdef TARGET_PC
+  // Retail margin 0.3f (lbl_8041B76C = 0x3E99999A at 0x800E9F5C/0x800E9FBC) on x/y and z (step + 0.3).
+  aabox.AccumulateBounds(aabox.GetMaxPoint() + CVector3f(0.3f, 0.3f, up + 0.3f));
+#else
   aabox.AccumulateBounds(aabox.GetMaxPoint() + CVector3f(0.5f, 0.5f, up + 1.f));
+#endif
 
   float down = rstl::max_val(GetStepDownHeight(), 0.f);
+#ifdef TARGET_PC
+  aabox.AccumulateBounds(aabox.GetMinPoint() - CVector3f(0.3f, 0.3f, down + 0.3f));
+#else
   aabox.AccumulateBounds(aabox.GetMinPoint() - CVector3f(0.5f, 0.5f, down + 1.5f));
+#endif
   return aabox;
 }
 
