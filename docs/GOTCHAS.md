@@ -207,3 +207,10 @@ machine; the game then died of SIGPIPE on its next print, silently. uutils `time
 signal death as the bare number (13 SIGPIPE, 11 SEGV, 6 ABRT), GNU's as 128+N. Since 62aa05378 the
 game ignores SIGPIPE, the copier ignores SIGTERM/SIGHUP, and Aurora logs through a stdio callback
 (`platform/main.cpp`): its default `fmt::println` throws on EPIPE inside a noexcept function.
+- **Prompt icons bind per `CTexture` by asset id; `register_virtual_replacement(ReplacementKey, ...)` is a
+  vendored-Aurora addition** (`extern/aurora/include/aurora/texture.hpp`, `lib/gfx/texture_replacement.cpp`):
+  `FTextureFactory` calls `CTexture::PortSetAssetId`, `PortPrompts::BindTexture` looks the id up in
+  `kAssets` (platform/port_prompts.cpp) and registers a `TexturePointerKey{CTexture*}` entry that
+  matches the `userData` `CTexture` sets with `GXInitTexObjUserData` (re-set in `Load`). A re-vendor must
+  keep the key overload. The hint memo's button blinks on purpose (game behaviour): screenshot several
+  frames. `kKeys` (texel hashes) still serves the few prompt textures without an asset id.
