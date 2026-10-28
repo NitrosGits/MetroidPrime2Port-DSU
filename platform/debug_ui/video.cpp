@@ -178,14 +178,15 @@ void DrawVideoDisplay() {
                              PortOverlay::kCrosshairOpacityMax, "%d%%"));
     ImGui::SetItemTooltip("The crosshair in the middle of the screen (mouse aim, twin stick, touch).");
     int style = sCrosshairStyle;
-    static const char* const kStyles[] = {"Classic", "Remastered"};
-    if (ImGui::Combo("Crosshair style", &style, kStyles, 2)) {
-      sCrosshairStyle = style == PortOverlay::kCrosshairStyle_Remastered ? PortOverlay::kCrosshairStyle_Remastered
-                                                                         : PortOverlay::kCrosshairStyle_Classic;
+    static const char* const kStyles[] = {"Classic", "Remastered", "GameCube"};
+    if (ImGui::Combo("Crosshair style", &style, kStyles, 3)) {
+      sCrosshairStyle = std::clamp(style, PortOverlay::kCrosshairStyle_Classic, PortOverlay::kCrosshairStyle_GameCube);
       Changed(true);
     }
-    ImGui::SetItemTooltip("Remastered is the one this port can draw: the classic reticle's model does\n"
-                          "not load here.");
+    ImGui::SetItemTooltip("Remastered is the one this port can draw on a GameCube disc: the classic\n"
+                          "reticle's model does not load there. GameCube: on a Trilogy disc, the\n"
+                          "GameCube crosshair in place of Trilogy's aiming cursor (Classic on a\n"
+                          "GameCube disc).");
     Changed(ImGui::Checkbox("Custom crosshair colour", &sCrosshairCustomColor));
     ImGui::SetItemTooltip("Off: the game's own colour.");
     ImGui::SameLine();

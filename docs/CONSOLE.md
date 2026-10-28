@@ -33,7 +33,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `msaa <1|4> | aniso <1..16>` — anti-aliasing and anisotropic filtering (applied next frame) (also `aniso`)
 - `scanspread [0..100]` — how much of the widescreen spread the scan visor side panels get (0 = 4:3 place)
 - `hudscale <50..100>` — HUD scale in percent, as the F1 HUD row does
-- `crosshair [<25..100>]` — aim crosshair size, `style classic|remastered`, opacity, color <r> <g> <b>|clear, aim <0|1> (F1 HUD)
+- `crosshair [<25..100>]` — aim crosshair size, `style classic|remastered|gamecube`, opacity, color <r> <g> <b>|clear, aim <0|1> (F1 HUD)
 - `uiscale <50..200>` — the F1 window's size in percent, as the Render row does
 - `vsync <0|1>` — vertical sync, as the F1 Render row does
 - `interp [0|1]` — smooth frames: the camera between ticks with the cap off

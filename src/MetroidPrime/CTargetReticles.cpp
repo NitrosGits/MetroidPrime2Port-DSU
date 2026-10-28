@@ -727,9 +727,9 @@ void CCompoundTargetReticle::PortTriDrawLocked(const CMatrix3f& rotation) const 
 
 void CCompoundTargetReticle::PortTriDrawAiming(const CMatrix3f& rotation,
                                                const CStateManager& mgr) const {
-  // The Remastered style replaces the cursor (DrawCrosshairs draws it).
+  // The Remastered and GameCube styles replace the cursor (DrawCrosshairs draws them).
   if (mNoDrawTicks > 0 || mPortTriAimArmAlpha <= 0.f ||
-      PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_Remastered) {
+      PortOverlay::CrosshairStyle() != PortOverlay::kCrosshairStyle_Classic) {
     return;
   }
   const CCameraManager* camMgr = mgr.GetCameraManager(mPlayerIndex);
@@ -1990,9 +1990,9 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
   // that path runs before the model is looked up because this port's classic model never loads
   // (`mCrosshairs.GetObject()` is null), so the classic style draws nothing here.
   // While Trilogy's own aiming cursor is up (PortTriDrawAiming), it is the crosshair, unless the
-  // Remastered style replaces it.
+  // Remastered or GameCube style replaces it.
   if (mPortTri && mPortTriAimArmAlpha > 0.f &&
-      PortOverlay::CrosshairStyle() != PortOverlay::kCrosshairStyle_Remastered) {
+      PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_Classic) {
     return;
   }
   float scale = mCrosshairsDrawScale;
@@ -2051,7 +2051,17 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
     return;
   }
 #ifdef TARGET_PC
-  gpRender->SetModelMatrix(CTransform4f(rotation, mTargetPosition) * CTransform4f::Scale(scale));
+  CTransform4f xf(rotation, mTargetPosition);
+  if (mPortTri && PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_GameCube) {
+    // In place of the aiming cursor: the model (built out along its Y) turned down the pointer
+    // ray as drawn, so it marks the aim where the cursor would (MP1 255afaf13).
+    const CCameraManager* camMgr = mgr.GetCameraManager(mPlayerIndex);
+    const CTransform4f cam = camMgr->GetCurrentCameraTransform(mgr, true);
+    const CVector3f eye = cam.GetTranslation();
+    xf = CTransform4f::LookAt(
+        eye, eye + PortTriPointerDir(cam, *camMgr->GetCurrentCamera(mgr, true)), cam.GetUp());
+  }
+  gpRender->SetModelMatrix(xf * CTransform4f::Scale(scale));
   model->Draw(CModelFlags::Additive(color).DepthCompareUpdate(false, false));
 #else
   const CColor& color = gpTweakTargeting->GetCrosshairsColor();

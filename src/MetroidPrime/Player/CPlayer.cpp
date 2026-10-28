@@ -2936,10 +2936,12 @@ bool CPlayer::PortEmptyLockKeepsPitch() const {
 
 // The port's free-aim crosshair (mouse, twin-stick or touch aim, MP1's PortAimCrosshairsOpen).
 // On a Trilogy disc the reticle this opens is drawn beside Trilogy's own aiming cursor, which
-// already marks the aim: two crosshairs (MP1 #219). There only the crosshair input opens it, as
-// on the Wii.
+// already marks the aim: two crosshairs (MP1 #219). With the Classic style there only the
+// crosshair input opens it, as on the Wii; the GameCube and Remastered styles draw from the open
+// crosshair in place of Trilogy's cursor.
 bool CPlayer::PortAimCrosshairsOpen() const {
-  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion()) &&
+      PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_Classic) {
     return false;
   }
   return PortMouse::Aiming() && PortOverlay::AimCrosshair();

@@ -209,13 +209,15 @@ Video > Display:
   Widest HUD spread; past that width the HUD stays centred.
 - `scan_spread` (0-100; default 100, 0 on Android, env `MP2_SCAN_SPREAD`): HUD and view > Scan image
   spread; how far the widescreen HUD moves the scan visor's side panels. Scan text box and bar stay 4:3.
-- `crosshair_style`, `crosshair_opacity`: HUD and view > Crosshair style, Crosshair opacity.
+- `crosshair_style` (`0` classic, `1` remastered, `2` gamecube; env `MP2_CROSSHAIR_STYLE` also takes
+  the names), `crosshair_opacity`: HUD and view > Crosshair style, Crosshair opacity.
 - `crosshair_color`, `crosshair_custom_color`: HUD and view > Custom crosshair colour (off: the
   game's own), which shows the colour picker; env `MP2_CROSSHAIR_COLOR`.
 - On Trilogy discs these crosshair settings act on Trilogy's own aiming cursor (centre and arms):
   a custom colour replaces their colour, opacity scales their alpha (the default 100% leaves them
   as on the Wii), the size slider scales them under mouse/pointer aim, and `remastered` draws the
-  Remastered cursor where the aiming cursor is (MP1 2ee5a757c).
+  Remastered cursor where the aiming cursor is (MP1 2ee5a757c). `gamecube` draws the GameCube
+  crosshair there, turned down the pointer ray (Classic on a GameCube disc; MP1 255afaf13).
 - `no_helmet`, `no_visor_fx`: HUD and view > Hide helmet, Hide visor effects; env
   `MP2_NO_HELMET`, `MP2_NO_VISOR_FX`.
 - `cinema_bars` (default on, env `MP2_CINEMA_BARS`): HUD and view > Cutscene black bars; off drops

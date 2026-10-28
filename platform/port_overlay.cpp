@@ -763,12 +763,15 @@ int CrosshairStyle() {
   if (env != nullptr && std::strcmp(env, "remastered") == 0) {
     return kCrosshairStyle_Remastered;
   }
-  return EnvIntIn("MP2_CROSSHAIR_STYLE", sCrosshairStyle, kCrosshairStyle_Classic, kCrosshairStyle_Remastered);
+  if (env != nullptr && std::strcmp(env, "gamecube") == 0) {
+    return kCrosshairStyle_GameCube;
+  }
+  return EnvIntIn("MP2_CROSSHAIR_STYLE", sCrosshairStyle, kCrosshairStyle_Classic, kCrosshairStyle_GameCube);
 }
 
 void SetCrosshairStyle(int style) {
   ReadEnv();
-  sCrosshairStyle = std::clamp(style, kCrosshairStyle_Classic, kCrosshairStyle_Remastered);
+  sCrosshairStyle = std::clamp(style, kCrosshairStyle_Classic, kCrosshairStyle_GameCube);
   Persist();
 }
 

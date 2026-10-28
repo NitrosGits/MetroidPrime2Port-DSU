@@ -1743,20 +1743,21 @@ void CmdHudOpacity(CStateManager&, const Args& args, std::string& out) {
   out += line;
 }
 
-// crosshair [<25..100> | style classic|remastered | opacity <0..100> | color <r> <g> <b> | color
+// crosshair [<25..100> | style classic|remastered|gamecube | opacity <0..100> | color <r> <g> <b> | color
 // clear]: the Prime port's crosshair settings, same meanings.
 void CmdCrosshair(CStateManager&, const Args& args, std::string& out) {
   if (args.size() >= 2) {
     const std::string_view what = args[1];
     if (what == "style" && args.size() >= 3) {
       const std::string_view style = args[2];
-      if (style != "classic" && style != "remastered") {
-        Fail("crosshair style is classic or remastered");
+      if (style != "classic" && style != "remastered" && style != "gamecube") {
+        Fail("crosshair style is classic, remastered or gamecube");
         return;
       }
       PortOverlay::SetCrosshairStyle(style == "remastered"
                                          ? PortOverlay::kCrosshairStyle_Remastered
-                                         : PortOverlay::kCrosshairStyle_Classic);
+                                     : style == "gamecube" ? PortOverlay::kCrosshairStyle_GameCube
+                                                           : PortOverlay::kCrosshairStyle_Classic);
     } else if (what == "opacity" && args.size() >= 3) {
       const int percent = ArgToInt(args[2], -1);
       if (percent < PortOverlay::kCrosshairOpacityMin ||
@@ -1788,9 +1789,9 @@ void CmdCrosshair(CStateManager&, const Args& args, std::string& out) {
   }
   char line[160];
   std::snprintf(line, sizeof(line), "crosshair %s, %d%%, %d%% opacity, aim %s\n",
-                PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_Remastered
-                    ? "remastered"
-                    : "classic",
+                PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_Remastered ? "remastered"
+                : PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_GameCube ? "gamecube"
+                                                                                         : "classic",
                 PortOverlay::CrosshairSize(), PortOverlay::CrosshairOpacity(),
                 PortOverlay::AimCrosshair() ? "on" : "off");
   out += line;
