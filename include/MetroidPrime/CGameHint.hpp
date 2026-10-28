@@ -6,6 +6,9 @@
 #include <string.h>
 
 class CHintState; // Guessed name: the separate runtime hint record, not an actor.
+#ifdef TARGET_PC
+class CMethodPtrStoreUnknown;
+#endif
 
 // Guessed name: the Wii CGameHint::EBreakHintType export suggests this common hint base.
 class CGameHint : public CActor {
@@ -29,12 +32,18 @@ public:
     template < class T >
     SCallback(T* object, void (T::*method)(CStateManager&))
     : mInvoke(&InvokeMember< T >), mContext(object) {
+#ifdef TARGET_PC
+      static_assert(sizeof(method) <= sizeof(mCallable), "method pointer does not fit");
+#endif
       memcpy(mCallable, &method, sizeof(method));
     }
 
     template < class T >
     SCallback(T* object, void (T::*method)())
     : mInvoke(&InvokeMemberWithoutArgs< T >), mContext(object) {
+#ifdef TARGET_PC
+      static_assert(sizeof(method) <= sizeof(mCallable), "method pointer does not fit");
+#endif
       memcpy(mCallable, &method, sizeof(method));
     }
 
@@ -55,7 +64,12 @@ public:
 
     FInvoke mInvoke;
     void* mContext;
+#ifdef TARGET_PC
+    // Room for any member-function pointer (24 bytes under MSVC's /vmg); see TFunctor.hpp.
+    char mCallable[(sizeof(void (CMethodPtrStoreUnknown::*)()) + 15) & ~15];
+#else
     char mCallable[16]; // Original callable representation remains unresolved.
+#endif
 
   private:
     template < class T >

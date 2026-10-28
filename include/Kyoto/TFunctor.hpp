@@ -5,6 +5,9 @@
 #include <string.h>
 
 // Prime-correlated names. Native callbacks store a bridge, borrowed object, and 16 method bytes.
+#ifdef TARGET_PC
+class CMethodPtrStoreUnknown;
+#endif
 class CMethodPtrStore {
 public:
   typedef void (*DummyFunctor)();
@@ -27,7 +30,14 @@ public:
 private:
   union {
     DummyFunctor mFunc;
+#ifdef TARGET_PC
+    // Room for any member-function pointer: retail sized it for a plain function
+    // pointer, but they are 16 bytes on Itanium and 24 under MSVC's /vmg, and a
+    // pointer to a member of an incomplete class is the largest form (as MP1 926d9fbbe).
+    char mFuncStorage[(sizeof(void (CMethodPtrStoreUnknown::*)()) + 15) & ~15];
+#else
     char mFuncStorage[(sizeof(DummyFunctor) + 15) & ~15];
+#endif
   };
 };
 
@@ -70,6 +80,9 @@ public:
   typedef void (T::*MethodPtr)(P1);
 
   static TFunctor1< P1 > Make(T& object, MethodPtr method) {
+#ifdef TARGET_PC
+    static_assert(sizeof(method) <= sizeof(CMethodPtrStore), "method pointer does not fit");
+#endif
     char methodData[sizeof(method)];
     memcpy(methodData, &method, sizeof(method));
     return TFunctor1< P1 >(TNonStaticCallback1< T, P1 >::Function, &object, methodData,
@@ -118,6 +131,9 @@ public:
   typedef void (T::*MethodPtr)(P1, P2);
 
   static TFunctor2< P1, P2 > Make(T& object, MethodPtr method) {
+#ifdef TARGET_PC
+    static_assert(sizeof(method) <= sizeof(CMethodPtrStore), "method pointer does not fit");
+#endif
     char methodData[sizeof(method)];
     memcpy(methodData, &method, sizeof(method));
     return TFunctor2< P1, P2 >(TNonStaticCallback2< T, P1, P2 >::Function, &object, methodData,

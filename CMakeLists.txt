@@ -76,6 +76,16 @@ if(APPLE)
     endif()
 endif()
 
+# MSVC picks a member-function pointer's size per translation unit, from whether
+# the class is complete where the pointer type is first needed. ScriptLoaderRel.hpp
+# only forward-declares CEntity, so SPlayerActor_FuncPtrs had one layout in
+# ScriptLoaderRel.cpp and another in CScriptPlayerActor.cpp, and the first
+# cutscene's PlayerActor_TouchModels jumped through garbage. /vmg uses the
+# general representation everywhere, as Itanium's fixed one does (MP1 issue #4).
+if(MSVC)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/vmg>)
+endif()
+
 # The REL module tests need modules extracted from a disc the user owns (see
 # tools/extract_disc_file.py) plus the symbol list of the executable they were
 # linked against. Both are optional: without them the tests report themselves
