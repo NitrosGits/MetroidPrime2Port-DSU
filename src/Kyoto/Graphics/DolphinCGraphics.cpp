@@ -67,6 +67,19 @@ void PaceFrame(long periodUs) {
     sDeadline = now;
   }
 }
+
+// The cap's pacing after a presented (or held) frame.
+void PaceVideoRate() {
+  if (!PortHarness::Unpaced()) {
+    if (PortOverlay::FrameLimit()) {
+      PaceFrame(CGraphics::Is50Hz() ? 20000 : 16667);
+    } else if (const int cap = PortOverlay::FpsCap(); cap > 0) {
+      PaceFrame(1000000 / cap);
+    }
+  }
+}
+
+bool s_portHoldFrame = false;
 } // namespace
 #endif
 
@@ -894,7 +907,8 @@ static const GXVtxDescList skPosColorTexDirect[] = {
 #ifdef TARGET_PC
 void CGraphics::BeginScene() {
   // Port: a scene maps to one Aurora frame (covers init-time draws too).
-  if (!AuroraFrameBegin()) {
+  // A held frame opens none, so the window keeps showing the last one (PortSetHoldFrame).
+  if ((s_portHoldFrame && !s_auroraFrameOpen) || !AuroraFrameBegin()) {
     return;
   }
   // F1 > Video > Compatibility's GPU self-test, between frames' GX work (PortVideo, f1b).
@@ -907,6 +921,9 @@ void CGraphics::BeginScene() { ClearBackAndDepthBuffers(); }
 
 #ifdef TARGET_PC
 bool CGraphics::PortSceneOpen() { return s_auroraFrameOpen; }
+void CGraphics::PortSetHoldFrame(bool hold) { s_portHoldFrame = hold; }
+bool CGraphics::PortFrameHeld() { return s_portHoldFrame; }
+void CGraphics::PortPaceHeldFrame() { PaceVideoRate(); }
 #endif
 
 void CGraphics::SwapBuffers() {
@@ -1064,13 +1081,7 @@ void CGraphics::EndScene() {
   AuroraFrameEnd();
   // A fast run or a harness boot's load needs no video-rate wait (PortHarness::Unpaced).
   // With the cap off, the FPS cap slider's rate, or none (0 = unlimited).
-  if (!PortHarness::Unpaced()) {
-    if (PortOverlay::FrameLimit()) {
-      PaceFrame(sIs50Hz ? 20000 : 16667);
-    } else if (const int cap = PortOverlay::FpsCap(); cap > 0) {
-      PaceFrame(1000000 / cap);
-    }
-  }
+  PaceVideoRate();
   mNumBreakpointsWaiting = 0;
   mFlippingState = 0;
 #else

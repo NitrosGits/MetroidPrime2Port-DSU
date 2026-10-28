@@ -348,6 +348,13 @@ public:
   // Port: whether BeginScene opened an Aurora frame. It does not while the Android surface is lost
   // or the app is backgrounded, and CMain::RsMain then skips the scene, as MP1's does.
   static bool PortSceneOpen();
+  // Port: hold the last presented frame. Retail freezes the screen by drawing nothing while the
+  // EFB is not cleared (CRezbitEffect), so the copy repeats the previous image; Aurora clears every
+  // frame, so instead BeginScene opens no frame while this is set and the window keeps the last one.
+  static void PortSetHoldFrame(bool hold);
+  static bool PortFrameHeld();
+  // Pace a held frame as EndScene paces a presented one.
+  static void PortPaceHeldFrame();
   // Port: MP1's presentation lag for the GUI clock. During a blended draw GetSecondsMod900 reads
   // this many seconds behind the last tick (wrapping at 900), so GUI frames and HUD materials
   // land between the last two ticks with everything else; 0 outside the draw.

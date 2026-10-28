@@ -835,9 +835,14 @@ int CMain::RsMain(int argc, const char* const* argv) {
         // surface is back); the scene's draws were dropped anyway, but its EFB copies reached the
         // FIFO processor with no recording session and crashed it. EndScene would return early
         // and not pace the loop, so this sleeps like MP1's loader idle.
+        // A held frame (PortSetHoldFrame) opens none either, and keeps the video rate.
         if (!CGraphics::PortSceneOpen()) {
           drawFrame = false;
-          std::this_thread::sleep_for(std::chrono::milliseconds(5));
+          if (CGraphics::PortFrameHeld()) {
+            CGraphics::PortPaceHeldFrame();
+          } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+          }
         }
       }
       if (drawFrame) {

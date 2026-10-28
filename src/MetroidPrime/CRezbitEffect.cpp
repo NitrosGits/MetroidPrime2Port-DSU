@@ -217,6 +217,11 @@ CIOWin::EMessageReturn CRezbitEffectIOWin::OnMessage(const CArchitectureMessage&
     } else if (mFramePhase == kFP_RestoringFrame) {
       mFramePhase = kFP_Idle;
     }
+#ifdef TARGET_PC
+    // Nothing draws while the frame is preserved or restored; the GameCube's uncleared EFB showed
+    // the last image again, but Aurora clears every frame, which flashed the screen. Hold it.
+    CGraphics::PortSetHoldFrame(!GetIsContinueDraw());
+#endif
   }
 
   if (mExitRequested && mFramePhase == kFP_Idle) {
@@ -225,4 +230,8 @@ CIOWin::EMessageReturn CRezbitEffectIOWin::OnMessage(const CArchitectureMessage&
   return CIOWin::OnMessage(msg, queue);
 }
 
+#ifdef TARGET_PC
+CRezbitEffectIOWin::~CRezbitEffectIOWin() { CGraphics::PortSetHoldFrame(false); }
+#else
 CRezbitEffectIOWin::~CRezbitEffectIOWin() {}
+#endif
