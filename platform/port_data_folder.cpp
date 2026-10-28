@@ -557,7 +557,22 @@ void DrawPanel() {
           }
         } else {
           if (ImGui::Button("Delete it for good")) {
-            DeleteData(priv);
+            // Kept: the disc image when it is the only copy (a move made before
+            // the disc was copied, or "Use the data already there"), and the file
+            // the settings point at, whatever its name.
+            const bool discElsewhere = fs::exists(FromUtf8(current + "disc.iso"));
+            const std::string configured = PortOverlaySettings::DiscPath();
+            const fs::path privBase = FromUtf8(priv);
+            DeleteData(priv, [&](const std::string& rel) {
+              if (rel == "disc.iso" && !discElsewhere) {
+                return true;
+              }
+              if (configured.empty()) {
+                return false;
+              }
+              std::error_code same;
+              return fs::equivalent(privBase / FromUtf8(rel), FromUtf8(configured), same) && !same;
+            });
             sOldMeasured = false;
             sConfirmDelete = false;
           }
