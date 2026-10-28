@@ -11,6 +11,7 @@
 #include "dolphin/gx/GXExtra.h"
 #include "dolphin/gx/GXManage.h"
 #include "port_breadcrumb.h"
+#include "port_prompts.h"
 #endif
 #include "dolphin/os.h"
 #include "dolphin/os/OSCache.h"
@@ -55,7 +56,11 @@ CTexture::CTexture(ETexelFormat fmt, const short w, const short h, int mips)
 , mNativeFormat(GX_TF_RGB565)
 , mNativeCIFormat(GX_TF_C8)
 , mClampMode(kCM_Repeat)
-, mFrameAllocated(sCurrentFrameCount) {
+, mFrameAllocated(sCurrentFrameCount)
+#ifdef TARGET_PC
+, mPortPrompt(false)
+#endif
+{
   InitBitmapBuffers(fmt, w, h, mips);
   InitTextureObjects();
 }
@@ -75,7 +80,11 @@ CTexture::CTexture(CInputStream& in, EAutoMipmap automip, EBlackKey blackKey)
 , mNativeFormat(GX_TF_RGB565)
 , mNativeCIFormat(GX_TF_C8)
 , mClampMode(kCM_Repeat)
-, mFrameAllocated(sCurrentFrameCount) {
+, mFrameAllocated(sCurrentFrameCount)
+#ifdef TARGET_PC
+, mPortPrompt(false)
+#endif
+{
   mTexelFormat = ETexelFormat(in.Get< uint >());
   mWidth = in.ReadUint16();
   mHeight = in.ReadUint16();
@@ -117,6 +126,9 @@ CTexture::CTexture(CInputStream& in, EAutoMipmap automip, EBlackKey blackKey)
 
 #ifdef TARGET_PC
 CTexture::~CTexture() {
+  if (mPortPrompt) {
+    PortPrompts::UnbindTexture(this);
+  }
   UncountMemory();
   // Drop the EFB copy Aurora keeps for this bitmap's address (the copy-target textures: flares, scan
   // panes, filters); MP2 never destroys copies, so each freed one stayed cached for good.
@@ -178,6 +190,12 @@ void CTexture::Load(GXTexMapID tex, EClampMode clamp) const {
         mCanLoadObj = false;
       }
       GXInitTexObjData(&mTexObj, ptr);
+#ifdef TARGET_PC
+      if (mPortPrompt) {
+        // InitTextureObjects rebuilds the object, so name the owner again on every load.
+        GXInitTexObjUserData(&mTexObj, const_cast< CTexture* >(this));
+      }
+#endif
     }
 
     if (mClampMode != clamp && mIsPowerOfTwo) {
@@ -493,8 +511,21 @@ void CTexture::UnLock() {
 
 CFactoryFnReturn FTextureFactory(const SObjectTag& tag, CInputStream& in,
                                  const CVParamTransfer& xfer) {
+#ifdef TARGET_PC
+  // A prompt's icon follows the player's binding (port_prompts.h).
+  CTexture* texture = rs_new CTexture(in, CTexture::kAM_Zero, CTexture::kBK_Zero);
+  texture->PortSetAssetId(tag.GetId());
+  return texture;
+#else
   return rs_new CTexture(in, CTexture::kAM_Zero, CTexture::kBK_Zero);
+#endif
 }
+
+#ifdef TARGET_PC
+void CTexture::PortSetAssetId(uint id) {
+  mPortPrompt = PortPrompts::BindTexture(this, id, GetWidth(), GetHeight());
+}
+#endif
 
 const void* CTexture::GetConstBitMapData(const int mip) const {
   int offset = 0;

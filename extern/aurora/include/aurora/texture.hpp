@@ -83,6 +83,14 @@ struct VirtualFileSource {
 ReplacementRegistration register_virtual_replacement(std::string_view path, VirtualFileSource source,
                                                      ReplacementOptions options = {});
 
+/// As above, under a key the caller chooses (`path` still names the file and its mip sidecars).
+/// With a TexturePointerKey the file stands in for the texture whose GXInitTexObjUserData value
+/// (or data pointer) that is; unregister it before the pointer is freed or reused. Returns ID 0 if
+/// source.read is null or a pointer key's data is null.
+ReplacementRegistration register_virtual_replacement(ReplacementKey key, std::string_view path,
+                                                     VirtualFileSource source,
+                                                     ReplacementOptions options = {});
+
 /// Registers an encoded (.dds/.png) file under a key the caller chooses, loaded like a directory
 /// replacement (thumbnail first, the rest streamed). With a TexturePointerKey the file stands in for
 /// the texture whose data pointer that is, or whose GXInitTexObjUserData value it is: the user

@@ -148,6 +148,13 @@ private:
   mutable EClampMode mClampMode;
   mutable CARAMToken mARAMToken;
   mutable uint mFrameAllocated;
+#ifdef TARGET_PC
+  bool mPortPrompt; // bound to a prompt icon (port_prompts.h)
+
+public:
+  // Binds this texture to its prompt icon when the asset id is one (port_prompts.h).
+  void PortSetAssetId(uint id);
+#endif
 };
 CHECK_SIZEOF(CTexture, 0x68)
 NESTED_CHECK_SIZEOF(CTexture, CDumpedBitmapDataReloader, 0x1c)
