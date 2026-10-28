@@ -34,7 +34,12 @@ public:
 
 private:
   uchar mData[sizeof(T)];
+#if defined(TARGET_PC) && defined(_MSC_VER)
+  // cl.exe has no __attribute__; same alignment, same layout.
+  alignas(4) bool m_valid;
+#else
   bool m_valid __attribute__((aligned(4)));
+#endif
 
   void makeValid() { m_valid = true; }
 };

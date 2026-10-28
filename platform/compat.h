@@ -53,7 +53,7 @@ static inline double __frsqrte(double x) { return 1.0 / sqrt(x); }
 
 
 #ifndef AUTO
-#if defined(__cplusplus) && __cplusplus >= 201103L
+#if (defined(__cplusplus) && __cplusplus >= 201103L) || defined(_MSC_VER)
 #define AUTO(name, val) auto name = val
 #define AUTO_REF(name, val) auto& name = val
 #define AUTO_CONST_REF(name, val) const auto& name = val
@@ -74,4 +74,14 @@ static inline double __frsqrte(double x) { return 1.0 / sqrt(x); }
 static_assert((char)-1 < 0, "plain char must be signed; see mp_signed_char in CMakeLists.txt");
 #else
 _Static_assert((char)-1 < 0, "plain char must be signed; see mp_signed_char in CMakeLists.txt");
+#endif
+
+// Plain cl.exe has no GCC builtins (clang-cl does); map the ones TARGET_PC code uses.
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <malloc.h>
+#define __builtin_bswap16(x) _byteswap_ushort(x)
+#define __builtin_bswap32(x) ((unsigned int)_byteswap_ulong(x))
+#define __builtin_bswap64(x) _byteswap_uint64(x)
+#define __builtin_memcpy(d, s, n) memcpy((d), (s), (n))
+#define __builtin_alloca(n) _alloca(n)
 #endif

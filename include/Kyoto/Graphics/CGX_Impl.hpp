@@ -7,6 +7,11 @@
 #define CGX_INLINE inline
 #endif
 
+// CGX.cpp defines every one of these out of line and other units inline them. ELF linkers
+// keep the strong copy; plain cl.exe rejects strong plus inline (LNK2005, MP1 45a7cf0d7), so
+// there only CGX.cpp has the bodies and everyone else calls them.
+#if !(defined(TARGET_PC) && defined(_MSC_VER) && !defined(__clang__))
+
 CGX_INLINE void CGX::SetNumChans(uchar num) {
   gpGXState->mNumChans = num;
   gpGXState->mFlags.numDirty = num != gpGXState->mPrevNumChans;
@@ -182,5 +187,7 @@ CGX_INLINE void CGX::Begin(GXPrimitive prim, GXVtxFmt fmt, ushort numVtx) {
 }
 
 CGX_INLINE void CGX::End() {}
+
+#endif // !cl.exe
 
 #endif // _CGX_IMPL

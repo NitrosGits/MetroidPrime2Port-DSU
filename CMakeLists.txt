@@ -84,6 +84,8 @@ endif()
 # general representation everywhere, as Itanium's fixed one does (MP1 issue #4).
 if(MSVC)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/vmg>)
+    # cl.exe reports __cplusplus as 199711L unless asked, which sends AUTO to __typeof__.
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>)
 endif()
 
 # The REL module tests need modules extracted from a disc the user owns (see
@@ -239,6 +241,8 @@ target_include_directories(mp_game PUBLIC
 # clang-cl takes the GNU-style warning flags too; MWCC accepted the narrowing initializers.
 set(MP_MSVC_GAME_OPTIONS /W3
     $<$<CXX_COMPILER_ID:Clang>:-Wno-c++11-narrowing -Wno-multichar -Wno-trigraphs>
+    # plain cl.exe only: the decomp binds string literals to char* (clang-cl allows it).
+    $<$<AND:$<CXX_COMPILER_ID:MSVC>,$<COMPILE_LANGUAGE:CXX>>:/Zc:strictStrings->
     "$<$<COMPILE_LANGUAGE:CXX>:/FI${CMAKE_CURRENT_SOURCE_DIR}/platform/compat.h>")
 if(MSVC)
     target_compile_options(mp_game PRIVATE ${MP_MSVC_GAME_OPTIONS})
