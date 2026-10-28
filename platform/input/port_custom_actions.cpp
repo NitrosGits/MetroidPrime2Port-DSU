@@ -311,6 +311,7 @@ typedef rstl::optional_object<TCachedToken<CStringTable>> NameToken;
 struct WorldLoad {
   std::unique_ptr<CDummyWorld> level;
   std::vector<NameToken> names; // per rooms entry
+  bool built = false;           // a level was started for this world (so a pakless one is retried once)
 };
 
 std::vector<World> sWorlds;
@@ -430,6 +431,9 @@ std::string RunWarp(const PortInput::CustomActionDef& def) {
     if (target == nullptr) {
       return "That room is not on this disc";
     }
+    if (!target->loaded && area != 0 && !sLoads.empty() && sLoads[target - sWorlds.data()].level) {
+      return "Room list still loading; try again";
+    }
     if (target->loaded && area != 0 && !target->rooms.empty() &&
         std::none_of(target->rooms.begin(), target->rooms.end(), [&](const Room& room) { return room.area == area; })) {
       return "That room is not on this disc";
@@ -494,6 +498,7 @@ void LoadRooms() {
       // Such a world is listed by name, with no rooms (its start still warps).
       if (gpResourceFactory != nullptr && gpResourceFactory->CanBuild(SObjectTag('MLVL', worlds[i].first))) {
         load.level.reset(new CDummyWorld(worlds[i].first, false));
+        load.built = true;
       }
       sLoads.push_back(std::move(load));
     }
@@ -503,6 +508,13 @@ void LoadRooms() {
     if (world.name.empty()) {
       // The front-end names load with the memory card's own tables.
       world.name = WorldNameOf(static_cast<int>(i));
+    }
+    // A world whose pak was not loaded the first time is read once its MLVL can be built.
+    if (world.loaded && world.rooms.empty() && !sLoads[i].built && gpResourceFactory != nullptr &&
+        gpResourceFactory->CanBuild(SObjectTag('MLVL', worlds[i].first))) {
+      sLoads[i].level.reset(new CDummyWorld(worlds[i].first, false));
+      sLoads[i].built = true;
+      world.loaded = false;
     }
     if (!world.loaded) {
       world.loaded = !sLoads[i].level && sLoads[i].names.empty() && world.rooms.empty() ? true : LoadWorld(world, sLoads[i]);
