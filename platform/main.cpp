@@ -93,7 +93,6 @@ extern void* gPortGameHeapHi;
 #include "port_env.h"
 #include "port_breadcrumb.h"
 #include "port_crash.h"
-#include "port_embedded.h"
 #include "port_storage_report.h"
 #include "port_logfile.h"
 #include "port_memory_log.h"
@@ -1336,8 +1335,9 @@ int main(int argc, char** argv) {
   // Texture replacements (platform/port_textures.cpp) and the binding icons drawn over the game's
   // button prompts (platform/port_prompts.cpp), as in the Prime 1 port: the built-in set is
   // MP2_TEXTURES, else the set built into the executable (MP_EMBED_RESOURCES), else a `textures`
-  // folder beside the executable (on Android, the app files directory), and the user's pack MP2_USER_TEXTURES, else <user>/user_textures. Both need
-  // Aurora's texture registry, so they start after aurora_initialize.
+  // folder beside the executable (on Android, the app files directory), and the user's pack
+  // MP2_USER_TEXTURES, else <user>/user_textures. Both need Aurora's texture registry, so they
+  // start after aurora_initialize.
   {
     std::string textures;
     if (const char* env = port::EnvString("MP2_TEXTURES"); env != nullptr && env[0] != '\0') {
