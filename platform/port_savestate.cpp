@@ -341,8 +341,11 @@ bool WriteFile(const std::string& path, const std::string& bytes, std::string& e
   {
     std::ofstream file(temp, std::ios::binary | std::ios::trunc);
     file.write(bytes.data(), static_cast< std::streamsize >(bytes.size()));
+    file.flush();
+    file.close();
     if (!file) {
       error = "cannot write " + temp;
+      std::filesystem::remove(temp, ec);
       return false;
     }
   }
@@ -647,6 +650,12 @@ void WriteMarker(const std::string& text) {
   std::filesystem::create_directories(Folder(), ec);
   std::ofstream file(path, std::ios::binary | std::ios::trunc);
   file << text << '\n';
+  file.flush();
+  file.close();
+  if (!file) {
+    // Without the marker a crash goes undetected, so the user is told once per failure.
+    std::fprintf(stderr, "[savestate] cannot write the crash marker %s\n", path.c_str());
+  }
 }
 
 void ResumeQuitCleanly() {
