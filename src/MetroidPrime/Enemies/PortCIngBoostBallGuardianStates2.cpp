@@ -509,8 +509,9 @@ void CIngBoostBallGuardian::SuckEnergy(CStateManager& mgr, EStateMsg msg, float 
     const CDamageInfo damage(CWeaponMode(kWT_AI), dt * mData.mBodyProjectile.mUnknownA0D6, 0.f, 0.f,
                              true, false);
     // The asm builds one included material, 1 << 0x3b (kMT_Solid), type 3 = kFT_IncludeExclude.
+    // The direction is sZeroVector (asm 0x00009400 lis/addi into r9, the 7th argument).
     mgr.ApplyDamage(GetUniqueId(), mHostId, GetUniqueId(), damage, SolidFilter(),
-                    GetTransform().GetForward());
+                    CVector3f::Zero());
     break;
   }
   case kStateMsg_Deactivate: {
