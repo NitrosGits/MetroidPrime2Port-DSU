@@ -236,13 +236,28 @@ bool InAppImage() {
   return image != nullptr && image[0] != '\0';
 }
 
+// The folder the running executable is in, with a trailing separator; empty when unknown. SDL
+// asks the OS (/proc/self/exe, GetModuleFileName, _NSGetExecutablePath), so it holds when the
+// program was started by bare name from PATH, where argv[0] has no folder. Decides both the
+// portable user/ folder (InstallFolder) and the textures folder.
+std::string ExecutableFolder() {
+  std::string dir;
+  if (const char* base = SDL_GetBasePath(); base != nullptr) {
+    dir = base;
+  }
+  if (!dir.empty() && dir.back() != '/' && dir.back() != '\\') {
+    dir += '/';
+  }
+  return dir;
+}
+
 std::string InstallFolder() {
   std::string dir;
   if (InAppImage()) {
     const std::u8string parent = Utf8Path(std::getenv("APPIMAGE")).parent_path().u8string();
     dir.assign(parent.begin(), parent.end());
-  } else if (const char* base = SDL_GetBasePath(); base != nullptr) {
-    dir = base;
+  } else {
+    dir = ExecutableFolder();
   }
   if (!dir.empty() && dir.back() != '/' && dir.back() != '\\') {
     dir += '/';
@@ -1306,11 +1321,20 @@ int main(int argc, char** argv) {
       // Unpacked by the activity beside port_paths.txt, so a moved user folder does not hide it.
       const std::string base = appPaths.base;
 #else
-      const std::string base = ExecutableDir(argc > 0 ? argv[0] : nullptr);
+      // The same helper as the portable user/ rule, not argv[0]: a bare-name launch from PATH has
+      // no folder in it. argv[0] only if the OS cannot say.
+      std::string base = ExecutableFolder();
+      if (base.empty()) {
+        base = ExecutableDir(argc > 0 ? argv[0] : nullptr);
+      }
+      while (base.size() > 1 && (base.back() == '/' || base.back() == '\\')) {
+        base.pop_back();
+      }
 #endif
       std::error_code error;
       if (!base.empty() && std::filesystem::is_directory(base + "/textures", error)) {
         textures = base + "/textures";
+        std::fprintf(stderr, "metroid_prime2_port: textures %s\n", textures.c_str());
       }
 #if defined(__APPLE__)
       // A macOS bundle keeps data in Contents/Resources (codesign rejects non-code files in
