@@ -5,6 +5,58 @@ appended, dated as in the heading there.
 
 ## 2026-10-29: issue #3 emulator save framing
 
+### Trilogy mirror integration test
+
+Tested the actual `CSaveGameScreen::Update` mirror hook with
+`emulator_folder=/tmp/opencode/issue3-mirror-{out,in}/emulator`,
+`share_emulator_card=1` and `mirror_trilogy_save=1` in isolated settings files.
+Native front-end runs used `MP2_SKIP_FRONTEND=0`, 5500 updates, 8 ticks/loop and
+40-update A presses at updates 100, 300, 600, 1000, then every 500 through 4000.
+Three-update presses can be skipped entirely at 8 ticks/loop; those initial runs
+never reached the save screen and were not counted as mirror verification.
+
+- Outbound: the actual native save-station G2ME card (0%, 2.4 seconds) was newer
+  than a copy of `13-gbatemp-100.bin`. The mirror replaced Echoes file 1, made an
+  exact `save.bin.bak`, and equalized the card/bin mtimes. Independent byte comparison
+  found 813 changed bytes, all within the target Echoes parts, its summary and the
+  global CRC. The other slots and the Prime 1/Prime 3 data were unchanged.
+- Inbound: the same unmodified Trilogy fixture was newer than another copy of the
+  G2ME card. The mirror updated the card, kept an exact pre-import GCI backup, left
+  the NAND file unchanged and equalized mtimes. A subsequent native boot loaded
+  the imported 100% / 06:13 Echoes progress into gameplay at update 273, exit 0.
+- Dolphin 2512 booted the USA Trilogy disc with the actual outbound mirror output.
+  Its game-selection screen showed Echoes in Temple Grounds at 0% / 00:00, alongside
+  the unchanged Prime 1 and Prime 3 progress. Selecting Echoes reached first-person
+  gameplay in Temple Grounds (99 energy, 5 missiles). Screenshot:
+  `/tmp/opencode/issue3-trilogy-mirror-loaded.png`. The mirrored Echoes parts remained
+  byte-identical through the menu. Dolphin was stopped after the successful load.
+
+The initial emulator setup seeded only `save.bin`, omitting Wii's `banner.bin`.
+Both the mirrored output **and the untouched source fixture** were then rejected as
+corrupt. A clean Trilogy boot generated both files; its empty `save.bin` was exactly
+`01-firstboot.bin`. Adding that game-generated banner to the isolated test NAND
+resolved the rejection. It was a test-setup failure, not evidence against the mirror.
+The mirror expects a complete Trilogy save directory already created by the game.
+
+Evidence: `/tmp/opencode/issue3-mirror-{out,in}/`,
+`/tmp/opencode/log_issue3-mirror-import-load.log`,
+`/tmp/opencode/issue3-trilogy-games.png`. This tests USA G2ME card <-> USA Trilogy
+NAND sharing, not PAL conversion.
+
+**Separate failure found: the port's Trilogy-disc card cannot mirror.** Created a real
+native `01-R3ME-MetroidPrime2.gci` by mounting the Trilogy disc in the port, starting
+a new game and saving at the station. Re-entering the native front end with sharing
+and mirroring enabled logged `Trilogy mirror: import failed: there is no Echoes save
+on the card to put the Trilogy file into: save once in the port first`. Both files
+remained unchanged. `GameFilesNewest()` filters headers by the first three bytes
+`G2M`, so the existing R3ME file is ignored before conversion. The payload converter
+does support R3ME/R3MP; the wrapper's file selection does not. Reproduction:
+`/tmp/opencode/log_issue3-mirror-r3-enabled.log`, isolated data
+`/tmp/opencode/issue3-mirror-r3/`. This failure is recorded in the project backlog;
+no mirror source changes were made during this test request.
+
+### GameCube framing fix
+
 `fix/issue3-save` corrects the runtime card reader/writer, not just the import inspector.
 `CCardFileInfo` now checks CRCs in console big-endian or legacy host-little-endian order,
 reads the generation in the matching order, and always writes new CRC/generation words
