@@ -254,3 +254,7 @@ read stride 3, so on Trilogy slots 1-2 were null and only "New 1" drew. Under `T
 uses stride 1 (title only) when fewer than 9 links exist; GC data is unchanged (still 9 links).
 The other slot states (`APRC`/`CLOS`/`DPHZ`/`DSCW`, 3 each) already matched. Slot 0 of an
 empty save shows no extra panel text; that was not compared against hardware.
+
+## Wii prompt glyphs in strings (2026-10-28)
+
+Trilogy's `Strings.pak` draws prompts with Wii-remote TXTRs that have no GC id, so the RS5 skip could not fall back to GC art (Z / + / - / A / 2 showed the remote's glyphs). `CTextParser::GetImage` (`TARGET_PC` + `IsTrilogy`, as MP1 6545eb9c9) maps them to the GC prompt for the same action, with the crop the GC disc's copy of that string uses (diff of every Echoes STRG's `&image=` tags, matched by string id/index), so `port_prompts` then re-icons them: 574CDE37 (A) -> D523DE3B (A, .70/.68); 71AA55E3 (2, jump) -> 53B7AC95 (B, .70/.68); 60ACB985 (Z: lock-on, scan, hack, grapple, Spider Ball) -> 967A3516 (L, 1/1; Spider Ball strings want R, D89B9F7C, and stay L); B5F3DA09 (+) -> ADCBEDAE (C-stick, .6/.85); E2F4B915 (-) -> B4EDE4B6 (D-pad, .6/.85). Not mapped: the nunchuk stick animation (617D3700...), 7A8BD23B/FC1FA095/37437330 and a few menu icons. The Wii-pointer *wording* ("Move cursor into the top zone...", "point up") is separate string-set text and is unchanged. Shot: `/tmp/opencode/wiitext/shot_trilogy_memo_Z_after.png`.

@@ -8,6 +8,51 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef TARGET_PC
+#include "port_entry.h"
+#endif
+
+#ifdef TARGET_PC
+namespace {
+// Trilogy's strings draw prompts with Wii-remote art that has no GameCube id, so the loader
+// cannot fall through to GC art for them. These name the GC texture for the same action, with
+// the crop the GC disc's own copy of the string draws it at; port_prompts then re-icons it for
+// the active input. Built from the GC/Trilogy tag diff of every Echoes STRG (as MP1 6545eb9c9).
+struct PortWiiPrompt {
+  uint wiiId;
+  uint gcId;
+  float cropX;
+  float cropY;
+};
+const PortWiiPrompt kPortWiiPrompts[] = {
+    {0x574CDE37, 0xD523DE3B, 0.70f, 0.68f}, // A -> A
+    {0x71AA55E3, 0x53B7AC95, 0.70f, 0.68f}, // 2 (jump) -> B
+    {0x60ACB985, 0x967A3516, 1.0f, 1.0f},   // Z (lock-on, scan; also Spider Ball) -> L
+    {0xB5F3DA09, 0xADCBEDAE, 0.6f, 0.85f},  // + (beams) -> C-stick
+    {0xE2F4B915, 0xB4EDE4B6, 0.6f, 0.85f},  // - (visors) -> D-pad
+};
+
+const PortWiiPrompt* PortFindWiiPrompt(CAssetId id) {
+  if (!port::entry::IsTrilogy(port::entry::CurrentDiscVersion()))
+    return nullptr;
+  for (const PortWiiPrompt& prompt : kPortWiiPrompts) {
+    if (prompt.wiiId == static_cast< uint >(id))
+      return &prompt;
+  }
+  return nullptr;
+}
+
+// The id to load for `id`, setting `crop` when it stands in for Wii art.
+CAssetId PortGcPrompt(CAssetId id, CVector2f* crop) {
+  const PortWiiPrompt* prompt = PortFindWiiPrompt(id);
+  if (prompt == nullptr)
+    return id;
+  if (crop != nullptr)
+    *crop = CVector2f(prompt->cropX, prompt->cropY);
+  return prompt->gcId;
+}
+} // namespace
+#endif
 
 CTextParser::CTextParser(IObjectStore& store) : mObjectStore(store) {}
 
@@ -88,8 +133,13 @@ CFontImageDef CTextParser::GetImage(const wchar_t* str, int len,
       rstl::vector< TToken< CTexture > > textures;
       textures.reserve(tokens.size() - 2);
       for (int i = 2; i < tokens.size(); ++i) {
+#ifdef TARGET_PC
+        textures.push_back_unsafe(mObjectStore.GetObj(
+            SObjectTag('TXTR', PortGcPrompt(GetAssetIdFromString(tokens[i], vec), nullptr))));
+#else
         textures.push_back_unsafe(
             mObjectStore.GetObj(SObjectTag('TXTR', GetAssetIdFromString(tokens[i], vec))));
+#endif
       }
       return CFontImageDef(textures, fps, CVector2f(1.f, 1.f));
     }
@@ -98,25 +148,51 @@ CFontImageDef CTextParser::GetImage(const wchar_t* str, int len,
       const float fps = atof(tokens[1].c_str());
       const float cropX = atof(tokens[2].c_str());
       const float cropY = atof(tokens[3].c_str());
+#ifdef TARGET_PC
+      CVector2f crop(cropX, cropY);
+#endif
       rstl::vector< TToken< CTexture > > textures;
       textures.reserve(tokens.size() - 4);
       for (int i = 4; i < tokens.size(); ++i) {
+#ifdef TARGET_PC
+        textures.push_back_unsafe(mObjectStore.GetObj(
+            SObjectTag('TXTR', PortGcPrompt(GetAssetIdFromString(tokens[i], vec), &crop))));
+#else
         textures.push_back_unsafe(
             mObjectStore.GetObj(SObjectTag('TXTR', GetAssetIdFromString(tokens[i], vec))));
+#endif
       }
+#ifdef TARGET_PC
+      return CFontImageDef(textures, fps, crop);
+#else
       return CFontImageDef(textures, fps, CVector2f(cropX, cropY));
+#endif
     }
     if (rstl::operator==(rstl::istring(tokens[0].c_str()), rstl::istring_l("SI")) &&
         tokens.size() == 4) {
       const float cropX = atof(tokens[1].c_str());
       const float cropY = atof(tokens[2].c_str());
+#ifdef TARGET_PC
+      CVector2f crop(cropX, cropY);
+      return CFontImageDef(mObjectStore.GetObj(SObjectTag(
+                               'TXTR', PortGcPrompt(GetAssetIdFromString(tokens[3], vec), &crop))),
+                           crop);
+#else
       return CFontImageDef(
           mObjectStore.GetObj(SObjectTag('TXTR', GetAssetIdFromString(tokens[3], vec))),
           CVector2f(cropX, cropY));
+#endif
     }
   }
+#ifdef TARGET_PC
+  CVector2f crop(1.f, 1.f);
+  return CFontImageDef(
+      mObjectStore.GetObj(SObjectTag('TXTR', PortGcPrompt(GetAssetIdFromString(text, vec), &crop))),
+      crop);
+#else
   return CFontImageDef(mObjectStore.GetObj(SObjectTag('TXTR', GetAssetIdFromString(text, vec))),
                        CVector2f(1.f, 1.f));
+#endif
 }
 
 uint CTextParser::HandleUserTag(CTextExecuteBuffer& buffer, const wchar_t* str, int len) {
