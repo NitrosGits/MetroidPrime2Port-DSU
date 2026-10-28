@@ -47,7 +47,7 @@ namespace {
 // MP2 now has the wheels for; Classic and Twin stick are one Layout tap away in the editor.
 // An older touch.cfg (written when MP2 defaulted to Classic) keeps its `classic=1`.
 constexpr float kAimSpeed = 2.25f;
-constexpr int kTurboPeriod = 2; // loop iterations per Turbo half-cycle (down 2, up 2)
+constexpr uint64_t kTurboHalfNs = 2 * 16666667ull; // Turbo half-cycle: two 60 Hz ticks down, two up
 
 struct Settings {
   bool classic = false;
@@ -104,7 +104,7 @@ std::atomic< bool > sTurboHeld{false};
 bool sDpadShifted[4] = {};
 // Turbo's own A presses (game thread only).
 bool sTurboDown = false;
-unsigned sTurboTicks = 0;
+uint64_t sTurboStartNs = 0; // 0 = not running
 
 std::mutex sPadMutex;
 PortTouchPad::Pad sPad;
@@ -446,7 +446,7 @@ int BuildWheelState(CPlayerState* state) {
   return bits;
 }
 
-// Turbo: while the button is held (and the setting is on), A goes down for two iterations and
+// Turbo: while the button is held (and the setting is on), A goes down for two ticks' time and
 // up for two, as MP1's turbo fire mashes it.
 void UpdateTurbo(bool enabled) {
   const bool held =
@@ -456,10 +456,14 @@ void UpdateTurbo(bool enabled) {
       PadButton(kButtonA, false);
       sTurboDown = false;
     }
-    sTurboTicks = 0;
+    sTurboStartNs = 0;
     return;
   }
-  const bool down = (sTurboTicks++ / kTurboPeriod) % 2 == 0;
+  const uint64_t now = SDL_GetTicksNS();
+  if (sTurboStartNs == 0) {
+    sTurboStartNs = now;
+  }
+  const bool down = ((now - sTurboStartNs) / kTurboHalfNs) % 2 == 0;
   if (down != sTurboDown) {
     PadButton(kButtonA, down);
     sTurboDown = down;
