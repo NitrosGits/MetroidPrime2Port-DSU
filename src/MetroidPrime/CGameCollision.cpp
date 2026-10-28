@@ -1174,6 +1174,12 @@ void CGameCollision::PushActorAwayFromWalls(CStateManager& mgr, CPhysicsActor& a
   const CVector3f extent(distance + cacheRadius, distance + cacheRadius, cacheRadius);
   CAreaCollisionCache cache(CAABox(center - extent, center + extent));
   BuildAreaCollisionCache(mgr, cache);
+#ifdef TARGET_PC
+  // Retail reads the overflow bit once, after this first build (0x801236A4 lbz r4,0x1ce4(r1);
+  // 0x801236B0 extrwi r29,r4,1,24) and tests r29 in the loop (0x80123824 cmplwi r29,0), never
+  // re-reading the flag the loop's own rebuild clears and refills.
+  const bool portInitialOverflow = cache.HasCacheOverflowed();
+#endif
   const CSphere sphere(center, radius);
   const CMaterialFilter filter = CMaterialFilter::MakeExclude(CMaterialList(kMT_Floor));
   if (DetectStaticCollisionBoolean_Cached(mgr, cache,
@@ -1189,7 +1195,11 @@ void CGameCollision::PushActorAwayFromWalls(CStateManager& mgr, CPhysicsActor& a
     const CVector3f direction(CMath::SlowSineR(angle), CMath::SlowCosineR(angle), 0.f);
     double collisionDistance = distance;
     CCollisionInfo collision;
+#ifdef TARGET_PC
+    if (portInitialOverflow) {
+#else
     if (cache.HasCacheOverflowed()) {
+#endif
       cache.ClearCache();
       CAABox bounds(center, center);
       bounds.AccumulateBounds(actorPosition + distance * direction);
