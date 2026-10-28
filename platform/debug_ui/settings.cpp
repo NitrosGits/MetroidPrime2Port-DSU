@@ -862,6 +862,11 @@ bool GameOptionsBytes(uchar (&bytes)[kGameOptionsBytes]) {
   for (size_t i = 0; i < kGameOptionsBytes; ++i) {
     char* end = nullptr;
     const std::string digits = sGameOptions.substr(i * 2, 2);
+    // strtoul alone would take a sign, a space or "0x" inside the pair.
+    if (!std::isxdigit(static_cast< unsigned char >(digits[0])) ||
+        !std::isxdigit(static_cast< unsigned char >(digits[1]))) {
+      return false;
+    }
     const unsigned long value = std::strtoul(digits.c_str(), &end, 16);
     if (end != digits.c_str() + 2) {
       return false;

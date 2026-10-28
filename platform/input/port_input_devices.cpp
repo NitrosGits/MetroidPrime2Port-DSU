@@ -783,12 +783,19 @@ void RefreshLocked() {
   sUserTime = time;
   std::ifstream file(sPath, std::ios::binary);
   if (!file) return;
-  std::ostringstream text;
-  text << file.rdbuf();
+  // A bindings file is a few KiB; a huge one is a mistake, not a config.
+  constexpr std::streamsize kMaxControlsBytes = 1 << 20;
+  std::string content(static_cast< size_t >(kMaxControlsBytes) + 1, '\0');
+  file.read(content.data(), kMaxControlsBytes + 1);
+  content.resize(static_cast< size_t >(file.gcount()));
+  if (static_cast< std::streamsize >(content.size()) > kMaxControlsBytes) {
+    std::fprintf(stderr, "[input] %s is larger than 1 MiB; ignored\n", sPath.c_str());
+    return;
+  }
   PortInput::UserBindings parsed;
   std::string error;
   int dropped = 0;
-  if (PortInput::ParseUserBindings(text.str(), parsed, &error, &dropped)) {
+  if (PortInput::ParseUserBindings(content, parsed, &error, &dropped)) {
     std::fprintf(stderr, "[input] %s loaded (%zu profiles)\n", sPath.c_str(), parsed.profiles.size());
     if (dropped > 0) {
       std::fprintf(stderr, "[input] %s: skipped %d beam_shift row(s)\n", sPath.c_str(), dropped);
