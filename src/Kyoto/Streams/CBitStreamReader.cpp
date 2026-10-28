@@ -16,10 +16,17 @@ uint CBitStreamReader::ReadBits(uint bitCount) {
     if (bitCount != 0x20) {
       mask = (1 << bitCount) - 1;
     }
+#ifdef TARGET_PC
+    uint ret = bwShift >= 32 ? 0 : mask & (mBitWord >> bwShift);
+
+    mBitOffset -= bitCount;
+    mBitWord = bitCount >= 32 ? 0 : mBitWord << bitCount;
+#else
     uint ret = mask & (mBitWord >> bwShift);
 
     mBitOffset -= bitCount;
     mBitWord <<= bitCount;
+#endif
     return ret;
   }
 
@@ -32,7 +39,12 @@ uint CBitStreamReader::ReadBits(uint bitCount) {
     if (mBitOffset != 0x20) {
       mask = (1 << mBitOffset) - 1;
     }
+#ifdef TARGET_PC
+    // Shifts by 32 are undefined on the host (PPC gives 0): the result is 0 there.
+    ret = (bwShift >= 32 || shiftAmt >= 32) ? 0 : (mask & (mBitWord >> bwShift)) << shiftAmt;
+#else
     ret = (mask & (mBitWord >> bwShift)) << shiftAmt;
+#endif
   }
 
   uint len = min_containing_bytes(shiftAmt);
@@ -52,12 +64,20 @@ uint CBitStreamReader::ReadBits(uint bitCount) {
     if (shiftAmt != 0x20) {
       mask = (1 << shiftAmt) - 1;
     }
+#ifdef TARGET_PC
+    ret |= (bwShift >= 32 ? 0 : ((mask & (mBitWord >> bwShift)) << mBitOffset));
+#else
     ret |= ((mask & (mBitWord >> bwShift)) << mBitOffset);
+#endif
   }
 
   mBitOffset = len * 8;
   mBitOffset -= shiftAmt;
+#ifdef TARGET_PC
+  mBitWord = shiftAmt >= 32 ? 0 : mBitWord << shiftAmt;
+#else
   mBitWord <<= shiftAmt;
+#endif
   return ret;
 }
 
