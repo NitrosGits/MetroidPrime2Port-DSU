@@ -188,7 +188,11 @@ std::string DesktopDiscFallback(const std::string& resolved) {
 // user path, so the port has to name the same folder or the two disagree about where
 // settings.cfg, controls.toml and the tools' backups live. Not SDL's call itself because SDL is
 // only on the entry's include path on Android, and because asking it creates the folder.
-std::string DesktopUserFolder() {
+std::filesystem::path Utf8Path(const std::string& text) {
+  return std::filesystem::path(std::u8string(text.begin(), text.end()));
+}
+
+std::string PerUserFolder() {
   std::string dir;
 #if defined(_WIN32)
   if (const char* appdata = std::getenv("APPDATA"); appdata != nullptr && appdata[0] != '\0') {
@@ -214,8 +218,87 @@ std::string DesktopUserFolder() {
   // SDL's own name for the folder: the app name, verbatim, with no organisation above it.
   dir += kAppFolder;
   dir += '/';
+  return dir;
+}
+
+// The folder the program (or, for an AppImage, the .AppImage file) sits in, ending in a
+// separator; empty when unknown. Inside an AppImage the executable is in a read-only mount that
+// is gone when the game exits, and the file the user copies around is $APPIMAGE.
+bool InAppImage() {
+  const char* image = std::getenv("APPIMAGE");
+  return image != nullptr && image[0] != '\0';
+}
+
+std::string InstallFolder() {
+  std::string dir;
+  if (InAppImage()) {
+    const std::u8string parent = Utf8Path(std::getenv("APPIMAGE")).parent_path().u8string();
+    dir.assign(parent.begin(), parent.end());
+  } else if (const char* base = SDL_GetBasePath(); base != nullptr) {
+    dir = base;
+  }
+  if (!dir.empty() && dir.back() != '/' && dir.back() != '\\') {
+    dir += '/';
+  }
+  return dir;
+}
+
+// A macOS app bundle is signed as a whole: anything written inside it breaks the signature, and a
+// quarantined download runs from a read-only translocated copy anyway.
+bool InAppBundle(const std::string& dir) {
+  return dir.find(".app/Contents/") != std::string::npos;
+}
+
+bool FolderWritable(const std::string& dir) {
+  const std::filesystem::path probe = Utf8Path(dir) / ".port_write_test";
+  {
+    std::ofstream file(probe, std::ios::binary);
+    if (!file) {
+      return false;
+    }
+  }
   std::error_code error;
-  std::filesystem::create_directories(dir, error);
+  std::filesystem::remove(probe, error);
+  return true;
+}
+
+// Where the desktop port keeps settings.cfg, controls.toml, the memory cards, the log and the
+// caches (all of them follow AppPaths::user, which Aurora gets too). In order, as in the Prime 1
+// port (platform/include/port_paths.h):
+//   1. MP2_USER_PATH, when set (the caller resolves that; not here).
+//   2. user/ beside the executable (an AppImage: the folder the .AppImage file is in, no user/),
+//      when that folder can be written to and is not inside a macOS app bundle. Exception: an
+//      install from before this, whose settings.cfg is still in the per-user folder and which has
+//      none in user/, stays on the per-user folder so an update does not lose its settings and
+//      saves. Moving that folder's contents into user/ switches it over.
+//   3. The per-user folder, for a read-only install (a Flatpak, a system package).
+// `why` is set to "portable", "legacy" or "per-user" for the startup log line.
+std::string DesktopUserFolder(const char** why) {
+  const std::string perUser = PerUserFolder();
+  const std::string install = InstallFolder();
+  std::string dir;
+  if (!install.empty() && !InAppBundle(install) && FolderWritable(install)) {
+    const std::string portable = InAppImage() ? install : install + "user/";
+    std::error_code error;
+    const bool hereHasSettings =
+        std::filesystem::exists(Utf8Path(portable + "settings.cfg"), error);
+    const bool legacyHasSettings =
+        !perUser.empty() && std::filesystem::exists(Utf8Path(perUser + "settings.cfg"), error);
+    if (hereHasSettings || !legacyHasSettings) {
+      dir = portable;
+      *why = "portable";
+    } else {
+      dir = perUser;
+      *why = "legacy: settings.cfg is in the per-user folder and none in user/";
+    }
+  } else {
+    dir = perUser;
+    *why = "per-user: the executable's folder is read-only or inside an app bundle";
+  }
+  if (!dir.empty()) {
+    std::error_code error;
+    std::filesystem::create_directories(Utf8Path(dir), error);
+  }
   return dir;
 }
 #endif
@@ -919,13 +1002,12 @@ static void PortCrashAfterReport(int sig, const void* faultAddress) {
 }
 #endif
 
-#if defined(_WIN32)
-void PortAttachParentConsole(); // platform/port_parent_console.cpp
-#endif
-
 int main(int argc, char** argv) {
 #if defined(_WIN32)
-  PortAttachParentConsole();
+  if ((argc == 4 || argc == 5) && std::strcmp(argv[1], "--log-copy") == 0) {
+    return PortLogFile::RunCopy(argv[2], argv[3], argc == 5 ? argv[4] : nullptr);
+  }
+  PortLogFile::AttachParentConsole();
 #endif
   if (argc == 2 && std::strcmp(argv[1], "--version") == 0) {
     std::printf("Metroid Prime 2 native port %s (%s)\n", MP_BUILD_VERSION, MP_BUILD_REVISION);
@@ -974,10 +1056,16 @@ int main(int argc, char** argv) {
 #if defined(__ANDROID__)
   appPaths = ResolveAndroidPaths();
 #else
-  appPaths.user = DesktopUserFolder();
+  const char* userWhy = "";
+  if (const char* env = std::getenv("MP2_USER_PATH"); env != nullptr && env[0] != '\0') {
+    appPaths.user = env;
+    userWhy = "MP2_USER_PATH";
+  } else {
+    appPaths.user = DesktopUserFolder(&userWhy);
+  }
   appPaths.cache = appPaths.user;  // Aurora's own fallback is this folder too, but can come back null
   if (!appPaths.user.empty()) {
-    std::printf("metroid_prime2_port: user folder %s\n", appPaths.user.c_str());
+    std::printf("metroid_prime2_port: user folder %s (%s)\n", appPaths.user.c_str(), userWhy);
   } else {
     std::fprintf(stderr,
                  "metroid_prime2_port: no home directory; set MP2_USER_PATH to keep settings, "
@@ -1026,6 +1114,10 @@ int main(int argc, char** argv) {
   // The log file (platform/port_logfile.cpp) starts here, before aurora_initialize below, so
   // Aurora's own startup lines and anything that aborts during it land in the file too.
   PortLogFile::Start(touchUser != nullptr ? touchUser : std::string());
+#if !defined(__ANDROID__)
+  // The folder choice was printed before the log existed; say it again so the file has it.
+  std::printf("metroid_prime2_port: user folder %s (%s)\n", appPaths.user.c_str(), userWhy);
+#endif
   // Crash reports into that log (MP2_CRASH_TEST=segv|abort crashes here to check one).
 #if defined(__ANDROID__)
   PortCrash::SetAfterReport(PortCrashAfterReport);

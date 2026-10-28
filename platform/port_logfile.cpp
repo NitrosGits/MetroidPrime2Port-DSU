@@ -12,6 +12,23 @@
 #include <mutex>
 #endif
 
+#if defined(_WIN32)
+#include <fcntl.h>
+#include <io.h>
+
+#include <condition_variable>
+#include <mutex>
+#include <string>
+#include <thread>
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 #if !defined(_WIN32)
 #include <fcntl.h>
 #include <unistd.h>
@@ -180,14 +197,83 @@ int OpenTerminal(bool& socket) {
 }
 #endif
 
-#if !defined(_WIN32)
+#if defined(_WIN32)
+// The Windows copier is a process of its own, as on Linux and in MP1: this program again, started
+// with `--log-copy` (RunCopy, dispatched first thing in main). A thread would die with a crash,
+// and with it the crash report the handler writes to stderr; the process drains the pipe to the
+// end whatever happens to the game.
+void ToHandle(HANDLE handle, const char* data, size_t size) {
+  while (size > 0) {
+    DWORD wrote = 0;
+    if (!WriteFile(handle, data, static_cast< DWORD >(size), &wrote, nullptr) || wrote == 0) {
+      return;
+    }
+    data += wrote;
+    size -= wrote;
+  }
+}
+
+HANDLE ParseHandle(const char* text) {
+  return reinterpret_cast< HANDLE >(static_cast< uintptr_t >(std::strtoull(text, nullptr, 10)));
+}
+
+// The terminal copy, written on a thread of its own: a console that stops reading (a selection in
+// QuickEdit mode) blocks its writer, and that must not fill the pipe and stall the game. What does
+// not fit in kTerminalQueue while it is blocked is dropped; the file has it. (From MP1.)
+constexpr size_t kTerminalQueue = 1 << 20;
+struct Terminal {
+  HANDLE handle = nullptr;
+  std::mutex mutex;
+  std::condition_variable ready;
+  std::string queued;
+  bool done = false;
+
+  void Push(const char* data, size_t size) {
+    {
+      std::lock_guard< std::mutex > lock(mutex);
+      if (queued.size() + size > kTerminalQueue) {
+        return;
+      }
+      queued.append(data, size);
+    }
+    ready.notify_one();
+  }
+  void Run() {
+    std::string writing;
+    for (;;) {
+      {
+        std::unique_lock< std::mutex > lock(mutex);
+        ready.wait(lock, [this] { return done || !queued.empty(); });
+        if (queued.empty()) {
+          return;
+        }
+        writing.swap(queued);
+      }
+      ToHandle(handle, writing.data(), writing.size());
+      writing.clear();
+    }
+  }
+};
+
+// UTF-8 to a wide path, as the rest of the port keeps paths.
+std::filesystem::path Utf8Path(const std::string& text) {
+  return std::filesystem::path(std::u8string(text.begin(), text.end()));
+}
+#endif
+
+// The log's path in a folder, which may or may not end in a slash already.
+std::string JoinFile(const std::string& directory) {
+  const bool slash = !directory.empty() && (directory.back() == '/' || directory.back() == '\\');
+  return directory + (slash ? "" : "/") + kFileName;
+}
+
 // Rotates the previous run's log aside, and makes the directory it lives in.
 void PreparePath(const std::string& path) {
   if (path.empty()) {
     return;
   }
   std::error_code ec;
-  const std::filesystem::path file(path);
+  const std::filesystem::path file(std::u8string(path.begin(), path.end()));
   // On a first start the user folder may not exist yet, and that run is the one most likely to
   // need a log.
   std::filesystem::create_directories(file.parent_path(), ec);
@@ -197,9 +283,67 @@ void PreparePath(const std::string& path) {
     std::filesystem::rename(file, old, ec);
   }
 }
-#endif
 
 } // namespace
+
+#if defined(_WIN32)
+void AttachParentConsole() {
+  const HANDLE error = GetStdHandle(STD_ERROR_HANDLE);
+  if ((error != nullptr && error != INVALID_HANDLE_VALUE) || !AttachConsole(ATTACH_PARENT_PROCESS)) {
+    return;
+  }
+  FILE* reopened = nullptr;
+  freopen_s(&reopened, "CONOUT$", "w", stdout);
+  freopen_s(&reopened, "CONOUT$", "w", stderr);
+  SetStdHandle(STD_OUTPUT_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stdout))));
+  SetStdHandle(STD_ERROR_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stderr))));
+}
+
+int RunCopy(const char* pipe, const char* file, const char* terminal) {
+  const HANDLE in = ParseHandle(pipe);
+  const HANDLE out = ParseHandle(file);
+  static Terminal console;
+  console.handle = terminal != nullptr ? ParseHandle(terminal) : nullptr;
+  std::thread consoleThread;
+  if (console.handle != nullptr && console.handle != INVALID_HANDLE_VALUE) {
+    consoleThread = std::thread([] { console.Run(); });
+  }
+  char header[128];
+  const int headerSize = std::snprintf(header, sizeof(header), "metroid_prime2_port log\n");
+  ToHandle(out, header, static_cast< size_t >(headerSize));
+  long long written = 0;
+  bool truncated = false;
+  char buffer[8192];
+  DWORD n = 0;
+  // Ends when every writer has gone: the game, and anything it started that inherited its output.
+  while (ReadFile(in, buffer, sizeof(buffer), &n, nullptr) && n > 0) {
+    if (consoleThread.joinable()) {
+      console.Push(buffer, n); // as it is, like the Linux terminal copy
+    }
+    // Past the cap the pipe is still drained - the game must never block on it - but the file
+    // stops growing.
+    if (written + static_cast< long long >(n) <= kMaxLogBytes) {
+      ToHandle(out, buffer, n);
+      written += n;
+    } else if (!truncated) {
+      truncated = true;
+      static const char kNote[] =
+          "port: the log reached 64 MiB and was truncated; the next run starts a fresh log\n";
+      ToHandle(out, kNote, sizeof(kNote) - 1);
+    }
+  }
+  FlushFileBuffers(out);
+  if (consoleThread.joinable()) {
+    {
+      std::lock_guard< std::mutex > lock(console.mutex);
+      console.done = true;
+    }
+    console.ready.notify_one();
+    consoleThread.join();
+  }
+  return 0;
+}
+#endif
 
 void Start(const std::string& userDirectory) {
   if (sStarted) {
@@ -211,14 +355,95 @@ void Start(const std::string& userDirectory) {
     return;
   }
 #if defined(_WIN32)
-  // This tree builds the port on Linux and Android only; the file stays compilable here.
-  std::fprintf(stderr, "port: the log file is not written on Windows in this build\n");
-  sEnabled = false;
+  sPath = userDirectory.empty() ? std::string() : JoinFile(userDirectory);
+  if (sPath.empty()) {
+    return; // no user directory to write into
+  }
+  PreparePath(sPath);
+  // A process of its own copies a pipe into the file and the terminal (RunCopy).
+  SECURITY_ATTRIBUTES inherit{sizeof(inherit), nullptr, TRUE};
+  const HANDLE file = CreateFileW(Utf8Path(sPath).c_str(), GENERIC_WRITE,
+                                  FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, &inherit,
+                                  CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+  const auto fail = [](const char* what) {
+    std::fprintf(stderr, "port: %s %s; the streams are unchanged\n", what, sPath.c_str());
+    sPath.clear();
+    sEnabled = false;
+  };
+  if (file == INVALID_HANDLE_VALUE) {
+    fail("cannot write the log file");
+    return;
+  }
+  HANDLE readEnd = nullptr;
+  HANDLE writeEnd = nullptr;
+  if (!CreatePipe(&readEnd, &writeEnd, &inherit, 1 << 16)) {
+    CloseHandle(file);
+    fail("cannot make the log pipe for");
+    return;
+  }
+  SetHandleInformation(writeEnd, HANDLE_FLAG_INHERIT, 0); // else the copier never sees the end
+  // Where stderr went before (a console, or a file a script redirected it to), so the output
+  // still shows up there as well as in the log.
+  HANDLE terminal = nullptr;
+  const HANDLE oldError = GetStdHandle(STD_ERROR_HANDLE);
+  if (oldError != nullptr && oldError != INVALID_HANDLE_VALUE &&
+      !DuplicateHandle(GetCurrentProcess(), oldError, GetCurrentProcess(), &terminal, 0, TRUE,
+                       DUPLICATE_SAME_ACCESS)) {
+    terminal = nullptr;
+  }
+  wchar_t exe[4096];
+  const DWORD exeSize = GetModuleFileNameW(nullptr, exe, 4096);
+  std::wstring command = L"\"" + std::wstring(exe, exeSize) + L"\" --log-copy " +
+                         std::to_wstring(reinterpret_cast< uintptr_t >(readEnd)) + L" " +
+                         std::to_wstring(reinterpret_cast< uintptr_t >(file)) + L" " +
+                         std::to_wstring(reinterpret_cast< uintptr_t >(terminal));
+  STARTUPINFOW startup{};
+  startup.cb = sizeof(startup);
+  PROCESS_INFORMATION process{};
+  const bool launched = exeSize > 0 && exeSize < 4096 &&
+                        CreateProcessW(nullptr, command.data(), nullptr, nullptr, TRUE,
+                                       DETACHED_PROCESS, nullptr, nullptr, &startup, &process);
+  CloseHandle(readEnd);
+  CloseHandle(file);
+  if (terminal != nullptr) {
+    CloseHandle(terminal);
+  }
+  if (!launched) {
+    CloseHandle(writeEnd);
+    fail("cannot start the log copier for");
+    return;
+  }
+  CloseHandle(process.hThread);
+  CloseHandle(process.hProcess);
+  std::fflush(stdout);
+  std::fflush(stderr);
+  const int pipeFd = _open_osfhandle(reinterpret_cast< intptr_t >(writeEnd), _O_WRONLY | _O_BINARY);
+  if (pipeFd < 0) {
+    CloseHandle(writeEnd);
+    fail("cannot attach the log pipe for");
+    return;
+  }
+  // A program without a console has no descriptor behind the streams; give them one first.
+  for (FILE* stream : {stdout, stderr}) {
+    if (_fileno(stream) < 0) {
+      FILE* reopened = nullptr;
+      freopen_s(&reopened, "NUL", "w", stream);
+    }
+    _dup2(pipeFd, _fileno(stream));
+  }
+  _close(pipeFd);
+  std::setvbuf(stdout, nullptr, _IONBF, 0);
+  std::setvbuf(stderr, nullptr, _IONBF, 0);
+  // Code that writes to the standard handles rather than the C streams.
+  SetStdHandle(STD_OUTPUT_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stdout))));
+  SetStdHandle(STD_ERROR_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stderr))));
+  sStarted = true;
+  std::fprintf(stderr, "port: writing the log to %s\n", sPath.c_str());
 #elif defined(__ANDROID__)
   const char* external = SDL_GetAndroidExternalStoragePath();
   sPath = (external != nullptr && external[0] != '\0')
-              ? std::string(external) + "/" + kFileName
-              : (userDirectory.empty() ? std::string() : userDirectory + "/" + kFileName);
+              ? JoinFile(external)
+              : (userDirectory.empty() ? std::string() : JoinFile(userDirectory));
   if (sPath.empty()) {
     return; // nowhere to write it
   }
@@ -235,7 +460,7 @@ void Start(const std::string& userDirectory) {
   sStarted = true;
   std::fprintf(stderr, "port: writing the log to %s\n", sPath.c_str());
 #else
-  sPath = userDirectory.empty() ? std::string() : userDirectory + "/" + kFileName;
+  sPath = userDirectory.empty() ? std::string() : JoinFile(userDirectory);
   if (sPath.empty()) {
     return; // no user directory to write into
   }

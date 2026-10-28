@@ -31,4 +31,14 @@ void Write(const std::string& line);
 // Bytes as they are, to wherever stderr goes (and so the log); async-signal-safe, for crash reports.
 void WriteRaw(const char* data, size_t size);
 
+#if defined(_WIN32)
+// The copying process Start launches on Windows (`--log-copy <pipe> <file> [<terminal>]`, the
+// handles' values): copies the pipe into the file and, as it is, into the terminal until the game
+// has gone. main calls it first, before anything else starts.
+int RunCopy(const char* pipe, const char* file, const char* terminal);
+// The exe is a console-subsystem or GUI one that may not own a console; started from a terminal,
+// print to that one. Left alone when stderr already goes somewhere.
+void AttachParentConsole();
+#endif
+
 } // namespace PortLogFile

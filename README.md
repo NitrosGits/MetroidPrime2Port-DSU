@@ -101,6 +101,13 @@ intact; every port change to an upstream file sits in a `#ifdef TARGET_PC` block
 
 ## Troubleshooting
 
+- **Where is my data?** In a `user/` folder beside the executable (settings, controls, memory
+  cards, log, caches), so a copied build carries it with it; an AppImage keeps it in the folder the
+  `.AppImage` file is in. Where that folder cannot be written to (a Flatpak, a system package, a
+  macOS app bundle) it is the per-user folder (`%APPDATA%\Metroid Prime 2 Echoes`,
+  `~/.local/share/Metroid Prime 2: Echoes`, `~/Library/Application Support/Metroid Prime 2: Echoes`).
+  An older install whose `settings.cfg` is still in the per-user folder keeps using it until you
+  move its contents into `user/`. `MP2_USER_PATH` overrides all of this.
 - **Where are the logs?** `metroid_prime2_port.log` in the user folder (F1 > System
   > Log); the previous run's is `metroid_prime2_port.old.log`. Attach it to a bug report.
 - **"unsupported disc"**: the image is not one of the releases above. Re-dump it,
