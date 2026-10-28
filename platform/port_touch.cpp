@@ -484,8 +484,11 @@ void BeginFrame() {
   ReadEnvironment();
   LoadConfig();
 
+#ifdef PORT_TOUCH_CONTROLS
   // Retry an attach that failed because SDL's joystick subsystem was not up yet, here on the
-  // game thread rather than per touch event on the UI thread.
+  // game thread rather than per touch event on the UI thread. Builds without touch controls have
+  // nothing to press it, so they never attach it (as in MP1): a desktop player is not shown a
+  // phantom controller and its glyphs.
   {
     bool missing;
     {
@@ -496,6 +499,7 @@ void BeginFrame() {
       Pad();
     }
   }
+#endif
 
   // A pad that is not this overlay's own is a real one; while one is connected the overlay
   // steps aside (MP1 does the same), which is what `TakePhysicalInput` reports.
