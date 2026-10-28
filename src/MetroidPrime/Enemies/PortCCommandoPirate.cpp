@@ -320,11 +320,12 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 
   // The seven locator segment ids (fn_9_D904 @0x0000E26C..0x0000E3D4) are read from the model's
   // animation data, unguarded in retail. The names are the module's own rodata strings, at
-  // "StateOver" + 0x3cd and friends: "Head_1", "Mid_Launch_LCTRL", "gun_LCTR" (twice), "R_wrist",
-  // "R_elbow", "L_wrist".
+  // "StateOver" + 0x3cd and friends: "Head_1", "Mid_Launch_LCTR", "gun_LCTR" (twice), "R_wrist",
+  // "R_elbow", "L_wrist". (A misread "Mid_Launch_LCTRL" found no locator, so the E-grenades
+  // launched from the pirate's feet and burst on the floor.)
   const CAnimData* animData = GetAnimationData();
   mLocatorHead = animData->GetLocatorSegId(rstl::string_l("Head_1"));
-  mLocatorMidLaunch = animData->GetLocatorSegId(rstl::string_l("Mid_Launch_LCTRL"));
+  mLocatorMidLaunch = animData->GetLocatorSegId(rstl::string_l("Mid_Launch_LCTR"));
   mLocatorGun = animData->GetLocatorSegId(rstl::string_l("gun_LCTR"));
   mLocatorGun2 = animData->GetLocatorSegId(rstl::string_l("gun_LCTR"));
   mLocatorRWrist = animData->GetLocatorSegId(rstl::string_l("R_wrist"));
