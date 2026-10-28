@@ -1366,7 +1366,10 @@ int main(int argc, char** argv) {
                                    // Documents (Files app) starts without asking.
                                    appPaths.user);
 #else
-                                   ExecutableDir(argc > 0 ? argv[0] : nullptr));
+                                   // Not argv[0]: a bare-name launch from PATH has no folder in it.
+                                   !ExecutableFolder().empty()
+                                       ? ExecutableFolder()
+                                       : ExecutableDir(argc > 0 ? argv[0] : nullptr));
 #endif
 #endif
 #if defined(SDL_PLATFORM_IOS)
