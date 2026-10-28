@@ -3582,7 +3582,13 @@ void CCubeRenderer::DrawScanVisor(float scanTime, float width, float height, con
     CGX::End();
   }
 
+#ifdef TARGET_PC
+  // The same A8 copy as the palette pass above, which went to its own destination, not the shared
+  // spare buffer: sample that one, or this pass shows whichever older copy the shared buffer holds.
+  CGraphics::LoadDolphinSpareTexture(vpWidth, vpHeight, GX_TF_I8, spare, GX_TEXMAP0);
+#else
   CGraphics::LoadDolphinSpareTexture(vpWidth, vpHeight, GX_TF_I8, nullptr, GX_TEXMAP0);
+#endif
   CGX::SetChanCtrl(CGX::Channel0, false, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_NONE,
                    GX_AF_NONE);
   CGraphics::SetCullMode(kCM_None);
