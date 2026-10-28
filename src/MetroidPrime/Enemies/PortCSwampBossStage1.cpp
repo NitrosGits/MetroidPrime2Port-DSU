@@ -1868,9 +1868,11 @@ bool CSwampBossStage1::ApplyDamageMsg(CStateManager& mgr, const CScriptMsg& msg)
       info = CDamageInfo(CWeaponMode(kWT_UnknownSource), dmg, 0.f, 0.f, false, false);
       if (xb14_state == 3) {
         canHit = true;
-        if (x7c0_data.unknown_0x1f4e7c2c <= origDmg) {
+        // Retail fn_78_9B74 0xA06C: the threshold is guest 0x82C (unknown_0xee6b6f47; 0x828 is the
+        // light-hit threshold, fn_78_6590 0x65B8), compared with the original damage.
+        if (x7c0_data.unknown_0xee6b6f47 <= origDmg) {
           xd14_heavyHit = true;
-          const float extra = x7c0_data.unknown_0xee6b6f47;
+          const float extra = x7c0_data.unknown_0x3ce96c9d; // 0xA09C: guest 0x830
           CDamageInfo heavy(CWeaponMode(kWT_UnknownSource), extra, 0.f, 0.f, false, false);
           heavy.SetRadiusDamage(extra);
           mgr.ApplyDamage(lastTouched, GetUniqueId(), lastTouched, heavy, SolidFilter(),
