@@ -2166,7 +2166,12 @@ bool CSplinter::CanSeePlayer(CStateManager& mgr, const CTriggerData& data) const
   if (0.4f + mUnknown8dc > mTime) {
     return false;
   }
+#ifdef TARGET_PC
+  // Retail rodata_F0 = 0x3DA3D70B (fn_74_8E64 0x8F34 lfs), one ULP above 0.08f (0x3DA3D70A).
+  mUnknown8dc = mTime - mgr.Random()->Range(0.f, 0x1.47ae16p-4f);
+#else
   mUnknown8dc = mTime - mgr.Random()->Range(0.f, 0.08f);
+#endif
   return PlayerSpot(mgr, CTriggerData(0.f));
 }
 
