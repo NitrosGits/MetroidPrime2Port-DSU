@@ -139,7 +139,8 @@ void CFirstPersonCamera::UpdateTransform(CStateManager& mgr, float dt) {
     }
   }
   sPortLockPitchHeld = portLockPitch;
-  if ((PortMouse::Enabled() || PortMouse::TouchEnabled()) && !portLockPitch) {
+  if ((PortMouse::Enabled() || PortMouse::StickEnabled() || PortMouse::TouchEnabled()) &&
+      !portLockPitch) {
     if (PortMouse::Aiming() && PortMouse::Initialized()) {
       const float aimYaw = PortMouse::Yaw();
       const float aimPitch = PortMouse::Pitch();

@@ -3,6 +3,35 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-28: issue #2 controller bindings
+
+The twin-stick-only camera path omitted `PortMouse::StickEnabled()` when applying aim
+pitch in `CFirstPersonCamera::UpdateTransform`. Include it alongside mouse and touch:
+the player already consumes both stick axes and turns the body for yaw, but native
+free-look is suppressed in twin-stick mode, leaving no path to apply pitch otherwise.
+Enabling mouse aim alongside twin-stick was a code-derived workaround, not a device-tested one.
+
+Two further reports are diagnosed but not yet fixed:
+
+- Separate menu buttons: `platform/input/port_input_devices.cpp::MenuButtonsActive`
+  requires `!PortTouch::ControlsEnabled()`. `platform/port_touch.cpp::Settings::controls`
+  defaults to true on desktop too (only `aim` has a mobile-specific default). Therefore
+  `ApplyMenuButtons` removes all Menu actions despite the separate-menu setting being on.
+  Desktop runs should not inherit the mobile touch-layout exclusion. The context path
+  does recognize front-end and paused menus; map and scan-text contexts need a separate
+  completeness review.
+- Trigger capture: Aurora's `PADGetRawState` reports an analog trigger axis and synthetic
+  half-pull/click buttons. `port_input_remap_ui.cpp::DownInputs` enumerates both the
+  buttons and the axes; `UpdateCapture` retains every distinct input until release.
+  Thus one right-trigger pull records `RT + RT click + RT`, exactly as reported.
+  Capture needs to canonicalize these aliases without removing runtime pull/click support
+  or swallowing intentional chords involving distinct controls.
+
+These findings come from source tracing against v0.6.0 and the port branch, not a Steam Deck run.
+Verification: game linked; `port_radial_mouse_tests`, `port_input_engine_tests` and
+`port_input_bindings_tests` passed (these cover the aim/input machinery, not the camera
+integration); matching build reported `87 files OK`; generated source manifest check passed.
+
 ## 2026-10-26 (port orchestrator): widescreen gaps, ball glow, suit colours, FOV, scan copies
 
 Widescreen, MP1's way. `82b768ae8` (fix/wide2) closes the 4:3 gaps MP1 had already fixed: splash
