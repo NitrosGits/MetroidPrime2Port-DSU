@@ -490,6 +490,7 @@ public:
   // The port's free-aim crosshair is forced open (not over Trilogy's own cursor).
   bool PortAimCrosshairsOpen() const;
   bool PortDirectAimControls() const;
+  CVector3f PortMovementInput(const CFinalInput& input) const;
   void UpdateMouseAim(CStateManager& mgr, float dt);
   // The right stick, cached from ProcessInput for UpdateMouseAim (twin-stick aim).
   float mPortLookX = 0.f;

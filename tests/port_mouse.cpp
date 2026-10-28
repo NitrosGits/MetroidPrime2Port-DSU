@@ -62,6 +62,45 @@ void Apply(bool locked = false, bool lockFree = false) {
 }
 
 int main() {
+  // Normalizing input alone was insufficient: the retail axis force includes
+  // a friction-compensation offset, so evaluating it twice boosts diagonals.
+  // Run the actual planar force/damping helpers at many headings, on the ground
+  // and with air drag; each must reproduce the straight-ahead speed history.
+  for (bool air : {false, true}) {
+    for (float travel : {0.25f, 0.7f, 1.f}) {
+      for (int heading = 0; heading < 16; ++heading) {
+        const float angle = heading * kPi / 8.f;
+        const Planar direction{std::sin(angle), std::cos(angle)};
+        Planar velocity{0.f, 0.f};
+        float straight = 0.f;
+        for (int tick = 0; tick < 240; ++tick) {
+          constexpr float mass = 90.f, maxSpeed = 11.8f, acceleration = 60.f;
+          const float drag = air ? 3.5f * std::fabs(straight) / mass : 0.02f;
+          const float speed = std::hypot(velocity.right, velocity.forward);
+          const float planarDrag = air ? 3.5f * speed / mass : 0.02f;
+          straight = std::fmin(std::fmax(straight - drag, 0.f), maxSpeed);
+          velocity = DampMovement(velocity, planarDrag, maxSpeed);
+          const float forwardForce = AxisForce(travel, straight, maxSpeed, 0.02f,
+                                               mass, dt, acceleration);
+          const Planar force = MovementForce({direction.right * travel, direction.forward * travel},
+                                             velocity, maxSpeed, 0.02f, mass, dt, acceleration);
+          straight += forwardForce * dt / mass;
+          velocity.right += force.right * dt / mass;
+          velocity.forward += force.forward * dt / mass;
+          REQUIRE(std::fabs(std::hypot(velocity.right, velocity.forward) - straight) < 0.0001f);
+        }
+      }
+    }
+  }
+  {
+    constexpr float diagonal = 0.70710678f;
+    const float straight = AxisForce(1.f, 0.f, 11.8f, 0.02f, 90.f, dt, 60.f);
+    const float oldDiagonal = std::sqrt(2.f) * AxisForce(diagonal, 0.f, 11.8f, 0.02f, 90.f, dt, 60.f);
+    REQUIRE(oldDiagonal > straight); // This reproduces the old force-law defect.
+    const Planar fixed = MovementForce({diagonal, diagonal}, {0.f, 0.f},
+                                       11.8f, 0.02f, 90.f, dt, 60.f);
+    REQUIRE(std::fabs(std::hypot(fixed.right, fixed.forward) - straight) < 0.0001f);
+  }
   // Ignore the user's per-run overrides: no settings, devices or window are consulted.
   for (const char* key : {"MP2_MOUSE_AIM", "MP2_TWIN_STICK", "MP2_MOUSE_SENS",
                           "MP2_MOUSE_SENS_Y", "MP2_MOUSE_SENS_SPLIT", "MP2_MOUSE_INVERT_X",

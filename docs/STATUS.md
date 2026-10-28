@@ -38,6 +38,34 @@ integration); matching build reported `87 files OK`; generated source manifest c
 virtual-pad/drift/synthetic-mouse filtering, full-trigger capture across thresholds, both
 triggers together, shoulder+trigger chords, ordinary stick axes and keyboard/mouse inputs.
 
+## 2026-10-29: issue #2 diagonal movement/jumps
+
+Input normalization did not fix the force law: each horizontal axis independently added
+the retail friction-compensation offset and independently saturated its force. A diagonal
+could therefore receive two full forces even with unit-length input. Direct-aim movement
+now evaluates the forward law once along the input direction, with planar damping/speed
+limiting instead of component damping and a forward-only cap. Strafe gets the same 0.8
+full-travel scaling as forward. Jump and double-jump acceleration use the same planar
+movement magnitude rather than only the forward/back component. These changes are PC-only
+and confined to unlocked direct aim; native controls and locked-on dash code are unchanged.
+
+Verified: game linked; four targeted input/aim tests passed; matching build `87 files OK`;
+generated source manifest check passed. The mouse test reproduces the old diagonal force
+boost and checks the production force/damping helpers across sixteen headings, three stick
+magnitudes, ground friction and air drag over 240 ticks each.
+
+Headless native-game check: `tools/drivers/direct_movement.con` with
+`tools/drivers/direct_movement.input`, a fresh user directory, `MP2_NEW_GAME=1`,
+`WORLD=0b_sand_hall`, `MP2_MOUSE_AIM=1`, `MP2_FRAME_LIMIT=0`,
+`MP2_TICKS_PER_FRAME=1`, `FRAMES=740` (RUNNING.md's console driver recipe).
+The fixture changes facing so all three input directions jump along the same world-space
+path from the same grounded start. At +15 ticks the horizontal distances were 1.001,
+1.001 and 1.003 units, with the same sampled height (21.041, from 19.399); at +30,
+1.423, 1.423 and 1.427 units. The diagonal boost is gone. Later samples hit corridor
+geometry, so they are not an unobstructed landing-range measurement. An initial attempt
+teleported above the room and never actually jumped; that run is not jump verification.
+Device-specific Steam Deck and Android testing remains unperformed. Nothing posted on GitHub.
+
 ## 2026-10-26 (port orchestrator): widescreen gaps, ball glow, suit colours, FOV, scan copies
 
 Widescreen, MP1's way. `82b768ae8` (fix/wide2) closes the 4:3 gaps MP1 had already fixed: splash
