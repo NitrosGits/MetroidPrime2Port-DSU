@@ -392,7 +392,7 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     // (0x0001E9B8, `ble`), the health info's (vtable 0x3C, 0x0001E9D4) otherwise. The name is
     // "BossDarkSamus" (lbl_10_rodata_560 + 0x55F = .rodata 0xABF, 0x0001E9F8).
     const float hp = mData.mUnknown74FA22F0 > 0.f ? mData.mUnknown74FA22F0 // 0x0001E9B8
-                                                   : GetHealthInfo()->GetHP(); // 0x0001E9D8
+                                                   : GetHealthInfo()->GetInitialHP(); // 0x0001E9D8
     mgr.SetBossParams(GetUniqueId(), hp,
                       gpStringTable->GetStringIndex("BossDarkSamus")); // 0x0001EA00, 0x0001EA14
     break;
@@ -462,7 +462,8 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     // 0x0001EC84): the boss bar with the health info's health (vtable 0x3C, 0x0001EC9C) and
     // "BossDarkSamus" (0x0001ECC4).
     if (GetActive() == true) {
-      mgr.SetBossParams(GetUniqueId(), GetHealthInfo()->GetHP(),
+      // Retail loads CHealthInfo +0 (initial HP), 0x0001ED88 `lfs f31, 0x0(r3)`.
+      mgr.SetBossParams(GetUniqueId(), GetHealthInfo()->GetInitialHP(),
                         gpStringTable->GetStringIndex("BossDarkSamus")); // 0x0001ECDC
     }
     // The material filter (0x0001ED50): include 1 << lbl_10_data_C14 = 0x3B (kMT_Solid,
