@@ -1273,6 +1273,13 @@ void CSwampBossStage1::ResetPlatform(CStateManager& mgr, EStateMsg msg, float) {
 void CSwampBossStage1::Vomit(CStateManager& mgr, EStateMsg msg, float dt) {
   RecordState(10, msg);
   SetLocomotion(3);
+  // Retail runs these before the message switch (0x42C8..0x4368: fn_78_729C, fn_78_716C,
+  // fn_78_7224, fn_78_2E38, then the melee call fn_78_BA9C; the compare of msg is at 0x4378).
+  RetractTongue(mgr, dt);
+  UpdateTongueTip(mgr, 1.f, false);
+  HeadWeightDown(dt);
+  UpdateHeadTurn(mgr, dt);
+  BodyMelee(mgr, msg, 1);
   if (msg == kStateMsg_Activate) {
     SetJointsActive(mgr, 1, kJF_RemoveTarget | kJF_Reflect);
     SetJointsActive(mgr, 2, kJF_AddTarget | kJF_Vulnerable);
@@ -1296,11 +1303,6 @@ void CSwampBossStage1::Vomit(CStateManager& mgr, EStateMsg msg, float dt) {
     xce8_vomitTimer = 0.f;
     StopTongue();
   }
-  RetractTongue(mgr, dt);
-  UpdateTongueTip(mgr, 1.f, false);
-  HeadWeightDown(dt);
-  UpdateHeadTurn(mgr, dt);
-  BodyMelee(mgr, msg, 1);
 }
 
 // @ fn_78_44CC
