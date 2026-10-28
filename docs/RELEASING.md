@@ -83,8 +83,10 @@ entry (newest first) in `packaging/io.github.odrannnn.metroidprime2port.metainfo
      `android-apk`, ship as `metroid-prime2-port-X-android-arm64.apk`.
    - iOS: `gh workflow run ios.yml --ref port -R Odrannnn/MetroidPrime2Port`, download
      `metroid_prime2_port-ios`, ship `MetroidPrime2Port.ipa` as is (unsigned, experimental).
-3. Crash soak the release commit: `python3 tools/mpsoak.py --evidence-dir build/s-release-<date>/soak`;
-   every row of `summary.tsv` `ok`, exit 0.
+3. Crash soak the release commit: `python3 tools/mpsoak.py --evidence-dir build/s-release-<date>/soak
+   --user-dir <dir>`, where `<dir>/USA/Card A/` holds a G2ME save `.gci` (e.g. a copy of
+   `/tmp/opencode/soak-user`; a new-game card leaves every cell on the front end); every row of
+   `summary.tsv` `ok`, exit 0.
 4. Check each artefact's version and that none holds game data (`unzip -l`, `--appimage-extract`),
    then `git tag -a vX` and `git push origin vX`.
 5. `gh release create vX --notes-file …` with every asset passed explicitly (`--prerelease`

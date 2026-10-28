@@ -766,6 +766,11 @@ def main():
     if not (Path(args.user_dir) / "USA").is_dir():
         die(f"--user-dir {args.user_dir} has no USA/: it must be the directory that holds the "
             f"memory card (docs/RUNNING.md)")
+    card = Path(args.user_dir) / "USA" / "Card A"
+    if card.is_dir() and not any(card.glob("*G2ME*.gci")):
+        # Without a save every cell sits on the front end until its SECS backstop ("ended before
+        # gameplay"), which reads like 48 crashes.
+        die(f"--user-dir {args.user_dir}: {card} holds no G2ME save (.gci); the soak boots into a save")
     soak = Soak(args)
     if args.dry_run:
         print(soak.describe())
