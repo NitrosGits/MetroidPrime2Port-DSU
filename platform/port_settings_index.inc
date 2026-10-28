@@ -164,10 +164,7 @@
 {"Video", "Quality", "Quality", "Sharpening", "sharpen strength cas upscale"},
 {"Video", "Frame rate", "Frame rate", "60 FPS cap (target)", "frame limit fps uncapped f10"},
 {"Video", "Frame rate", "Frame rate", "FPS cap", "fps limit cap framerate number"},
-{"Video", "Frame rate", "Frame rate", "Smooth uncapped frames", "interpolation high refresh"},
-{"Video", "Frame rate", "Frame rate", "Smooth animation", "interpolation pose models"},
-{"Video", "Frame rate", "Frame rate", "Smooth effects", "interpolation particles weather"},
-{"Video", "Frame rate", "Frame rate", "Smooth look", "interpolation camera mouse"},
+{"Video", "Frame rate", "Frame rate", "Smooth frames", "interpolation high refresh uncapped animation pose models effects particles weather look camera mouse"},
 #if defined(_WIN32)
 {"Video", "Compatibility", "Compatibility", "Renderer", "renderer graphics api backend direct3d d3d12 d3d11 vulkan compatibility"},
 #endif

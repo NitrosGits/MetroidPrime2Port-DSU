@@ -269,7 +269,7 @@ Video > Quality and Frame rate:
   `MP2_ANISO`), Resolution scale (0 = Auto render scale).
 - `frame_limit`: Frame rate > 60 FPS cap (target).
 - `smooth_frames`, `pose_interpolation`, `particle_interpolation`, `look_interpolation`: Frame
-  rate > Smooth uncapped frames, Smooth animation, Smooth effects, Smooth look.
+  rate > Smooth frames, one switch that sets all four (all on by default).
   `MP2_PRESENT_T=<0..1|cycle|tick>` (also spelled `cycle` or `tick`; not a setting, not saved)
   forces the factor the camera and actors are drawn at between ticks, even with the cap on — a
   test aid, as the console's `present`. `MP2_TICKS_PER_FRAME=<1..16>` runs that many fixed ticks

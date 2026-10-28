@@ -166,12 +166,12 @@ unsigned sPresentCycleFrame = 0;
 // The console's `hold`/`step`: while held the loop runs no ticks except the queued steps.
 bool sTickHold = false;
 unsigned sHeldTicks = 0;
-// MP1's pose interpolation (`MP2_POSE_INTERPOLATION`, off by default as there): with smooth frames
+// MP1's pose interpolation (`MP2_POSE_INTERPOLATION`; on by default, F1's one Smooth frames switch): with smooth frames
 // on, skinned poses are blended between the last two ticks (CAnimData::PortPresentedPose).
-bool sPoseInterpolation = false;
-// MP1's particle interpolation (`MP2_PARTICLE_INTERPOLATION`, off by default as there): with smooth
+bool sPoseInterpolation = true;
+// MP1's particle interpolation (`MP2_PARTICLE_INTERPOLATION`; on by default, as Smooth frames): with smooth
 // frames on, particle systems and weather draw between the last two ticks (CElementGen::Render).
-bool sParticleInterpolation = false;
+bool sParticleInterpolation = true;
 // MP1's look input per frame (`MP2_LOOK_INTERPOLATION`, on by default as there): with smooth
 // frames on, pointer aim turns the camera between ticks (CCameraManager, PortMouse::PresentedAimDelta).
 bool sLookInterpolation = true;

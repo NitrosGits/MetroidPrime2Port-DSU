@@ -170,7 +170,7 @@ Statuses:
 | Sun shadows, projected actor shadows | video.cpp:459,465 | — | MP1-ONLY: Remastered render backends |
 | HD font | video.cpp:602 | — | MP1-ONLY: font from a Remastered import |
 | Simulation rate | performance.cpp:55-66 | — | MISSING: misc1 called it not portable (fixed 60 Hz tick). That is "hard", not "impossible". |
-| Smooth animation / effects / look | — | performance.cpp:52-64 | DIFF: MP2-only rows |
+| Smooth frames (one switch: camera, animation, effects, look) | — | performance.cpp:40-53 | DIFF: MP2 merges MP1's rows |
 | Low-power GPU | — | video.cpp:647 | DIFF: MP2-only row |
 | Remaining Display / Quality / Frame rate / Compatibility rows | video.cpp | video.cpp | SAME (matched by the label diff) |
 

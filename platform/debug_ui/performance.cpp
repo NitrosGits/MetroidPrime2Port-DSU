@@ -39,34 +39,19 @@ void DrawPerformanceTab() {
 
   // Read by the main loop's draw: with the cap on it changes nothing.
   ImGui::BeginDisabled(sFrameLimit);
-  bool smooth = sSmoothFrames;
-  if (ImGui::Checkbox("Smooth uncapped frames", &smooth)) {
+  // One switch for the camera and the three parts read beside it (CAnimData::PortPresentedPose,
+  // CElementGen::PortBeginPresent / CEnvFxManager::Render, CCameraManager::GetCurrentCameraTransform);
+  // their keys stay separate in settings.cfg.
+  bool smooth = sSmoothFrames && sPoseInterpolation && sParticleInterpolation && sLookInterpolation;
+  if (ImGui::Checkbox("Smooth frames", &smooth)) {
     PortOverlay::SetSmoothFrames(smooth);
+    PortOverlay::SetPoseInterpolation(smooth);
+    PortOverlay::SetParticleInterpolation(smooth);
+    PortOverlay::SetLookInterpolation(smooth);
   }
-  ItemHelp("With the FPS cap off, draws the camera between the game's 60 Hz ticks. Aim and shots "
-           "are unchanged.");
-  // Each needs smooth frames, so it changes nothing without them.
-  ImGui::BeginDisabled(!sSmoothFrames);
-  // Read by CAnimData::PortPresentedPose.
-  bool pose = sPoseInterpolation;
-  if (ImGui::Checkbox("Smooth animation", &pose)) {
-    PortOverlay::SetPoseInterpolation(pose);
-  }
-  ItemHelp("With smooth frames, also draws animated models between the game's ticks.");
-  // Read by CElementGen::PortBeginPresent and CEnvFxManager::Render.
-  bool particles = sParticleInterpolation;
-  if (ImGui::Checkbox("Smooth effects", &particles)) {
-    PortOverlay::SetParticleInterpolation(particles);
-  }
-  ItemHelp("With smooth frames, also draws particles and weather between the game's ticks.");
-  // Read by CCameraManager::GetCurrentCameraTransform.
-  bool look = sLookInterpolation;
-  if (ImGui::Checkbox("Smooth look", &look)) {
-    PortOverlay::SetLookInterpolation(look);
-  }
-  ItemHelp("With smooth frames, also turns the view between the game's ticks as the mouse, stick or "
-           "touch aims.");
-  ImGui::EndDisabled();
+  ItemHelp("With the FPS cap off, draws the camera, animated models, particles and weather between "
+           "the game's 60 Hz ticks, and turns the view between them as the mouse, stick or touch "
+           "aims. Aim and shots are unchanged.");
   ImGui::EndDisabled();
 }
 
