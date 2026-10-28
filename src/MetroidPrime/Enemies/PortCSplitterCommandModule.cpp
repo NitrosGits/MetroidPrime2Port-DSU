@@ -1734,9 +1734,10 @@ void CSplitterCommandModule::PortUpdateFlashAndDeath(CStateManager& mgr, float d
 // differ (0x3208-0x3218), fn_75_1578 runs (0x3224) and the timer 0xF14 is set to 3.0f
 // (0x322C-0x3230). With no chassis id, the data's flag bit 0x8 (0x3258 rlwinm 28-28), the timer
 // <= 0.0f (0x326C-0x3274) and the id 0xEFC being invalid (0x327C-0x3280) gate fn_75_2280
-// (0x3284) and the timer is set to 3.0f again (0x328C-0x3290). Then the id 0xEFC (0x32A4) is
-// looked up and cast (0x32B4-0x32B8): a dead chassis (the byte at 0x420, the word's bit 25 = the
-// byte's 0x40 - the host's GetAlive) clears it (0x32D0-0x32D8).
+// (0x3284), the timer is set to 3.0f again (0x328C-0x3290) and the function ends (0x3294).
+// Otherwise the id 0xEFC (0x32A4) is looked up and cast (0x32B4-0x32B8): a dead chassis (the
+// byte at 0x420, the word's bit 25 = the byte's 0x40 - the host's GetAlive) clears it
+// (0x32D0-0x32D8).
 void CSplitterCommandModule::PortUpdateChassis(CStateManager& mgr) {
   if (mChassisId != kInvalidUniqueId) {
     const CSplitterMainChassis* chassis =
@@ -1757,6 +1758,8 @@ void CSplitterCommandModule::PortUpdateChassis(CStateManager& mgr) {
       mCheckedChassisId == kInvalidUniqueId) {
     PortFindChassis(mgr);
     mChassisTimer = 3.f;
+    // Retail ends here: 0x3294 `b` to the epilogue (0x32DC), skipping the 0xEFC lookup.
+    return;
   }
   if (mCheckedChassisId != kInvalidUniqueId) {
     const CSplitterMainChassis* chassis =
