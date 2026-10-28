@@ -1032,8 +1032,8 @@ static bool ImportTrilogy(const std::string& saveBin, std::string& message) {
     return false;
   }
   std::string backup;
-  if (!existing.empty()) {
-    Backup(&backup, message);
+  if (!existing.empty() && !Backup(&backup, message)) {
+    return false; // keep the existing save untouched; message holds the backup error
   }
   const std::string target = existing.empty()
                                  ? dir + "/01-" + port::entry::CurrentGameCode() + "-" + kSaveFileName + ".gci"
