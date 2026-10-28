@@ -147,24 +147,17 @@ void DrawCutscenesSection() {
   ItemHelp("START or A skips any cutscene and the new game's intro text, seen or not. Off: START skips "
            "only the ones already seen.");
   ImGui::EndDisabled();
-  // Read by CSplashScreen, so a change applies from the next launch.
-  int bootLogos = sBootLogos;
-  if (ImGui::Combo("Boot logos", &bootLogos, "Show\0" "Skip with A or Start\0" "Off\0")) {
-    sBootLogos = std::clamp(bootLogos, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off);
+  // One row for the boot logos (read by CSplashScreen at launch) and the world name card (read by
+  // CMFGameLoader at the next load); the keys stay separate. Original experience shows the card.
+  int splash = sBootLogos;
+  if (ImGui::Combo("Skip splash screens", &splash, "No\0" "With A or Start\0" "Always\0")) {
+    sBootLogos = std::clamp(splash, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off);
+    sWorldNameCard = sBootLogos;
     Changed(true);
   }
-  ItemHelp("The health warning and the Nintendo, Retro and Dolby logos at launch. Applies at the next "
-           "launch.");
-  // Read by CMFGameLoader, so a change applies from the next load.
-  ImGui::BeginDisabled(locked);
-  int worldName = sWorldNameCard;
-  if (ImGui::Combo("World name on load", &worldName, "Show\0" "Skip with A or Start\0" "Off\0")) {
-    sWorldNameCard = std::clamp(worldName, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off);
-    Changed(true);
-  }
-  ItemHelp("The world's name typed out while a save loads. The new game's intro text follows "
-           "Skippable cutscenes.");
-  ImGui::EndDisabled();
+  ItemHelp("The health warning and the Nintendo, Retro and Dolby logos at launch, and the world's name "
+           "typed out while a save loads. The logos change from the next launch. The new game's intro "
+           "text follows Skippable cutscenes.");
   ImGui::BeginDisabled(locked);
   int walkSpeed = sWalkSpeed;
   if (ImGui::SliderInt("Walk speed", &walkSpeed, PortOverlay::kWalkSpeedMin,
@@ -181,7 +174,10 @@ void DrawCutscenesSection() {
     Changed(true);
   }
   ItemHelp("How fast a scan fills, in percent of the original speed. 200 takes half the time.");
+  // Elevator and portal share a row: their choices are short.
+  const float rideWidth = ImGui::GetFontSize() * 6.f;
   int elevatorRide = sElevatorRide;
+  ImGui::SetNextItemWidth(rideWidth);
   if (ImGui::Combo("Elevator ride", &elevatorRide, "Original\0" "Fast\0" "Skip\0")) {
     sElevatorRide = std::clamp(elevatorRide, static_cast< int >(PortOverlay::kElevatorRide_Original),
                                static_cast< int >(PortOverlay::kElevatorRide_Skip));
@@ -189,7 +185,9 @@ void DrawCutscenesSection() {
   }
   ItemHelp("The ride between worlds. Fast plays it at double speed; Skip leaves as soon as the next "
            "world has loaded. Applies from the next ride.");
+  SameLineAfterHelp();
   int portalTransition = sPortalTransition;
+  ImGui::SetNextItemWidth(rideWidth);
   if (ImGui::Combo("Portal transition", &portalTransition, "Original\0" "Fast\0" "Skip\0")) {
     sPortalTransition = std::clamp(portalTransition,
                                    static_cast< int >(PortOverlay::kPortalTransition_Original),
@@ -404,10 +402,6 @@ void DrawOverlaySection() {
   }
   ItemHelp("The overlay's look. Auto is the Metroid Prime pause-screen style; Plain is stock Dear "
            "ImGui.");
-  // MP1's ui_sounds row: the game's own UI SFX for open, close, choose, focus move and back.
-  Changed(ImGui::Checkbox("Menu sounds", &sUiSounds));
-  ItemHelp("Plays the game's own menu sounds for opening, closing and moving through this window. "
-           "Not with the Plain theme.");
   // Multiplies the display's own scale (UpdateUiScale); the product is clamped to 1..4, so on a
   // desktop at scale 1 only values above 100% make the window larger.
   Changed(ImGui::SliderInt("UI scale", &sUiScale, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax, "%d%%"));

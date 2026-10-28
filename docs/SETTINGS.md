@@ -75,8 +75,8 @@ Game page:
   charge, auto-aim (on). Your saved values are kept and return when it is switched off. Mods, input,
   video and audio settings are not affected.
 - `skip_cinematics`: Cutscenes > Skippable cutscenes.
-- `boot_logos`: Cutscenes > Boot logos (0 show, 1 skippable, 2 off).
-- `world_name_card`: Cutscenes > World name on load (same values); env `MP2_WORLD_NAME`.
+- `boot_logos`: Cutscenes > Skip splash screens (0 no, 1 with A or Start, 2 always), which sets both keys.
+- `world_name_card`: the same row, for the world name card on load (same values); env `MP2_WORLD_NAME`.
 - `walk_speed`: Cutscenes > Walk speed (50 to 200 percent, default 100 = retail); env
   `MP2_WALK_SPEED`, console `walkspeed`. Scales how fast Samus moves on foot: the top speed,
   acceleration and friction of walking and strafing (on the ground, in the air and in water) and the
@@ -152,7 +152,7 @@ Controls > Options:
   left/right visors, and 6/8 on the keyboard; env `MP2_SWAP_VISORS`).
 - `minimap_tap`: Options > Menus > Tap minimap for map (a tap or click on the HUD minimap opens the
   map screen; default on; env `MP2_MINIMAP_TAP`; console `minimap`, `maptap`).
-- `fast_morph`, `spring_ball`: Morph ball > Fast Morph, Spring Ball (C-stick up, the Spring Ball binding on the Remap page, touch swipe up, or a gyro flick).
+- `fast_morph`, `spring_ball`: Morph ball > Fast Morph, Spring Ball (one row; C-stick up, the Spring Ball binding on the Remap page, touch swipe up, or a gyro flick).
 
 Controls > Mouse settings:
 
@@ -356,7 +356,7 @@ System and Debug:
   No env override.
 - `card_backup`: System > Memory card > Back up the card: copies the save file into
   `save-backups` before each card write (console `save import latest` restores one).
-- `ui_sounds`: System > Overlay > Menu sounds: the game's own pause-screen SFX for opening, closing,
+- `ui_sounds`: settings.cfg only (no F1 row): the game's own pause-screen SFX for opening, closing,
   choosing, moving and backing out of the overlay (off by default; not with the Plain theme).
 - `discord`: System > Discord > Rich Presence: area, energy, missiles and item percentage on the
   Discord profile through the local desktop client's IPC socket (off by default; silent without a

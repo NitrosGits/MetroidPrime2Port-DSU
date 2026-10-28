@@ -74,6 +74,11 @@ void DrawControlsOptions() {
   Changed(ImGui::Checkbox("Pointer aim (Trilogy style)", &sPointerAim));
   ItemHelp("Mouse, right stick, gyro or a touch drag moves a crosshair and shots follow it; the view "
            "turns when it nears the edge. Needs Mouse aim, Twin stick or Touch aim.");
+  SameLineAfterHelp();
+  Changed(ImGui::Checkbox("Lock-on free aim", &sLockOnFreeAim));
+  ItemHelp("As in Remastered: while locked on, the mouse, right stick, gyro or a touch drag moves a "
+           "crosshair and shots follow it. Centred, shots and missiles go for the locked target as "
+           "before. Needs Mouse aim, Twin stick or Touch aim.");
   ImGui::BeginDisabled(!sPointerAim);
   if (ImGui::SliderInt("Dead box", &sPointerAimBox, PortOverlay::kPointerAimBoxMin, PortOverlay::kPointerAimBoxMax,
                        "%d%%")) {
@@ -89,10 +94,6 @@ void DrawControlsOptions() {
   }
   ImGui::SetItemTooltip("Turn speed with the crosshair at the screen edge.");
   ImGui::EndDisabled();
-  Changed(ImGui::Checkbox("Lock-on free aim", &sLockOnFreeAim));
-  ItemHelp("As in Remastered: while locked on, the mouse, right stick, gyro or a touch drag moves a "
-           "crosshair and shots follow it. Centred, shots and missiles go for the locked target as "
-           "before. Needs Mouse aim, Twin stick or Touch aim.");
   Changed(ImGui::Checkbox("Reset aim resets pointer and camera", &sResetAimBoth));
   ItemHelp("Reset aim (unbound by default) recentres the crosshair with pointer aim on, or levels "
            "the camera with it off. On: it does both.");
@@ -113,8 +114,10 @@ void DrawControlsOptions() {
   ImGui::BeginDisabled(locked);
   Changed(ImGui::Checkbox("Fast Morph", &sFastMorph));
   ItemHelp("The morph and unmorph transitions take 0.2 s instead of the game's second.");
-  Changed(ImGui::Checkbox("Spring Ball (C-stick up)", &sSpringBall));
-  ItemHelp("A small jump in morph ball, as in Metroid Prime Trilogy. Needs the Morph Ball Bombs.");
+  SameLineAfterHelp();
+  Changed(ImGui::Checkbox("Spring Ball", &sSpringBall));
+  ItemHelp("A small jump in morph ball with C-stick up, as in Metroid Prime Trilogy. Needs the Morph "
+           "Ball Bombs.");
   ImGui::EndDisabled();
 
   // The game's own option, so it is the same switch as the pause menu's and is
