@@ -361,7 +361,8 @@ void CSandBoss::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
         // Retail calls GetHealthInfo through the entity's vtable without a cast; the object
         // linked MDFY/ACTV is an actor.
         if (const CActor* source = TCastToConstPtr< CActor >(mgr.ObjectById(mBossInfoSource))) {
-          mgr.SetBossParams(source->GetUniqueId(), source->GetHealthInfo()->GetHP(),
+          // Retail loads CHealthInfo +0 (initial HP), fn_55_D8BC 0x0000DB14 `lfs f31, 0x0(r3)`.
+          mgr.SetBossParams(source->GetUniqueId(), source->GetHealthInfo()->GetInitialHP(),
                             gpStringTable->GetStringIndex("BossSandBoss"));
         }
       }
