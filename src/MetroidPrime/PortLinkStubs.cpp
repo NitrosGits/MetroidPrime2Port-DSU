@@ -127,10 +127,6 @@ extern "C" void reachstub_308() { mpReachStub("_ZNK10COsContext13GetOsKeyStateEi
 extern "C" void reachstub_328() asm("_ZNK13CStateManager11fn_800366e4EPK6CActor");
 extern "C" void reachstub_328() { mpReachStub("_ZNK13CStateManager11fn_800366e4EPK6CActor", "CStateManager::fn_800366e4(CActor const*) const"); }
 
-// typeinfo for CWallCrawler
-extern "C" __attribute__((aligned(32))) char reachdata_392[0x400] asm("_ZTI12CWallCrawler");
-__attribute__((aligned(32))) char reachdata_392[0x400] = {};
-
 // fn_80037944
 extern "C" void reachstub_397() asm("fn_80037944");
 extern "C" void reachstub_397() { mpReachStub("fn_80037944", "fn_80037944"); }
