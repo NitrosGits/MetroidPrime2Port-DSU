@@ -100,6 +100,10 @@ public:
   // MP1's PortPresentGroup: carry a group placed at the tick to where its target is drawn
   // between ticks (CActor::PortPresentedPoint), or an idle group with the presented camera.
   void PortPresentGroup(CTargetReticleRenderState& state, const CStateManager& mgr) const;
+  // mTargetPosition (screen-centre point, placed from the tick camera) carried into the presented
+  // camera's frame, as MP1 689c6cb1c does for the idle crosshair: the scan visor's centre bracket,
+  // the crosshair and the seeker cross are drawn there.
+  CVector3f PortPresentedTarget(const CStateManager& mgr) const;
 
   // Trilogy (rs5mp2_p.dol) scan visor ring and target brackets, ported from MP1's PortTriDrawScan
   // (MP1 bc1332c52..ed42d564a). Echoes' draw is 0x8025de8c; see PortTriDrawScan.

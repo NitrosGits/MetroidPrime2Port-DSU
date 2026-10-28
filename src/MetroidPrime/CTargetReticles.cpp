@@ -429,7 +429,21 @@ void CCompoundTargetReticle::PortTriDrawScan(const CMatrix3f& rotation,
 
   const float t = mPortTriScanLerp;
   const float it = 1.f - t;
-  const CVector3f centre = mPortTriScanCentre * it + mPortTriScanPrevCentre * t;
+  CVector3f centre = mPortTriScanCentre * it + mPortTriScanPrevCentre * t;
+  // Both centres were placed at the tick (an actor's drawn pose, or a point on the pointer ray from
+  // the tick camera) but are drawn through the presented camera: carry them as the lock-on groups
+  // are (PortPresentGroup), else the bracket steps with the sim (MP1 689c6cb1c, 54250c5bc).
+  if (CCameraManager::GetPresentationInterpolation() >= 0.f) {
+    const CActor* scanActor =
+        mPortTriScanTargetCount != 0
+            ? TCastToConstPtr< CActor >(mgr.GetObjectById(mPortTriScanTargets[0]))
+            : nullptr;
+    if (scanActor != nullptr) {
+      centre = scanActor->PortPresentedPoint(centre);
+    } else {
+      centre = camXf * (camMgr->GetSimulationCameraTransform(mgr, true).GetInverse() * centre);
+    }
+  }
   const CVector3f size = mPortTriScanSize * it + mPortTriScanPrevSize * t;
   const float s = CalculateClampedScale(centre, 1.f, 120.f, 120.f, mgr, mPlayerIndex);
   const float hx = 0.5f * rstl::max_val(0.f, 0.85f * size.GetX());
@@ -2051,7 +2065,7 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
     return;
   }
 #ifdef TARGET_PC
-  CTransform4f xf(rotation, mTargetPosition);
+  CTransform4f xf(rotation, PortPresentedTarget(mgr));
   if (mPortTri && PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_GameCube) {
     // In place of the aiming cursor: the model (built out along its Y) turned down the pointer
     // ray as drawn, so it marks the aim where the cursor would (MP1 255afaf13).
@@ -2154,7 +2168,17 @@ void CCompoundTargetReticle::DrawScanTargetGroup(const CMatrix3f& rotation,
 
     const CColor& crosshairColor = gpTweakTargeting->GetScanLockCrossHairColor();
     float factor = mScanTargetFactor * skScanLockLayoutScale[mgr.GetViewportLayoutIndex()];
-    gpRender->SetModelMatrix(CTransform4f(rotation, mTargetPosition) *
+#ifdef TARGET_PC
+    // Placed at the tick; drawn through the presented camera (MP1 689c6cb1c).
+    const CVector3f portTarget = PortPresentedTarget(mgr);
+#endif
+    gpRender->SetModelMatrix(CTransform4f(rotation,
+#ifdef TARGET_PC
+                                       portTarget
+#else
+                                       mTargetPosition
+#endif
+                                       ) *
                              CTransform4f::Scale(factor * gpTweakTargeting->GetScanLockScale()));
     center->Draw(CModelFlags::Additive(crosshairColor.WithAlphaModulatedBy(factor))
                      .DepthCompareUpdate(false, false));
@@ -2164,7 +2188,13 @@ void CCompoundTargetReticle::DrawScanTargetGroup(const CMatrix3f& rotation,
                                        tweak->GetScanLockLockedColor(), mScanBracketFactor);
     tweak = gpTweakTargeting.get();
     gpRender->SetModelMatrix(
-        CTransform4f(rotation, mTargetPosition) *
+        CTransform4f(rotation,
+#ifdef TARGET_PC
+                                       portTarget
+#else
+                                       mTargetPosition
+#endif
+                                       ) *
         CTransform4f::Scale(factor * tweak->GetScanLockScale()) *
         CTransform4f::Translate((1.f - mScanBracketFactor) * -tweak->GetScanLockTranslation(), 0.f,
                                 0.f));
@@ -2173,7 +2203,13 @@ void CCompoundTargetReticle::DrawScanTargetGroup(const CMatrix3f& rotation,
 
     tweak = gpTweakTargeting.get();
     gpRender->SetModelMatrix(
-        CTransform4f(rotation, mTargetPosition) *
+        CTransform4f(rotation,
+#ifdef TARGET_PC
+                                       portTarget
+#else
+                                       mTargetPosition
+#endif
+                                       ) *
         CTransform4f::Scale(factor * tweak->GetScanLockScale()) *
         CTransform4f::Translate((1.f - mScanBracketFactor) * tweak->GetScanLockTranslation(), 0.f,
                                 0.f));
@@ -2199,7 +2235,16 @@ void CCompoundTargetReticle::DrawNextLockOnGroup(const CMatrix3f& rotation,
     const_cast< TCachedToken< CModel >& >(mSeekerMissileCrosshair).TryCache();
     if (CModel* const crosshair = mSeekerMissileCrosshair.GetObject()) {
       float factor = (chargeFactor - 0.75f) / 0.25f;
-      gpRender->SetModelMatrix(CTransform4f(rotation, mTargetPosition) *
+#ifdef TARGET_PC
+      const CVector3f portTarget = PortPresentedTarget(mgr);
+#endif
+      gpRender->SetModelMatrix(CTransform4f(rotation,
+#ifdef TARGET_PC
+                                       portTarget
+#else
+                                       mTargetPosition
+#endif
+                                       ) *
                                CTransform4f::RotateY(CRelAngle::FromRadians(mSeekerRotationAngle)) *
                                CTransform4f::Scale(0.25f * factor));
       crosshair->Draw(CModelFlags::Additive(seekingColor.WithAlphaModulatedBy(factor))
@@ -2466,6 +2511,16 @@ void CCompoundTargetReticle::PortPresentGroup(CTargetReticleRenderState& state,
         (cameraManager->GetSimulationCameraTransform(mgr, true).GetInverse() *
          state.GetTargetPositionWorld()));
   }
+}
+
+
+CVector3f CCompoundTargetReticle::PortPresentedTarget(const CStateManager& mgr) const {
+  if (CCameraManager::GetPresentationInterpolation() < 0.f) {
+    return mTargetPosition;
+  }
+  const CCameraManager* cameraManager = mgr.GetCameraManager(mPlayerIndex);
+  return cameraManager->GetCurrentCameraTransform(mgr, true) *
+         (cameraManager->GetSimulationCameraTransform(mgr, true).GetInverse() * mTargetPosition);
 }
 
 #endif
