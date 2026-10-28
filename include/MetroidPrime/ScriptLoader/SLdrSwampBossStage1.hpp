@@ -377,6 +377,11 @@ inline SLdrSwampBossStage1::SLdrSwampBossStage1()
   patterned.playerLeashRadius = 25.0f;
   patterned.playerLeashTime = 5.0f;
   patterned.creatureSize = 2;
+#ifdef TARGET_PC
+  // Retail fn_78_160 0x264-0x2AC: `stfs 2.0f -> 0x488(sp)` (patterned +0x4C). The actor
+  // parameters' +0x64 = 0xF store (0x29C) is visor.visorFlags, already the generic default.
+  patterned.health.hI_KnockBackResistance = 2.0f;
+#endif
 }
 
 inline SLdrSwampBossStage1::~SLdrSwampBossStage1() {}
