@@ -99,8 +99,10 @@ CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
 , mTailPos(CVector3f::Zero())
 , mSplashPos(CVector3f::Zero())
 , mSwoopNode(kInvalidUniqueId)
-, mHeadHealth(0.f)
-, mOvipositorHealth(0.f)
+// Retail fn_79_BE3C 0xC0A4-0xC0B0: data+0x44 (lightFlyer1.health) -> 0xC4C and data+0x80
+// (darkFlyer1.health) -> 0xC50.
+, mHeadHealth(data.lightFlyer1.health)
+, mOvipositorHealth(data.darkFlyer1.health)
 , mCenter(kInvalidUniqueId)
 , mEdgeMarker(kInvalidUniqueId)
 , mReelDir(CVector3f::Zero())
