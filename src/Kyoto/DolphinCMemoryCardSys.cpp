@@ -10,6 +10,7 @@
 #ifdef TARGET_PC
 #include "port_entry.h"
 #include "port_save.h"
+#include "port_save_framing.h"
 
 #ifdef TARGET_PC
 #include <SDL3/SDL_messagebox.h>
@@ -54,10 +55,16 @@ CMemoryCardSys::CCardFileInfo::Icon::Icon(CAssetId id, int speed, CSimplePool& p
 CMemoryCardSys::CCardFileInfo::SSaveSlot::SSaveSlot() : mGeneration(0), mCorrupt(false) {}
 
 void CMemoryCardSys::CCardFileInfo::SSaveSlot::CheckCrc() {
+#ifdef TARGET_PC
+  uint generation = 0;
+  mCorrupt = !PortSave::Framing::ReadSlot(mData.data(), mData.size(), generation);
+  mGeneration = generation;
+#else
   const uint* data = reinterpret_cast< const uint* >(mData.data());
   const uint crc = data[0];
   mCorrupt = CCRC32::Calculate(data + 1, mData.size() - 4, 0xFFFFFFFF) != crc;
   mGeneration = data[1];
+#endif
 }
 
 CMemoryCardSys::CCardFileInfo::CCardFileInfo(EMemoryCardPort port, const rstl::string& name)
@@ -339,7 +346,11 @@ void CMemoryCardSys::CCardFileInfo::BuildHeaderBuffer() {
     WriteBannerData(out);
     WriteIconData(out);
   }
+#ifdef TARGET_PC
+  PortSave::Framing::FinishBlock(mHeaderBuffer.data(), mHeaderBuffer.size());
+#else
   data[0] = CCRC32::Calculate(data + 1, 0x2000 - 4, 0xFFFFFFFF);
+#endif
 }
 
 void CMemoryCardSys::CCardFileInfo::BuildSaveSlot() {
@@ -347,8 +358,12 @@ void CMemoryCardSys::CCardFileInfo::BuildSaveSlot() {
   slot.mData.assign(mAlignedUserDataSize);
   uint* data = reinterpret_cast< uint* >(slot.mData.data());
   (memcpy)(data + 2, mUserDataWrite.data(), mUserDataWrite.size());
+#ifdef TARGET_PC
+  PortSave::Framing::FinishSlot(slot.mData.data(), slot.mData.size(), mGeneration);
+#else
   data[1] = mGeneration;
   data[0] = CCRC32::Calculate(data + 1, mAlignedUserDataSize - 4, 0xFFFFFFFF);
+#endif
   mUserDataWrite = rstl::vector< uchar >();
 }
 
@@ -388,9 +403,14 @@ ECardResult CMemoryCardSys::CCardFileInfo::SelectSaveSlot() {
 }
 
 ECardResult CMemoryCardSys::CCardFileInfo::CheckHeaderCrc() {
+#ifdef TARGET_PC
+  return PortSave::Framing::CheckBlockCrc(mHeaderBuffer.data(), mHeaderBuffer.size())
+             ? kCR_READY : kCR_CRC_MISMATCH;
+#else
   const uint* data = reinterpret_cast< const uint* >(mHeaderBuffer.data());
   const uint crc = data[0];
   return crc == CCRC32::Calculate(data + 1, 0x2000 - 4, 0xFFFFFFFF) ? kCR_READY : kCR_CRC_MISMATCH;
+#endif
 }
 
 uint CardStat::GetFileLength() { return mStat.length; }

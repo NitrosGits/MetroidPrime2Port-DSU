@@ -776,6 +776,12 @@ if(AURORA_SDL3_TARGET)
     add_test(NAME port_radial_mouse_tests COMMAND port_radial_mouse_tests)
     set_tests_properties(port_radial_tests port_radial_retry_tests port_radial_touch_tests port_radial_mouse_tests
         PROPERTIES TIMEOUT 30 LABELS port)
+    add_executable(port_save_framing_tests tests/port_save_framing.cpp src/Kyoto/CCrc32.cpp)
+    target_include_directories(port_save_framing_tests PRIVATE platform/include include tests)
+    target_compile_options(port_save_framing_tests PRIVATE $<IF:$<BOOL:${MSVC}>,/FIcstdint,-include$<SEMICOLON>cstdint>)
+    add_test(NAME port_save_framing_tests COMMAND port_save_framing_tests)
+    set_tests_properties(port_save_framing_tests PROPERTIES TIMEOUT 30 LABELS port)
+
     # G2ME <-> G2MP save conversion round trip on tests/data/01-G2ME-MetroidPrime2.gci (a real
     # save, untracked like the Trilogy fixtures: registered only where a copy is present).
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/01-G2ME-MetroidPrime2.gci)

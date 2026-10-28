@@ -30,7 +30,7 @@ The paks and DOLs were extracted read-only, with `dolphin-tool extract`, to `/tm
 | Blocks | 3: one header block, plus 2 copies × 1 block | same | [M] `CCardFileInfo`: `mSlotBlocks*2+1`, `mAlignedUserDataSize` 0x2000 |
 | Header CRC | CCRC32 of header bytes 4..0x2000, seed 0xFFFFFFFF | same | [M] `src/Kyoto/DolphinCMemoryCardSys.cpp` |
 | Copy | u32 CRC (bytes 4..end), u32 generation (0/1, newest wins), 0x1ff8 user bytes | same | [M] Same source; `port_save.cpp` header comment |
-| Endianness | Console: big-endian. Port-written: CRC and generation are host-LE. | same | [M] `port_save.cpp` `Inspect()` accepts either |
+| Endianness | Console and new port writes: big-endian. Legacy port CRC and generation: host-LE. | same | [M] `port_save_framing.h`; runtime loader and `port_save.cpp` `Inspect()` accept either |
 
 The `.gci` adds a 0x40 directory entry in front. The rest of the file is the card image. In a `.gci`, the first copy's CRC is at 0x2040, its generation at 0x2044 and the payload (`SSaveHeader` signature first, big-endian) at 0x2048. The second copy starts at 0x4040 [M, the port save in §5].
 

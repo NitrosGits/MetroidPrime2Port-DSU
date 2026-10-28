@@ -557,9 +557,9 @@ bool Inspect(const std::string& path, File& out, std::string& error) {
     const uint8_t* block = bytes.data() + kDirEntry + kBlock + size_t(i) * copyBlocks * kBlock;
     const size_t copyBytes = copyBlocks * kBlock;
     const uint32_t crc = CCRC32::Calculate(block + 4, uint(copyBytes - 4), 0xFFFFFFFFu);
-    // The generation and CRC are host-endian in a save this port wrote (BuildSaveSlot assigns them
-    // through a uint*) and big-endian in one a console or Dolphin wrote; a match either way is a
-    // valid copy, and the byte order that matched says how to read the generation.
+    // Legacy port saves stored generation and CRC in host order. New port saves, consoles and
+    // Dolphin use big-endian; a match either way is a valid copy, and the byte order that
+    // matched says how to read the generation.
     const bool little = crc == Le32(block);
     const bool big = crc == Be32(block);
     copies[i].crc = little || big;

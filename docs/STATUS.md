@@ -3,6 +3,36 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-29: issue #3 emulator save framing
+
+`fix/issue3-save` corrects the runtime card reader/writer, not just the import inspector.
+`CCardFileInfo` now checks CRCs in console big-endian or legacy host-little-endian order,
+reads the generation in the matching order, and always writes new CRC/generation words
+big-endian. Payload bytes are not swapped. Generations other than 0/1 are rejected before
+the slot selector uses their XOR as an index. All upstream changes are `TARGET_PC`-guarded.
+Reading a valid legacy header does not rewrite it; a normal save migrates the data copies
+as they are written. Retail repairs an old header's non-console CRC via its existing
+header-repair path. Keep backups and never run both programs on the shared card at once.
+
+Verification (isolated cards under `/tmp/opencode/issue3-*`; no live saves changed):
+
+- `port_save_framing_tests` and the real-fixture `port_save_convert_tests` passed through CTest.
+  Framing tests use an independent bitwise CRC/console decoder and cover both byte orders,
+  both generations, unchanged payloads, legacy migration, repeated writes, CRC corruption,
+  invalid generations, short buffers and a byte-palindromic CRC. ASan/UBSan passed too.
+- Full native game linked. Headless native boots loaded both byte orders of the same real
+  G2ME fixture into gameplay (frame 121), rather than falling back to an empty card.
+- The console driver sent `station` at update 140, then wall-clock `press a` / `stick 0 0`
+  at 1/1.2, 2/2.2 and 3/3.2 seconds. An actual in-game save changed both data copies;
+  Python `zlib.crc32(...) ^ 0xffffffff` independently verified their big-endian CRCs.
+  The existing legacy header was unchanged, as intended. A subsequent native boot
+  accepted that saved card into the running world and exited normally at update 180.
+- Trilogy container/payload tests passed on the local fixture set (0 failures).
+- Matching build: `87 files OK`; generated source manifest check passed.
+
+This is native integration plus console-format validation, not a run on Steam Deck or
+an actual PrimeHack load. No GitHub comment, push or release was made.
+
 ## 2026-10-28: issue #2 controller bindings
 
 The twin-stick-only camera path omitted `PortMouse::StickEnabled()` when applying aim

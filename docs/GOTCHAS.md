@@ -64,10 +64,12 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
 - Upstream code casting pointers to `u32`/`uint` fails on 64-bit; most excluded units are that.
 - Disc data is big-endian: every raw read of resource bytes needs `CBasics::SwapBytes` under
   TARGET_PC (material data, CMDL/TXTR headers, compressed-block lengths in `CResFactory`).
-- **A save file's CRC and generation words are host-endian in a save this port wrote, and big-endian
-  in one a console or Dolphin wrote**: `CCardFileInfo::BuildSaveSlot` assigns them through a `uint*`.
-  A parser that assumes either order calls half the cards corrupt - check the CRC both ways and read
-  the generation in the order that matched (`platform/port_save.cpp`). The newer of the two copies is
+- **Legacy port saves have host-endian CRC/generation words; console, Dolphin and new port writes
+  use big-endian** (issue #3, 2026-10-29). `port_save_framing.h` makes the runtime loader accept
+  either CRC order and decode the generation in that order; writes always use console order.
+  Checking both orders only in the import inspector did not fix the game's card loader. Never swap
+  the payload, and reject generations other than 0/1 before using their XOR as a slot index.
+  In the import inspector (`platform/port_save.cpp`), the newer of the two copies is
   the one with the greater slot *timestamp*, not generation: the generations alternate 0/1.
 - **Saving at a save station pauses the run, and a paused game runs no console command.**
   `MP2_INPUT="STATION@100,A@220+3,..."` gets into the save screen and its next A writes the card
