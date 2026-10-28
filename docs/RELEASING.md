@@ -30,7 +30,7 @@ Every package also carries `textures/` (button glyphs and binding icons, generat
 | Workflow | Trigger | Produces |
 |---|---|---|
 | `linux-build.yml` | PRs, manual (a push starts nothing) | Ubuntu 24.04, gcc-14; build, `ctest -L port`, Aurora `gx_fifo_tests` (`.github/actions/build-and-test`) |
-| `linux-release.yml` | manual | `almalinux:9` + gcc-toolset-14, x86_64 and aarch64; AppImage + tarball, artifacts `metroid_prime2_port-linux[-aarch64]`; fails if the binary needs glibc > 2.34 or GLIBCXX > 3.4.29 |
+| `linux-release.yml` | manual | `almalinux:9` + gcc-toolset-14, x86_64 and aarch64; AppImage + tarball + split-off `.debug` (RelWithDebInfo, stripped binary, as MP1), artifacts `metroid_prime2_port-linux[-aarch64]`; fails if the binary needs glibc > 2.34 or GLIBCXX > 3.4.29 |
 | `tools/make_flatpak.sh` | manual, local | `build/flatpak/MetroidPrime2Port.flatpak` (app id `io.github.odrannnn.metroidprime2port`, `org.freedesktop.Platform` 24.08); `flatpak/*.yml` builds the committed `port` branch offline from pinned sources (Dawn, nod, SDL and the Aurora dependencies, `disable-submodules`); stops if the newest metainfo release differs from `versionName` |
 | `windows.yml` | manual | clang-cl, x64 and arm64 (`windows-11-arm`); artifacts `metroid_prime2_port-windows[-arm64]` (`dist/`) |
 | `macos.yml` | manual | arm64, ad-hoc signed `Metroid Prime 2 Port.app` + `licenses/`, artifact `metroid_prime2_port-macos`; checks system-only dylibs, codesign and the packaged no-disc startup |
@@ -70,7 +70,10 @@ entry (newest first) in `packaging/io.github.odrannnn.metroidprime2port.metainfo
    - Linux: `gh workflow run linux-release.yml --ref port -R Odrannnn/MetroidPrime2Port`, then
      `gh run download <id> -n metroid_prime2_port-linux` and `-n metroid_prime2_port-linux-aarch64`.
      Rename the tarballs `metroid-prime2-port-X-linux-{x86_64,aarch64}.tar.gz`; the AppImages keep
-     their names.
+     their names. Each artifact also holds the binary's split-off debug info,
+     `metroid-prime2-port-linux-<arch>.debug`: attach it as `metroid-prime2-port-X-linux-<arch>.debug`,
+     so a crash log's `metroid_prime2_port+0x…` offsets stay readable with
+     `addr2line -fCi -e metroid-prime2-port-X-linux-<arch>.debug 0x…`.
    - Windows: `windows.yml`; drop any `user/` folder from each artifact and zip the rest as
      `metroid-prime2-port-X-windows-{x86_64,arm64}.zip`.
    - macOS: `macos.yml`; `chmod +x` the bundle's executable (artifacts lose the mode bit) and zip
