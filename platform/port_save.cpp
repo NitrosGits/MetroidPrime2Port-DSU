@@ -1096,7 +1096,14 @@ bool SyncTrilogyShare(bool pull) {
       sFailedCard = cardTime;
       return false;
     }
+    ec.clear();
     std::filesystem::last_write_time(bin, cardTime, ec); // equal times mean in step
+    if (ec) {
+      // Not in step and cannot be made so: remember it like a failed export, or the card would be
+      // exported again at every check.
+      std::fprintf(stderr, "[save] Trilogy mirror: cannot set the bin's time: %s\n", ec.message().c_str());
+      sFailedCard = cardTime;
+    }
     return false;
   }
   if (!pull || binTime <= cardTime || binTime == sFailedBin) {
@@ -1108,7 +1115,13 @@ bool SyncTrilogyShare(bool pull) {
     return false;
   }
   for (const std::string& file : GameFilesNewest()) {
+    ec.clear();
     std::filesystem::last_write_time(file, binTime, ec);
+    if (ec) {
+      // The card file stays older than the bin, so it would be imported again at every check.
+      std::fprintf(stderr, "[save] Trilogy mirror: cannot set a card file's time: %s\n", ec.message().c_str());
+      sFailedBin = binTime;
+    }
   }
   return true;
 }
