@@ -1076,17 +1076,21 @@ bool CIngBoostBallGuardian::CanGrappleTarget(CStateManager& mgr, const CTriggerD
 
 // ---- code functions (the FSM2 runs them: CGenericFSM2State::SetCodeFunctions) -------------------
 
-// Ing body fn_29_5B60
+// Ing body fn_29_5B60: destination = the Ing's own position (0x000072EC..0x00007304), 0x11EC bit 0x10
+// (mFoundMovementPos) cleared (0x00007310), then the target's translation and the bit set when the
+// target exists (0x00007324..0x0000734C). SetDestination, the face target (0x718) at kInvalidUniqueId
+// and fn_30_51B4 (JoinTeam) run either way (0x00007358..0x00007374). mTargetPos (0x10F8) is not written.
 // @ fn_30_72C8
 void CIngBoostBallGuardian::SetTargetDest(CStateManager& mgr, float) {
   LogState("SetTargetDest");
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (target == nullptr) {
-    return;
+  CVector3f dest = GetTranslation();
+  mFoundMovementPos = false;
+  if (const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId))) {
+    dest = target->GetTranslation();
+    mFoundMovementPos = true;
   }
-  mTargetPos = target->GetTranslation();
-  mFoundMovementPos = true;
-  mPathFindNavigation.SetDestination(mTargetPos);
+  mPathFindNavigation.SetDestination(dest);
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
   JoinTeam(mgr);
 }
 
