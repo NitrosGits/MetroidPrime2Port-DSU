@@ -11,6 +11,8 @@ usage in its header.
 | 3 | `host_safety.py` | ctor init gaps, LP64 casts, raw disc reads, `new(retail size)`, data-fed divisors and indices |
 | 4 | `target_pc_hygiene.py` | port edits to upstream files that change the non-PC path (TARGET_PC-reduced token diff vs upstream/main) |
 | 5b | `upstream_units.py` | NonMatching/unlinked units and NONMATCHING/TODO/guessed functions, ranked for review |
+| 5b(c) | `upstream_gconly.py` | matching, port-compiled upstream units and quoted project headers: seven GC-only host-assumption candidate classes (`--json`, `--cat N`, `--no-headers`) |
 
 - `disc_scan.py {poi|chog|splinter}`: confirms/clears A3-2..4 against disc data (run with `python3 -I`).
 - `host_safety.py --cat 6`: narrowed to indexes whose value comes from a disc/script/stream read with no bound check.
+- `python3 tools/audit/test_upstream_gconly.py`: scanner fixtures plus actual-source bit-reader / float-cast / pitch-bend probes with CXX and UBSan (synthetic inputs, not gameplay).
