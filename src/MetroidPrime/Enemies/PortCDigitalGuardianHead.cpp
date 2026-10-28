@@ -2412,7 +2412,6 @@ void CDigitalGuardianHead::SetImmuneToDamage(CStateManager& mgr, float dt) {
   }
 }
 
-// Codes not ported yet: once-logging stand-ins (the FSM2 state machine runs codes by name).
 // fn_14_1560C: the player (state manager +0x14FC) becomes the face target (0x1036).
 // @ fn_14_1560C
 void CDigitalGuardianHead::SetPlayerFaceTarget(CStateManager& mgr, float dt) {

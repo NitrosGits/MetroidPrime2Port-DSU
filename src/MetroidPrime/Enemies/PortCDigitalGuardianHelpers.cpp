@@ -230,21 +230,21 @@ bool CDigitalGuardian::x6C24_(CDigitalGuardianHead& head) {
 // and the flag byte's bit 1 (guest this+0x128C, the extrwi at 0x6CE0) is clear, the guardian
 // looks along the head's flattened forward (fn_14_13B38) instead: the direction is turned into
 // the guardian's frame (the TransposeRotate call at 0x6D08) and the guardian's aim transform
-// (guest this+0x1088) becomes the LookAt of that direction (the call at 0x6D3C). With a usable
+// (guest this+0x1088) becomes the LookAt of that direction (the call at 0x6D3C). With no usable
 // direction the aim is the given transform (r5) times the aim transform (the __ml__ at 0x6D60)
-// and its forward and up columns are the two results; without one the direction is the head's
+// and its forward and up columns are the two results; with one the direction is the head's
 // normalized turn direction and the up vector is the world's up (the branch at 0x6DA4). The flag
-// byte's bit 1 then says whether the direction was usable (the rlwimi at 0x6DE8).
+// byte's bit 1 then records that there was no usable direction (the rlwimi at 0x6DE8).
 void CDigitalGuardian::x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf,
                              CVector3f& outForward, CVector3f& outUp) {
-  const bool usable = x6C24_(head); // the call at 0x6CD4
-  // The clrlwi. / beq at 0x6CE8: the offset is taken when the aim becomes usable.
-  if ((x128C_ & 0x02) == 0 && usable) { // the extrwi at 0x6CE0 (1 bit at 30 -> the byte's bit 1)
+  const bool noDirection = x6C24_(head); // the call at 0x6CD4
+  // The clrlwi. / beq at 0x6CE8: the aim transform is rebuilt once, when the head has no direction.
+  if ((x128C_ & 0x02) == 0 && noDirection) { // the extrwi at 0x6CE0 (1 bit at 30 -> the byte's bit 1)
     const CVector3f dir = head.x13B38_();           // fn_14_13B38
     const CVector3f local = GetTransform().TransposeRotate(dir); // the call at 0x6D08
     x1088_ = CTransform4f::LookAt(CVector3f::Zero(), local, CVector3f::Up()); // the call at 0x6D3C
   }
-  if (usable) { // the clrlwi at 0x6D4C
+  if (noDirection) { // the clrlwi at 0x6D4C
     const CTransform4f aim = xf * x1088_; // the __ml__ at 0x6D60
     outForward = aim.GetColumn(kDY);     // the loads at 0x6D70..0x6D78
     outUp = aim.GetColumn(kDZ);          // the loads at 0x6D88..0x6D90
@@ -252,8 +252,8 @@ void CDigitalGuardian::x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf
     outForward = head.x1028_.AsNormalized(); // the call at 0x6DAC
     outUp = CVector3f::Up();                // the loads at 0x6DCC..0x6DD8
   }
-  // The rlwimi at 0x6DE8 puts "usable" into the flag byte's bit 1 (1u << (31 - 30) = 0x02).
-  if (usable) {
+  // The rlwimi at 0x6DE8 puts "noDirection" into the flag byte's bit 1 (1u << (31 - 30) = 0x02).
+  if (noDirection) {
     x128C_ |= 0x02;
   } else {
     x128C_ &= ~0x02;
@@ -445,9 +445,9 @@ void CDigitalGuardianHead::x11F7C_(CStateManager& mgr) {
 // @ fn_14_6C24
 //
 // The arms: (a) the flag byte's bit 1 (guest this+0x128C) is clear and the head has no usable
-// direction -> the aim transform is rebuilt from the head's flattened forward, (b) the direction
-// is usable -> the aim is the given transform times the aim transform, (c) it is not -> the
-// direction is the head's normalized turn direction and the up vector is the world's up.
+// direction -> the aim transform is rebuilt from the head's flattened forward, (b) the head has
+// no usable direction -> the aim is the given transform times the aim transform, (c) it has one
+// -> the direction is the head's normalized turn direction and the up vector is the world's up.
 // The run: area 53, 3000 frames, the coverage harness with the forcing: (b) ran (the
 // CTransform4f::operator* call site), (c) ran (the CVector3f::AsNormalized call site) and (a)
 // ran too (the fn_14_13B38, the CTransform4f::TransposeRotate and the CTransform4f::LookAt call
