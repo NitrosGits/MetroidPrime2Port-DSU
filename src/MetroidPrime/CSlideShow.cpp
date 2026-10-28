@@ -613,7 +613,10 @@ CIOWin::EMessageReturn CSlideShow::ProcessUserInput(const CFinalInput& input) {
     }
     bool changed = false;
     if (input.PDPRight()) {
-      mGallery = (mGallery + 1) % mGalleries.size();
+#ifdef TARGET_PC
+      if (mGalleries.size() != 0) // no galleries: nothing to step to
+#endif
+        mGallery = (mGallery + 1) % mGalleries.size();
       mSlide = -1;
       mGalleryChanged = true;
       changed = true;
@@ -973,6 +976,11 @@ void CSlideShow::SSlideData::InitializeViewport() {
     }
   }
   for (int i = 0; i < mTextures.size(); ++i) {
+#ifdef TARGET_PC
+    if (mColumns == 0) {
+      break; // columns are assigned with the slide; leave the layout until they are
+    }
+#endif
     const float x = width * (i % mColumns);
     const float y = height * (i / mColumns);
     mTextures[i].mRightTop = CVector2f(x + width, y);
