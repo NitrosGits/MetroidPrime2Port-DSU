@@ -3,6 +3,26 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-29: scan visor widescreen registration and model proportions
+
+- Reproduced the reported detached background with a completed Dark Trooper logbook scan
+  (`e000b000c`, Temple Grounds area 11), at a 2000x781 window and `scanspread 100`.
+  Generic non-logbook scans do not exercise the hierarchy panels.
+- `basewidget_crazyleft/right` contain only the background; the six category rows are sibling
+  trees. Register both the background and rows for the live scan-spread weight, and give every
+  piece of each side the same label anchor. The BWIG roots themselves are at the origin and
+  cannot serve as side anchors. `CGuiFrame::SetSpreadAnchorTree` now accepts an optional anchor;
+  existing one-argument callers retain their original behavior.
+- The model preview bypassed `CGuiCamera::Draw` and used its authored aspect unchanged. Apply
+  the GUI's aspect widening, fit-width FOV and HUD scaling to its custom projection too: wide
+  windows no longer flatten the scanned model.
+- Verified on Linux/Xvfb with an actual completed logbook entry: spread 0/50/100 at 2000x781,
+  plus 1280x720, 1680x720, 960x720, 720x960, and HUD scale 70%. Evidence is under
+  `/tmp/opencode/scanfix/` (`logbook-before-100.png`, `logbook-before-0.png`, `final-0.png`
+  through `final-8.png`, `checked-matrix.png`). Test-only forced unmorph setup and widget
+  probes were removed; neither is part of the fix. Native game links; matching build passes
+  all 87 checks. Windows/Android device rendering has not been rerun.
+
 ## 2026-10-28: issue #2 controller bindings
 
 The twin-stick-only camera path omitted `PortMouse::StickEnabled()` when applying aim
