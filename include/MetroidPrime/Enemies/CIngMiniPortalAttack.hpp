@@ -6,12 +6,17 @@
 #include "Kyoto/TToken.hpp"
 #include "MetroidPrime/CActor.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
+#ifdef TARGET_PC
 #include "MetroidPrime/CRELFileToken.hpp"
+#endif
 #include "MetroidPrime/ScriptLoader/Structs/SLdrPlasmaBeamInfo.hpp"
+#ifdef TARGET_PC
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#endif
 
 class CGenDescription;
 
+#ifdef TARGET_PC
 // The Ing REL's CIngMiniPortalInfo (module 29, ctor fn_29_12100, copy ctor fn_29_1201C): what one
 // mini portal carries. Retail's is 0x88 bytes. The offsets in the comments are the REL's, from those
 // two functions; the host members are wider here (a TLockedToken is two pointers), so the host class
@@ -83,6 +88,39 @@ private:
   uchar mFlags;                    // 0x230: bit 7 set once the portal has aimed at its target
 };
 // Retail size; inert off Metrowerks, and the host members are wider.
+#else
+// Original Wii export name; the class lives in the Ing REL (module 29), which is not ported. Only
+// the constructors used by the IngSpaceJumpGuardian REL are declared, and the layout is not
+// reconstructed.
+class CIngMiniPortalInfo {
+public:
+  CIngMiniPortalInfo(TUniqueId target, float x4, float x8,
+                     const TLockedToken< CGenDescription >& effect, ushort sound, float x1c,
+                     float x20, const CDamageInfo& damage, const SLdrPlasmaBeamInfo& beamInfo);
+
+private:
+  TUniqueId mTarget; // Guessed name
+  float x4_;
+  float x8_;
+  TLockedToken< CGenDescription > mEffect; // Guessed name
+  ushort mSound;                           // Guessed name
+  float x1c_;
+  float x20_;
+  CDamageInfo mDamage;          // Guessed name
+  SLdrPlasmaBeamInfo mBeamInfo; // Guessed name
+};
+
+// Original Wii export name; the actor that is spawned by a mini portal attack.
+class CIngMiniPortalAttack : public CActor {
+public:
+  CIngMiniPortalAttack(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
+                       const CTransform4f& xf, TUniqueId owner, const CVector3f& scale,
+                       const CIngMiniPortalInfo& portalInfo);
+
+private:
+  uchar mUnported[0x238 - sizeof(CActor)]; // Guessed layout; defined by the Ing REL.
+};
+#endif
 CHECK_SIZEOF(CIngMiniPortalAttack, 0x238)
 
 #endif // _CINGMINIPORTALATTACK

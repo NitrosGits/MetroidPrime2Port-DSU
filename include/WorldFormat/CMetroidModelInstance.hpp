@@ -1,7 +1,9 @@
 #ifndef _CMETROIDMODELINSTANCE
 #define _CMETROIDMODELINSTANCE
 
+#ifdef TARGET_PC
 #include "Kyoto/Basics/CBasics.hpp"
+#endif
 #include "Kyoto/Graphics/CCubeMaterial.hpp"
 #include "Kyoto/Math/CAABox.hpp"
 #include "Kyoto/Math/CTransform4f.hpp"

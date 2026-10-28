@@ -179,7 +179,7 @@ inline unsigned long CInputStream::Get< unsigned long >(const TType< unsigned lo
 
 // Port: on an LP64 host this would redefine the `unsigned long` specialization above.
 // Apple LP64: `u64` (uint64_t) is `unsigned long long`, a type of its own.
-#if !(defined(TARGET_PC) && __SIZEOF_LONG__ == 8) || defined(__APPLE__)
+#if !defined(TARGET_PC) || __SIZEOF_LONG__ != 8 || defined(__APPLE__)
 template <>
 inline u64 CInputStream::Get< u64 >(const TType< u64 >& type) {
   return ReadInt64();

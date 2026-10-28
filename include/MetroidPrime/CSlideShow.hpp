@@ -16,7 +16,9 @@ class CDependencyGroup;
 class CFinalInput;
 class CGuiTextSupport;
 class CRSFAudio;
+#ifdef TARGET_PC
 class CStateManager;
+#endif
 class CStringTable;
 class CTexture;
 
