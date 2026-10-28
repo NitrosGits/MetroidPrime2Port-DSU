@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 // Binding-aware button prompt icons.
 //
 // The game draws each prompt from a fixed texture, so a shipped replacement can
@@ -35,4 +37,12 @@ void Poll();
 // (true for the twin-stick Xbox arrangement, false for the GameCube one), so the
 // in-game prompts follow the input the player actually reached for.
 void NoteTouchInput(bool xboxLayout);
+
+// Prompt art is bound by asset id. FTextureFactory asks CTexture to bind the texture it just
+// built: when `id` is a prompt's, its icon follows the binding from then on (registered under the
+// CTexture's own address, so it holds whatever the texels are) and BindTexture returns true.
+// UnbindTexture drops it (the CTexture's destructor). Both main-thread only.
+bool IsPromptAsset(uint32_t id);
+bool BindTexture(const void* owner, uint32_t id, uint32_t width, uint32_t height);
+void UnbindTexture(const void* owner);
 } // namespace PortPrompts

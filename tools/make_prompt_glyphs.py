@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Generate per-device button-prompt replacements for Metroid Prime 2: Echoes.
 
-Ported from the Prime 1 port. The key table it reads (kKeys in
-platform/port_prompts.cpp) still carries Prime 1's texture hashes until they
-are re-identified against an Echoes dump (MP2_DUMP_TEXTURES=1).
+Ported from the Prime 1 port. The port binds most prompt textures by asset id
+(kAssets in platform/port_prompts.cpp) to the bindings/ icons; the per-device
+sets below only cover the few left in kKeys, matched by texel hash.
 
 The game's prompts are individual textures: 32x32 buttons (A, B, X, Y, Start,
 L, R) and 64x32 stick, C-stick, D-pad and Z art, each listed with its hash in
@@ -313,7 +313,9 @@ def main():
     # size first and falls back to the unsuffixed 32x32 file. Without this a
     # 64x32 slot gets 32x32 bytes: the game does not scale the image, it reads
     # 64x32 of pixels out of half the data and draws the rest as noise.
-    sizes = sorted({(w, h) for _, w, h, _, _ in keys})
+    # The prompt textures bound by asset id (kAssets) come in these sizes; kKeys
+    # now holds only the few matched by hash, so it no longer lists them all.
+    sizes = sorted({(SIZE, SIZE), (64, 32), (64, 64)} | {(w, h) for _, w, h, _, _ in keys})
     for device, icons in PAD_ICONS.items():
         for key, icon in icons.items():
             for w, h in sizes:

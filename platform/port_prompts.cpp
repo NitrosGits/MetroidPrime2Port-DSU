@@ -1,6 +1,7 @@
 // Binding-aware button prompt icons; see port_prompts.h.
 
 #include "port_prompts.h"
+#include "port_entry.h"
 #include "port_env.h"
 #include "port_overlay.h"
 
@@ -27,6 +28,7 @@
 #include <iterator>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace {
@@ -62,74 +64,65 @@ struct PromptKey {
   uint64_t hash;
   const char* format;
 };
+// The game's prompt art by asset id, sorted by id. CTexture binds these by
+// pointer (BindTexture), which holds whatever the content: matching on a texel
+// hash missed on any disc whose art differs by a pixel. Found by hashing the
+// texels of each kKeys entry against G2ME01's paks, and by logging the ids the
+// Trilogy disc loads (its Wii-only art is the last few of each action). The few
+// textures with no id (kKeys below) are still matched by hash.
+struct PromptAsset {
+  uint32_t id;
+  uint32_t prompt;
+};
+constexpr PromptAsset kAssets[] = {
+    {0x08BCA722, PROMPT_STICK_RIGHT}, {0x0A254C97, PAD_BUTTON_START}, // the GameCube pause Exit
+    {0x10799395, PAD_TRIGGER_Z}, {0x13AD51E9, PAD_BUTTON_DOWN},
+    {0x17EB2A51, PROMPT_CSTICK_RIGHT}, {0x1B525041, PROMPT_CSTICK}, {0x2187B2A1, PROMPT_STICK_UP},
+    {0x2CB3B7D2, PROMPT_CSTICK}, {0x2DBD0327, PROMPT_CSTICK}, {0x304DEF5A, PAD_TRIGGER_L},
+    {0x3AA65ECD, PAD_BUTTON_Y}, {0x3F609B4A, PROMPT_STICK_LEFT}, {0x4475EAD6, PAD_BUTTON_Y},
+    {0x45990439, PROMPT_CSTICK_DOWN}, {0x47F931C8, PROMPT_STICK}, {0x4EFFA9AA, PROMPT_STICK_DOWN},
+    {0x53B7AC95, PAD_BUTTON_B}, {0x59500D0C, PAD_BUTTON_B}, {0x5EA16CAD, PAD_TRIGGER_R},
+    {0x61E49F68, PROMPT_STICK}, {0x6D482337, PAD_BUTTON_A}, {0x72A83A41, PROMPT_STICK},
+    {0x738A4798, PROMPT_CSTICK_UP}, {0x73E9B3B2, PROMPT_CSTICK_LEFT}, {0x83A73184, PAD_BUTTON_START},
+    {0x8D13D507, PROMPT_CSTICK_UP}, {0x8E28D58C, PROMPT_STICK}, {0x9016E5BF, PROMPT_CSTICK_RIGHT},
+    {0x944EBD78, PROMPT_STICK}, {0x967A3516, PAD_TRIGGER_L}, {0xA9CA8654, PROMPT_CSTICK_LEFT},
+    {0xADCBEDAE, PROMPT_CSTICK}, {0xB4EDE4B6, PROMPT_DPAD}, {0xBC322C63, PAD_TRIGGER_Z},
+    {0xC14A95C6, PAD_TRIGGER_Z}, {0xC3E07487, PROMPT_STICK_RIGHT}, {0xC622B06F, PAD_BUTTON_RIGHT},
+    {0xC83111AA, PROMPT_CSTICK_DOWN}, {0xC96F93E3, PAD_BUTTON_A}, {0xCDA81421, PROMPT_STICK},
+    {0xD212C48A, PAD_BUTTON_X}, {0xD3D8817F, PROMPT_CSTICK}, {0xD523DE3B, PAD_BUTTON_A},
+    {0xD89B9F7C, PAD_TRIGGER_R}, {0xDE5170B7, PAD_BUTTON_A}, {0xDEA628DC, PAD_BUTTON_B},
+    {0xDFC47FA2, PAD_BUTTON_A}, {0xE43966EC, PROMPT_CSTICK}, {0xE72B1419, PAD_BUTTON_A},
+    {0xF1FA8D68, PAD_BUTTON_X}, {0xF237E982, PAD_TRIGGER_R}, {0xF43C48EF, PROMPT_STICK_LEFT},
+    {0xF6E8276F, PAD_TRIGGER_R}, {0xF7D62F50, PAD_BUTTON_UP}, {0xFF73F326, PROMPT_STICK},
+    {0xFFFED384, PAD_BUTTON_LEFT},
+};
+
+// Echoes' "1" hint ring shares an id with the GameCube disc's Y art on Trilogy,
+// where it is the Z prompt.
+constexpr uint32_t kTrilogyZAsset = 0x3AA65ECD;
+
+const PromptAsset* FindAsset(uint32_t id) {
+  const auto it = std::lower_bound(std::begin(kAssets), std::end(kAssets), id,
+                                   [](const PromptAsset& asset, uint32_t value) { return asset.id < value; });
+  return it != std::end(kAssets) && it->id == id ? &*it : nullptr;
+}
+constexpr bool AssetsSorted() {
+  for (size_t i = 1; i < std::size(kAssets); ++i) {
+    if (kAssets[i - 1].id >= kAssets[i].id) {
+      return false;
+    }
+  }
+  return true;
+}
+static_assert(AssetsSorted(), "kAssets must be sorted by id");
+
+// Prompt textures with no asset id of their own, matched by texel hash under Aurora's
+// name for them (MP2_DUMP_TEXTURES=1 prints it).
 constexpr PromptKey kKeys[] = {
-    {PAD_BUTTON_A, 32, 32, 0xbb21e8755f36b2f0ull, "5"},   // AButtonIn
-    {PAD_BUTTON_A, 32, 32, 0x7a49be0e828a6d9aull, "14"},  // AButtonOut, the scan box's and message screen's model
-    {PAD_BUTTON_B, 32, 32, 0xe6dbfd18d4666ee7ull, "5"},   // BButtonIn
-    {PAD_BUTTON_B, 32, 32, 0xcf85aefc93af603full, "14"},  // BButtonOut
-    {PAD_BUTTON_X, 32, 32, 0x818890ce3f3a949bull, "5"},   // XButtonOut, "Press X to ... Morph Ball"
     {PAD_BUTTON_X, 32, 32, 0xe14785826e0e103full, "5"},   // XButtonOut on the PAL disc (same asset, other art)
-    {PAD_BUTTON_Y, 32, 32, 0x281ae5aa517797edull, "5"},   // YButtonOut, the pause and map screens
     {PAD_BUTTON_START, 32, 32, 0x1ff9d2b310c0b706ull, "14"},  // StartButtonOut, the pause Return
-    {PAD_TRIGGER_L, 32, 32, 0x3f419d4a7ba3cff3ull, "5"},  // LTriggerOut
-    {PAD_TRIGGER_L, 32, 32, 0xc39b2f9c2eac777bull, "5"},  // LTriggerIn
-    {PAD_TRIGGER_R, 32, 32, 0x178b7311fda3f949ull, "5"},  // RTriggerOut
-    {PAD_TRIGGER_R, 32, 32, 0xac602ce1291cbd26ull, "5"},  // RTriggerIn
     {PAD_TRIGGER_R, 32, 32, 0x07165bfca0d0908full, "14"}, // the hints' released R
-    {PAD_TRIGGER_Z, 64, 32, 0x0f4cb495c960bcfaull, "14"}, // the map legend's Z
-    // Metroid Prime Trilogy's own prompt art (Wii glyphs), identified from a
-    // dump of R3ME01 against the pause screen's legend: Exit is the "2" button,
-    // Key (Echoes' Y) the gray C, the morph hint X, the map legend's Z.
-    {PAD_BUTTON_START, 32, 32, 0xf26190a488d42e7cull, "5"},   // Trilogy "2", the pause Exit
-    {PAD_BUTTON_Y, 32, 32, 0xdbcb14f0171b30d3ull, "5"},       // Trilogy gray C, the pause Key
-    {PAD_BUTTON_X, 32, 32, 0x4fc1d5a59b4da757ull, "5"},       // Trilogy gray X
-    {PAD_TRIGGER_Z, 64, 32, 0x72cef9d70719af16ull, "5"},      // Trilogy blue Z bar
-    {PAD_TRIGGER_Z, 32, 32, 0x86475f276fb14e06ull, "5"},  // Trilogy "1" (RS5 override of 3AA65ECD), the map hint
-    {PAD_TRIGGER_Z, 64, 32, 0xaf76096726fc1854ull, "14"},     // Trilogy "1" in the hint memo's ring
     {PAD_TRIGGER_L, 32, 32, 0x5fa30f82f962b236ull, "5"},      // Trilogy gray Z (Nunchuk lock-on), "Press and hold Z"
-    // The Data Network (logbook) node buttons: A selects, B goes back (R3ME01; 64x64 and 32x32).
-    {PAD_BUTTON_A, 64, 64, 0xfefe12c9bdfa636eull, "5"},       // logbook A node
-    {PAD_BUTTON_B, 32, 32, 0x47f0b125bc328818ull, "5"},       // logbook B node
-    // The HUD memo box's dismiss button (Echoes' own art on G2ME01 and Trilogy): A.
-    {PAD_BUTTON_A, 32, 32, 0xfd38631c4cfd1732ull, "14"},      // memo box A, lit
-    {PAD_BUTTON_A, 32, 32, 0x00901119431a3e6aull, "14"},      // memo box A, the dark ring variant
-    // The front end's selected-node A (title menu, file select; G2ME01 and Trilogy).
-    {PAD_BUTTON_A, 32, 32, 0x4d93c0948d548512ull, "5"},       // front-end A face
-    // The control stick. The map screen draws the frame for the way the stick
-    // is pushed; the diagonals take the stick's own icon.
-    {PROMPT_STICK, 64, 32, 0x2d26352b420db007ull, "5"},        // LStickN
-    {PROMPT_STICK_UP, 64, 32, 0x54e47b41b25b4651ull, "5"},     // LstickU
-    {PROMPT_STICK_DOWN, 64, 32, 0x6861ed79f30dd9a8ull, "5"},   // LStickD
-    {PROMPT_STICK_LEFT, 64, 32, 0xaf41768a5da09b20ull, "5"},   // LStickL
-    {PROMPT_STICK_RIGHT, 64, 32, 0x7380195f13489f63ull, "5"},  // LStickR
-    {PROMPT_STICK, 64, 32, 0x01eb5601a6874bf0ull, "5"},        // LStickUL
-    {PROMPT_STICK, 64, 32, 0x2c8c84d6511fa2f0ull, "5"},        // LStickUR
-    {PROMPT_STICK, 64, 32, 0x88393aacfa3ddee3ull, "5"},        // LStickDL
-    {PROMPT_STICK, 64, 32, 0x271c18e5d246591cull, "5"},        // LStickDR
-    {PROMPT_STICK_LEFT, 64, 32, 0xb5ebd7c20f7fa1b4ull, "5"},   // "stick while holding L to strafe"
-    {PROMPT_STICK_RIGHT, 64, 32, 0x625f670e544215d1ull, "5"},
-    // The C-stick, as the map screen draws it...
-    {PROMPT_CSTICK, 64, 32, 0xe14dc493b5513d14ull, "5"},        // CStickN
-    {PROMPT_CSTICK_UP, 64, 32, 0x3d7b8d8eb4875357ull, "5"},     // CStickU
-    {PROMPT_CSTICK_DOWN, 64, 32, 0xcc677b23b7799be0ull, "5"},   // CStickD
-    {PROMPT_CSTICK_LEFT, 64, 32, 0x49172cec707109fbull, "5"},   // CStickL
-    {PROMPT_CSTICK_RIGHT, 64, 32, 0x8180dbd4c4b1b5d5ull, "5"},  // CStickR
-    {PROMPT_CSTICK, 64, 32, 0xd27581e24408939dull, "5"},        // CStickUL
-    {PROMPT_CSTICK, 64, 32, 0x100fd48145e9ead5ull, "5"},        // CStickUR
-    {PROMPT_CSTICK, 64, 32, 0x17ea7b8c686aa635ull, "5"},        // CStickDL
-    {PROMPT_CSTICK, 64, 32, 0x00b675706b74fb84ull, "5"},        // CStickDR
-    // ...and the smaller set the beam hints draw.
-    {PROMPT_CSTICK, 64, 32, 0x82e1b4c9930dd504ull, "5"},
-    {PROMPT_CSTICK_UP, 64, 32, 0xda1128c0321ef299ull, "5"},     // Power Beam
-    {PROMPT_CSTICK_DOWN, 64, 32, 0xafc88c5fcca46ce6ull, "5"},   // Ice Beam
-    {PROMPT_CSTICK_LEFT, 64, 32, 0xefec72330b49fd16ull, "5"},   // Plasma Beam
-    {PROMPT_CSTICK_RIGHT, 64, 32, 0x85c74de9df341b80ull, "5"},  // Wave Beam
-    // The D-pad, which the visor hints draw.
-    {PROMPT_DPAD, 64, 32, 0x31c74326a7e8fd1full, "5"},        // DPadN
-    {PAD_BUTTON_UP, 64, 32, 0xdfdffa485095ee03ull, "5"},      // DPadU, Combat Visor
-    {PAD_BUTTON_DOWN, 64, 32, 0x112b6136175108bbull, "5"},    // DPadD, Thermal Visor
-    {PAD_BUTTON_LEFT, 64, 32, 0x8c1d5fec98c638efull, "5"},    // DPadL, Scan Visor
-    {PAD_BUTTON_RIGHT, 64, 32, 0x43a63656a5767a1dull, "5"},   // DPadR, X-Ray Visor
 };
 constexpr size_t kKeyCount = sizeof(kKeys) / sizeof(kKeys[0]);
 
@@ -456,6 +449,18 @@ std::string FindIconFile(const std::string& name) {
   return std::filesystem::is_regular_file(path, ec) ? path.string() : std::string();
 }
 
+// The icon for `stem`: the one generated at exactly this size, then the unsuffixed one.
+// A single stem can serve textures of different sizes - the C-stick prompts here are one
+// 32x32 and one 64x32 - and a mismatch is not scaled by the game: it reads 64x32 of pixels
+// out of 32x32 of data and draws the right-hand half as noise. tools/make_prompt_glyphs.py
+// writes the sized variants for exactly this reason.
+std::string FindIconForSize(const std::string& stem, uint32_t width, uint32_t height) {
+  char sized[160];
+  std::snprintf(sized, sizeof(sized), "%s_%ux%u.dds", stem.c_str(), width, height);
+  std::string path = FindIconFile(sized);
+  return path.empty() ? FindIconFile(stem + ".dds") : path;
+}
+
 // The width and height a DDS header declares, or false if the file is too short
 // to hold one. A DDS opens with the "DDS " magic then a 124-byte header, of
 // which the height and width are the two little-endian uint32 at offset 12.
@@ -723,18 +728,7 @@ void Apply(size_t index, const std::string& stem) {
   char keyName[80];
   std::snprintf(keyName, sizeof(keyName), "tex1_%ux%u_%016llx_%s.dds", key.width, key.height,
                 static_cast<unsigned long long>(key.hash), key.format);
-  // Prefer the binding generated at exactly this texture's size, then the
-  // unsuffixed one. A single stem can serve textures of different sizes - the
-  // C-stick prompts here are one 32x32 and one 64x32 - and a mismatch is not
-  // scaled by the game: it reads 64x32 of pixels out of 32x32 of data and draws
-  // the right-hand half as noise. tools/make_prompt_glyphs.py writes the sized
-  // variants for exactly this reason.
-  char sized[160];
-  std::snprintf(sized, sizeof(sized), "%s_%ux%u.dds", stem.c_str(), key.width, key.height);
-  reg.iconPath = FindIconFile(sized);
-  if (reg.iconPath.empty()) {
-    reg.iconPath = FindIconFile(stem + ".dds");
-  }
+  reg.iconPath = FindIconForSize(stem, key.width, key.height);
   if (reg.iconPath.empty()) {
     // Nothing generated for this action, so nothing is registered. Note that
     // what stays on screen is not necessarily "the game's own art": the static
@@ -769,6 +763,55 @@ void Apply(size_t index, const std::string& stem) {
       keyName, aurora::texture::VirtualFileSource{&ReadIconBytes, const_cast<std::string*>(StablePath(reg.iconPath))},
       aurora::texture::ReplacementOptions{.priority = 2});
   reg.registered = reg.handle.id != 0;
+}
+
+// A texture bound by asset id (BindTexture): its icon is registered under the
+// CTexture's own pointer, so it holds whatever the texels are.
+struct BoundPrompt {
+  uint32_t prompt;
+  uint32_t width;
+  uint32_t height;
+  aurora::texture::ReplacementRegistration handle{};
+  bool registered = false;
+};
+std::unordered_map<const void*, BoundPrompt> sBound;
+// Each action's stem as Poll last resolved it, by kActions index.
+std::string sActionStems[std::size(kActions)];
+
+const std::string& ActionStem(uint32_t prompt) {
+  for (size_t i = 0; i < std::size(kActions); ++i) {
+    if (kActions[i].prompt == prompt) {
+      return sActionStems[i];
+    }
+  }
+  static const std::string kNone;
+  return kNone;
+}
+
+void ApplyBound(const void* owner, BoundPrompt& bound, const std::string& stem) {
+  if (bound.registered) {
+    aurora::texture::unregister_replacement(bound.handle);
+    bound.handle = {};
+    bound.registered = false;
+  }
+  if (stem.empty()) {
+    return;
+  }
+  const std::string iconPath = FindIconForSize(stem, bound.width, bound.height);
+  uint32_t iconWidth = 0;
+  uint32_t iconHeight = 0;
+  if (iconPath.empty() || !IconDimensions(iconPath, iconWidth, iconHeight) || iconWidth != bound.width ||
+      iconHeight != bound.height) {
+    return;
+  }
+  const std::string* path = StablePath(iconPath);
+  // Above the user's texture pack (priority 1) and the static device set (0): a remapped
+  // action still shows the key or button it is bound to.
+  bound.handle = aurora::texture::register_virtual_replacement(
+      aurora::texture::TexturePointerKey{owner}, *path,
+      aurora::texture::VirtualFileSource{&ReadIconBytes, const_cast<std::string*>(path)},
+      aurora::texture::ReplacementOptions{.priority = 2});
+  bound.registered = bound.handle.id != 0;
 }
 } // namespace
 
@@ -834,9 +877,19 @@ void Poll() {
   }
   sLastDevice = device;
   sLastResolveNs = nowNs != 0 ? nowNs : 1;
-  for (const PromptAction& action : kActions) {
+  for (size_t a = 0; a < std::size(kActions); ++a) {
+    const PromptAction& action = kActions[a];
     const std::string stem = IconStemForPrompt(action.prompt, device);
     size_t applied = 0;
+    if (stem != sActionStems[a]) {
+      sActionStems[a] = stem;
+      for (auto& [owner, bound] : sBound) {
+        if (bound.prompt == action.prompt) {
+          ApplyBound(owner, bound, stem);
+          ++applied;
+        }
+      }
+    }
     for (size_t i = 0; i < kKeyCount; ++i) {
       if (kKeys[i].prompt != action.prompt) {
         continue;
@@ -856,6 +909,43 @@ void Poll() {
                      stem.empty() ? "(back to the static icon)" : stem.c_str());
     }
   }
+}
+
+bool IsPromptAsset(uint32_t id) { return FindAsset(id) != nullptr; }
+
+bool BindTexture(const void* owner, uint32_t id, uint32_t width, uint32_t height) {
+  const PromptAsset* asset = FindAsset(id);
+  if (asset == nullptr) {
+    return false;
+  }
+  uint32_t prompt = asset->prompt;
+  if (id == kTrilogyZAsset && port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    prompt = PAD_TRIGGER_Z;
+  }
+  BoundPrompt& bound = sBound[owner];
+  if (bound.registered) {
+    aurora::texture::unregister_replacement(bound.handle);
+  }
+  bound = BoundPrompt{prompt, width, height};
+  if (sEnabled) {
+    // Textures stream in after Poll ran: give this one the action's current icon.
+    const std::string& stem = ActionStem(prompt);
+    if (!stem.empty()) {
+      ApplyBound(owner, bound, stem);
+    }
+  }
+  return true;
+}
+
+void UnbindTexture(const void* owner) {
+  const auto it = sBound.find(owner);
+  if (it == sBound.end()) {
+    return;
+  }
+  if (it->second.registered) {
+    aurora::texture::unregister_replacement(it->second.handle);
+  }
+  sBound.erase(it);
 }
 bool KeyboardActive() { return sActiveInput.load(std::memory_order_relaxed) == ActiveInput::Keyboard; }
 
