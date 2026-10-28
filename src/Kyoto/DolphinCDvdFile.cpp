@@ -60,7 +60,21 @@ struct CDvdFileARAM {
   , mAramOffset(0)
   , mBufferLen(0)
   , mBufferIndex(0) {}
+#ifdef TARGET_PC
+  // The buffers come from the aligned `operator new` (StartARAMFileLoad), so they go back
+  // through the aligned `operator delete` rather than `auto_ptr`'s plain `delete`: glibc lets the
+  // mismatch pass, but on Windows aligned new is `_aligned_malloc`, and `free` on its block
+  // corrupts the heap (0xC0000374 the first time an `aram:` pak finishes staging).
+  ~CDvdFileARAM() {
+    for (int i = 0; i < mBuffers.size(); ++i) {
+      if (mBuffers[i].owner()) {
+        ::operator delete(mBuffers[i].release(), std::align_val_t(32));
+      }
+    }
+  }
+#else
   ~CDvdFileARAM() {}
+#endif
 
   ARQRequest mARQRequest;
   struct SDvdInfo {
@@ -318,8 +332,8 @@ void CDvdFile::StartARAMFileLoad() {
   // pairs with it; on the host `delete` is the C++ runtime's, and handing it a game-heap block
   // aborts in glibc (`munmap_chunk(): invalid pointer`) the moment the first `aram:` pak finishes
   // staging and `IsARAMFileLoaded` drops its `CDvdFileARAM`. So allocate them from the runtime.
-  // 32-byte alignment is retail's (the game heap's) and Aurora's `DVDReadAsync` asserts it; the
-  // aligned global `operator new` is `aligned_alloc` on glibc, which `delete` frees correctly.
+  // 32-byte alignment is retail's (the game heap's) and Aurora's `DVDReadAsync` asserts it;
+  // `~CDvdFileARAM` frees them with the matching aligned `operator delete`.
   aramFile->mBuffers.push_back(static_cast< uchar* >(::operator new(0x10000, std::align_val_t(32))));
   aramFile->mBuffers.push_back(static_cast< uchar* >(::operator new(0x10000, std::align_val_t(32))));
 #else

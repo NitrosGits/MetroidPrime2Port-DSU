@@ -16,6 +16,9 @@
  */
 #include <cstdlib>
 #include <new>
+#ifdef _WIN32
+#include <malloc.h>
+#endif
 
 #include "Kyoto/Alloc/CMemory.hpp"
 #include "Kyoto/CToken.hpp"
@@ -207,7 +210,21 @@ void operator delete(void* ptr) noexcept { PortDelete(ptr); }
 void operator delete[](void* ptr) noexcept { PortDelete(ptr); }
 void operator delete(void* ptr, std::size_t) noexcept { PortDelete(ptr); }
 void operator delete[](void* ptr, std::size_t) noexcept { PortDelete(ptr); }
-void operator delete(void* ptr, std::align_val_t) noexcept { PortDelete(ptr); }
-void operator delete[](void* ptr, std::align_val_t) noexcept { PortDelete(ptr); }
-void operator delete(void* ptr, std::size_t, std::align_val_t) noexcept { PortDelete(ptr); }
-void operator delete[](void* ptr, std::size_t, std::align_val_t) noexcept { PortDelete(ptr); }
+// The aligned `operator new` stays the runtime's. On Windows that is `_aligned_malloc`, whose
+// block `free` corrupts the heap (0xC0000374), so the aligned deletes give it to `_aligned_free`.
+static inline void PortAlignedDelete(void* ptr) noexcept {
+#ifdef _WIN32
+  if (ptr >= gPortGameHeapLo && ptr < gPortGameHeapHi) {
+    CMemory::Free(ptr);
+  } else {
+    _aligned_free(ptr);
+  }
+#else
+  PortDelete(ptr);
+#endif
+}
+
+void operator delete(void* ptr, std::align_val_t) noexcept { PortAlignedDelete(ptr); }
+void operator delete[](void* ptr, std::align_val_t) noexcept { PortAlignedDelete(ptr); }
+void operator delete(void* ptr, std::size_t, std::align_val_t) noexcept { PortAlignedDelete(ptr); }
+void operator delete[](void* ptr, std::size_t, std::align_val_t) noexcept { PortAlignedDelete(ptr); }
