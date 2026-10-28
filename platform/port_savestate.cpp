@@ -10,6 +10,7 @@
 //  - keeps the outgoing world's pak readable, as PortWarpToWorld does for its own warps, because the
 //    new state's constructor and the warp both stash every pak but the destination's.
 #include "port_savestate.h"
+#include "port_utf8_path.h"
 
 #include <SDL3/SDL_mouse.h>
 
@@ -991,7 +992,7 @@ std::string Folder() {
   if (backups.empty()) {
     return std::string();
   }
-  return std::filesystem::path(backups).parent_path().string() + "/savestates";
+  return PortUtf8::ToUtf8(PortUtf8::FromUtf8(backups).parent_path()) + "/savestates";
 }
 
 Info SlotInfo(int slot) {

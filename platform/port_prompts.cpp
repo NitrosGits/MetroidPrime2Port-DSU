@@ -1,5 +1,6 @@
 // Binding-aware button prompt icons; see port_prompts.h.
 
+#include "port_utf8_path.h"
 #include "port_prompts.h"
 #include "port_entry.h"
 #include "port_embedded.h"
@@ -438,7 +439,7 @@ bool ReadIconFile(const std::string& path, std::vector<uint8_t>& out) {
     out.assign(bytes.begin(), bytes.end());
     return !out.empty();
   }
-  std::ifstream in(path, std::ios::binary);
+  std::ifstream in(PortUtf8::FromUtf8(path), std::ios::binary);
   if (!in) {
     return false;
   }
@@ -459,9 +460,9 @@ std::string FindIconFile(const std::string& name) {
     std::string path = sBindingsDir + "/" + name;
     return PortEmbedded::Find(path).empty() ? std::string() : path;
   }
-  const std::filesystem::path path = std::filesystem::path(sBindingsDir) / name;
+  const std::filesystem::path path = PortUtf8::FromUtf8(sBindingsDir) / PortUtf8::FromUtf8(name);
   std::error_code ec;
-  return std::filesystem::is_regular_file(path, ec) ? path.string() : std::string();
+  return std::filesystem::is_regular_file(path, ec) ? PortUtf8::ToUtf8(path) : std::string();
 }
 
 // The icon for `stem`: the one generated at exactly this size, then the unsuffixed one.
@@ -869,13 +870,13 @@ void Initialize(const char* textureRoot) {
       std::fprintf(stderr, "[prompts] no texture folder; binding icons off\n");
       return;
     }
-    const std::filesystem::path bindingsDir = std::filesystem::path(textureRoot) / "bindings";
+    const std::filesystem::path bindingsDir = PortUtf8::FromUtf8(textureRoot) / "bindings";
     std::error_code ec;
     if (!std::filesystem::is_directory(bindingsDir, ec)) {
-      std::fprintf(stderr, "[prompts] no %s; binding icons off\n", bindingsDir.string().c_str());
+      std::fprintf(stderr, "[prompts] no %s; binding icons off\n", PortUtf8::ToUtf8(bindingsDir).c_str());
       return;
     }
-    sBindingsDir = bindingsDir.string();
+    sBindingsDir = PortUtf8::ToUtf8(bindingsDir);
   }
   sEnabled = true;
   std::fprintf(stderr, "[prompts] binding icons from %s\n",

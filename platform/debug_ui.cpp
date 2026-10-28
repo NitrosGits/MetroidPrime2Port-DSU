@@ -2,6 +2,7 @@
 // is already initialized and rendered every presented frame, so this only has
 // to build the windows between aurora_begin_frame and aurora_end_frame.
 
+#include "port_utf8_path.h"
 #include "port_debug.h"
 #include "debug_ui/debug_ui_internal.h"
 #include "port_prompts.h"
@@ -255,7 +256,7 @@ void ApplySetting(const std::string& key, const std::string& value) {
 
 void LoadSettings() {
   const std::string path = SettingsFilePath();
-  std::ifstream file(path);
+  std::ifstream file(PortUtf8::FromUtf8(path));
   if (!file.is_open()) {
     return;
   }
@@ -283,7 +284,7 @@ void SaveSettings() {
     return;
   }
   const std::string path = SettingsFilePath();
-  std::ofstream file(path, std::ios::trunc);
+  std::ofstream file(PortUtf8::FromUtf8(path), std::ios::trunc);
   if (!file.is_open()) {
     std::fprintf(stderr, "metroid_prime_port: could not write settings to %s\n", path.c_str());
     return;
@@ -1746,7 +1747,7 @@ void DrawUI() {
 
 void LoadDiscPath() {
   const std::string path = SettingsFilePath();
-  std::ifstream file(path);
+  std::ifstream file(PortUtf8::FromUtf8(path));
   if (!file.is_open()) {
     return;
   }

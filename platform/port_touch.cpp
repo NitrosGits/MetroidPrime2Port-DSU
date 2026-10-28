@@ -10,6 +10,7 @@
 // UI thread raises and `BeginFrame` applies, so the player state is only ever touched on the
 // game thread.
 
+#include "port_utf8_path.h"
 #include "port_mobile.h"
 #include "port_touch.h"
 #include "port_photo.h"
@@ -205,7 +206,7 @@ void LoadConfig() {
     return;
   }
   sLoaded = true;
-  std::ifstream file(sConfigPath);
+  std::ifstream file(PortUtf8::FromUtf8(sConfigPath));
   std::string line;
   while (std::getline(file, line)) {
     const size_t first = line.find_first_not_of(" \t\r\n");
@@ -281,7 +282,7 @@ void SaveConfigLocked() {
   }
   const std::string temporary = sConfigPath + ".tmp";
   {
-    std::ofstream file(temporary, std::ios::trunc);
+    std::ofstream file(PortUtf8::FromUtf8(temporary), std::ios::trunc);
     if (!file) {
       std::fprintf(stderr, "[touch] cannot write %s\n", temporary.c_str());
       return;
@@ -309,13 +310,16 @@ void SaveConfigLocked() {
     file.flush();
     if (!file) {
       std::fprintf(stderr, "[touch] cannot write %s\n", temporary.c_str());
-      std::remove(temporary.c_str());
+      std::error_code removeEc;
+      std::filesystem::remove(PortUtf8::FromUtf8(temporary), removeEc);
       return;
     }
   }
-  if (std::rename(temporary.c_str(), sConfigPath.c_str()) != 0) {
+  std::error_code renameEc;
+  std::filesystem::rename(PortUtf8::FromUtf8(temporary), PortUtf8::FromUtf8(sConfigPath), renameEc);
+  if (renameEc) {
     std::fprintf(stderr, "[touch] cannot replace %s\n", sConfigPath.c_str());
-    std::remove(temporary.c_str());
+    std::filesystem::remove(PortUtf8::FromUtf8(temporary), renameEc);
   }
   sDirty = false;
 }

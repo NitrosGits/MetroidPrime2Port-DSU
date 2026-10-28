@@ -1,5 +1,6 @@
 // Device-aware HD texture replacement loading; see port_textures.h.
 
+#include "port_utf8_path.h"
 #include "port_textures.h"
 
 #include "port_embedded.h"
@@ -82,7 +83,7 @@ const char* ResolveDeviceName() { return PortPrompts::ActiveDevice(); }
 // packs into this one. A root that does not exist loads nothing either, since
 // Aurora would create it.
 std::optional<std::filesystem::path> ResolveDirectory(const std::string& root) {
-  const std::filesystem::path base(root);
+  const std::filesystem::path base = PortUtf8::FromUtf8(root);
   std::error_code ec;
   if (!std::filesystem::is_directory(base, ec)) {
     return std::nullopt;
@@ -202,7 +203,7 @@ const char* const kAsideTag = ".old-";
 std::filesystem::path AsideName() {
   static unsigned sCount = 0;
   const auto now = std::chrono::system_clock::now().time_since_epoch();
-  return std::filesystem::path(sUser.root + kAsideTag +
+  return PortUtf8::FromUtf8(sUser.root + kAsideTag +
                                std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(now).count()) +
                                std::to_string(sCount++));
 }
@@ -239,8 +240,8 @@ void DeleteStaleUserPacks() try {
   if (sUser.root.empty()) {
     return;
   }
-  const std::filesystem::path root(sUser.root);
-  const std::string name = root.filename().string();
+  const std::filesystem::path root = PortUtf8::FromUtf8(sUser.root);
+  const std::string name = PortUtf8::ToUtf8(root.filename());
   if (name.empty()) {
     return;
   }
@@ -249,7 +250,7 @@ void DeleteStaleUserPacks() try {
   std::filesystem::directory_iterator it(root.parent_path().empty() ? std::filesystem::path(".") : root.parent_path(),
                                          ec);
   for (; !ec && it != std::filesystem::directory_iterator(); it.increment(ec)) {
-    const std::string entry = it->path().filename().string();
+    const std::string entry = PortUtf8::ToUtf8(it->path().filename());
     bool stale = entry == name + ".old";
     if (!stale && entry.size() > tagged.size() && entry.compare(0, tagged.size(), tagged) == 0) {
       stale = entry.find_first_not_of("0123456789", tagged.size()) == std::string::npos;
@@ -271,8 +272,8 @@ void ApplyPendingUserPack() {
     return;
   }
   std::error_code ec;
-  const std::filesystem::path root(sUser.root);
-  const std::filesystem::path pending(sUser.root + ".new");
+  const std::filesystem::path root = PortUtf8::FromUtf8(sUser.root);
+  const std::filesystem::path pending = PortUtf8::FromUtf8(sUser.root + ".new");
   const bool remove = sUserRemove.exchange(false, std::memory_order_acq_rel);
   const bool swap = std::filesystem::is_directory(pending, ec);
   if (!remove && !swap) {
@@ -286,7 +287,7 @@ void ApplyPendingUserPack() {
   if (hadPack) {
     std::filesystem::rename(root, old, ec);
     if (ec) {
-      std::fprintf(stderr, "[textures] could not replace %s: %s\n", root.string().c_str(),
+      std::fprintf(stderr, "[textures] could not replace %s: %s\n", PortUtf8::ToUtf8(root).c_str(),
                      ec.message().c_str());
       return;
     }
@@ -295,7 +296,7 @@ void ApplyPendingUserPack() {
     std::filesystem::rename(pending, root, ec);
     if (ec) {
       std::fprintf(stderr, "[textures] could not install the texture pack from %s: %s\n",
-                     pending.string().c_str(), ec.message().c_str());
+                     PortUtf8::ToUtf8(pending).c_str(), ec.message().c_str());
       if (hadPack) {
         std::filesystem::rename(old, root, ec);
       }

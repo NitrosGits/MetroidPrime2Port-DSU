@@ -4,6 +4,7 @@
 // MP1's "Export as" Wii Trilogy (save.bin) choice and the Trilogy mirror; MP1's raw-image Dolphin
 // cards have no counterpart here. The file dialogs answer on another thread, so a pick waits in
 // sPicks until the next frame.
+#include "port_utf8_path.h"
 #include "port_mobile.h"
 #include "debug_ui_internal.h"
 
@@ -74,7 +75,7 @@ const char* DolphinRegion() {
 
 // Dolphin's (or PrimeHack's) GCI-folder card A for the mounted disc's release, where this machine
 // has one: the chosen emulator folder, else the usual user folders (port_save.cpp).
-fs::path DolphinCardFolder() { return fs::path(PortSave::EmulatorCardFolder()); }
+fs::path DolphinCardFolder() { return PortUtf8::FromUtf8(PortSave::EmulatorCardFolder()); }
 
 // Dolphin's card files for the mounted release, newest last: 01-G2ME-*.gci (01-G2MP-*.gci on PAL).
 std::vector< fs::path > DolphinSaves(const fs::path& card) {
@@ -82,7 +83,7 @@ std::vector< fs::path > DolphinSaves(const fs::path& card) {
   const std::string prefix = std::string("01-") + port::entry::CurrentGameCode() + "-";
   std::error_code ec;
   for (const fs::directory_entry& entry : fs::directory_iterator(card, ec)) {
-    const std::string name = entry.path().filename().string();
+    const std::string name = PortUtf8::ToUtf8(entry.path().filename());
     if (entry.is_regular_file(ec) && name.rfind(prefix, 0) == 0 && entry.path().extension() == ".gci") {
       out.push_back(entry.path());
     }
@@ -143,7 +144,7 @@ void DrawEmulatorCard() {
   if (chosen.empty()) {
     const fs::path card = DolphinCardFolder();
     if (!card.empty()) {
-      found = card.parent_path().parent_path().parent_path().string();
+      found = PortUtf8::ToUtf8(card.parent_path().parent_path().parent_path());
     }
   }
   ImGui::TextUnformatted("Emulator folder");
@@ -216,17 +217,17 @@ void DrawEmulatorCard() {
     return;
   }
   const std::string active = PortSave::Directory();
-  const fs::path shared = fs::path(base) / DolphinRegion() / "Card A";
+  const fs::path shared = PortUtf8::FromUtf8(base) / DolphinRegion() / "Card A";
   std::error_code ec;
-  if (!active.empty() && fs::equivalent(fs::path(active), shared, ec)) {
-    ImGui::TextWrapped("Sharing: %s", shared.string().c_str());
+  if (!active.empty() && fs::equivalent(PortUtf8::FromUtf8(active), shared, ec)) {
+    ImGui::TextWrapped("Sharing: %s", PortUtf8::ToUtf8(shared).c_str());
     return;
   }
-  ImGui::TextWrapped("Will share %s once the front end is shown.", shared.string().c_str());
+  ImGui::TextWrapped("Will share %s once the front end is shown.", PortUtf8::ToUtf8(shared).c_str());
   ImGui::BeginDisabled(inGame || sDialogOpen || active.empty());
   if (ImGui::Button("Copy port saves into shared card")) {
     std::string message;
-    const bool ok = PortSave::Export(shared.string(), message);
+    const bool ok = PortSave::Export(PortUtf8::ToUtf8(shared), message);
     sStatus = ok ? "Copied: " + message : "Copy failed: " + message;
   }
   ImGui::EndDisabled();
@@ -263,7 +264,7 @@ void DrawCardTransfer() {
     if (saved.empty()) {
       sStatus = "Dolphin's card has no Metroid Prime 2 save.";
     } else {
-      const bool ok = PortSave::Import(saved.back().string(), message);
+      const bool ok = PortSave::Import(PortUtf8::ToUtf8(saved.back()), message);
       sStatus = ok ? "Imported: " + message : "Import failed: " + message;
     }
   }
@@ -313,7 +314,7 @@ void DrawCardTransfer() {
   if (ImGui::Button("Export to Dolphin/PrimeHack")) {
     std::string message;
     const bool ok = trilogy ? PortSave::ExportTrilogy(trilogyBin, message)
-                            : PortSave::Export(dolphin.string(), message);
+                            : PortSave::Export(PortUtf8::ToUtf8(dolphin), message);
     sStatus = ok ? "Exported: " + message : "Export failed: " + message;
   }
   ImGui::EndDisabled();
@@ -340,7 +341,7 @@ void DrawDataFolder() {
   ImGui::SeparatorText("Data folder");
   const std::string backups = PortSave::BackupsDirectory();
   const std::string user =
-      backups.empty() ? std::string() : fs::path(backups).parent_path().string();
+      backups.empty() ? std::string() : PortUtf8::ToUtf8(PortUtf8::FromUtf8(backups).parent_path());
   PathRow("User folder", user);
   PathRow("Memory card", PortSave::Directory());
   PathRow("Save backups", backups);

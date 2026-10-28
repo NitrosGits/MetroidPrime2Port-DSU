@@ -1,3 +1,4 @@
+#include "port_utf8_path.h"
 #include "port_settings.h"
 
 #include "port_env.h"
@@ -39,7 +40,7 @@ namespace PortSettings {
 void Initialize(const std::string& userDirectory) {
   sPath.clear();
   if (!userDirectory.empty())
-    sPath = (std::filesystem::path(userDirectory) / "settings.cfg").string();
+    sPath = PortUtf8::ToUtf8(PortUtf8::FromUtf8(userDirectory) / "settings.cfg");
   sInitialized.store(true, std::memory_order_release);
 }
 
@@ -50,7 +51,7 @@ const std::string& FilePath() { return sPath; }
 bool ReadFile(std::string& text) {
   if (sPath.empty())
     return false;
-  std::ifstream in(sPath, std::ios::binary);
+  std::ifstream in(PortUtf8::FromUtf8(sPath), std::ios::binary);
   if (!in.is_open())
     return false;
   text.assign(std::istreambuf_iterator< char >(in), std::istreambuf_iterator< char >());
@@ -62,7 +63,7 @@ bool WriteFile(const std::string& text) {
     return false;
   const std::string tmp = sPath + ".tmp";
   {
-    std::ofstream out(tmp, std::ios::binary | std::ios::trunc);
+    std::ofstream out(PortUtf8::FromUtf8(tmp), std::ios::binary | std::ios::trunc);
     if (!out.is_open()) {
       std::fprintf(stderr, "port: could not write settings to %s\n", tmp.c_str());
       return false;

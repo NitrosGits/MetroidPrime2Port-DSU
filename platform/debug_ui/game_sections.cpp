@@ -2,6 +2,7 @@
 // settings, memory card, log). State and helpers shared with the other parts are in
 // debug_ui_internal.h.
 
+#include "port_utf8_path.h"
 #include "port_mobile.h"
 #include "debug_ui_internal.h"
 
@@ -333,7 +334,7 @@ void PickTexturePack() {
   jmethodID method = env->GetMethodID(cls, "pickTexturePack", "(Ljava/lang/String;)V");
   if (method != nullptr) {
     // The pack is copied next to the user textures folder, wherever the data folder is.
-    const std::string folder = std::filesystem::path(PortTextures::UserRoot()).parent_path().string();
+    const std::string folder = PortUtf8::ToUtf8(PortUtf8::FromUtf8(PortTextures::UserRoot()).parent_path());
     jstring jfolder = env->NewStringUTF(folder.c_str());
     env->CallVoidMethod(activity, method, jfolder);
     env->DeleteLocalRef(jfolder);
@@ -455,8 +456,8 @@ void DrawSettingsSection() {
         sResetError = "could not save the current settings first, so nothing was moved.";
       } else {
         const PortConfigReset::Result result = PortConfigReset::Reset(
-            std::filesystem::path(path).parent_path().empty() ? std::filesystem::path("./")
-                                                              : std::filesystem::path(path).parent_path());
+            PortUtf8::FromUtf8(path).parent_path().empty() ? std::filesystem::path("./")
+                                                           : PortUtf8::FromUtf8(path).parent_path());
         if (!result.ok) {
           sResetError = result.error;
           if (!result.backupDir.empty()) {
@@ -629,9 +630,9 @@ void DrawDiscordSection() {
 // Odrannnn/MetroidPrime2Port once at launch, or on "Check now".
 void ApplyUpdateCheck() {
   const std::string& file = PortSettings::FilePath();
-  const std::filesystem::path dir = file.empty() ? std::filesystem::path("./") : std::filesystem::path(file).parent_path();
+  const std::filesystem::path dir = file.empty() ? std::filesystem::path("./") : PortUtf8::FromUtf8(file).parent_path();
   PortUpdateCheck::Configure(sUpdateCheck && port::EnvFlag("MP2_UPDATE_CHECK", true), MP_BUILD_VERSION,
-                             (dir / "update-check.txt").string());
+                             PortUtf8::ToUtf8(dir / "update-check.txt"));
 }
 
 void DrawUpdateSection() {

@@ -348,7 +348,7 @@ std::string MarkerPath() {
 // The folder this run reads and writes, with a trailing '/'.
 std::string CurrentUserFolder() {
   const std::string backups = PortSave::BackupsDirectory();
-  return backups.empty() ? std::string() : WithSeparator(fs::path(backups).parent_path().string());
+  return backups.empty() ? std::string() : WithSeparator(ToUtf8(FromUtf8(backups).parent_path()));
 }
 
 Move& State() {

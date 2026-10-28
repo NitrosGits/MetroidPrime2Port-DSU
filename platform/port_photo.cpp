@@ -1,4 +1,5 @@
 // Photo mode (F8, F1 > Game, console `photo`); see port_photo.h.
+#include "port_utf8_path.h"
 #include "port_mobile.h"
 #include "port_photo.h"
 
@@ -184,7 +185,7 @@ float PickCaptureScale() {
 // when it stays where it was. (MP1 port_photo.cpp ExportToPictures.)
 std::string ExportToPictures(const std::string& path) {
   std::error_code ec;
-  const std::string absolute = std::filesystem::absolute(path, ec).string();
+  const std::string absolute = PortUtf8::ToUtf8(std::filesystem::absolute(PortUtf8::FromUtf8(path), ec));
   JNIEnv* env = static_cast<JNIEnv*>(SDL_GetAndroidJNIEnv());
   jobject activity = static_cast<jobject>(SDL_GetAndroidActivity());
   if (ec || env == nullptr || activity == nullptr) {

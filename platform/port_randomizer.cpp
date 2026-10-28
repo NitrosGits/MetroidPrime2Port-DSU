@@ -1,3 +1,4 @@
+#include "port_utf8_path.h"
 #include "port_randomizer.h"
 
 #include "port_rando_gen.h"
@@ -391,7 +392,7 @@ public:
 
 bool LoadSeed(State& state) {
   const std::string path = SeedPath();
-  std::ifstream input(path, std::ios::binary);
+  std::ifstream input(PortUtf8::FromUtf8(path), std::ios::binary);
   if (!input)
     return false;
   const std::string text((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
@@ -419,7 +420,7 @@ bool LoadSeed(State& state) {
 void AppendLog(const char* fileName, const char* line) noexcept {
   try {
     const std::string path = LogPath(fileName);
-    std::ofstream output(path, std::ios::app);
+    std::ofstream output(PortUtf8::FromUtf8(path), std::ios::app);
     if (output)
       output << line;
   } catch (...) {

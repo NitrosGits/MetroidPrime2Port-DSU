@@ -1,3 +1,4 @@
+#include "port_utf8_path.h"
 #include "port_disc_replace.h"
 
 #include "port_entry.h"
@@ -90,7 +91,7 @@ void Run(std::string picked) {
 
 std::filesystem::path UserFolder() {
   const std::string& file = PortSettings::FilePath();
-  return file.empty() ? std::filesystem::path() : std::filesystem::path(file).parent_path();
+  return file.empty() ? std::filesystem::path() : PortUtf8::FromUtf8(file).parent_path();
 }
 
 } // namespace
@@ -135,7 +136,7 @@ std::string CopyToUserFolder(const std::string& source, std::string* target, std
   // Copied under another name and renamed when complete: a copy killed part way must not leave a
   // truncated disc.iso that the next start would then prefer.
   const std::filesystem::path partial = folder / "disc.iso.part";
-  const std::string partialName = partial.string();
+  const std::string partialName = PortUtf8::ToUtf8(partial);
 
   SDL_IOStream* in = SDL_IOFromFile(source.c_str(), "rb");
   if (in == nullptr) {
@@ -240,15 +241,15 @@ std::string CopyToUserFolder(const std::string& source, std::string* target, std
   }
   std::filesystem::rename(partial, destination, ec);
   if (ec) {
-    std::fprintf(stderr, "port: could not rename %s to %s: %s\n", partialName.c_str(), destination.string().c_str(),
+    std::fprintf(stderr, "port: could not rename %s to %s: %s\n", partialName.c_str(), PortUtf8::ToUtf8(destination).c_str(),
                  ec.message().c_str());
     std::filesystem::remove(partial, ec);
     return "The copy can't be put in place.";
   }
-  std::fprintf(stderr, "port: copied the disc image to %s (%lld bytes)\n", destination.string().c_str(),
+  std::fprintf(stderr, "port: copied the disc image to %s (%lld bytes)\n", PortUtf8::ToUtf8(destination).c_str(),
                static_cast< long long >(done));
   if (target != nullptr) {
-    *target = destination.string();
+    *target = PortUtf8::ToUtf8(destination);
   }
   return {};
 }

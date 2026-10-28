@@ -3,6 +3,7 @@
 // workarounds and storage clamp), ui_common.cpp (the GPU self-test) and main.cpp (the OpenGL ES
 // crash marker); the settings are PortOverlay's.
 
+#include "port_utf8_path.h"
 #include "port_video.h"
 
 #include "port_dynamic_res.h"
@@ -169,7 +170,7 @@ unsigned ParseDriverWorkarounds(std::string_view rest) {
 }
 
 void BeginGpuStart(const std::string& userFolder, AuroraConfig& config) {
-  const std::filesystem::path folder(userFolder.empty() ? "." : userFolder);
+  const std::filesystem::path folder = userFolder.empty() ? std::filesystem::path(".") : PortUtf8::FromUtf8(userFolder);
   std::error_code ec;
   sOpenGlesAtStart = sOpenGles;
   sStorageClampAtStart = sStorageClamp;

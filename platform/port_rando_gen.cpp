@@ -1,3 +1,4 @@
+#include "port_utf8_path.h"
 #include "port_rando_gen.h"
 
 #include "port_rando_logic.h"
@@ -192,7 +193,7 @@ bool GenerateSeedFile(const std::string& seedName, const std::string& outPath) {
     std::fprintf(stderr, "randomizer: generate: %s\n", error.c_str());
     return false;
   }
-  std::ofstream out(outPath, std::ios::binary | std::ios::trunc);
+  std::ofstream out(PortUtf8::FromUtf8(outPath), std::ios::binary | std::ios::trunc);
   if (!out) {
     std::fprintf(stderr, "randomizer: generate: cannot write %s\n", outPath.c_str());
     return false;

@@ -20,6 +20,7 @@
 // what turns the `main` below into the function Aurora's own `main` (and SDL's
 // Android activity, by that name) calls. Android needs it for its shared library
 // to have the entry point at all; ../MetroidPrimePort includes it the same way.
+#include "port_utf8_path.h"
 #include <aurora/main.h>
 
 #include <aurora/aurora.h>
@@ -136,7 +137,7 @@ std::string ExecutableDir(const char* argv0) {
   if (error || !path.has_parent_path()) {
     return {};
   }
-  return path.parent_path().string();
+  return PortUtf8::ToUtf8(path.parent_path());
 }
 
 void ReportNoDisc(const char* argv0) {
@@ -466,7 +467,7 @@ PortPaths ResolveAndroidPaths() {
   paths.cache = base + "cache";
   paths.disc = base + "disc.iso";
 
-  std::ifstream overrides(base + "port_paths.txt");
+  std::ifstream overrides(PortUtf8::FromUtf8(base + "port_paths.txt"));
   std::string line;
   while (std::getline(overrides, line)) {
     const size_t first = line.find_first_not_of(" \t\r\n");
@@ -510,9 +511,9 @@ PortPaths ResolveAndroidPaths() {
   // run from app storage this once, and let the panel say so through MP2_USER_UNAVAILABLE.
   {
     std::error_code probe;
-    std::filesystem::create_directories(paths.user, probe);
+    std::filesystem::create_directories(PortUtf8::FromUtf8(paths.user), probe);
     const std::string test = paths.user + "/.port_write_test";
-    std::ofstream writable(test);
+    std::ofstream writable(PortUtf8::FromUtf8(test));
     if (paths.user != base + "user" && (probe || !writable)) {
       std::fprintf(stderr, "metroid_prime2_port: %s is not writable; using app storage\n",
                    paths.user.c_str());
@@ -572,7 +573,7 @@ bool DiscImageIsUsable(const std::string& path) {
   if (path.empty()) {
     return false;
   }
-  std::ifstream image(path, std::ios::binary);
+  std::ifstream image(PortUtf8::FromUtf8(path), std::ios::binary);
   if (!image) {
     return false;
   }
@@ -640,9 +641,9 @@ std::string CopyDiscImage(const std::string& uri, const std::string& target) {
     std::fprintf(stderr, "metroid_prime2_port: nowhere to copy the picked disc image\n");
     return {};
   }
-  const std::filesystem::path partial = target + ".part";
+  const std::filesystem::path partial = PortUtf8::FromUtf8(target + ".part");
   std::error_code error;
-  std::filesystem::create_directories(std::filesystem::path(target).parent_path(), error);
+  std::filesystem::create_directories(PortUtf8::FromUtf8(target).parent_path(), error);
 
   SDL_IOStream* in = SDL_IOFromFile(uri.c_str(), "rb");
   if (in == nullptr) {
@@ -670,9 +671,9 @@ std::string CopyDiscImage(const std::string& uri, const std::string& target) {
     }
   }
   const Sint64 total = SDL_GetIOSize(in);
-  SDL_IOStream* out = SDL_IOFromFile(partial.string().c_str(), "wb");
+  SDL_IOStream* out = SDL_IOFromFile(PortUtf8::ToUtf8(partial).c_str(), "wb");
   if (out == nullptr) {
-    std::fprintf(stderr, "metroid_prime2_port: could not create %s: %s\n", partial.string().c_str(),
+    std::fprintf(stderr, "metroid_prime2_port: could not create %s: %s\n", PortUtf8::ToUtf8(partial).c_str(),
                  SDL_GetError());
     SDL_CloseIO(in);
     return {};
@@ -695,7 +696,7 @@ std::string CopyDiscImage(const std::string& uri, const std::string& target) {
       break;
     }
     if (SDL_WriteIO(out, buffer, got) != got) {
-      std::fprintf(stderr, "metroid_prime2_port: writing %s failed: %s\n", partial.string().c_str(),
+      std::fprintf(stderr, "metroid_prime2_port: writing %s failed: %s\n", PortUtf8::ToUtf8(partial).c_str(),
                    SDL_GetError());
       ok = false;
       break;
@@ -711,12 +712,12 @@ std::string CopyDiscImage(const std::string& uri, const std::string& target) {
     }
   }
   if (!SDL_FlushIO(out)) {
-    std::fprintf(stderr, "metroid_prime2_port: flushing %s failed: %s\n", partial.string().c_str(),
+    std::fprintf(stderr, "metroid_prime2_port: flushing %s failed: %s\n", PortUtf8::ToUtf8(partial).c_str(),
                  SDL_GetError());
     ok = false;
   }
   if (!SDL_CloseIO(out)) {
-    std::fprintf(stderr, "metroid_prime2_port: closing %s failed: %s\n", partial.string().c_str(),
+    std::fprintf(stderr, "metroid_prime2_port: closing %s failed: %s\n", PortUtf8::ToUtf8(partial).c_str(),
                  SDL_GetError());
     ok = false;
   }
@@ -733,14 +734,14 @@ std::string CopyDiscImage(const std::string& uri, const std::string& target) {
   const auto written = std::filesystem::file_size(partial, error);
   if (error || static_cast<Sint64>(written) != copied || (total > 0 && copied != total)) {
     std::fprintf(stderr, "metroid_prime2_port: %s holds %lld bytes, copied %lld of %lld\n",
-                 partial.string().c_str(), static_cast<long long>(written),
+                 PortUtf8::ToUtf8(partial).c_str(), static_cast<long long>(written),
                  static_cast<long long>(copied), static_cast<long long>(total));
     std::filesystem::remove(partial, error);
     return {};
   }
-  std::filesystem::rename(partial, target, error);
+  std::filesystem::rename(partial, PortUtf8::FromUtf8(target), error);
   if (error) {
-    std::fprintf(stderr, "metroid_prime2_port: could not rename %s to %s: %s\n", partial.string().c_str(),
+    std::fprintf(stderr, "metroid_prime2_port: could not rename %s to %s: %s\n", PortUtf8::ToUtf8(partial).c_str(),
                  target.c_str(), error.message().c_str());
     std::filesystem::remove(partial, error);
     return {};
@@ -758,7 +759,7 @@ void TakeDiscPickedLastLaunch(const std::string& target) {
   if (dir == nullptr) {
     return;
   }
-  const std::filesystem::path file = std::filesystem::path(dir) / "pending_disc_uri";
+  const std::filesystem::path file = PortUtf8::FromUtf8(dir) / "pending_disc_uri";
   std::string chosen;
   {
     std::ifstream in(file);
@@ -888,9 +889,8 @@ void NoteDiscReadFailure() {
   if (sDiscReadFailedMarker.empty()) {
     return;
   }
-  if (FILE* file = std::fopen(sDiscReadFailedMarker.c_str(), "wb"); file != nullptr) {
-    std::fputs(sMountedDisc.c_str(), file);
-    std::fclose(file);
+  if (std::ofstream file(PortUtf8::FromUtf8(sDiscReadFailedMarker), std::ios::binary); file) {
+    file << sMountedDisc;
   }
 }
 
@@ -900,7 +900,7 @@ bool DiscReadFailedLastTime(const std::string& path) {
   if (sDiscReadFailedMarker.empty()) {
     return false;
   }
-  std::ifstream in(sDiscReadFailedMarker, std::ios::binary);
+  std::ifstream in(PortUtf8::FromUtf8(sDiscReadFailedMarker), std::ios::binary);
   if (!in) {
     return false;
   }

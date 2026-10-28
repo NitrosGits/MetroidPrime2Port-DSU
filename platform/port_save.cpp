@@ -1,3 +1,4 @@
+#include "port_utf8_path.h"
 #include "port_mobile.h"
 #include "port_save.h"
 
@@ -79,7 +80,7 @@ uint32_t Le32(const uint8_t* p) {
 }
 
 bool ReadAll(const std::string& path, std::vector<uint8_t>& out, std::string& error) {
-  std::ifstream in(path, std::ios::binary);
+  std::ifstream in(PortUtf8::FromUtf8(path), std::ios::binary);
   if (!in) {
     error = "cannot open " + path;
     return false;
@@ -103,7 +104,7 @@ bool ReadAll(const std::string& path, std::vector<uint8_t>& out, std::string& er
 bool WriteAll(const std::string& path, const std::vector<uint8_t>& bytes, std::string& error) {
   const std::string temp = path + ".tmp";
   {
-    std::ofstream out(temp, std::ios::binary | std::ios::trunc);
+    std::ofstream out(PortUtf8::FromUtf8(temp), std::ios::binary | std::ios::trunc);
     if (!out) {
       error = "cannot write " + path;
       return false;
@@ -148,9 +149,9 @@ std::string Unique(const std::string& path) {
   if (!std::filesystem::exists(path, ec)) {
     return path;
   }
-  const std::filesystem::path original(path);
-  const std::string stem = (original.parent_path() / original.stem()).string();
-  const std::string extension = original.extension().string();
+  const std::filesystem::path original = PortUtf8::FromUtf8(path);
+  const std::string stem = PortUtf8::ToUtf8(original.parent_path() / original.stem());
+  const std::string extension = PortUtf8::ToUtf8(original.extension());
   for (int n = 2; n < 100; ++n) {
     const std::string candidate = stem + "-" + std::to_string(n) + extension;
     if (!std::filesystem::exists(candidate, ec)) {
@@ -176,7 +177,7 @@ std::string CardPathOf(AuroraCardType type) {
 }
 
 std::string BaseName(const std::string& path) {
-  return std::filesystem::path(path).filename().string();
+  return PortUtf8::ToUtf8(PortUtf8::FromUtf8(path).filename());
 }
 
 // One copy's header and slots. `newest` is the greatest save time among the present slots, which is
@@ -240,9 +241,9 @@ std::vector<std::string> BackupsOf(const std::string& prefix) {
     if (!entry.is_regular_file(ec)) {
       continue;
     }
-    const std::string name = entry.path().filename().string();
+    const std::string name = PortUtf8::ToUtf8(entry.path().filename());
     if (name.rfind(prefix, 0) == 0 && entry.path().extension() == ".gci") {
-      out.push_back(entry.path().string());
+      out.push_back(PortUtf8::ToUtf8(entry.path()));
     }
   }
   std::sort(out.begin(), out.end());
@@ -285,24 +286,24 @@ std::vector< std::filesystem::path > AutoEmulatorRoots() {
   }
   PWSTR documents = nullptr;
   if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &documents))) {
-    roots.push_back(fs::path(documents) / L"Dolphin Emulator");
+    roots.push_back(fs::path(documents) / L"Dolphin Emulator"); // wide: already exact
   }
   CoTaskMemFree(documents);
   if (const char* appdata = std::getenv("APPDATA"); appdata != nullptr) {
-    roots.push_back(fs::path(appdata) / "Dolphin Emulator");
+    roots.push_back(PortUtf8::FromUtf8(appdata) / "Dolphin Emulator");
   }
 #else
   const char* appdata = std::getenv("APPDATA");
   const char* xdg = std::getenv("XDG_DATA_HOME");
   const char* home = port::HomeFolder();
   if (appdata != nullptr) {
-    roots.push_back(fs::path(appdata) / "Dolphin Emulator");
+    roots.push_back(PortUtf8::FromUtf8(appdata) / "Dolphin Emulator");
   }
   if (xdg != nullptr && xdg[0] == '/') {
-    roots.push_back(fs::path(xdg) / "dolphin-emu");
+    roots.push_back(PortUtf8::FromUtf8(xdg) / "dolphin-emu");
   }
   if (home != nullptr) {
-    const fs::path h(home);
+    const fs::path h = PortUtf8::FromUtf8(home);
     roots.push_back(h / ".local/share/dolphin-emu");
     roots.push_back(h / ".var/app/org.DolphinEmu.dolphin-emu/data/dolphin-emu");
     roots.push_back(h / ".dolphin-emu");
@@ -318,7 +319,7 @@ std::vector< std::filesystem::path > EmulatorRoots() {
   {
     std::lock_guard< std::mutex > lock(sEmulatorMutex);
     if (!sEmulatorFolder.empty()) {
-      return {std::filesystem::path(sEmulatorFolder)};
+      return {PortUtf8::FromUtf8(sEmulatorFolder)};
     }
   }
   return AutoEmulatorRoots();
@@ -328,12 +329,12 @@ std::vector< std::filesystem::path > EmulatorRoots() {
 
 void SetEmulatorFolder(const std::string& path) {
   namespace fs = std::filesystem;
-  fs::path picked(path);
+  fs::path picked = PortUtf8::FromUtf8(path);
   if (!path.empty()) {
     if (!picked.has_filename()) {
       picked = picked.parent_path(); // a trailing slash
     }
-    const std::string name = picked.filename().string();
+    const std::string name = PortUtf8::ToUtf8(picked.filename());
     auto up = [&](int levels) {
       for (int i = 0; i < levels; ++i) {
         picked = picked.parent_path();
@@ -349,7 +350,7 @@ void SetEmulatorFolder(const std::string& path) {
     }
   }
   std::lock_guard< std::mutex > lock(sEmulatorMutex);
-  sEmulatorFolder = path.empty() ? std::string() : picked.string();
+  sEmulatorFolder = path.empty() ? std::string() : PortUtf8::ToUtf8(picked);
 }
 
 std::string EmulatorFolder() {
@@ -362,7 +363,7 @@ std::vector< std::string > DetectedEmulatorFolders() {
   std::error_code ec;
   for (const std::filesystem::path& root : AutoEmulatorRoots()) {
     if (std::filesystem::is_directory(root / "GC", ec)) {
-      found.push_back(root.string());
+      found.push_back(PortUtf8::ToUtf8(root));
     }
   }
   return found;
@@ -373,7 +374,7 @@ std::string EmulatorCardFolder() {
   for (const std::filesystem::path& root : EmulatorRoots()) {
     const std::filesystem::path card = root / "GC" / CardRegion() / "Card A";
     if (std::filesystem::is_directory(card, ec)) {
-      return card.string();
+      return PortUtf8::ToUtf8(card);
     }
   }
   return {};
@@ -403,7 +404,7 @@ std::string SharedCardBase(std::string* why) {
   const std::vector< std::filesystem::path > roots = EmulatorRoots();
   for (const std::filesystem::path& root : roots) {
     if (std::filesystem::is_directory(root / "GC" / CardRegion() / "Card A", ec)) {
-      return (root / "GC").string();
+      return PortUtf8::ToUtf8(root / "GC");
     }
   }
   if (why != nullptr) {
@@ -430,9 +431,9 @@ std::string BackupsDirectory() {
     // `<user>/USA/Card A` is two levels below the user directory Aurora was configured with.
     const std::string dir = Directory();
     if (!dir.empty()) {
-      const std::filesystem::path card(dir);
+      const std::filesystem::path card = PortUtf8::FromUtf8(dir);
       if (card.parent_path().has_parent_path()) {
-        user = card.parent_path().parent_path().string();
+        user = PortUtf8::ToUtf8(card.parent_path().parent_path());
       }
     }
   }
@@ -543,9 +544,9 @@ std::vector<std::string> Files() {
     if (!entry.is_regular_file(ec)) {
       continue;
     }
-    const std::string path = entry.path().string();
+    const std::string path = PortUtf8::ToUtf8(entry.path());
     // The directory entry, not the file name: a card folder can hold other games' files too.
-    std::ifstream in(path, std::ios::binary);
+    std::ifstream in(PortUtf8::FromUtf8(path), std::ios::binary);
     char head[6];
     if (!in.read(head, sizeof head)) {
       continue;
@@ -759,7 +760,7 @@ std::vector<std::pair<std::string, int64_t>> FilesOfCode(const std::filesystem::
       continue;
     }
     const auto time = std::filesystem::last_write_time(entry.path(), ec);
-    out.emplace_back(entry.path().string(),
+    out.emplace_back(PortUtf8::ToUtf8(entry.path()),
                      std::chrono::duration_cast<std::chrono::seconds>(time.time_since_epoch()).count());
   }
   return out;
@@ -789,7 +790,7 @@ std::vector<OtherRelease> OtherReleaseSaves() {
       continue;
     }
     const std::filesystem::path source = base / release.region / folder.filename();
-    OtherRelease other{source.string(), release.code, release.label, std::string(), 0};
+    OtherRelease other{PortUtf8::ToUtf8(source), release.code, release.label, std::string(), 0};
     for (const auto& file : FilesOfCode(source, release.code)) {
       if (other.file.empty() || file.second > other.written) {
         other.file = file.first;
@@ -826,7 +827,7 @@ std::vector<OtherRelease> RestoreToOffer() {
 void MarkRestoreOffered() {
   const std::string folder = IsImage() ? std::string() : Directory();
   if (!folder.empty()) {
-    std::ofstream(RestoreMarker(folder)) << "asked\n";
+    std::ofstream(PortUtf8::FromUtf8(RestoreMarker(folder))) << "asked\n";
   }
 }
 
@@ -887,7 +888,7 @@ std::string FindTrilogyBin(bool pal) {
     const std::filesystem::path bin =
         root / "Wii/title/00010000" / (pal ? "52334d50" : "52334d45") / "data/save.bin";
     if (std::filesystem::is_regular_file(bin, ec)) {
-      return bin.string();
+      return PortUtf8::ToUtf8(bin);
     }
   }
   return {};
@@ -899,7 +900,7 @@ bool IsPal() { return port::entry::IsPalRegion(port::entry::CurrentDiscVersion()
 std::vector<std::string> GameFilesNewest() {
   std::vector<std::string> out;
   for (const std::string& path : Files()) {
-    std::ifstream in(path, std::ios::binary);
+    std::ifstream in(PortUtf8::FromUtf8(path), std::ios::binary);
     char head[3];
     if (in.read(head, sizeof head) && std::memcmp(head, "G2M", 3) == 0) {
       out.push_back(path);
@@ -1000,7 +1001,7 @@ bool ExportTrilogy(const std::string& saveBin, std::string& message) {
   }
   message = "slot " + std::to_string(slot + 1) + " of " + best.path + " written into Trilogy file " +
             std::to_string(target + 1) + " of " + saveBin + "; the previous save is kept as " +
-            std::filesystem::path(backup).filename().string();
+            PortUtf8::ToUtf8(PortUtf8::FromUtf8(backup).filename());
   return true;
 }
 

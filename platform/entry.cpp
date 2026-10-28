@@ -1,3 +1,4 @@
+#include "port_utf8_path.h"
 #include "port_entry.h"
 
 #include <algorithm>
@@ -105,9 +106,9 @@ std::string ResolveDiscPath(int argc, char** argv, const char* envDiscPath,
         if (!entry.is_regular_file(error)) {
           continue;
         }
-        const std::string name = entry.path().filename().string();
+        const std::string name = PortUtf8::ToUtf8(entry.path().filename());
         if (IsDiscImageName(name)) {
-          candidates.push_back(entry.path().string());
+          candidates.push_back(PortUtf8::ToUtf8(entry.path()));
         }
       }
       // Deterministic when several images sit side by side.
