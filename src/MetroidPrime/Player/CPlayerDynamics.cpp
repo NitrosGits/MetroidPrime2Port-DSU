@@ -1376,7 +1376,12 @@ void CPlayer::PrepareToEnterMorphBallState(float dt, CStateManager& mgr) {
           ->HasBallCameraInitialPositionHint(mgr);
   if (!hasInitialHint) {
     if (!immediate) {
+#ifdef TARGET_PC
+      // retail: vtable +0xc (RefreshHint), not +0x10 (Reset); Reset wiped hints on remorph
+      mCameraManager->HintManager()->RefreshHint(mgr);
+#else
       mCameraManager->HintManager()->Reset(mgr);
+#endif
       ballCamera->SetState(CBallCamera::kBCS_ToBall, mgr);
       SetCameraState(kCS_MorphBallTransition, mgr);
       mCameraManager->TransferCameraState(*mCameraManager->FirstPersonCamera(),
@@ -1385,7 +1390,12 @@ void CPlayer::PrepareToEnterMorphBallState(float dt, CStateManager& mgr) {
       ballCamera->SetTransform(xf);
       ballCamera->ResetLookAtPosition();
       ballCamera->TeleportCamera(xf.GetTranslation(), mgr);
+#ifdef TARGET_PC
+      // retail: vtable +0xc (RefreshHint), not +0x10 (Reset); Reset wiped hints on remorph
+      mCameraManager->HintManager()->RefreshHint(mgr);
+#else
       mCameraManager->HintManager()->Reset(mgr);
+#endif
       if (mSpawnedMorphBallState == kMS_Morphed) {
         ballCamera->TeleportCamera(xf, mgr);
       }
@@ -1394,7 +1404,12 @@ void CPlayer::PrepareToEnterMorphBallState(float dt, CStateManager& mgr) {
     }
   } else if (mSpawnedMorphBallState != kMS_Morphed && !mMorphBall->InScrewAttackMode()) {
     if (immediate) {
+#ifdef TARGET_PC
+      // retail: vtable +0xc (RefreshHint), not +0x10 (Reset); Reset wiped hints on remorph
+      mCameraManager->HintManager()->RefreshHint(mgr);
+#else
       mCameraManager->HintManager()->Reset(mgr);
+#endif
       return;
     }
     ballCamera->SetState(CBallCamera::kBCS_ToBall, mgr);
@@ -1405,7 +1420,12 @@ void CPlayer::PrepareToEnterMorphBallState(float dt, CStateManager& mgr) {
     ballCamera->SetTransform(xf);
     ballCamera->ResetLookAtPosition();
     ballCamera->TeleportCamera(xf.GetTranslation(), mgr);
+#ifdef TARGET_PC
+    // retail: vtable +0xc (RefreshHint), not +0x10 (Reset); Reset wiped hints on remorph
+    mCameraManager->HintManager()->RefreshHint(mgr);
+#else
     mCameraManager->HintManager()->Reset(mgr);
+#endif
   } else {
     ballCamera->SetState(CBallCamera::kBCS_ToBall, mgr);
     SetCameraState(kCS_MorphBallTransition, mgr);
