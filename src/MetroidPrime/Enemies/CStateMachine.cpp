@@ -70,6 +70,9 @@ CStateMachine::CStateMachine(CInputStream& in) {
             break;
           }
         }
+#ifdef TARGET_PC
+        name[sizeof(name) - 1] = '\0'; // a name that fills the buffer is cut, not run on
+#endif
         const float arg = in.ReadFloat();
         const bool lnot = name[0] == '!';
         const char* triggerName = lnot ? name + 1 : name;
@@ -81,7 +84,14 @@ CStateMachine::CStateMachine(CInputStream& in) {
           trigger = state.GetTrig(j);
         }
         if (k == 0) {
+#ifdef TARGET_PC
+          // A state index outside the asset's states (corrupt data) points at the first state.
+          const int stateIndex = in.ReadInt32();
+          trigger->Setup(triggerName, lnot, arg,
+                         &mStates[stateIndex >= 0 && stateIndex < mStates.size() ? stateIndex : 0]);
+#else
           trigger->Setup(triggerName, lnot, arg, &mStates[in.ReadInt32()]);
+#endif
         } else {
           trigger->Setup(triggerName, lnot, arg, lastTrigger);
         }
