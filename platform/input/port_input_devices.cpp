@@ -1407,11 +1407,15 @@ constexpr double kRecalibrateSeconds = 5.0;
 constexpr double kManualCalibrationSeconds = 3.0;
 uint64_t sRecalibrateAtNs = 0;
 uint64_t sManualCalibrationEndNs = 0;
-const void* sGyroMotionSource = nullptr;
+// The source the motion state belongs to: a pad's joystick instance id (never reused, unlike its
+// pointer after a replug), or kPhoneSource; 0 for none.
+constexpr uint32_t kPhoneSource = 0xFFFFFFFFu;
+uint32_t sGyroMotionSource = 0;
 bool sGyroHasAccel = false;
 SDL_Sensor* sPhoneGyro = nullptr;
 SDL_Sensor* sPhoneAccel = nullptr;
-bool sPhoneGyroSearched = false;
+// The phone sensors are searched again after a miss (a sensor can appear late), once a second.
+uint64_t sPhoneNextSearchNs = 0;
 
 int OrientationQuarters(SDL_DisplayOrientation orientation) {
   switch (orientation) {
@@ -1437,7 +1441,7 @@ bool ReadGyroRates(float& pitch, float& yaw, float dt) {
   float gyro[3];
   float accel[3];
   bool haveAccel = false;
-  const void* source = nullptr;
+  uint32_t source = 0;
 
   if (wantController) {
     // The player's pad: whichever controller Aurora has on port 0, not the first one opened.
@@ -1449,7 +1453,7 @@ bool ReadGyroRates(float& pitch, float& yaw, float dt) {
           SDL_SetGamepadSensorEnabled(pad, SDL_SENSOR_GYRO, true);
         }
         if (SDL_GetGamepadSensorData(pad, SDL_SENSOR_GYRO, gyro, 3)) {
-          source = pad;
+          source = static_cast<uint32_t>(SDL_GetGamepadID(pad));
           sGyroStatus = "controller";
           if (SDL_GamepadHasSensor(pad, SDL_SENSOR_ACCEL)) {
             if (!SDL_GamepadSensorEnabled(pad, SDL_SENSOR_ACCEL)) {
@@ -1462,9 +1466,10 @@ bool ReadGyroRates(float& pitch, float& yaw, float dt) {
     }
   }
 
-  if (source == nullptr && wantPhone) {
-    if (sPhoneGyro == nullptr && !sPhoneGyroSearched) {
-      sPhoneGyroSearched = true;
+  if (source == 0 && wantPhone) {
+    const uint64_t searchNow = SDL_GetTicksNS();
+    if (sPhoneGyro == nullptr && searchNow >= sPhoneNextSearchNs) {
+      sPhoneNextSearchNs = searchNow + 1000000000ull;
       int count = 0;
       if (SDL_SensorID* ids = SDL_GetSensors(&count)) {
         for (int i = 0; i < count; ++i) {
@@ -1479,7 +1484,7 @@ bool ReadGyroRates(float& pitch, float& yaw, float dt) {
       }
     }
     if (sPhoneGyro != nullptr && SDL_GetSensorData(sPhoneGyro, gyro, 3)) {
-      source = sPhoneGyro;
+      source = kPhoneSource;
       sGyroStatus = "phone";
       haveAccel = sPhoneAccel != nullptr && SDL_GetSensorData(sPhoneAccel, accel, 3);
       // The phone reports its own axes (x right, y up in its natural orientation), so turn them
@@ -1516,7 +1521,7 @@ bool ReadGyroRates(float& pitch, float& yaw, float dt) {
     }
   }
 
-  if (source == nullptr) {
+  if (source == 0) {
     return false;
   }
   if (source != sGyroMotionSource || haveAccel != sGyroHasAccel) {
@@ -1586,7 +1591,7 @@ const char* GyroStatus() { return sGyroStatus; }
 bool GyroCalibrating() { return sGyroCalibrating || sGyroMotion.ManualCalibrating(); }
 
 float GyroCalibrationConfidence() {
-  return sGyroMotionSource != nullptr && sGyroHasAccel ? sGyroMotion.Confidence() : -1.f;
+  return sGyroMotionSource != 0 && sGyroHasAccel ? sGyroMotion.Confidence() : -1.f;
 }
 
 void PollGyro() {
