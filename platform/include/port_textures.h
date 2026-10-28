@@ -4,8 +4,9 @@
 
 // Device-aware HD texture replacements.
 //
-// Replacements live in the folder given by MP2_TEXTURES (or `textures` next to
-// the executable), in Aurora's naming convention. Inside it an optional
+// Replacements live in the folder given by MP2_TEXTURES, else in the set built into
+// the executable (MP_EMBED_RESOURCES), else in `textures` next to it, in Aurora's
+// naming convention. Inside it an optional
 // per-device subfolder is selected from the input the player last used
 // (PortPrompts::ActiveDevice): xbox, playstation, switch, gamecube or standard
 // for a pad, keyboard for a keyboard and mouse or when no pad is connected. The

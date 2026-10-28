@@ -38,6 +38,14 @@ decompilation is incomplete, and it is what the shim queue is tracked against."
 # Aurora's dvd.cpp needs and fails every call. Aurora skips its own nod provider when a
 # `nod::nod` target already exists, so the alias below is the whole mechanism.
 option(MP_ANDROID_NOD_STUB "Use a non-functional nod stub for Android build probes" OFF)
+# As MP1 (ce0bf885e): desktop builds carry the textures/ tree inside the executable; Android's APK
+# packs it as assets instead.
+if(ANDROID)
+    set(_mp_embed_default OFF)
+else()
+    set(_mp_embed_default ON)
+endif()
+option(MP_EMBED_RESOURCES "Build the controller glyph and binding icon textures into the executable (desktop)" ${_mp_embed_default})
 # As MP1: a system Abseil, fmt, libpng or freetype ties the binary to the build host's copies
 # (the macOS runner's Homebrew dylibs, absent on a player's Mac). Bundled, they are built from
 # source and linked statically.
@@ -644,7 +652,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_touch.cpp platform/port_touch_jni.cpp platform/touch_pad.cpp
         platform/input/port_input_remap_ui.cpp
         platform/input/port_input_devices.cpp
-        platform/port_textures.cpp platform/port_prompts.cpp
+        platform/port_embedded.cpp platform/port_textures.cpp platform/port_prompts.cpp
         platform/port_discord.cpp
         platform/port_disc_verify.cpp
         platform/port_disc_verify_core.cpp)
@@ -1000,12 +1008,38 @@ else()
         "This port needs an ELF linker with RESCAN support, Apple ld or an MSVC-compatible COFF linker")
 endif()
 
-# The per-device button glyphs and the binding icons (tools/make_prompt_glyphs.py) are loose files the
-# port reads from a `textures` folder beside the executable (platform/main.cpp); on Android the APK
-# packs them as assets and the activity unpacks them. The generated sets are cleared first:
-# copy_directory only adds, and an icon the generator no longer writes would otherwise keep
-# replacing a texture it no longer claims.
-if(NOT ANDROID)
+# The per-device button glyphs and the binding icons (tools/make_prompt_glyphs.py). Desktop builds
+# (MP_EMBED_RESOURCES) carry them inside the executable, so a packaged folder needs no loose copies and
+# a new executable dropped into an old install ignores the stale files left there. Without embedding
+# they are loose files the port reads from a `textures` folder beside the executable
+# (platform/main.cpp); on Android the APK packs them as assets and the activity unpacks them.
+if(MP_EMBED_RESOURCES)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    file(GLOB_RECURSE MP_EMBED_INPUTS CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/textures/*")
+    # The file list is an input too, so a deleted texture regenerates the source.
+    string(JOIN "\n" MP_EMBED_LIST ${MP_EMBED_INPUTS})
+    set(MP_EMBED_LIST_FILE "${CMAKE_CURRENT_BINARY_DIR}/generated/port_embedded_inputs.txt")
+    file(CONFIGURE OUTPUT "${MP_EMBED_LIST_FILE}" CONTENT "${MP_EMBED_LIST}\n" @ONLY)
+    set(MP_EMBED_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/generated/port_embedded_data.cpp")
+    add_custom_command(
+        OUTPUT "${MP_EMBED_SOURCE}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+        COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/tools/embed_resources.py"
+            "${MP_EMBED_SOURCE}"
+            --dir "${CMAKE_CURRENT_SOURCE_DIR}/textures" textures
+        DEPENDS ${MP_EMBED_INPUTS} "${MP_EMBED_LIST_FILE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/embed_resources.py"
+        COMMENT "Embedding textures"
+        VERBATIM)
+    target_sources(metroid_prime2_port PRIVATE "${MP_EMBED_SOURCE}")
+    target_compile_definitions(metroid_prime2_port PRIVATE MP_EMBED_RESOURCES)
+    if(TARGET mp_port_audio)
+        target_compile_definitions(mp_port_audio PRIVATE MP_EMBED_RESOURCES)
+    endif()
+elseif(NOT ANDROID)
+    # The generated sets are cleared first: copy_directory only adds, and an icon the generator no
+    # longer writes would otherwise keep replacing a texture it no longer claims.
     set(PORT_TEXTURE_SETS bindings keyboard playstation switch xbox)
     list(TRANSFORM PORT_TEXTURE_SETS PREPEND "$<TARGET_FILE_DIR:metroid_prime2_port>/textures/")
     add_custom_command(TARGET metroid_prime2_port POST_BUILD
@@ -1021,7 +1055,9 @@ endif()
 if(NOT ANDROID AND NOT IOS)
     include(GNUInstallDirs)
     install(TARGETS metroid_prime2_port RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/textures DESTINATION ${CMAKE_INSTALL_BINDIR})
+    if(NOT MP_EMBED_RESOURCES)
+        install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/textures DESTINATION ${CMAKE_INSTALL_BINDIR})
+    endif()
     if(UNIX AND NOT APPLE)
         install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/packaging/io.github.odrannnn.metroidprime2port.desktop
             DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)

@@ -25,9 +25,6 @@ finish-args:
   - --filesystem=home:ro
   # The update check (api.github.com) and Archipelago servers.
   - --share=network
-  # The port looks for textures/ beside the executable by argv[0], and the sandbox starts
-  # it by bare name through PATH, which resolves against the working directory.
-  - --env=MP2_TEXTURES=/app/bin/textures
   # Discord Rich Presence (off by default): the native and Flatpak Discord
   # clients' IPC sockets.
   - --filesystem=xdg-run/discord-ipc-0

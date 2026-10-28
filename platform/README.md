@@ -290,8 +290,11 @@ Aurora and polled once per iteration from `PortPumpEvents`. Replacements are Aur
 (`aurora/texture.hpp`): files named after the texture's hash, in priority order built-in set (0),
 user pack (1), binding icons (2).
 
-- `MP2_TEXTURES=<dir>` — the built-in set; default a `textures` folder beside the executable (on
-  Android, in the user directory), used only if it exists. A `<dir>/<device>` subfolder
+- `MP2_TEXTURES=<dir>` — the built-in set, overriding the executable's own. Desktop builds
+  (`MP_EMBED_RESOURCES`, default ON except Android; `tools/embed_resources.py` generates
+  `port_embedded_data.cpp` from `textures/`) carry that set inside the executable and ignore a stale
+  `textures` folder beside it; with `-DMP_EMBED_RESOURCES=OFF` (and on Android) the default is a
+  `textures` folder beside the executable (on Android, in the user directory), used only if it exists. A `<dir>/<device>` subfolder
   (`keyboard`, `xbox`, `playstation`, `switch`, `gamecube`, `standard`) is used when present;
   `<dir>` itself only when it holds no device folders at all.
 - `MP2_USER_TEXTURES=<dir>` — the user's own pack, over the built-in set; default

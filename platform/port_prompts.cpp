@@ -2,6 +2,7 @@
 
 #include "port_prompts.h"
 #include "port_entry.h"
+#include "port_embedded.h"
 #include "port_env.h"
 #include "port_overlay.h"
 
@@ -27,6 +28,7 @@
 #include <fstream>
 #include <iterator>
 #include <set>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -425,8 +427,17 @@ bool SDLCALL active_input_watch(void*, SDL_Event* event) {
   return true;
 }
 
-// The whole file at `path`.
+// True when the icons are served from the executable (PortEmbedded) rather than
+// <textures>/bindings; sBindingsDir is then the embedded folder prefix.
+bool sEmbedded = false;
+
+// The whole file at `path`: an embedded entry, else a file on disk.
 bool ReadIconFile(const std::string& path, std::vector<uint8_t>& out) {
+  if (sEmbedded) {
+    const std::span<const uint8_t> bytes = PortEmbedded::Find(path);
+    out.assign(bytes.begin(), bytes.end());
+    return !out.empty();
+  }
   std::ifstream in(path, std::ios::binary);
   if (!in) {
     return false;
@@ -444,6 +455,10 @@ bool ReadIconFile(const std::string& path, std::vector<uint8_t>& out) {
 
 // The file `name` in the bindings folder, or an empty string when it is not there.
 std::string FindIconFile(const std::string& name) {
+  if (sEmbedded) {
+    std::string path = sBindingsDir + "/" + name;
+    return PortEmbedded::Find(path).empty() ? std::string() : path;
+  }
   const std::filesystem::path path = std::filesystem::path(sBindingsDir) / name;
   std::error_code ec;
   return std::filesystem::is_regular_file(path, ec) ? path.string() : std::string();
@@ -845,19 +860,26 @@ void Initialize(const char* textureRoot) {
   // Tracked even without generated icons, since the static set and rumble
   // (KeyboardActive) follow it too.
   SDL_AddEventWatch(active_input_watch, nullptr);
-  if (textureRoot == nullptr || textureRoot[0] == '\0') {
-    std::fprintf(stderr, "[prompts] no texture folder; binding icons off\n");
-    return;
+  const bool embedded = textureRoot == nullptr && !PortEmbedded::Under("textures/bindings/").empty();
+  if (embedded) {
+    sBindingsDir = "textures/bindings";
+    sEmbedded = true;
+  } else {
+    if (textureRoot == nullptr || textureRoot[0] == '\0') {
+      std::fprintf(stderr, "[prompts] no texture folder; binding icons off\n");
+      return;
+    }
+    const std::filesystem::path bindingsDir = std::filesystem::path(textureRoot) / "bindings";
+    std::error_code ec;
+    if (!std::filesystem::is_directory(bindingsDir, ec)) {
+      std::fprintf(stderr, "[prompts] no %s; binding icons off\n", bindingsDir.string().c_str());
+      return;
+    }
+    sBindingsDir = bindingsDir.string();
   }
-  const std::filesystem::path bindingsDir = std::filesystem::path(textureRoot) / "bindings";
-  std::error_code ec;
-  if (!std::filesystem::is_directory(bindingsDir, ec)) {
-    std::fprintf(stderr, "[prompts] no %s; binding icons off\n", bindingsDir.string().c_str());
-    return;
-  }
-  sBindingsDir = bindingsDir.string();
   sEnabled = true;
-  std::fprintf(stderr, "[prompts] binding icons from %s\n", sBindingsDir.c_str());
+  std::fprintf(stderr, "[prompts] binding icons from %s\n",
+               embedded ? "the executable (built in)" : sBindingsDir.c_str());
   Poll();
 }
 
