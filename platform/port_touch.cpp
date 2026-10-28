@@ -195,6 +195,15 @@ void ReadEnvironment() {
 
 bool ParseBool(const std::string& value) { return value != "0" && value != "false"; }
 
+// A number from touch.cfg, clamped to the range the setters and the environment use. A value
+// that is not a finite number leaves `field` as it was (the default).
+void ParseClamped(const std::string& value, float& field, float low, float high) {
+  const float parsed = static_cast< float >(std::atof(value.c_str()));
+  if (std::isfinite(parsed)) {
+    field = parsed < low ? low : (parsed > high ? high : parsed);
+  }
+}
+
 // The settings file lives in the user directory next to the memory card. Lines are
 // `key=value`; the layout string is the only value that may contain anything but digits.
 //
@@ -249,21 +258,21 @@ void LoadConfig() {
     } else if (key == "controls") {
       s.controls = ParseBool(value);
     } else if (key == "side_margin") {
-      s.sideMargin = static_cast< float >(std::atof(value.c_str()));
+      ParseClamped(value, s.sideMargin, 0.f, 96.f);
     } else if (key == "stick_inset") {
-      s.stickInset = static_cast< float >(std::atof(value.c_str()));
+      ParseClamped(value, s.stickInset, 0.f, 160.f);
     } else if (key == "button_inset") {
-      s.buttonInset = static_cast< float >(std::atof(value.c_str()));
+      ParseClamped(value, s.buttonInset, 0.f, 160.f);
     } else if (key == "aim_speed") {
-      s.aimSpeed = static_cast< float >(std::atof(value.c_str()));
+      ParseClamped(value, s.aimSpeed, 0.25f, 10.f);
     } else if (key == "aim_split") {
       s.aimSplit = ParseBool(value);
     } else if (key == "aim_speed_y") {
-      s.aimSpeedY = static_cast< float >(std::atof(value.c_str()));
+      ParseClamped(value, s.aimSpeedY, 0.25f, 10.f);
     } else if (key == "spring_swipe") {
       s.springSwipe = ParseBool(value);
     } else if (key == "opacity") {
-      s.opacity = static_cast< float >(std::atof(value.c_str()));
+      ParseClamped(value, s.opacity, 10.f, 100.f);
     }
   }
   ApplyEnvironmentLocked();
@@ -280,6 +289,9 @@ void SaveConfigLocked() {
   if (sConfigPath.empty()) {
     return;
   }
+  // Cleared first so that a failure below (open, write or rename) is logged once and not retried
+  // every frame by BeginFrame's flush; the next change marks the settings dirty and tries again.
+  sDirty = false;
   const std::string temporary = sConfigPath + ".tmp";
   {
     std::ofstream file(PortUtf8::FromUtf8(temporary), std::ios::trunc);
@@ -321,7 +333,6 @@ void SaveConfigLocked() {
     std::fprintf(stderr, "[touch] cannot replace %s\n", sConfigPath.c_str());
     std::filesystem::remove(PortUtf8::FromUtf8(temporary), renameEc);
   }
-  sDirty = false;
 }
 
 template < typename T >
@@ -539,7 +550,8 @@ void BeginFrame() {
   sWheelState.store(BuildWheelState(player), std::memory_order_release);
   UpdateTurbo(Turbo());
 
-  // SetLayout and CycleLayout save for themselves; this flush retries a failed write.
+  // SetLayout and CycleLayout save for themselves; this flush writes what a setter left dirty (a
+  // failed write is not retried until the next change).
   std::lock_guard< std::mutex > lock(sMutex);
   if (sDirty) {
     SaveConfigLocked();
