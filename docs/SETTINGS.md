@@ -194,6 +194,22 @@ Controls > Remap:
   overlay's Morph Ball page (Bomb, Boost, Power Bomb, Spider, Unmorph; touch codes 40..44)
   presses the rows; a remap moves a row off its button and relabels it. A touch: binding on a control
   counts as taking it over only where it applies.
+- Custom actions (advanced) (as MP1 issue #218) holds actions the player makes, as many as
+  wanted: "+ Add action" picks what one does from a searchable list, then it binds like any
+  row (chords, layers, triggers and touch buttons included); Edit and Delete are on its row,
+  and Delete drops its bindings in every profile too. The list: Settings (turn any on/off
+  setting listed in the picker on, off or toggle it), Cheats (God mode, free camera, freeze
+  the game, show Samus in free camera, refill energy, refill ammo, give or take an item,
+  kill the locked-on enemy), Travel (warp to a room picked by its in-game name, or to where
+  a world starts; another world reloads it, a loaded room of this world is instant),
+  Save states (save to or load from a given slot), Display (show a message on the HUD, text
+  language) and Advanced (any debug console command line, `docs/CONSOLE.md`; it must be
+  given a name). The on/off ones take Toggle, Turn on or Turn off. Its name is made from
+  what it does ("God mode (on/off)", "Warp to Great Temple (Temple Grounds)") unless one is
+  typed. A press shows what it did as a note at the top of the screen; Cheats, Travel and
+  console commands refuse in the Original experience. Saved in `controls.toml` as
+  `[[custom_action]]` tables (`id`, `name`, `preset`, `arg`, `mode`, `command`) and bound as
+  action `custom:<id>`; a preset or setting this build doesn't know is kept and does nothing.
 - `menu_standard_buttons`: Separate menu buttons (menus and the map read the "Menus and map"
   rows; ignored while the touch controls are on); env `MP2_MENU_STANDARD_BUTTONS`.
 

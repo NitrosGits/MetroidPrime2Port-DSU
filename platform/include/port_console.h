@@ -1,5 +1,8 @@
 #pragma once
 
+#include <span>
+#include <string_view>
+
 class CEntity;
 class CPathFindSearch;
 class CStateManager;
@@ -29,6 +32,19 @@ void Tick(CStateManager& mgr);
 // call, i.e. while the flow state skips the state manager's update (portal transitions, cinematic
 // skips, pause), so the console keeps answering there. Save states stay on `Tick` only.
 void IdleTick(CStateManager& mgr);
+
+// An item the console's give/take take, with its player-facing name: `key` is the console's own
+// spelling (a `kItemNames` entry), `label` what the F1 pickers show.
+struct Item {
+  const char* key;
+  const char* label;
+};
+std::span<const Item> Items();
+
+// Queues one console line from inside the port (a custom action's `Console command`, or what a
+// preset runs): it runs on the game thread's next update, without MP2_CONSOLE, and its reply goes
+// to the log. False when too many such lines are waiting.
+bool Run(std::string_view line);
 
 // A module's settable fields for `var <id> <name> [value]`: the handler answers true when ent is
 // its class and it knows name, after storing *value (when not null) and reading the field into

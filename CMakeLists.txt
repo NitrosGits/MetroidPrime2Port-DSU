@@ -425,6 +425,7 @@ add_library(mp_platform OBJECT
     platform/port_suit_colours_disc.cpp
     platform/input/port_input_engine.cpp
     platform/input/port_input_bindings.cpp
+    platform/input/port_custom_actions.cpp
     platform/glibc_compat.c)
 set_source_files_properties(platform/compiled_modules.cpp PROPERTIES
     OBJECT_DEPENDS "${MP_MODULE_REGISTRY}")

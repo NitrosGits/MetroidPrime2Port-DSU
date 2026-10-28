@@ -145,6 +145,10 @@ constexpr size_t kMaxQueued = 256;
 bool sStarted = false;
 bool sEnabled = false;
 
+// Lines the port itself queues (PortConsole::Run): no socket, so they work without MP2_CONSOLE.
+std::mutex sLocalMutex;
+std::deque< std::string > sLocal;
+
 #ifndef _WIN32
 std::mutex sClientMutex;
 std::condition_variable sClientArrived;  // MP2_CONSOLE_WAIT: Start() waits on it
@@ -158,6 +162,7 @@ struct SQueued {
 
 std::mutex sQueueMutex;
 std::deque< SQueued > sQueue;
+
 
 #endif // !_WIN32
 
@@ -823,14 +828,24 @@ const CEntity* ResolveObject(CStateManager& mgr, std::string_view text);
 // chassis) can still be killed.
 void CmdKill(CStateManager& mgr, const Args& args, std::string& out) {
   if (args.size() > 2) {
-    Fail("usage: kill [id]   (no id: the player)");
+    Fail("usage: kill [id | target]   (no id: the player; target: the locked-on actor)");
     return;
   }
   if (args.size() == 1) {
     PortWarp::Kill();
     return;
   }
-  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CEntity* ent = nullptr;
+  if (Lower(args[1]) == "target") {
+    const CPlayer* player = mgr.GetPlayer(0);
+    ent = player != nullptr ? mgr.ObjectById(player->GetOrbitTargetId()) : nullptr;
+    if (ent == nullptr) {
+      Fail("no locked-on target");
+      return;
+    }
+  } else {
+    ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  }
   CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
   if (patterned == nullptr || patterned->GetHealthInfo() == nullptr) {
     Fail("not a patterned actor with health");
@@ -843,6 +858,33 @@ void CmdKill(CStateManager& mgr, const Args& args, std::string& out) {
   }
   patterned->Death(mgr, direction, kSS_DeathRattle);
   out += "killed\n";
+}
+
+// refill [energy|ammo]: energy up to the full tank count; ammo up to every capacity the suit has
+// (no argument: both). Unlike `heal` this also touches missiles, power bombs and beam ammo.
+void CmdRefill(CStateManager& mgr, const Args& args, std::string& out) {
+  const std::string what = args.size() > 1 ? Lower(args[1]) : std::string("all");
+  if (args.size() > 2 || (what != "all" && what != "energy" && what != "ammo")) {
+    Fail("usage: refill [energy | ammo]");
+    return;
+  }
+  CPlayerState* state = mgr.PlayerState(0);
+  if (state == nullptr) {
+    Fail("no player state");
+    return;
+  }
+  if (what != "ammo") {
+    PortWarp::Heal();
+  }
+  if (what != "energy") {
+    for (const CPlayerState::EItemType type :
+         {CPlayerState::kIT_Missile, CPlayerState::kIT_Powerbomb, CPlayerState::kIT_DarkAmmo,
+          CPlayerState::kIT_LightAmmo}) {
+      const int capacity = state->GetItemCapacity(type);
+      state->AddPowerUp(type, capacity - state->GetItemAmount(type));
+    }
+  }
+  out += "refilled " + what + "\n";
 }
 
 void CmdLayer(CStateManager&, const Args& args, std::string&) {
@@ -4693,8 +4735,10 @@ const CommandSpec kCommands[] = {
       "dimension                   go to this room's Light/Dark Aether twin, keeping the position\n"},
     {"station", CmdStation, ""},
     {"heal", CmdHeal,
-      "heal | kill [id]            refill energy; kill the player (a respawn test) or an actor\n"},
+      "heal | kill [id|target]     refill energy; kill the player (a respawn test), an actor or the lock-on\n"},
     {"kill", CmdKill, ""},
+    {"refill", CmdRefill,
+      "refill [energy|ammo]        energy to full / missiles, power bombs and beam ammo to capacity\n"},
     {"damage", CmdDamage,
       "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
       "                            cannonball, dark, light, annihilator, powerbomb, bomb,\n"
@@ -5037,7 +5081,26 @@ namespace {
 // this frame's commands have already been served.
 bool sTickedSinceIdle = false;
 
+void RunLocal(CStateManager& mgr) {
+  for (;;) {
+    std::string line;
+    {
+      std::lock_guard< std::mutex > lock(sLocalMutex);
+      if (sLocal.empty()) {
+        return;
+      }
+      line = std::move(sLocal.front());
+      sLocal.pop_front();
+    }
+    std::string out = "[local] > " + line + '\n';
+    sExecutingGeneration = 0;
+    Execute(mgr, line, out);
+    std::fputs(out.c_str(), stderr);
+  }
+}
+
 void RunCommands(CStateManager& mgr) {
+  RunLocal(mgr);
 #ifndef _WIN32
   if (!sEnabled) {
     return;
@@ -5102,6 +5165,68 @@ void IdleTick(CStateManager& mgr) {
     return;
   }
   RunCommands(mgr);
+}
+
+bool Run(std::string_view line) {
+  std::lock_guard< std::mutex > lock(sLocalMutex);
+  if (sLocal.size() >= kMaxQueued) {
+    return false;
+  }
+  sLocal.emplace_back(line);
+  return true;
+}
+
+std::span<const Item> Items() {
+  // Key = the `give` spelling (console_names.inc), label = the F1 Cheats wording.
+  static const Item kItems[] = {
+    {"powerBeam", "Power Beam"},
+    {"darkBeam", "Dark Beam"},
+    {"lightBeam", "Light Beam"},
+    {"annihilatorBeam", "Annihilator Beam"},
+    {"chargeBeam", "Charge Beam"},
+    {"superMissile", "Super Missile"},
+    {"darkburst", "Darkburst"},
+    {"sunburst", "Sunburst"},
+    {"sonicBoom", "Sonic Boom"},
+    {"combatVisor", "Combat Visor"},
+    {"scanVisor", "Scan Visor"},
+    {"darkVisor", "Dark Visor"},
+    {"echoVisor", "Echo Visor"},
+    {"variaSuit", "Varia Suit"},
+    {"darkSuit", "Dark Suit"},
+    {"lightSuit", "Light Suit"},
+    {"morphBall", "Morph Ball"},
+    {"boostBall", "Boost Ball"},
+    {"spiderBall", "Spider Ball"},
+    {"morphBallBombs", "Morph Ball Bombs"},
+    {"powerbomb", "Power Bombs"},
+    {"grappleBeam", "Grapple Beam"},
+    {"spaceJumpBoots", "Space Jump Boots"},
+    {"gravityBoost", "Gravity Boost"},
+    {"seekerLauncher", "Seeker Launcher"},
+    {"screwAttack", "Screw Attack"},
+    {"missile", "Missiles"},
+    {"energyTanks", "Energy Tanks"},
+    {"darkAmmo", "Dark Ammo"},
+    {"lightAmmo", "Light Ammo"},
+    {"violetTranslator", "Violet Translator"},
+    {"amberTranslator", "Amber Translator"},
+    {"emeraldTranslator", "Emerald Translator"},
+    {"cobaltTranslator", "Cobalt Translator"},
+    {"templeKey1", "Temple Key 1"},
+    {"templeKey2", "Temple Key 2"},
+    {"templeKey3", "Temple Key 3"},
+    {"agonKey1", "Agon Key 1"},
+    {"agonKey2", "Agon Key 2"},
+    {"agonKey3", "Agon Key 3"},
+    {"torvusKey1", "Torvus Key 1"},
+    {"torvusKey2", "Torvus Key 2"},
+    {"torvusKey3", "Torvus Key 3"},
+    {"hiveKey1", "Hive Key 1"},
+    {"hiveKey2", "Hive Key 2"},
+    {"hiveKey3", "Hive Key 3"},
+  };
+  return kItems;
 }
 
 bool RegisterVar(VarHandler handler) {
