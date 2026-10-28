@@ -83,6 +83,8 @@ constexpr int kRoomHardCapFrames = 60 * 300;
 constexpr int kRoomMinFreeIds = 256;
 // The quick-resume state's slot number: written on a clean quit, loaded on the next launch.
 constexpr int kResumeSlot = -1;
+// A state that is not in a slot (DoRoomReload).
+constexpr int kNoSlot = -2;
 
 struct State {
   uint32_t worldId = 0;
@@ -104,6 +106,7 @@ std::atomic< int > sLoadRequest{-1};
 // Mods reload: Tick turns the request into a load of the current state; CMainFlow calls
 // ReloadModsNow once the old world is gone, before the new one starts loading.
 std::atomic< bool > sModReloadRequest{false};
+std::atomic< bool > sRoomReloadRequest{false};
 std::atomic< bool > sModReloadPending{false};
 std::atomic< bool > sModReloadWorldStale{false}; // reloaded while paused: the room still has old textures
 std::atomic< int > sSelected{1};
@@ -500,6 +503,8 @@ void DoSave(CStateManager& mgr, int slot) {
   SetMessage("saved slot " + std::to_string(slot) + " (" + s.room + ")");
 }
 
+bool LoadState(CStateManager& mgr, const State& s, int slot, const std::string& what);
+
 bool DoLoad(CStateManager& mgr, int slot) {
   const std::string what = "load of " + SlotName(slot);
   if (const char* why = NotReady(mgr)) {
@@ -512,6 +517,25 @@ bool DoLoad(CStateManager& mgr, int slot) {
     SetMessage(what + " failed: " + error);
     return false;
   }
+  return LoadState(mgr, s, slot, what);
+}
+
+// The overlay's room Reload: the current state loaded straight back without its room objects, so
+// the room is rebuilt from the disc (as leaving and coming back) and Samus is put back where she
+// stood. No slot file is written, so the undo slot keeps the player's last load.
+bool DoRoomReload(CStateManager& mgr) {
+  State s;
+  std::string error;
+  if (!Capture(mgr, s, error)) {
+    SetMessage("room reload failed: " + error);
+    return false;
+  }
+  s.roomState = RoomState();
+  return LoadState(mgr, s, kNoSlot, "room reload");
+}
+
+bool LoadState(CStateManager& mgr, const State& s, int slot, const std::string& what) {
+  std::string error;
   // PortWarpToWorld refuses an invalid world; check here, before the game state is swapped.
   if (s.worldId == kInvalidAssetId || s.areaAssetId == kInvalidAssetId) {
     SetMessage(what + " failed: the state names no world or area");
@@ -535,7 +559,7 @@ bool DoLoad(CStateManager& mgr, int slot) {
     }
   }
   std::string undo;
-  if (slot != kUndoSlot && slot != kResumeSlot) {
+  if (slot != kNoSlot && slot != kUndoSlot && slot != kResumeSlot) {
     State current;
     if (!Capture(mgr, current, error) || !WriteSlot(kUndoSlot, current, error)) {
       undo = " (no undo state: " + error + ")";
@@ -563,7 +587,7 @@ bool DoLoad(CStateManager& mgr, int slot) {
     sResuming = true;
     sResumingSavedAt = s.savedAt;
   }
-  SetMessage("loading " + SlotName(slot) + " (" + s.room + ")" + undo);
+  SetMessage((slot != kNoSlot ? "loading " + SlotName(slot) : "reloading the room") + " (" + s.room + ")" + undo);
   return true;
 }
 
@@ -1194,6 +1218,7 @@ void Forget(const CStateManager* mgr) {
 }
 
 void RequestModReload() { sModReloadRequest.store(true); }
+void RequestRoomReload() { sRoomReloadRequest.store(true); }
 bool ModReloadActive() {
   return sModReloadRequest.load() || sModReloadPending.load() || sModReloadWorldStale.load();
 }
@@ -1255,6 +1280,9 @@ void Tick(CStateManager& mgr) {
     } else if (DoLoad(mgr, kUndoSlot)) {
       sModReloadPending.store(true);
     }
+  }
+  if (sRoomReloadRequest.exchange(false)) {
+    DoRoomReload(mgr);
   }
   const int save = sSaveRequest.exchange(-1);
   if (save >= 0) {

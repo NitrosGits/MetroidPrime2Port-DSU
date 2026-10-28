@@ -4573,6 +4573,12 @@ void CmdReloadMods(CStateManager&, const Args&, std::string& out) {
   out += "mods reload requested (the log's [savestate] and mods: lines say how it went)\n";
 }
 
+// reloadroom: rebuild the room from the disc, Samus kept where she stands (F1 Cheats' Reload).
+void CmdReloadRoom(CStateManager&, const Args&, std::string& out) {
+  PortSaveState::RequestRoomReload();
+  out += "room reload requested (the log's [savestate] lines say how it went)\n";
+}
+
 // resume [status|save|load|clear]: quick resume (savestates/resume.mp2ss), the same one the quit
 // path and the splash-screen prompt use.
 void CmdResume(CStateManager&, const Args& args, std::string& out) {
@@ -4714,6 +4720,8 @@ const CommandSpec kCommands[] = {
       "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"},
     {"reloadmods", CmdReloadMods,
       "reloadmods                  read the mods folder again and rebuild the room (F1 Mods)\n"},
+    {"reloadroom", CmdReloadRoom,
+      "reloadroom                  rebuild the room from the disc, Samus kept in place (F1 Cheats)\n"},
     {"resume", CmdResume,
       "resume [status|save|load|clear] quick resume (savestates/resume.mp2ss): show, snapshot now, load, delete\n"},
     {"credits", CmdCredits,

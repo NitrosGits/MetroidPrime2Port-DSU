@@ -58,6 +58,9 @@ void RequestLoad(int slot);
 // the freshly read mods (CResLoader::PortReopenPaks). ReloadModsNow is CMainFlow's call before it
 // starts the game; true when it reloaded. ModReloadActive is true from the request until then.
 void RequestModReload();
+// Rebuild the current room from the disc, as leaving and coming back does, and put Samus back where
+// she stands (the overlay's Reload): the current state, without its room objects, loaded back.
+void RequestRoomReload();
 bool ModReloadActive();
 bool ReloadModsNow();
 // The pause menu's share: the pause screen holds the suit model, no room is running and Tick does not

@@ -6,6 +6,7 @@
 #include "debug_ui_internal.h"
 
 #include "port_collision_view.h"
+#include "port_savestate.h"
 #include "port_warp.h"
 
 #include <aurora/gfx.h>
@@ -357,13 +358,9 @@ void DrawCheatsSection() {
     ImGui::SameLine();
     ImGui::BeginDisabled(!currentValid);
     if (ImGui::Button("Reload")) {
-      // The area warp ignores a request for the room it is already in, so a reload is the
-      // world warp the elevators use, to the same world and room.
-      char worldText[16];
-      char areaText[16];
-      std::snprintf(worldText, sizeof(worldText), "%08x", sWorldId);
-      std::snprintf(areaText, sizeof(areaText), "%d", current);
-      PortWarp::World(worldText, areaText);
+      // A world warp to this room would put Samus at the room's spawn point (the elevator, for
+      // most); the save-state route rebuilds the room and puts her back where she stands.
+      PortSaveState::RequestRoomReload();
     }
     ImGui::EndDisabled();
     ImGui::SetItemTooltip("Rebuild the room from the disc, as leaving and coming back does.");
