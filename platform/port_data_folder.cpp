@@ -56,10 +56,15 @@ std::string Relative(const fs::path& path, const fs::path& base) {
 using port::EndsWith;
 
 // Every file a move copies, relative to `root` with '/' separators.
-std::vector< std::string > ListFiles(const std::string& root) {
+// `failed`, when given, is set if the walk stopped on an error: the list is then
+// incomplete, which a copy must not take for the whole folder.
+std::vector< std::string > ListFiles(const std::string& root, bool* failed = nullptr) {
   std::vector< std::string > files;
   std::error_code ec;
   const fs::path base = FromUtf8(root);
+  if (failed != nullptr) {
+    *failed = false;
+  }
   if (!fs::is_directory(base, ec)) {
     return files;
   }
@@ -75,6 +80,9 @@ std::vector< std::string > ListFiles(const std::string& root) {
     if (it->is_regular_file(ec)) {
       files.push_back(relative);
     }
+  }
+  if (ec && failed != nullptr) {
+    *failed = true;
   }
   return files;
 }
@@ -185,7 +193,14 @@ bool CopyTree(const std::string& from, const std::string& to, Progress& progress
     }
   }
   std::vector< char > buffer(1 << 20);
-  for (const std::string& relative : ListFiles(from)) {
+  bool listFailed = false;
+  const std::vector< std::string > files = ListFiles(from, &listFailed);
+  if (listFailed) {
+    // The old data is left alone, and the incomplete flag stays in the target.
+    error = "Could not read all of " + from + " (a folder could not be listed).";
+    return false;
+  }
+  for (const std::string& relative : files) {
     const fs::path in = source / FromUtf8(relative);
     const fs::path out = target / FromUtf8(relative);
     fs::path temp = out;
