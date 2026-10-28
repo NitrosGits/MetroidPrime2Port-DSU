@@ -943,8 +943,9 @@ damages a growth: the retail's ProcessDamage casts the joint's last toucher to a
 (fn_79_61C4) and only the projectile is one, so the console's `damage` cannot do it. The
 recipe the driver uses (`tools/drivers/swampboss2_dark.py`):
 
-1. the boss starts stunned (its head health is 0, so the `Stunned` trigger puts it in the
-   `Reel`), which is where the growths are vulnerable (`mGrowthsVulnerable`);
+1. the boss must be stunned: the head health (set from `lightFlyer1.health` by the ctor,
+   fn_79_BE3C 0xC0A4) has to reach 0 so the `Stunned` trigger puts it in the `Reel`, which is
+   where the growths are vulnerable (`mGrowthsVulnerable`); the boss does not start stunned;
 2. the growths are only *active* while the player is behind the boss (fn_79_24E0), so the
    driver puts the player 30 units behind it (`tp`);
 3. `shoot u<growth joint> 30` fires the player's beam at each growth: a real

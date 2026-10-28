@@ -9,7 +9,8 @@ The driver talks to the port's debug console (MP2_CONSOLE=<port>) and reads the 
   * the growths are only damageable by a real beam hit (the retail's ProcessDamage casts the
     joint's last toucher to a CWeapon, and only a projectile is one) and only while the boss
     is stunned (the Reel state sets the growths vulnerable) with the player behind it (the
-    growths are only active then).  So the driver stuns the boss with the console's `damage`
+    growths are only active then).  The boss does not start stunned (its head health starts at
+    the phase health), so the driver stuns it with the console's `damage`
     on a body joint (alternating with a beam hit, because the boss ignores a second hit from
     the same toucher) and then shoots the four growth joints with `shoot`.
   * in the dark phase the driver forces the Blow state (`fsm`, which reaches the FSM2's
