@@ -8,8 +8,7 @@
 
 [![Linux build](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml/badge.svg?branch=port)](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml)
 
-A native build of **Metroid Prime 2: Echoes** for Linux, Windows, macOS, Android and (experimentally) iOS, compiled from
-the [PrimeDecomp/echoes](https://github.com/PrimeDecomp/echoes) decompilation and
+A native build of **Metroid Prime 2: Echoes** for Linux, Windows, macOS, Android and (experimentally) iOS,
 rendered through Aurora (SDL3/WebGPU). There's no emulator involved. Supported
 discs: the USA GameCube release (`G2ME01`), the PAL release (`G2MP01`, experimental) and
 the Wii's Metroid Prime Trilogy (`R3ME01` USA, `R3MP01` PAL).
@@ -119,10 +118,7 @@ intact; every port change to an upstream file sits in a `#ifdef TARGET_PC` block
 
 ## Credits and licensing
 
-This is a fork of the [PrimeDecomp/echoes](https://github.com/PrimeDecomp/echoes)
-decompilation, which the game logic is built from. The port layer follows
-[MetroidPrimePort](https://github.com/Odrannnn/MetroidPrimePort), the same
-approach for Metroid Prime. Aurora (`extern/aurora`) is a vendored snapshot, and MusyX
+This took the old echoes decomp as a base, expanded to get a fully playable port. Aurora (`extern/aurora`) is a vendored snapshot, and MusyX
 (`extern/musyx-port`) provides the audio engine; third-party licences are kept
 alongside them and copied into release packages.
 
