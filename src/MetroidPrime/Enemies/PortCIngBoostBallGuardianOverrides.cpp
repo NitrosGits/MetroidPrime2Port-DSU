@@ -296,7 +296,8 @@ void CIngBoostBallGuardian::UpdateHitLight(float dt, CStateManager& mgr) {
   if (CGameLight* light = TCastToPtr< CGameLight >(mgr.ObjectById(mHitLightId))) {
     const CColor color = CColor::Lerp(CColor::Black(), mData.mLightColor, mLightBlend); // 0x8F8
     CLight lightData = CLight::BuildPoint(GetLctrTransform(mEyeSegId).GetTranslation(), color);
-    lightData.SetAttenuation(1.f / mData.mLightAttenuation, 0.f, 0.f); // 0x8FC
+    // 0x000066D0-0x000066E8: f1 = f3 = rodata_70 (0), f2 = rodata_64 (1) / 0x8FC, i.e. the linear term.
+    lightData.SetAttenuation(0.f, 1.f / mData.mLightAttenuation, 0.f); // 0x8FC
     light->SetLight(lightData);
   }
 }
