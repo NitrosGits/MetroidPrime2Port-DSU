@@ -610,6 +610,12 @@ public:
     DeliverCmd(cmd.GetCommandId());
     mWallHang = cmd;
   }
+  // Same for CBCCoverCmd: sliced, the cover target stayed (0,0,0), so CBSCover aligned the
+  // IntoCover anim to the world origin and launched the body (Sanctuary Entrance commandos).
+  void DeliverCmd(const CBCCoverCmd& cmd) {
+    DeliverCmd(cmd.GetCommandId());
+    mCover = cmd;
+  }
 #endif
 
   void DeliverCmd(const CBCAdditiveAimCmd& cmd) {
