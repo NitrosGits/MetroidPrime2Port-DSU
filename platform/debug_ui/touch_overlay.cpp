@@ -25,6 +25,7 @@
 
 #if defined(PORT_TOUCH_OVERLAY)
 
+#include "port_custom_actions.h"
 #include "port_input_bindings.h"
 #include "../input/port_input_devices.h"
 #include "port_input_engine.h"
@@ -538,6 +539,14 @@ const std::vector< std::string >& ButtonActions() {
     const PortInput::ActionInfo& info = PortInput::Info(a);
     list.emplace_back(info.key);
     list.emplace_back(info.label);
+  }
+  for (const PortInput::CustomActionDef& def : PortInputDevices::UserBindings()->customActions) {
+    const PortInput::Action a = PortInput::CustomAction(def.id);
+    if (!PortInput::TouchButtonAction(a)) {
+      continue;
+    }
+    list.emplace_back(PortInput::ActionKey(a));
+    list.emplace_back(PortCustomActions::DisplayName(def));
   }
   return list;
 }

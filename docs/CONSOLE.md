@@ -5,7 +5,9 @@ it (see `docs/RUNNING.md`). Each line is one command, `a; b; c` runs several in 
 every command answers `=> ok` or `=> err: <why>`. `help` prints the list below, taken from the
 dispatch table `kCommands` in `platform/port_console.cpp`; `tests/port_console_docs.py` (ctest
 `port_console_docs`) fails when a command in that table is missing here, so a new command needs
-a line in this file.
+a line in this file. Lines the port queues itself (a custom action's console command, the Refill and
+Kill presets) run through the same table on the next game update, without `MP2_CONSOLE`, and answer to
+the log.
 
 `status --json` prints one line of JSON (frame, world, area, mrea, position, yaw, speed, morph,
 hp, hp_max, visor, beam, freecam) for scripts.
@@ -17,7 +19,8 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `nextarea | prevarea` — the next or previous existing area of this world (also `prevarea`)
 - `door | dock | station` — stand in front of the nearest door / doorway / save station (also `dock`, `station`)
 - `dimension` — go to this room's Light/Dark Aether twin, keeping the position (the cheats' "Light / Dark world")
-- `heal | kill [id]` — refill energy; kill the player (a respawn test) or an actor (also `kill`)
+- `heal | kill [id|target]` — refill energy; kill the player (a respawn test), an actor or the locked-on target (also `kill`)
+- `refill [energy|ammo]` — energy to full / missiles, power bombs and beam ammo to capacity (custom actions' Refill presets)
 - `damage <id> <n> [kb] [w]` — hit an actor for n as a player shot (w = power, missile, cannonball, dark, light, annihilator, powerbomb, bomb, boostball, screwattack, darkburst, sunburst, sonicboom, supermissile; kb = knockback power)
 - `layer <n>` — activate a layer of the current area
 - `god <0|1>` — god mode (the F1 cheat)

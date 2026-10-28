@@ -3,6 +3,8 @@
 // Ported from the Prime 1 port's platform/input/port_input_devices.cpp. What MP2 has no backend or
 // setting for is left out, each at the place it would go: see the header for the list.
 
+#include "port_custom_actions.h"
+#include "port_debug.h"
 #include "port_input_remap_ui.h"
 #include "port_freecam.h"
 #include "port_gyro_motion.h"
@@ -1326,7 +1328,9 @@ void PollPortActions() {
   if (!sInit || next != sFull) {
     sFull = std::move(next);
     sProfile = sFull;
-    std::erase_if(sProfile.bindings, [](const Binding& b) { return !IsPortAction(b.action); });
+    std::erase_if(sProfile.bindings, [](const Binding& b) {
+      return !IsPortAction(b.action) && !PortInput::IsCustom(b.action);
+    });
     sRuntime.SetProfile(&sProfile);
     sInit = true;
   }
@@ -1361,6 +1365,19 @@ void PollPortActions() {
     if (out.Pressed(Action::SaveState)) PortSaveState::RequestSave(PortSaveState::SelectedSlot());
     if (out.Pressed(Action::LoadState)) PortSaveState::RequestLoad(PortSaveState::SelectedSlot());
   }
+  // The player's own actions (controls.toml [[custom_action]]): each one runs as
+  // its binding is pressed, and the note it returns is the toast.
+  out.ForEachCustomPressed([](Action action) {
+    const std::shared_ptr<const PortInput::UserBindings> user = UserBindings();
+    const uint16_t id = PortInput::CustomId(action);
+    for (const PortInput::CustomActionDef& def : user->customActions) {
+      if (def.id == id) {
+        const std::string note = PortCustomActions::Run(def);
+        if (!note.empty()) PortDebug::ShowNote(note);
+        return;
+      }
+    }
+  });
   if (out.Pressed(Action::Screenshot)) aurora::request_screenshot();
   if (out.Pressed(Action::PhotoMode)) {
     PortPhoto::RequestToggle();
