@@ -913,16 +913,21 @@ void CElitePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
           mShieldHitTime = mTime;
         }
       }
-    } else if (!mAbsorbing && projectile != nullptr) {
-      CDamageInfo damage = projectile->GetCurrentDamageInfo();
-      damage.SetRadius(0.f);
-      mgr.ApplyDamage(projectile->GetUniqueId(), GetUniqueId(), projectile->GetUniqueId(), damage,
-                      SolidFilter(), CVector3f::Zero());
-      SetXDamaged(true);
+    } else if (!mAbsorbing) {
+      // Retail 0x8B8C: the absorbing check (0xD2C) skips straight to 0x8D50; otherwise the
+      // projectile damage (if any) is applied and control reaches 0x8CD0 regardless.
+      if (projectile != nullptr) {
+        CDamageInfo damage = projectile->GetCurrentDamageInfo();
+        damage.SetRadius(0.f);
+        mgr.ApplyDamage(projectile->GetUniqueId(), GetUniqueId(), projectile->GetUniqueId(),
+                        damage, SolidFilter(), CVector3f::Zero());
+        SetXDamaged(true);
+      }
+      // Freeze/slow update (0x8CD0-0x8D44) runs only with the shield down and not absorbing.
+      const float pct = HealthInfo()->GetHP() / HealthInfo()->GetInitialHP() * 100.f;
+      KnockBackController().EnableFreeze(pct <= 25.f);
+      KnockBackController().EnableSlow(pct <= 25.f);
     }
-    const float pct = HealthInfo()->GetHP() / HealthInfo()->GetInitialHP() * 100.f;
-    KnockBackController().EnableFreeze(pct <= 25.f);
-    KnockBackController().EnableSlow(pct <= 25.f);
     return;
   }
   default:
