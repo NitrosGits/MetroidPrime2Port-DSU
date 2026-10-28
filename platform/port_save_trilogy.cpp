@@ -71,11 +71,17 @@ bool Validate(const uint8_t* bin, size_t size, std::string& error) {
 }
 
 bool FileUsed(const uint8_t* bin, int file) {
+  if (file < 0 || file >= int(kFiles)) {
+    return false;
+  }
   const uint8_t* e = bin + kEntry + 7 * size_t(file);
   return e[0] != 0 && e[4] != 0;
 }
 
 bool FileOwned(const uint8_t* bin, int file) {
+  if (file < 0 || file >= int(kFiles)) {
+    return false;
+  }
   const uint8_t* id = bin + kSummary[file] + kOwner;
   return std::any_of(id, id + 8, [](uint8_t b) { return b != 0xFF; });
 }
@@ -94,6 +100,9 @@ int TargetFile(const uint8_t* bin) {
 }
 
 bool HasEchoes(const uint8_t* bin, int file) {
+  if (file < 0 || file >= int(kFiles)) {
+    return false;
+  }
   const uint8_t* m = bin + kSummary[file] + kSummaryEchoes;
   return Be32(m + 4) != 0xFFFFFFFFu && Be32(m + 24) == 3;
 }

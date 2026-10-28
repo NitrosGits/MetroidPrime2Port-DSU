@@ -505,7 +505,7 @@ void BuildSysBlock(const Model& m, uint8_t* sys) {
   WriteBits(w, m.sysBits);
   w.Put(Fourcc('S', 'Y', 'N', 'D'), 32);
   w.Align();
-  std::memcpy(sys, w.bytes.data(), w.bytes.size());
+  std::memcpy(sys, w.bytes.data(), std::min(w.bytes.size(), kSysBytes));
 }
 
 // A .gci: which release it is, and where its newest valid copy sits.

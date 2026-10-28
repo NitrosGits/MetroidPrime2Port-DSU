@@ -74,6 +74,7 @@ constexpr size_t kSlotStride = 0xa38;
 constexpr size_t kUserDataSize = 0x1ff8;
 
 std::string sUserDirectory;
+constexpr std::streamoff kMaxReadBytes = 16 * 1024 * 1024;
 
 uint32_t Be32(const uint8_t* p) {
   return (uint32_t(p[0]) << 24) | (uint32_t(p[1]) << 16) | (uint32_t(p[2]) << 8) | uint32_t(p[3]);
@@ -94,6 +95,11 @@ bool ReadAll(const std::string& path, std::vector<uint8_t>& out, std::string& er
   in.seekg(0, std::ios::beg);
   if (size < 0) {
     error = "cannot read " + path;
+    return false;
+  }
+  // The largest file read here is a trilogy save.bin (well under 1 MiB); a bigger one is not a save.
+  if (size > kMaxReadBytes) {
+    error = path + ": too large to be a save file";
     return false;
   }
   out.resize(size_t(size));
