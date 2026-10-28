@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Audit sweep 1: asset-name string literals vs the disc's CINF bones and ANCS/CHAR tables.
 
-usage: tools/audit/asset_names.py [--cache FILE] [--all]    (MP2_DISC points at the ISO)
+usage: tools/audit/asset_names.py [--cache FILE]            disc mode (MP2_DISC points at the ISO)
+       tools/audit/asset_names.py --rel [--all] [--retail DIR]  retail-string mode
 
 Read-only, over the user's own disc (tools/echoes_disc.py's readers). It collects every string
 literal passed to a locator/bone lookup (GetLocatorSegId, GetLocatorTransform, GetLctrTransform,
@@ -16,7 +17,12 @@ disc is a "disc-wide" miss (confirmed); the others are "suspected" (attribution 
 bytes in the placement properties, not by the character index). Names not built from a single
 literal, files outside modules.tsv and modules with no placement go to the unchecked list.
 Prints ledger rows `| A1-k | area | file:line | asset-name | severity | evidence | open |`.
---cache FILE keeps the (slow) placement scan between runs. --all also prints the checked hits.
+--cache FILE keeps the (slow) placement scan between runs.
+--rel: every string literal in the code the port compiles (src/, platform/, and the headers of the
+same stem) must appear NUL-terminated in the retail REL of its module (DIR/<M>/<M>.rel, default
+../wt-mp2-audit5b/build/G2ME01) or, for non-REL code, in orig/G2ME01/sys/main.dol. Misses are split
+into port-only (log/debug/console text) and findings, with the nearest retail string. --all also
+lists the literals found in retail.
 
 Layouts: CINF (CCharLayoutInfo), CHAR (CCECharacterInfo, CAnimCharacterSet), effect component
 (CEffectComponent: name, tag, u32 segment id, scale, parented mode, flags).
@@ -194,10 +200,169 @@ def modules():
     return mods
 
 
+def lev(a, b):
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+STRIP_RE = re.compile(r'//[^\n]*|/\*.*?\*/|"(?:[^"\\\n]|\\.)*"|\'(?:[^\'\\\n]|\\.)*\'', re.S)
+LIT_RE = re.compile(r'"((?:[^"\\\n]|\\.)*)"')
+LOGCTX = re.compile(r"(printf|snprintf|fprintf|puts|Report|LOG|Log|log|cout|cerr|abort|assert|ASSERT|PANIC|"
+                    r"Console|console|Debug|debug|DEBUG|PORT_|Warn|warn|Error|error|trace|TRACE|OS_?Panic)")
+ASSET_RE = re.compile(r"^[A-Za-z0-9_ .\-]{2,}$")
+KINDS = [("sound", re.compile(r"Sfx|Sound|Stream|Audio|Snd|Music")), ("particle", re.compile(r"Particle|Effect|Gen|Elsc|Swhc|Spsc")),
+         ("anim", re.compile(r"Anim|Seg|Locator|Lctr|Joint|Bone")), ("res", re.compile(r"Res|Asset|Factory|Path|Pak|File"))]
+
+
+PORT_FNS = {"asm", "mpReachStub", "TraceCall", "getenv", "strcmp", "strncmp", "strcat", "Equals", "DumpFsm2Nodes",
+            "__declspec", "MING_B", "MING_F", "string_l", "strstr", "strcpy", "sscanf", "fopen", "memcmp"}
+
+
+def strip_comments(t):
+    def f(m):
+        x = m.group(0)
+        return "".join("\n" if c == "\n" else " " for c in x) if x.startswith("/") else x
+    return STRIP_RE.sub(f, t)
+
+
+def retail_strings(blob):
+    return {m.group(0).decode() for m in re.finditer(rb"[\x20-\x7e]{3,}(?=\x00)", blob)}
+
+
+def rel_mode(args):
+    rd = args[args.index("--retail") + 1] if "--retail" in args else str(ROOT.parent / "wt-mp2-audit5b/build/G2ME01")
+    show_all = "--all" in args
+    dol = (ROOT / "orig/G2ME01/sys/main.dol").read_bytes()
+    mods = modules()
+    tri = [q for q in (ROOT / "orig/R3ME01/files/rs5mp2_p.dol", ROOT.parent / "MetroidPrime2Port/orig/R3ME01/files/rs5mp2_p.dol")
+           if q.exists()]
+    tri = tri[0].read_bytes() if tri else b""
+    src2mod, stem2mod = {}, {}
+    for m in mods:
+        for s_ in m["src"]:
+            src2mod[s_] = m
+            stem2mod[pathlib.Path(s_).stem] = m
+    blobs = {}
+
+    def blob(m):
+        if m["name"] not in blobs:
+            f = pathlib.Path(rd) / m["name"] / (m["name"] + ".rel")
+            blobs[m["name"]] = f.read_bytes() if f.exists() else None
+        return blobs[m["name"]]
+    allrel = None
+    cands = {}
+    miss, port_only, nlit, nret = [], [], 0, 0
+    nomod = {}
+    built = set(re.findall(r"^\s*((?:src|platform)/\S+\.cpp)", (ROOT / "files.cmake").read_text(), re.M))
+    files = sorted(f for f in list((ROOT / "src").rglob("*.cpp")) + list((ROOT / "platform").rglob("*.cpp"))
+                   if str(f.relative_to(ROOT)) in built)
+    for f in files:
+        rel = str(f.relative_to(ROOT))
+        stem = f.stem
+        mod = src2mod.get(rel) or stem2mod.get(re.sub(r"^Port|PortStub$", "", stem))
+        if mod is None and stem.startswith("Port") is False and stem.endswith("PortStub"):
+            mod = stem2mod.get(stem[:-8])
+        texts = [(rel, f.read_text(errors="replace"))]
+        if f.is_relative_to(ROOT / "src"):
+            hp = ROOT / "include" / f.relative_to(ROOT / "src").with_suffix(".hpp")
+            if hp.exists():
+                texts.append((str(hp.relative_to(ROOT)), hp.read_text(errors="replace")))
+        if mod is not None and blob(mod) is None:
+            nomod[mod["name"]] = nomod.get(mod["name"], 0) + 1
+            continue
+        for path, text in texts:
+            text = strip_comments(text)
+            for ln_no, ln in enumerate(text.split("\n"), 1):
+                if ln.lstrip().startswith("#include") or ln.lstrip().startswith("#error"):
+                    continue
+                for m in LIT_RE.finditer(ln):
+                    lit = m.group(1)
+                    if not lit or "\\" in lit and "\\n" in lit and not ASSET_RE.match(lit):
+                        pass
+                    if len(lit) < 2 or lit in ("C", "rb", "wb", "r", "w", "rt"):
+                        continue
+                    nlit += 1
+                    b = lit.encode("latin-1", "replace") + b"\0"
+                    wb = b"".join(b"\0" + bytes([c]) for c in b[:-1]) + b"\0\0"
+                    if mod is not None:
+                        where, data = mod["name"] + ".rel", blob(mod)
+                        hit = b in data or b in dol or wb in data or wb in dol
+                    else:
+                        where, data = "main.dol", dol
+                        if allrel is None:
+                            allrel = b"\0".join(x for x in (blob(mm) for mm in mods) if x)
+                        hit = b in dol or b in allrel or wb in dol
+                        if b in allrel and b not in dol:
+                            where = "any REL"
+                    if hit:
+                        nret += 1
+                        if show_all:
+                            print(f"| in-retail | {path}:{ln_no} | `{lit}` | {where} |")
+                        continue
+                    pre = ln[:m.start()]
+                    cm = re.findall(r"(\w+)\s*\(", pre)
+                    fn = cm[-1] if cm else ""
+                    po = None
+                    if lit.startswith(("_Z", ".")) or fn in PORT_FNS:
+                        po = "port token (%s)" % (fn or lit[:2])
+                    elif b in tri:
+                        po = "Trilogy-only string (found in rs5mp2_p.dol)"
+                    elif re.match(r"^[a-z][a-z0-9]*(?:[. ][a-z0-9]+)*$", lit) or re.match(r"^x[0-9a-f]{3}$", lit):
+                        po = "lowercase debug/dump token"
+                    elif len(lit) < 4 and not any(ch.isupper() for ch in lit):
+                        po = "short lowercase token"
+                    elif not ASSET_RE.match(lit):
+                        po = "non-identifier text (format/path/message)"
+                    elif path.startswith("platform/") or "Port" in pathlib.Path(path).name and False:
+                        po = "platform/ code"
+                    elif LOGCTX.search(fn) or LOGCTX.search(pre):
+                        po = "log/debug call"
+                    elif " " in lit and len(lit) > 24:
+                        po = "message text"
+                    key = (mod["name"] if mod else "DOL")
+                    if key not in cands:
+                        data = blob(mod) if mod else dol
+                        cands[key] = sorted(retail_strings(data))
+                    near = None
+                    if po is None:
+                        best = None
+                        for c in cands[key]:
+                            if len(c) < 4 or not re.match(r"^[A-Za-z][A-Za-z0-9_ .\-]*$", c):
+                                continue
+                            if abs(len(c) - len(lit)) > 4:
+                                continue
+                            d = lev(lit.lower(), c.lower())
+                            if best is None or d < best[0]:
+                                best = (d, c)
+                                if d <= 1:
+                                    break
+                        near = best
+                    kind = "other"
+                    for k, rx in KINDS:
+                        if rx.search(fn):
+                            kind = k
+                            break
+                    (port_only if po else miss).append((path, ln_no, lit, fn, kind, mod["name"] if mod else "(DOL/unmapped)", po, near))
+    print(f"# literals={nlit} in_retail={nret} port_only={len(port_only)} findings={len(miss)} "
+          f"skipped_modules_without_rel={nomod}")
+    for k, (path, ln, lit, fn, kind, mn, po, near) in enumerate(miss, 5):
+        nr = f"nearest retail `{near[1]}` (distance {near[0]})" if near else "no retail string within length +-4"
+        print(f"| A1-{k} | {fn or '-'}({kind}) | {path}:{ln} | `{lit}` | module {mn}: absent as NUL-terminated string; {nr} | open |")
+    print("# port-only (not in retail, classified by context):")
+    for path, ln, lit, fn, kind, mn, po, near in port_only:
+        print(f"#   {path}:{ln} {lit!r} [{po}]")
+
+
 def main():
     args = sys.argv[1:]
     cache = args[args.index("--cache") + 1] if "--cache" in args else None
-    show_all = "--all" in args
+    if "--rel" in args:
+        return rel_mode(args)
     iso, paks, ancs, cinfs = load_disc()
     print(f"# disc: {len(ancs)} ANCS, {len(cinfs)} CINF", file=sys.stderr)
     if cache and pathlib.Path(cache).exists():
