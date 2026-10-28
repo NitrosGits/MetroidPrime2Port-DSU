@@ -2109,7 +2109,6 @@ void CSwampBossStage2::Think(float dt, CStateManager& mgr) {
   for (int i = 0; i < mGrowthFlash.size(); ++i) {
     mGrowthFlash[i] = rstl::max_val(mGrowthFlash[i] - dt, 0.f);
   }
-  mFlashTime = rstl::max_val(mFlashTime - dt, 0.f);
   mInterceptTime = dt;
   if (!mBubbleGen.null()) {
     mBubbleGen->Update(dt);
