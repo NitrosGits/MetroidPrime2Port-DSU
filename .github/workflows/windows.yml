@@ -181,7 +181,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item build-win/metroid_prime2_port.exe dist/
-          Copy-Item textures dist/textures -Recurse
+          # The button-prompt textures are built into the executable (MP_EMBED_RESOURCES), so the
+          # zip carries no loose copies.
           Get-ChildItem build-win/*.dll | Copy-Item -Destination dist/
           if (Test-Path build-win/metroid_prime2_port.pdb) { Copy-Item build-win/metroid_prime2_port.pdb dist/ }
           # SDL3, zlib, libpng, nod and the runner's OpenSSL are linked into the

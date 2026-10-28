@@ -41,7 +41,16 @@ rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/bin"
 
 install -m755 "$BIN" "$APPDIR/usr/bin/metroid_prime2_port"
-cp -r "$ROOT/textures" "$APPDIR/usr/bin/textures"
+# A build with MP_EMBED_RESOURCES carries the textures inside the executable; otherwise the port
+# looks for them next to it. Tracked files only in a git checkout, so nothing dropped into textures/
+# locally (a dump, a pack made from game data) is handed out with the package.
+if ! grep -q '^MP_EMBED_RESOURCES:BOOL=ON' "$BUILD/CMakeCache.txt" 2>/dev/null; then
+    if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        (cd "$ROOT" && git ls-files -z textures | xargs -0 cp --parents -t "$APPDIR/usr/bin")
+    else
+        cp -r "$ROOT/textures" "$APPDIR/usr/bin/textures"
+    fi
+fi
 install -m644 "$ICON" "$APPDIR/$APP_ID.png"
 # File managers and AppImage launchers read the icon from here.
 ln -s "$APP_ID.png" "$APPDIR/.DirIcon"

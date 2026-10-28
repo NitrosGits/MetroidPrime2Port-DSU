@@ -82,6 +82,7 @@ extern void* gPortGameHeapHi;
 #include "port_build_info.h"
 #include "port_console.h"
 #include "port_debug.h"
+#include "port_embedded.h"
 #include "port_disc_verify.h"
 #include "port_entry.h"
 #ifdef MP_PORT_COVERAGE
@@ -1333,13 +1334,19 @@ int main(int argc, char** argv) {
 
   // Texture replacements (platform/port_textures.cpp) and the binding icons drawn over the game's
   // button prompts (platform/port_prompts.cpp), as in the Prime 1 port: the built-in set is
-  // MP2_TEXTURES, else a `textures` folder beside the executable (on Android, the app files
-  // directory), and the user's pack MP2_USER_TEXTURES, else <user>/user_textures. Both need
-  // Aurora's texture registry, so they start after aurora_initialize.
+  // MP2_TEXTURES, else the set built into the executable (MP_EMBED_RESOURCES), else a `textures`
+  // folder beside the executable (on Android, the app files directory), and the user's pack
+  // MP2_USER_TEXTURES, else <user>/user_textures. Both need Aurora's texture registry, so they
+  // start after aurora_initialize.
   {
     std::string textures;
     if (const char* env = port::EnvString("MP2_TEXTURES"); env != nullptr && env[0] != '\0') {
       textures = env;
+    } else if (!PortEmbedded::Under("textures/").empty()) {
+      // MP2_TEXTURES wins. Otherwise a build that carries the set (MP_EMBED_RESOURCES) passes no
+      // folder, so PortTextures/PortPrompts use the built-in copy and a stale `textures` folder left
+      // in an old install is ignored.
+      std::fprintf(stderr, "metroid_prime2_port: textures built into the executable\n");
     } else {
 #if defined(__ANDROID__)
       // Unpacked by the activity beside port_paths.txt, so a moved user folder does not hide it.
