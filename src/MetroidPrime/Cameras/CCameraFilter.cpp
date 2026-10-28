@@ -655,6 +655,12 @@ void CCameraBlurPass::Draw() const {
   }
   const int width = viewportWidth >> 1;
   const int height = viewportHeight >> 1;
+#ifdef TARGET_PC
+  // The persistent blur is drawn for many frames from one copy, so no other copy into the spare
+  // buffer (CFluidPlaneCPU, CInGameGuiManager) may replace it: GetFbCopy copies into this
+  // identity's own destination, and the same call here names the same one.
+  buffer = PortEfbCopy::Destination(buffer, width, height, 2);
+#endif
   CGraphics::LoadDolphinSpareTexture(width, height, GX_TF_RGB565, buffer,
                                      CGraphics::kSpareBufferTexMapID);
 
@@ -758,13 +764,21 @@ void CCameraBlurPass::GetFbCopy(GXTexFmt format) {
 #ifdef TARGET_PC
   // The blur samples the spare buffer as a texture; the console's copy also wrote the bytes there,
   // so ask for the CPU half as well (the same one-copy mechanism the scan visor uses).
+  // The blur keeps its own destination (see Draw), so other spare-buffer copies cannot replace it.
+  void* const dest = format == GX_TF_RGB565
+                         ? PortEfbCopy::Destination(CGraphics::GetDolphinSpareBuffer(), width / 2,
+                                                    height / 2, 2)
+                         : PortEfbCopy::Destination(CGraphics::GetDolphinSpareBuffer(), width,
+                                                    height, 1);
   if (format == GX_TF_RGB565) {
-    PortEfbCopy::Request(CGraphics::GetDolphinSpareBuffer(), width / 2, height / 2, 2);
+    PortEfbCopy::Request(dest, width / 2, height / 2, 2);
   } else {
-    PortEfbCopy::Request(CGraphics::GetDolphinSpareBuffer(), width, height, 1);
+    PortEfbCopy::Request(dest, width, height, 1);
   }
-#endif
+  GXCopyTex(dest, GX_FALSE);
+#else
   GXCopyTex(CGraphics::GetDolphinSpareBuffer(), GX_FALSE);
+#endif
   GXPixModeSync();
 }
 
