@@ -155,10 +155,10 @@ void CMediumIng::ScanProjectileThreats(CStateManager& mgr, float dt) {
     }
     const CWeaponMode& mode = proj->GetCurrentDamageInfo().GetWeaponMode();
     // A plain power-beam shot that would hurt the solid Ing and keeps it under the no-mist damage
-    // threshold is not a threat (`fcmpo; bge` on the threshold: NaN counts as under).
+    // threshold is not a threat (`fcmpo; blt` at 0x4870: NaN counts as a threat).
     if (GetDamageVulnerability()->WeaponHits(mode, 0) && mode.GetType() == 0 &&
         !mode.IsCharged() && !mode.IsComboed() &&
-        !(mDamageSinceMist >= mData.mNoMistDamageThreshold)) {
+        mDamageSinceMist < mData.mNoMistDamageThreshold) {
       continue;
     }
     const CVector3f projPos = proj->GetTranslation();
