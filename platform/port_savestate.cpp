@@ -1128,6 +1128,29 @@ bool ResumeOffer(ResumeInfo& out) {
   return true;
 }
 
+bool ResumeBootArea(uint32_t& world, uint32_t& area) {
+  // The same two entries as ResumeCheck: the prompt's Yes, or an MP2_SKIP_FRONTEND launch that no
+  // boot warp overrides.
+  if (!sResumeAccepted.load()) {
+    if (!ResumeActive() || std::getenv("MP2_WORLD") != nullptr || std::getenv("MP2_TELEPORT") != nullptr) {
+      return false;
+    }
+  }
+  EnsureInit();
+  State s;
+  std::string error;
+  if (!ReadSlot(kResumeSlot, s, error) || s.worldId == kInvalidAssetId ||
+      s.areaAssetId == kInvalidAssetId || gpGameState == nullptr ||
+      s.resumeHeader.fileIdx != gpGameState->SystemOptions().GetSaveIdx() ||
+      !PortResume::Matches(s.resumeHeader, gpGameState->GetCardSerial()) ||
+      gpMain == nullptr || PortWarp::Pending()) {
+    return false;
+  }
+  world = static_cast< uint32_t >(s.worldId);
+  area = static_cast< uint32_t >(s.areaAssetId);
+  return true;
+}
+
 int ResumeAccept(const ResumeInfo& info) {
   sResumeAccepted.store(true);
   SetMessage("resume: accepted (" + info.room + ", file " + std::to_string(info.fileIdx) + ")");
