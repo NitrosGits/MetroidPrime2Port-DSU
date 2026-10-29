@@ -70,6 +70,7 @@
 #include <math.h>
 #ifdef TARGET_PC
 #include "MetroidPrime/PortEfbCopy.hpp"
+#include "port_mouse.h"
 #include "port_overlay.h"
 #include "port_power_charge_release.h"
 #include "port_presentation_rules.h"
@@ -2837,7 +2838,14 @@ void CPlayerGun::HandleBeamChange(const CFinalInput& input, CStateManager& mgr) 
   CPlayerState* state = player->GetPlayerState();
   float maxInput = 0.f;
   int beam = -1;
+#ifdef TARGET_PC
+  // The disc picks beams with the C-stick, which twin stick aims with (issue #15); beams then
+  // come from the port's direct picks (LB + D-pad, the radial, keys), through PortTouch.
+  const bool stickPicks = !PortMouse::StickOwnsCStick();
+  for (int i = 0; stickPicks && i < 4; ++i) {
+#else
   for (int i = 0; i < 4; ++i) {
+#endif
     if (state->HasPowerUp(beamItems[i])) {
       const float value = player->GetControlMapper().GetAnalogInput(beamCommands[i], input);
       if (value > 0.65f && value > maxInput) {

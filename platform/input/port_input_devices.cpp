@@ -328,14 +328,14 @@ bool PadButtonBoundBesidesL(s32 native) {
 
 // MP1's BindBeamChords: a shift plus a D-pad direction picks a beam, the direction the retail
 // C-stick picks them with (Power up, Dark left, Light right, Annihilator down), for the layouts
-// that take the C-stick away (the touch overlay's twin stick). A shift pairs with the D-pad inputs
+// that take the C-stick away (twin stick, the pad's or the touch overlay's). A shift pairs with the D-pad inputs
 // of its own family: the keyboard's shift with the keyboard's D-pad keys, the pad's shift with the
 // pad's D-pad. MP1's shifts come from settings (key slots, mouse shift action, pad shift) that MP2
 // does not have, so only its twin-stick shifts exist: Left Shift unless a key takes it, and LB.
 // The overlay's own Beam button works inside PortTouch. As in MP1 the shifts also spring the ball
 // in morph ball (the Spring Ball action, RouteDirectActions -> PortTouch::RequestSpringBall).
 void BindBeamChords(Profile& p) {
-  if (!PortTouch::TwinStick()) return;
+  if (!PortTouch::TwinStick() && !PortMouse::StickEnabled()) return;
   std::vector<Input> keyShifts;
   std::vector<Input> padShifts;
   bool lshiftTaken = false;
@@ -1275,6 +1275,23 @@ static void ApplyTwinStickFreeAim(Profile& p, uint16_t contexts) {
   }
 }
 
+// A keyboard-family binding on a C-stick direction is held (MP1's KeyboardPadHeld().cStick), for
+// PortMouse::StickOwnsCStick.
+static bool KeyboardCStickHeld(const Profile& p, const PortInput::RawState& raw, uint16_t contexts) {
+  for (const Binding& b : p.bindings) {
+    if (b.action != Action::CUp && b.action != Action::CDown && b.action != Action::CLeft &&
+        b.action != Action::CRight) {
+      continue;
+    }
+    if (b.count == 0 || (b.contexts & contexts) == 0 || (b.blocked & contexts) != 0) continue;
+    if (std::all_of(b.inputs.begin(), b.inputs.begin() + b.count,
+                    [&](const Input& in) { return IsKeyboardFamily(in) && raw.Value(in) > 0.f; })) {
+      return true;
+    }
+  }
+  return false;
+}
+
 SPoll Poll(unsigned mouseHeld, bool focused) {
   static Profile sProfile;
   static PortInput::Runtime sRuntime;
@@ -1300,6 +1317,7 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
       std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
   const PortInput::Output& out =
       sRuntime.Poll(raw, contexts, nowMs, 0);
+  PortMouse::SetKeyboardCStickHeld(KeyboardCStickHeld(sProfile, raw, contexts));
   SPoll r;
   sConsumeRadialPoll = false;
   if (PortInputRemap::Capturing()) {

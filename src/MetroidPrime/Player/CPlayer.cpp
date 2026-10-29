@@ -2547,9 +2547,11 @@ void CPlayer::UpdateFrozenState(const CFinalInput& input, CStateManager& mgr) {
 
 void CPlayer::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
 #ifdef TARGET_PC
-  // Twin-stick aim reads the C-stick here and applies it in Think (see UpdateMouseAim).
-  mPortLookX = input.GetAnalogRightX();
-  mPortLookY = input.GetAnalogRightY();
+  // Twin-stick aim reads the C-stick here and applies it in Think (see UpdateMouseAim), unless a
+  // key on it is picking a beam (PortMouse::StickOwnsCStick).
+  const bool stickAims = PortMouse::StickOwnsCStick();
+  mPortLookX = stickAims ? input.GetAnalogRightX() : 0.f;
+  mPortLookY = stickAims ? input.GetAnalogRightY() : 0.f;
 #endif
   static_cast< CControlHintManager* >(mControlHintManager.get())
       ->ProcessInput(input, mControlMapper, mgr);
