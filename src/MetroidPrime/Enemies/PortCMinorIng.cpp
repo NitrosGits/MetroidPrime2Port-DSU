@@ -2431,7 +2431,7 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
                                   static_cast< ushort >(sldrThis.ingSpot.sound_Death));
 
   // The retail's loader (fn_44_110) reads seven bool properties and fn_44_9B4 packs them into
-  // three bytes of the data (asm 0xA5AC-0xA5C4): the byte at 0x154's bit 7 is the inglet block's
+  // three bytes of the data (fn_44_9B4, asm 0x9B4-0xC44): the byte at 0x154's bit 7 is the inglet block's
   // allow-lock-on, the byte at 0x155 is the property 0x9207f51 on its own and the byte at 0x156
   // holds the other six, most significant bit first. The property ids are the ones the generated
   // SLdrMinorIng reader uses, so each bool lands in the bit fn_44_9B4 gives it.
@@ -2441,7 +2441,7 @@ static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntit
     flags156 |= 0x80; // 0x399d1eaa
   }
   if (sldrThis.unknown_0xbce16644) {
-    flags156 |= 0x40; // 0xbfd0e644
+    flags156 |= 0x40; // 0xbce16644
   }
   if (sldrThis.unknown_0x142433d3) {
     flags156 |= 0x20; // 0x142433d3
