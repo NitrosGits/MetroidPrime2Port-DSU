@@ -6,6 +6,7 @@
 #include "../input/port_input_devices.h"
 #include "port_controls.h"
 #include "port_gyro_motion.h"
+#include "port_input_remap_ui.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
 #include "port_touch.h"
@@ -26,6 +27,17 @@
 namespace PortDebug {
 
 void DrawControlsOptions() {
+  // Issue #5: the one-click way to play with mouse and keyboard, first on the page.
+  ImGui::SeparatorText("Quick setup");
+  if (ImGui::Button("Use mouse & keyboard")) {
+    PortInputRemap::ApplyPreset(PortInput::Family::Keyboard, "mouse");
+  }
+  ItemHelp("Turns on mouse aim and the Mouse & keyboard layout: WASD to move, mouse to aim, left "
+           "click to fire, Space to jump, Q to lock on. Replaces your own keyboard bindings; "
+           "Controls > Remap > Presets... has the others.");
+  ImGui::SameLine();
+  ImGui::TextDisabled(PortMouse::Enabled() ? "Mouse aim is on." : "Mouse aim is off.");
+
   ImGui::SeparatorText("On-screen prompts");
   int glyphs = sPromptGlyphs;
   if (ImGui::Combo("Button glyphs", &glyphs,

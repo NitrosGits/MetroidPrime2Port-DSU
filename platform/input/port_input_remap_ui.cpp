@@ -1700,6 +1700,14 @@ void ApplyBallPreset(PortInput::Family family, std::string_view id) {
   Commit();
 }
 
+// Takes the saved bindings as the page's copy: a PortControls preset writes them
+// itself, and the next Commit would otherwise put the page's older copy back.
+void Reload() {
+  sWork = *PortInputDevices::UserBindings();
+  sSeenVersion = PortInputDevices::UserBindingsVersion();
+  sLoaded = true;
+}
+
 // One row of preset buttons. A click replaces the family's own Default-profile
 // bindings with the preset; a kind or model's own bindings stay on top.
 void PresetRow(const SView& v, const SPreset* presets, int count) {
@@ -1714,17 +1722,7 @@ void PresetRow(const SView& v, const SPreset* presets, int count) {
     if (i != 0) ImGui::SameLine();
     ImGui::BeginDisabled(gcAdapter && (id == "remastered" || id == "modern"));
     if (ImGui::Button(presets[i].name)) {
-      // The presets set the all-controllers layer, so clear that one even
-      // while a kind or model is selected.
-      SView base = v;
-      base.match.clear();
-      ClearOwn(base);
-      if (pads) {
-        PortControls::ApplyPadPresetNamed(id);
-      } else {
-        PortControls::ApplyKeyPresetNamed(id);
-      }
-      ApplyBallPreset(v.family, id);
+      ApplyPreset(v.family, id);
       ImGui::CloseCurrentPopup();
     }
     ImGui::EndDisabled();
@@ -1828,6 +1826,23 @@ void DrawActiveController() {
 }
 
 } // namespace
+
+void ApplyPreset(PortInput::Family family, std::string_view id) {
+  // The page may never have been drawn; start from the saved bindings.
+  if (sEditing == kEditNone && !sCapture.active) Reload();
+  // The presets set the all-controllers layer, so clear that one even
+  // while a kind or model is selected.
+  SView base;
+  base.family = family;
+  ClearOwn(base);
+  if (family == PortInput::Family::Pad) {
+    PortControls::ApplyPadPresetNamed(id);
+  } else {
+    PortControls::ApplyKeyPresetNamed(id);
+  }
+  Reload();
+  ApplyBallPreset(family, id);
+}
 
 std::string BindingsText(PortInput::Action action, const char* separator) {
   // Hints ask every frame; the profile is rebuilt at most twice a second.
