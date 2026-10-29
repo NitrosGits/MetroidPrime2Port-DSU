@@ -745,11 +745,11 @@ void CMediumIngTentacle::Retract(CStateManager& mgr) {
 // @ fn_41_94C8
 void CMediumIngTentacle::PreRender(CStateManager& mgr) {
   CActor::PreRender(mgr);
-  // White while extending, else black; alpha 255 * max(lengthScale, 0) (`bge`: NaN stays NaN,
-  // which the host clamps like psq_st's u8 saturation).
+  // White while extending, else black; alpha 255 * max(lengthScale, 0) (`fcmpo; bge`: NaN
+  // clamps to 0).
   CColor color = mExtending ? CColor::White() : CColor::Black();
   float alpha = mLengthScale;
-  if (0.f >= alpha) {
+  if (!(0.f < alpha)) {
     alpha = 0.f;
   }
   alpha *= 255.f;
@@ -769,7 +769,7 @@ void CMediumIngTentacle::PreRender(CStateManager& mgr) {
   mSplinePoints.reserve(n + 1);
   const float step = mAttackMotion.EvaluateAt(GetProgress()) / static_cast< float >(n);
   float retract = mRetractTime;
-  if (0.f >= retract) {
+  if (!(0.f < retract)) { // `fcmpo; bge` at 0x9608: NaN clamps to 0
     retract = 0.f;
   }
   const float swell = 5.f * (retract / 0.5f); // rodata_30, rodata_38
