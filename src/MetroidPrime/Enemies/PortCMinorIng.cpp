@@ -765,8 +765,12 @@ bool CMinorIng::UpdateTargetPos(CStateManager& mgr) {
 void CMinorIng::UpdateBallPursuit(CStateManager& mgr) {
   CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId));
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetId));
-  // [?] retail reads the morph state at player+0x38c only when the word at +0x390 is 0.
-  if (player != nullptr && player->GetMorphballTransitionState() == CPlayer::kMS_Morphed &&
+  // The morph state at player+0x38c counts only when the word at +0x390 is 0 (asm 0x5BF4-0x5C0C).
+  const CPlayer::EPlayerMorphBallState morphState =
+      player != nullptr && player->GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed
+          ? player->GetMorphballTransitionState()
+          : CPlayer::kMS_Unmorphed;
+  if (player != nullptr && morphState == CPlayer::kMS_Morphed &&
       (player->GetTranslation() - GetTranslation()).MagSquared() <
           mData.mMorphballPursuitDistance * mData.mMorphballPursuitDistance) {
     const CTeamAiRole* role = CScriptTeamAiMgr::GetTeamAiRole(mgr, mTeamId, GetUniqueId());
@@ -1293,11 +1297,10 @@ void CMinorIng::SetWallPointCoverDest(CStateManager& mgr, EStateMsg msg, float) 
   if (from == -1) {
     return;
   }
-  // [?] the second filter's third argument is not visible in the pseudocode; the register still
-  // holds the -1 of the first.
+  // The second filter is connected to the first point (asm 0x53B8-0x53D8: r5 = from).
   int to = -1;
   mPointPathFindSearch.FindClosestPhysicalPoint(hint->GetTranslation(), to,
-                                                CPathFindPointSearchFilter(20.f, 0, -1));
+                                                CPathFindPointSearchFilter(20.f, 0, from));
   if (to != -1 && PortIngPointSearch(mPointPathFindSearch, *mPathArea, from, to)) {
     mFoundMovementPos = true;
   }
@@ -2227,6 +2230,8 @@ void CMinorIng::MassiveDeath(CStateManager& mgr) {
           xf.RotateLocalX(CRelAngle::FromRadians(pitch));
           const float yaw = (skIngletAngles[(base + i) % 10] * 10.f - 50.f) * 0.017453292f;
           xf.RotateLocalZ(CRelAngle::FromRadians(yaw));
+          // Two units along the forward column (asm 0x7550-0x757C, f28 = rodata 0x3C = 2.0).
+          xf.SetTranslation(xf.GetTranslation() + xf.GetForward() * 2.f);
           // The inglet (asm 0x74A8-0x75CC): the launch speed is random out of the data's range,
           // the model data and the actor parameters are the empty ones and the bounds are the
           // inverted box.
