@@ -141,13 +141,13 @@ enum class ActionKind : uint8_t {
   X(LookX, Delta, "look_x", "Mouse look X")                                                        \
   X(LookY, Delta, "look_y", "Mouse look Y")                                                        \
   X(BeamPower, Digital, "beam_power", "Power Beam")                                                \
-  X(BeamWave, Digital, "beam_wave", "Wave Beam")                                                   \
-  X(BeamIce, Digital, "beam_ice", "Ice Beam")                                                      \
-  X(BeamPlasma, Digital, "beam_plasma", "Plasma Beam")                                             \
+  X(BeamWave, Digital, "beam_wave", "Light Beam")                                                  \
+  X(BeamIce, Digital, "beam_ice", "Dark Beam")                                                     \
+  X(BeamPlasma, Digital, "beam_plasma", "Annihilator Beam")                                        \
   X(VisorCombat, Digital, "visor_combat", "Combat Visor")                                          \
   X(VisorScan, Digital, "visor_scan", "Scan Visor")                                                \
-  X(VisorThermal, Digital, "visor_thermal", "Thermal Visor")                                       \
-  X(VisorXray, Digital, "visor_xray", "X-Ray Visor")                                               \
+  X(VisorThermal, Digital, "visor_thermal", "Dark Visor")                                          \
+  X(VisorXray, Digital, "visor_xray", "Echo Visor")                                                \
   X(BeamNext, Digital, "beam_next", "Next beam")                                                   \
   X(BeamPrev, Digital, "beam_prev", "Previous beam")                                               \
   X(VisorNext, Digital, "visor_next", "Next visor")                                                \
