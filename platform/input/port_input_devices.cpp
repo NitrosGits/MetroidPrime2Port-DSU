@@ -345,7 +345,8 @@ void BindBeamChords(Profile& p) {
     }
   }
   if (!lshiftTaken) keyShifts.push_back(Make(Device::Key, SDL_SCANCODE_LSHIFT));
-  if (!PortTouch::ControlsEnabled() && !PadButtonBoundBesidesL(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER)) {
+  // Also with the touch overlay on: its buttons are touch inputs, so a pad played beside it keeps LB.
+  if (!PadButtonBoundBesidesL(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER)) {
     padShifts.push_back(NativeInput(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER));
   }
 
