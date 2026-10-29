@@ -82,7 +82,8 @@ constexpr PromptAsset kAssets[] = {
     {0x10799395, PAD_TRIGGER_Z}, {0x13AD51E9, PAD_BUTTON_DOWN},
     {0x17EB2A51, PROMPT_CSTICK_RIGHT}, {0x1B525041, PROMPT_CSTICK}, {0x2187B2A1, PROMPT_STICK_UP},
     {0x2CB3B7D2, PROMPT_CSTICK}, {0x2DBD0327, PROMPT_CSTICK}, {0x304DEF5A, PAD_TRIGGER_L},
-    {0x3AA65ECD, PAD_BUTTON_Y}, {0x3F609B4A, PROMPT_STICK_LEFT}, {0x4475EAD6, PAD_BUTTON_Y},
+    {0x3AA65ECD, PAD_BUTTON_Y}, {0x3F609B4A, PROMPT_STICK_LEFT},
+    {0x4475EAD6, PAD_BUTTON_X}, // Trilogy only: the Nunchuk C, "Press C to turn into the Morph Ball"
     {0x45990439, PROMPT_CSTICK_DOWN}, {0x47F931C8, PROMPT_STICK}, {0x4EFFA9AA, PROMPT_STICK_DOWN},
     {0x53B7AC95, PAD_BUTTON_B}, {0x59500D0C, PAD_BUTTON_B}, {0x5EA16CAD, PAD_TRIGGER_R},
     {0x61E49F68, PROMPT_STICK}, {0x6D482337, PAD_BUTTON_A}, {0x72A83A41, PROMPT_STICK},
@@ -274,11 +275,25 @@ u32 PadNativeForButton(PADButton button) {
   return PortInputDevices::PromptNativeButton(in);
 }
 
+// The GameCube icon for an action's own button.
+std::string GameCubeStemForAction(PADButton button) {
+  for (const GameCubeButton& entry : kGameCubeButtons) {
+    if (entry.action == button) {
+      return entry.stem;
+    }
+  }
+  return {};
+}
+
 // The icon for `button` on a GameCube pad, or empty to leave the game's own art,
 // which is already right for a GC pad on its default mapping. So only an action
 // moved to another button gets an icon. The GameCube touch layout also resolves
-// to "gamecube", hence the check that a GC pad really is in port 0.
+// to "gamecube", hence the check that a GC pad really is in port 0. The Trilogy
+// disc's art is the Wii's, so there every action gets its GameCube icon.
 std::string GameCubeStemForButton(PADButton button) {
+  const std::string fallback = port::entry::IsTrilogy(port::entry::CurrentDiscVersion())
+                                   ? GameCubeStemForAction(button)
+                                   : std::string();
   const PADControllerType type = PADGetControllerType(PAD_CHAN0);
   const GameCubeButton* table = nullptr;
   size_t tableSize = 0;
@@ -289,15 +304,15 @@ std::string GameCubeStemForButton(PADButton button) {
     table = kNsoGameCubeButtons;
     tableSize = sizeof(kNsoGameCubeButtons) / sizeof(kNsoGameCubeButtons[0]);
   } else {
-    return {};
+    return fallback;
   }
   const int native = static_cast<int>(PadNativeForButton(button));
   for (size_t j = 0; j < tableSize; ++j) {
     if (table[j].sdlButton == native) {
-      return table[j].action == button ? std::string() : std::string(table[j].stem);
+      return table[j].action == button ? fallback : std::string(table[j].stem);
     }
   }
-  return {};
+  return fallback;
 }
 
 // The SDL button a mapping points at, named the way the generated pad icons
