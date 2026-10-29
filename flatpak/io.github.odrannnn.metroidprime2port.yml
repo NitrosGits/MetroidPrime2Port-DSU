@@ -52,6 +52,9 @@ modules:
       # means Aurora vendors it through FetchContent, which is still a download;
       # the tree has no SDL3 in it. The Android OpenSSL source is the one that
       # does not apply here, because that file is inside if(ANDROID).
+      # The 25.08 SDK ships SDL3 3.2, which Aurora's auto provider would pick; the
+      # port needs 3.4 (SDL_SavePNG), so take the pinned source below instead.
+      - -DAURORA_SDL3_PROVIDER=vendor
       - -DFETCHCONTENT_SOURCE_DIR_DAWN_PREBUILT=/run/build/metroid-prime2-port/dawn_prebuilt
       - -DFETCHCONTENT_SOURCE_DIR_NOD_PREBUILT=/run/build/metroid-prime2-port/nod_prebuilt
       - -DFETCHCONTENT_SOURCE_DIR_SDL=/run/build/metroid-prime2-port/sdl-src
