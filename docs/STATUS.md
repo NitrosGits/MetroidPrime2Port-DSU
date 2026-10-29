@@ -3,6 +3,19 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-29: 0.6.1 release candidate
+
+- Bumped `versionCode` 7 / `versionName` "0.6.1" and added the 0.6.1 metainfo release entry;
+  artefacts are built from this commit by the release workflows.
+- Release APK built locally with the project key (signer SHA-256 still
+  `5c380a13...8bd20`, so it updates over 0.6.0 without uninstalling) and installed on the
+  test phone (`25102PCBEG`, Android 16) as an in-place update: versionName 0.6.1 confirmed,
+  save and settings kept.
+- On-device check of issue #4: the game resumed in the scan visor with `msaa=4`, read-back
+  logs showed six distinct EFB scan ids (28811/59536 non-zero pixels), and a logbook scan
+  completed. Screenshots `/tmp/opencode/phone-0.6.1-launch.png` (mid-scan) and
+  `phone-0.6.1-scan2.png` (after).
+
 ## 2026-10-29: issue #3 emulator save framing
 
 ### Trilogy mirror integration test
