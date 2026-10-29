@@ -229,19 +229,22 @@ void DrawCutscenesSection() {
   DrawUnlocksSection();
 }
 
-// The game's own volumes, the same as the pause menu's two sliders.
+// The game's own volumes, the same as the pause menu's two sliders. Echoes clamps both to 0x69
+// (`CGameOptions::SetSfxVolume`/`SetMusicVolume`), not Prime 1's 0x7F, and 0x69 is also the
+// default, so 100% here is the retail maximum. Scaling by 127 capped the slider at 83% (#14).
+constexpr int kGameVolumeMax = 0x69;
 void DrawGameAudio() {
   ImGui::SeparatorText("Audio");
   ImGui::BeginDisabled(gpGameState == nullptr);
   int music = gpGameState != nullptr ? static_cast< int >(gpGameState->GameOptions().GetMusicVolume()) : 0;
-  int musicPct = (music * 100 + 63) / 127;
+  int musicPct = (music * 100 + kGameVolumeMax / 2) / kGameVolumeMax;
   if (ImGui::SliderInt("Music volume", &musicPct, 0, 100, "%d%%") && gpGameState != nullptr) {
-    gpGameState->GameOptions().SetMusicVolume((musicPct * 127 + 50) / 100, true);
+    gpGameState->GameOptions().SetMusicVolume((musicPct * kGameVolumeMax + 50) / 100, true);
   }
   int sfx = gpGameState != nullptr ? static_cast< int >(gpGameState->GameOptions().GetSfxVolume()) : 0;
-  int sfxPct = (sfx * 100 + 63) / 127;
+  int sfxPct = (sfx * 100 + kGameVolumeMax / 2) / kGameVolumeMax;
   if (ImGui::SliderInt("Sound effects volume", &sfxPct, 0, 100, "%d%%") && gpGameState != nullptr) {
-    gpGameState->GameOptions().SetSfxVolume((sfxPct * 127 + 50) / 100, true);
+    gpGameState->GameOptions().SetSfxVolume((sfxPct * kGameVolumeMax + 50) / 100, true);
   }
   // Sound mode: Mono / Stereo / Dolby Surround
   int soundMode = gpGameState != nullptr ? static_cast< int >(gpGameState->GameOptions().GetSurroundMode())
