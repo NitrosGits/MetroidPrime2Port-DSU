@@ -1,6 +1,6 @@
 # Echoes Unbound - Metroid Prime 2 native port
 
-**[FIRST ALPHA RELEASE IS OUT NOW!!!](https://github.com/Odrannnn/MetroidPrime2Port/releases)**
+**[Latest release: 0.6.2](https://github.com/Odrannnn/MetroidPrime2Port/releases)**
 
 **Looking for the first game? See the [Metroid Prime Unbound](https://github.com/Odrannnn/MetroidPrimePort).**
 
@@ -40,7 +40,7 @@ ships no disc image, and neither does any package or release built from it.
 - **Mods:** drop-in mod folders that replace disc data or single resources, and
   an HD texture pack ([docs/MODS.md](docs/MODS.md))
 - **Photo mode** with a free camera and high-resolution capture
-- **In-game time display*
+- **In-game time display**
 - **Discord Rich Presence**
 - **Mobile touch overlay**
 - **F1 overlay** (Or Start + Back combo) This is the menu housing every setting!
@@ -141,7 +141,9 @@ with Nintendo and Retro Studios, and ships no game data.
 | `docs/TRILOGY.md` | Metroid Prime Trilogy: mount, HUD, radial menus |
 | `docs/MODS.md` | The mods folder, suit colours, texture pack |
 | `docs/CONSOLE.md` | The debug console (`MP2_CONSOLE`) |
-| `docs/ANDROID.md` | The Android port's status and build |
+| `docs/ANDROID.md` | The Android build, signing, install and crash reading |
+| `docs/IOS.md` | iPhone and iPad (experimental): sideloading, build |
+| `docs/RANDOMIZER.md` | The item randomizer |
 | `docs/RELEASING.md` | What a release contains and must carry |
 | `docs/DECOMP_README.md` | PrimeDecomp/echoes README (decomp build) |
 | `PORT_NOTES.md` | How the port works and non-obvious facts |
