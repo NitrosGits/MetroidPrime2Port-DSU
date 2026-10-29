@@ -3,34 +3,20 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
-## 2026-10-29: 0.6.2 released
+## 2026-10-29: 0.6.3 released
 
-- Bumped `versionCode` 8 / `versionName` "0.6.2" and added the 0.6.2 metainfo release entry
-  (`cb344643e`); release commit `37a61d2c2` (code-identical; only the Flatpak manifest differs).
-- Flatpak moved to runtime `org.freedesktop.Platform` 25.08, which closes the 0.6.1 end-of-life gap. The 25.08 SDK
-  ships SDL3 3.2.30, which Aurora's auto provider picked and which lacks `SDL_SavePNG`, so the
-  manifest now forces `-DAURORA_SDL3_PROVIDER=vendor` (`37a61d2c2`). The local build
-  (12,246,864 B) installed once: `flatpak info` reports `Version: 0.6.2`, runtime 25.08,
-  `files/` holds only the binary, metainfo, desktop file, icons and licences, and it reaches the
-  disc prompt (run with this shell's `XAUTHORITY` set; without it, "x11 not available").
-  Test install removed.
-- CI on `37a61d2c2`, all `success`: linux-release 40852272521, windows 40852276725, macos
-  40852280313, ios 40852284307, android 40852288057.
-- Crash soak (binary-identical to `37a61d2c2`): `build/s-release-2026-10-29b/soak/summary.tsv`,
-  **96/96 rows `ok`**, exit 0. Log `/tmp/opencode/soak-062.log`.
-- Artefact checks from `build/release-assets-0.6.2/out` (12 assets): APK `versionCode='8'
-  versionName='0.6.2'` signed by `5c380a13…8bd20`; IPA and macOS `Info.plist` 0.6.2; macOS
-  executable `-rwxr-xr-x` in the zip; x86_64 binary needs at most `GLIBC_2.34` and its Build ID
-  matches the `.debug`; no game data in any zip, APK, IPA, tarball or the x86_64 AppImage; no
-  `user/` folder in the Windows zips; the new "Use twin-stick controller" string is in the
-  Linux, AppImage and Windows binaries.
-- APK installed on the test phone (`25102PCBEG`) as an in-place update: versionName 0.6.2 /
-  versionCode 8.
-- Tag `v0.6.2` = `37a61d2c2`; GitHub release
-  https://github.com/Odrannnn/MetroidPrime2Port/releases/tag/v0.6.2, published as a **normal
-  (latest) release**, not a pre-release, so the update check's `/releases/latest` finds it (it was
-  a 404 with only pre-releases; now answers `v0.6.2`). 12 assets, all `uploaded`. Notes from
-  `build/release-notes-0.6.2.md`, with no link to the deleted PrimeDecomp/echoes repo.
+- Bumped `versionCode` 9 / `versionName` "0.6.3", metainfo 0.6.3 entry, notes
+  `docs/release-notes/0.6.3.md`; release commit `a158c2851` (fixes #10-#15 and a save-state layer fix since 0.6.2).
+- CI on `a158c2851`, all `success`: linux-release 40930262879, windows 40930267321, macos
+  40930272480, android 40930276804, ios 40930281275. Flatpak built locally from `a158c2851` (12,250,288 B).
+- Crash soak (`build-port-link` at `a158c2851`): `build/s-release-2026-10-29c/soak/summary.tsv`,
+  **96/96 rows `ok`**, exit 0. Log `/tmp/opencode/soak-063.log`.
+- Artefact checks from `build/release-0.6.3/out` (12 assets): the version string 0.6.3 is in
+  the Windows, macOS, Linux (tarballs and both AppImages) and APK binaries; IPA `Info.plist` 0.6.3; no game data in any zip, APK, IPA,
+  tarball or AppImage; no `user/` folder in the Windows zips; macOS executable chmod +x before zipping.
+- Tag `v0.6.3` = `a158c2851`; GitHub release
+  https://github.com/Odrannnn/MetroidPrime2Port/releases/tag/v0.6.3, normal release
+  (`isPrerelease` false, 12 assets); `releases/latest` answers `v0.6.3`. Not installed on a device.
 
 ## Open items carried from older sessions
 
