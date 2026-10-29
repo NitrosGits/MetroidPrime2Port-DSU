@@ -138,8 +138,8 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 ## Status
 
 All packages above (1-26) are merged; the dated per-merge log moved verbatim to
-`docs/history/MP1_SYNC-to-2026-10-29.md`. MP1 was last reviewed through `1daed170b`
-(2026-10-29); take later MP1 commits by `git -C ../MetroidPrimePort log --no-merges 1daed170b..HEAD`.
+`docs/history/MP1_SYNC-to-2026-10-29.md`. MP1 was last reviewed through `e3d8c8940`
+(2026-10-29); take later MP1 commits by `git -C ../MetroidPrimePort log --no-merges e3d8c8940..HEAD`.
 
 Still unrun/unverified per that log (no device or hardware available then):
 
