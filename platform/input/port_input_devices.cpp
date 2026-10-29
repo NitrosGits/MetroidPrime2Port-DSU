@@ -327,7 +327,7 @@ bool PadButtonBoundBesidesL(s32 native) {
 }
 
 // MP1's BindBeamChords: a shift plus a D-pad direction picks a beam, the direction the retail
-// C-stick picks them with (Power up, Dark left, Light right, Annihilator down), for the layouts
+// C-stick picks them with (Power up, Light left, Dark right, Annihilator down), for the layouts
 // that take the C-stick away (twin stick, the pad's or the touch overlay's). A shift pairs with the D-pad inputs
 // of its own family: the keyboard's shift with the keyboard's D-pad keys, the pad's shift with the
 // pad's D-pad. MP1's shifts come from settings (key slots, mouse shift action, pad shift) that MP2
@@ -352,7 +352,7 @@ void BindBeamChords(Profile& p) {
   // The engine's beam actions are MP1's names for MP2's slots, in the order RouteDirectActions
   // requests them: Power, Ice (Dark), Wave (Light), Plasma (Annihilator).
   static constexpr Action kDirs[4] = {Action::PadUp, Action::PadDown, Action::PadLeft, Action::PadRight};
-  static constexpr Action kBeams[4] = {Action::BeamPower, Action::BeamPlasma, Action::BeamIce, Action::BeamWave};
+  static constexpr Action kBeams[4] = {Action::BeamPower, Action::BeamPlasma, Action::BeamWave, Action::BeamIce};
   const std::vector<Binding> base = p.bindings;
   const uint16_t noBall = static_cast<uint16_t>(PortInput::kCtxAll & ~PortInput::kCtxMorphBall);
   for (int d = 0; d < 4; ++d) {
