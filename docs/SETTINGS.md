@@ -154,8 +154,6 @@ Controls > Options:
 - `prompt_glyphs`: Options > On-screen prompts > Button glyphs (Auto follows the last-used device;
   Xbox, PlayStation, Switch, GameCube or Keyboard forces the set in the F1 UI and the game's
   prompts; env `MP2_PROMPT_GLYPHS` 0-5, and `MP2_TEXTURE_DEVICE` still wins).
-- `swap_visors`: Options > Buttons > Swap the Scan and Echo visor buttons (exchanges the D-pad
-  left/right visors, and 6/8 on the keyboard; env `MP2_SWAP_VISORS`).
 - `minimap_tap`: Options > Menus > Tap minimap for map (a tap or click on the HUD minimap opens the
   map screen; default on; env `MP2_MINIMAP_TAP`; console `minimap`, `maptap`).
 - `fast_morph`, `spring_ball`: Morph ball > Fast Morph, Spring Ball (one row; C-stick up, the Spring Ball binding on the Remap page, touch swipe up, or a gyro flick).

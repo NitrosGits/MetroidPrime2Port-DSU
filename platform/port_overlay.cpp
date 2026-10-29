@@ -75,7 +75,6 @@ int sElevatorRide = PortOverlay::kElevatorRide_Original;
 int sPortalTransition = PortOverlay::kPortalTransition_Original;
 bool sMinimapTap = true;
 int sPromptGlyphs = 0;
-bool sSwapVisors = false;
 bool sIgtTimer = false;
 bool sOriginalExperience = false;
 bool sUnlockHardMode = false;
@@ -1812,11 +1811,6 @@ const char* PromptGlyphs() {
   }
   static constexpr const char* kNames[] = {nullptr, "xbox", "playstation", "switch", "gamecube", "keyboard"};
   return kNames[EnvIntIn("MP2_PROMPT_GLYPHS", sPromptGlyphs, kPromptGlyphs_Auto, kPromptGlyphs_Keyboard)];
-}
-
-bool SwapVisors() {
-  ReadEnv();
-  return !OriginalExperience() && EnvBool("MP2_SWAP_VISORS", sSwapVisors);
 }
 
 int ElevatorRide() {

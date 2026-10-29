@@ -122,9 +122,6 @@ enum EPromptGlyphs {
   kPromptGlyphs_Keyboard
 };
 const char* PromptGlyphs();
-// Swap the Scan and Echo visor buttons (`MP2_SWAP_VISORS`): each takes the other's D-pad direction
-// and number key (CTweakPlayerControls::GetMapping). Thread-safe enough: read on the game thread.
-bool SwapVisors();
 // Tap or click on the HUD minimap opens the map screen (default on; MP2_MINIMAP_TAP).
 bool MinimapTap();
 void SetMinimapTap(bool enabled);

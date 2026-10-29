@@ -35,7 +35,6 @@
 {"Controls", "Options", "Buttons", "Toggle Lock-On", "lock on target latch hold l trigger"},
 {"Controls", "Options", "Buttons", "Sticky Charge", "charge beam hold a"},
 {"Controls", "Options", "Buttons", "Remastered charge (rapid fire)", "rapid fire charge beam power"},
-{"Controls", "Options", "Buttons", "Swap the Scan and Echo visor buttons", "visor scan echo swap buttons dpad"},
 {"Controls", "Options", "Aiming", "Native Trilogy radial selectors", "beam visor menu held wheel rs5"},
 {"Controls", "Options", "Aiming", "Auto-aim", "aim assist homing target"},
 {"Controls", "Options", "Aiming", "Pointer aim (Trilogy style)", "wii cursor pointer trilogy"},

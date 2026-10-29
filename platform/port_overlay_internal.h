@@ -29,7 +29,6 @@ extern int sElevatorRide;
 extern int sPortalTransition;
 extern bool sMinimapTap;
 extern int sPromptGlyphs;
-extern bool sSwapVisors;
 extern bool sIgtTimer;
 extern bool sOriginalExperience;
 extern bool sUnlockHardMode;

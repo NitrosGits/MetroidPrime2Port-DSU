@@ -76,8 +76,6 @@ void DrawControlsOptions() {
   Changed(ImGui::Checkbox("Remastered charge (rapid fire)", &sRapidCharge));
   ItemHelp("As in Metroid Prime Remastered: holding fire after the press shot fires a few quick "
            "shots. Power Beam only.");
-  Changed(ImGui::Checkbox("Swap the Scan and Echo visor buttons", &sSwapVisors));
-  ItemHelp("Swaps the two visors' D-pad directions (and 6/8 on the keyboard).");
   ImGui::EndDisabled();
 
   ImGui::SeparatorText("Aiming");

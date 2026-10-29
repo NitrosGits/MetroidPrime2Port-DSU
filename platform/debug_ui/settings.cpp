@@ -211,7 +211,6 @@ const SettingKey kSettingKeys[] = {
             PortOverlay::kPortalTransition_Skip >("portal_transition", "0", "2"),
     IntKey< &sPromptGlyphs, PortOverlay::kPromptGlyphs_Auto, PortOverlay::kPromptGlyphs_Keyboard >(
         "prompt_glyphs", "0", "5"),
-    BoolKey< &sSwapVisors >("swap_visors"),
     BoolKey< &sMinimapTap >("minimap_tap"),
     BoolKey< &sIgtTimer >("igt_timer"),
     IntKey< &sLanguage, 0, PortOverlay::kLanguageMax >("language", "0", "6"),
