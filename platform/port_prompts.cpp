@@ -908,6 +908,42 @@ const char* ActiveDevice() {
   }
 }
 
+const char* ConfirmLabel() {
+  static std::string label;
+  const char* device = ActiveDevice();
+  if (std::strcmp(device, "keyboard") == 0) {
+    const int key = KeyForButton(PAD_BUTTON_A);
+    if (key >= 0) {
+      if (const char* name = SDL_GetScancodeName(static_cast<SDL_Scancode>(key)); name != nullptr && name[0] != '\0') {
+        label = name;
+        return label.c_str();
+      }
+    }
+    return "A";
+  }
+  if (std::strcmp(device, "xbox") == 0 || std::strcmp(device, "gamecube") == 0) {
+    return "A";
+  }
+  // A pad's mapping is positional: the game's A usually sits on the south button.
+  u32 count = 0;
+  int native = SDL_GAMEPAD_BUTTON_SOUTH;
+  if (const PADButtonMapping* list = PADGetButtonMappings(0, &count)) {
+    for (u32 i = 0; i < count; ++i) {
+      if (list[i].padButton == PAD_BUTTON_A) {
+        native = static_cast<int>(list[i].nativeButton);
+      }
+    }
+  }
+  const bool ps = std::strcmp(device, "playstation") == 0;
+  const bool nintendo = std::strcmp(device, "switch") == 0;
+  switch (native) {
+  case SDL_GAMEPAD_BUTTON_EAST: return ps ? "Circle" : nintendo ? "A" : "B";
+  case SDL_GAMEPAD_BUTTON_WEST: return ps ? "Square" : nintendo ? "Y" : "X";
+  case SDL_GAMEPAD_BUTTON_NORTH: return ps ? "Triangle" : nintendo ? "X" : "Y";
+  default: return ps ? "Cross" : nintendo ? "B" : "A";
+  }
+}
+
 void Initialize(const char* textureRoot) {
   // Tracked even without generated icons, since the static set and rumble
   // (KeyboardActive) follow it too.

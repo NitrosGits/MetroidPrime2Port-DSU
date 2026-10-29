@@ -9,6 +9,7 @@
 #include "port_input_remap_ui.h"
 #include "port_mouse.h"
 #include "port_overlay.h"
+#include "port_prompts.h"
 #include "port_savestate.h"
 
 #include <SDL3/SDL.h>
@@ -482,6 +483,35 @@ void DrawIgtTimer() {
   draw->AddText(font, size, pos, IM_COL32(255, 255, 255, 230), text);
 }
 
+// "Skip  [A]" in the bottom-right corner while the cinematic skip is armed (PortOverlay::SkipConfirm*).
+// A click or tap on it counts as the second press.
+void DrawSkipConfirm() {
+  const float alpha = PortOverlay::SkipConfirmAlpha();
+  if (ImGui::GetCurrentContext() == nullptr || alpha <= 0.f) {
+    return;
+  }
+  char text[64];
+  std::snprintf(text, sizeof(text), "Skip  [%s]", PortPrompts::ConfirmLabel());
+  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  const float scale = std::max(1.f, ImGui::GetFontSize() / 13.f);
+  ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - 20.f * scale,
+                                 viewport->Pos.y + viewport->Size.y - (PortOverlay::IgtTimer() ? 80.f : 20.f) * scale),
+                          ImGuiCond_Always, ImVec2(1.f, 1.f));
+  ImGui::SetNextWindowBgAlpha(0.6f * alpha);
+  ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
+  if (ImGui::Begin("##skip-confirm", nullptr,
+                   ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav |
+                       ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoSavedSettings |
+                       ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::TextUnformatted(text);
+    if (ImGui::IsWindowHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+      PortOverlay::SkipConfirmTap();
+    }
+  }
+  ImGui::End();
+  ImGui::PopStyleVar();
+}
+
 void DrawUI() {
   // Not while a control is held: a dragged slider changes a setting every frame. It is saved the
   // frame the control is let go.
@@ -517,6 +547,7 @@ void DrawUI() {
   DrawMenuHintToast();
   DrawDiscReadFailedAlert();
   DrawIgtTimer();
+  DrawSkipConfirm();
   DrawShaderCompilationToast();
   DrawUpdateToast();
   DrawNoteToast();

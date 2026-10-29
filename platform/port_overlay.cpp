@@ -655,6 +655,40 @@ bool SkipCinematics() {
   return EnvBool("MP2_SKIP_CINEMATICS", sSkipCinematics);
 }
 
+namespace {
+uint64_t sSkipConfirmUntilNs = 0;
+std::atomic<bool> sSkipConfirmTapped{false};
+} // namespace
+
+bool SkipConfirmArmed() { return sSkipConfirmUntilNs != 0 && SDL_GetTicksNS() < sSkipConfirmUntilNs; }
+
+void SkipConfirmArm() {
+  sSkipConfirmTapped.store(false);
+  sSkipConfirmUntilNs = SDL_GetTicksNS() + static_cast< uint64_t >(kSkipConfirmSeconds * 1e9f);
+}
+
+void SkipConfirmDisarm() {
+  sSkipConfirmUntilNs = 0;
+  sSkipConfirmTapped.store(false);
+}
+
+float SkipConfirmAlpha() {
+  const uint64_t now = SDL_GetTicksNS();
+  if (sSkipConfirmUntilNs == 0 || now >= sSkipConfirmUntilNs) {
+    return 0.f;
+  }
+  const float left = static_cast< float >(sSkipConfirmUntilNs - now) * 1e-9f;
+  return left >= 0.5f ? 1.f : left * 2.f;
+}
+
+void SkipConfirmTap() {
+  if (SkipConfirmArmed()) {
+    sSkipConfirmTapped.store(true);
+  }
+}
+
+bool TakeSkipConfirmTap() { return sSkipConfirmTapped.exchange(false); }
+
 void SetSkipCinematics(bool skip) {
   ReadEnv();
   sSkipCinematics = skip;

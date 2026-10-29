@@ -26,6 +26,10 @@ const char* ActiveDevice();
 // nothing in Echoes asks yet.
 bool KeyboardActive();
 
+// What the game's A button is called on the device in use ("A", "Cross", "Enter"...), for text
+// prompts such as the cinematic skip confirm.
+const char* ConfirmLabel();
+
 // Call once after Aurora is up, with the same texture root the replacements
 // came from (null or empty disables the module).
 void Initialize(const char* textureRoot);

@@ -53,6 +53,19 @@ void Wheel(float steps);
 // story beats along with the intro.
 bool SkipCinematics();
 void SetSkipCinematics(bool skip);
+// Two-press cinematic skip: the first A/Start press only arms a "Skip [A]" prompt for
+// kSkipConfirmSeconds (real time, bottom right); a second press while armed skips. Armed state
+// lives here so CMFGame, CMFGameLoader and the overlay (and a tap on the prompt) share it.
+// Disarmed on expiry or when the cinematic ends. Harness and console skips never use it.
+const float kSkipConfirmSeconds = 3.f;
+bool SkipConfirmArmed();
+void SkipConfirmArm();
+void SkipConfirmDisarm();
+// 0..1 for the prompt's draw (fades out over its last half second), 0 when not armed.
+float SkipConfirmAlpha();
+// A tap/click on the prompt happened since the last call (the game then counts it as the second press).
+void SkipConfirmTap();
+bool TakeSkipConfirmTap();
 // Show / Skip with A or Start / Off, for the two settings below (F1 > Game > Cutscenes).
 const int kScreen_Show = 0;
 const int kScreen_Skippable = 1;
