@@ -1020,10 +1020,44 @@ void CmdGod(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "god mode on\n" : "god mode off\n";
 }
 
+// infammo [all|missile|powerbomb|dark|light] [0|1]: the F1 Cheats "Infinite" boxes; no 0|1 flips.
 void CmdInfiniteAmmo(CStateManager&, const Args& args, std::string& out) {
-  const bool enabled = args.size() < 2 ? !PortOverlay::InfiniteAmmo() : ArgToInt(args[1], 1) != 0;
-  PortOverlay::SetInfiniteAmmo(enabled);
-  out += enabled ? "infinite ammo on\n" : "infinite ammo off\n";
+  struct Kind {
+    const char* name;
+    unsigned bits;
+  };
+  static const Kind kKinds[] = {{"all", PortOverlay::kInfAmmoAll},
+                                {"missile", PortOverlay::kInfAmmoMissile},
+                                {"powerbomb", PortOverlay::kInfAmmoPowerBomb},
+                                {"dark", PortOverlay::kInfAmmoDark},
+                                {"light", PortOverlay::kInfAmmoLight}};
+  size_t next = 1;
+  unsigned kinds = PortOverlay::kInfAmmoAll;
+  if (args.size() > next && !args[next].empty() && (args[next][0] < '0' || args[next][0] > '9')) {
+    kinds = 0;
+    for (const Kind& kind : kKinds) {
+      if (args[next] == kind.name) {
+        kinds = kind.bits;
+      }
+    }
+    if (kinds == 0) {
+      out += "usage: infammo [all|missile|powerbomb|dark|light] [0|1]\n";
+      return;
+    }
+    ++next;
+  }
+  const bool enabled =
+      args.size() <= next ? !PortOverlay::InfiniteAmmo(kinds) : ArgToInt(args[next], 1) != 0;
+  PortOverlay::SetInfiniteAmmo(kinds, enabled);
+  out += "infinite ammo:";
+  for (const Kind& kind : kKinds) {
+    if (kind.bits != PortOverlay::kInfAmmoAll) {
+      out += ' ';
+      out += kind.name;
+      out += PortOverlay::InfiniteAmmo(kind.bits) ? " on" : " off";
+    }
+  }
+  out += '\n';
 }
 
 // `mpforce <0|1>`: CStateManager::IsMultiplayer reports true, so multiplayer-only arms run in
@@ -4790,7 +4824,8 @@ const CommandSpec kCommands[] = {
     {"god", CmdGod,
       "god <0|1>                   god mode (the F1 cheat)\n"},
     {"infammo", CmdInfiniteAmmo,
-      "infammo <0|1>               infinite ammo (the F1 cheat)\n"},
+      "infammo [kind] [0|1]        infinite ammo (F1 Cheats); kind all (default), missile,\n"
+      "                            powerbomb, dark or light\n"},
     {"mpforce", CmdMpForce,
       "mpforce <0|1>               IsMultiplayer reports true (multiplayer-only arms)\n"},
     {"overlay", CmdOverlay,

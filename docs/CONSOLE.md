@@ -24,7 +24,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `damage <id> <n> [kb] [w]` — hit an actor for n as a player shot (w = power, missile, cannonball, dark, light, annihilator, powerbomb, bomb, boostball, screwattack, darkburst, sunburst, sonicboom, supermissile; kb = knockback power)
 - `layer <n>` — activate a layer of the current area
 - `god <0|1>` — god mode (the F1 cheat)
-- `infammo <0|1>` — infinite ammo (the F1 cheat)
+- `infammo [all|missile|powerbomb|dark|light] [0|1]` — infinite ammo per counter (F1 Cheats); no 0|1 flips
 - `mpforce <0|1>` — IsMultiplayer reports true (multiplayer-only arms)
 - `overlay <page>[/<sub>]|off` — open the F1 window on a page (name prefixes: `overlay video/qual`)
 - `gpuselftest` — run the GPU self-test next frame; PASS/FAIL lines go to the log

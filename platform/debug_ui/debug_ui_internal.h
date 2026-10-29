@@ -31,7 +31,7 @@ namespace PortDebug {
 // port_overlay.cpp: the runtime state the pages show.
 extern bool sVisible;
 extern bool sGodMode; // never saved: a cheat must not persist, so it is not a setting
-extern bool sInfiniteAmmo; // never saved, as sGodMode
+extern unsigned sInfiniteAmmo; // PortOverlay::kInfAmmo bits; never saved, as sGodMode
 extern uint32_t sWorldId;
 extern int sAreaId;
 extern float sFps;

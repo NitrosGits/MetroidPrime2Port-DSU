@@ -665,9 +665,9 @@ void CPlayerState::IncrementChargeBeamFactor(float delta) {
 void CPlayerState::DecrementAmmoAndDisplayAlertIfOut(CStateManager& mgr,
                                                      CPlayerState::EItemType type, int quantity) {
 #ifdef TARGET_PC
-  // Port: the MP2_INFINITE_AMMO cheat (F1 > Cheats). Every shot (beams, charge combos,
+  // Port: the infinite ammo cheat (F1 > Cheats, per counter). Every shot (beams, charge combos,
   // missiles, power bombs) spends its ammo here; pickups and scripts still change it.
-  if (PortOverlay::InfiniteAmmo()) {
+  if (PortOverlay::InfiniteAmmo(PortOverlay::InfiniteAmmoKind(type))) {
     return;
   }
 #endif

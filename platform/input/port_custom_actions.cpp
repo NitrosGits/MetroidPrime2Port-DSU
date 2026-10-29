@@ -61,7 +61,7 @@ constexpr Preset kPresets[] = {
      false, ArgKind::Setting, true},
     {"invulnerable", "Cheats", "God mode", "Samus takes no damage, until turned off again", true,
      ArgKind::None, true},
-    {"infinite_ammo", "Cheats", "Infinite ammo", "Shots spend no ammo, until turned off again", true,
+    {"infinite_ammo", "Cheats", "Infinite ammo", "Shots spend no ammo of any kind, until turned off again", true,
      ArgKind::None, true},
     {"free_camera", "Cheats", "Free camera", "Fly the view away from Samus to look around", true, ArgKind::None,
      true},
@@ -663,8 +663,8 @@ std::string Run(const PortInput::CustomActionDef& def) {
     return "God mode " + OnOff(on);
   }
   case PresetId::InfiniteAmmo: {
-    const bool on = Next(ModeOf(def.mode), PortOverlay::InfiniteAmmo());
-    PortOverlay::SetInfiniteAmmo(on);
+    const bool on = Next(ModeOf(def.mode), PortOverlay::InfiniteAmmo(PortOverlay::kInfAmmoAll));
+    PortOverlay::SetInfiniteAmmo(PortOverlay::kInfAmmoAll, on);
     return "Infinite ammo " + OnOff(on);
   }
   case PresetId::FreeCamera:

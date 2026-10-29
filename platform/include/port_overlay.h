@@ -72,10 +72,20 @@ void SetWorldNameCard(int mode);
 // test run in the lose-game screen (CStateManager::ApplyLocalDamage). Never saved.
 bool GodMode();
 void SetGodMode(bool enabled);
-// Cheat (`MP2_INFINITE_AMMO=1`, F1 > Cheats): firing spends no beam ammo, missiles or power
-// bombs (CPlayerState::DecrementAmmoAndDisplayAlertIfOut). Never saved.
-bool InfiniteAmmo();
-void SetInfiniteAmmo(bool enabled);
+// Cheat (F1 > Cheats, a checkbox per counter; `MP2_INFINITE_AMMO=1` turns on all four): firing
+// spends none of the chosen ammo (CPlayerState::DecrementAmmoAndDisplayAlertIfOut). Never saved.
+enum : unsigned {
+  kInfAmmoMissile = 1,
+  kInfAmmoPowerBomb = 2,
+  kInfAmmoDark = 4,
+  kInfAmmoLight = 8,
+  kInfAmmoAll = 15,
+};
+// The kInfAmmo bit of a CPlayerState::EItemType, 0 for an item that is not ammo.
+unsigned InfiniteAmmoKind(int itemType);
+// True when every kind in `kinds` is infinite.
+bool InfiniteAmmo(unsigned kinds);
+void SetInfiniteAmmo(unsigned kinds, bool enabled);
 // Gameplay tweaks (F1 > Gameplay, the pause menu's Options > Controller, and one console command
 // each), off by default. Never saved - there is no settings file, and these are preference rather
 // than state, so a restart goes back to the untouched game.

@@ -5,6 +5,7 @@
 #include "port_mobile.h"
 #include "debug_ui_internal.h"
 
+#include "port_overlay.h"
 #include "port_collision_view.h"
 #include "port_savestate.h"
 #include "port_warp.h"
@@ -188,9 +189,6 @@ void DrawRendering() {
 void DrawCheatsSection() {
   ImGui::Checkbox("God mode", &sGodMode);
   ItemHelp("The player takes no damage; other actors still do. Not saved.");
-  ImGui::Checkbox("Infinite ammo", &sInfiniteAmmo);
-  ItemHelp("Beam ammo, missiles and power bombs are not used up by firing. Not saved.\n"
-           "An empty counter stays empty: refill it below.");
 
   CPlayerState* ps = gpGameState != nullptr ? gpGameState->GetPlayerState().GetPtr() : nullptr;
   // The front end has its own player state and its own Samus; the page is about the game's.
@@ -238,6 +236,12 @@ void DrawCheatsSection() {
       // outright: a slide down must take ammo away even though the capacity has room.
       GrantItem(*ps, type, std::max(amount, ps->GetItemCapacity(type)), amount);
     }
+    ImGui::SameLine();
+    ImGui::PushID(label);
+    ImGui::CheckboxFlags("Infinite", &sInfiniteAmmo, PortOverlay::InfiniteAmmoKind(type));
+    ImGui::PopID();
+    ItemHelp("Firing does not use this ammo up; pickups still add to it. An empty counter stays "
+             "empty, so slide it up first. Not saved.");
   };
   counter("Missiles", CPlayerState::kIT_Missile);
   counter("Power Bombs", CPlayerState::kIT_Powerbomb);

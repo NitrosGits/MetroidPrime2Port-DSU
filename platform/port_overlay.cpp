@@ -30,6 +30,7 @@
 #include "MetroidPrime/Player/CGameOptions.hpp"
 #include "MetroidPrime/CWorldLayerState.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
+#include "MetroidPrime/Player/CPlayerState.hpp"
 
 #include <SDL3/SDL.h>
 #include <aurora/aurora.h>
@@ -216,7 +217,7 @@ namespace PortDebug {
 
 bool sVisible = false;
 bool sGodMode = false; // never saved: a cheat must not persist, so it is not a setting
-bool sInfiniteAmmo = false; // never saved, as sGodMode
+unsigned sInfiniteAmmo = 0; // InfiniteAmmoKind bits; never saved, as sGodMode
 uint32_t sWorldId = 0;
 int sAreaId = -1;
 std::vector< SRoomEntry > sRooms;
@@ -302,7 +303,7 @@ void ReadEnv() {
   }
   sReadEnv = true;
   sGodMode = port::EnvFlag("MP2_GODMODE");
-  sInfiniteAmmo = port::EnvFlag("MP2_INFINITE_AMMO");
+  sInfiniteAmmo = port::EnvFlag("MP2_INFINITE_AMMO") ? PortOverlay::kInfAmmoAll : 0;
   PortOverlaySettings::LoadSettings();
 }
 
@@ -898,14 +899,29 @@ void SetGodMode(bool enabled) {
   sGodMode = enabled;
 }
 
-bool InfiniteAmmo() {
-  ReadEnv();
-  return sInfiniteAmmo;
+unsigned InfiniteAmmoKind(int itemType) {
+  switch (itemType) {
+  case CPlayerState::kIT_Missile:
+    return kInfAmmoMissile;
+  case CPlayerState::kIT_Powerbomb:
+    return kInfAmmoPowerBomb;
+  case CPlayerState::kIT_DarkAmmo:
+    return kInfAmmoDark;
+  case CPlayerState::kIT_LightAmmo:
+    return kInfAmmoLight;
+  default:
+    return 0;
+  }
 }
 
-void SetInfiniteAmmo(bool enabled) {
+bool InfiniteAmmo(unsigned kinds) {
   ReadEnv();
-  sInfiniteAmmo = enabled;
+  return kinds != 0 && (sInfiniteAmmo & kinds) == kinds;
+}
+
+void SetInfiniteAmmo(unsigned kinds, bool enabled) {
+  ReadEnv();
+  sInfiniteAmmo = enabled ? sInfiniteAmmo | kinds : sInfiniteAmmo & ~kinds;
 }
 
 bool FastMorph() {
