@@ -3,7 +3,7 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
-## 2026-10-29: 0.6.2 prepared
+## 2026-10-29: 0.6.2 released
 
 - Bumped `versionCode` 8 / `versionName` "0.6.2" and added the 0.6.2 metainfo release entry
   (`cb344643e`); release commit `37a61d2c2` (code-identical; only the Flatpak manifest differs).
@@ -26,8 +26,11 @@ appended, dated as in the heading there.
   Linux, AppImage and Windows binaries.
 - APK installed on the test phone (`25102PCBEG`) as an in-place update: versionName 0.6.2 /
   versionCode 8.
-- Release notes drafted at `build/release-notes-0.6.2.md`. Not yet done: the tag `v0.6.2` on `37a61d2c2` and the GitHub
-  pre-release; these wait for the user's go-ahead.
+- Tag `v0.6.2` = `37a61d2c2`; GitHub release
+  https://github.com/Odrannnn/MetroidPrime2Port/releases/tag/v0.6.2, published as a **normal
+  (latest) release**, not a pre-release, so the update check's `/releases/latest` finds it (it was
+  a 404 with only pre-releases; now answers `v0.6.2`). 12 assets, all `uploaded`. Notes from
+  `build/release-notes-0.6.2.md`, with no link to the deleted PrimeDecomp/echoes repo.
 
 ## Open items carried from older sessions
 

@@ -89,13 +89,13 @@ entry (newest first) in `packaging/io.github.odrannnn.metroidprime2port.metainfo
    `summary.tsv` `ok`, exit 0.
 4. Check each artefact's version and that none holds game data (`unzip -l`, `--appimage-extract`),
    then `git tag -a vX` and `git push origin vX`.
-5. `gh release create vX --notes-file …` with every asset passed explicitly (`--prerelease`
-   while the port is pre-1.0); confirm with `gh release view vX --json assets`.
-   The in-game update check (`platform/port_update_check.cpp`, setting `update_check`, env
-   `MP2_UPDATE_CHECK=0`) polls `/repos/<repo>/releases/latest`; GitHub's API leaves pre-releases out of
-   that endpoint, so while every release is a `--prerelease` the check finds none (unverified in the
-   field: the 404 shows as a failed check). The Flatpak builds on `org.freedesktop.Platform` 25.08
-   with a vendored SDL3 (3.4.10, pinned in `flatpak/*.yml`).
+5. `gh release create vX --latest --notes-file …` with every asset passed explicitly, as a normal
+   release, **not** `--prerelease`: the in-game update check (`platform/port_update_check.cpp`,
+   setting `update_check`, env `MP2_UPDATE_CHECK=0`) polls `/repos/<repo>/releases/latest`, which
+   GitHub's API answers only from non-pre-releases (it was a 404 while 0.6.0 and 0.6.1 were
+   pre-releases). Confirm with `gh release view vX --json assets,isPrerelease` and
+   `gh api repos/<repo>/releases/latest --jq .tag_name`. The Flatpak builds on
+   `org.freedesktop.Platform` 25.08 with a vendored SDL3 (3.4.10, pinned in `flatpak/*.yml`).
 
 The repository is public since 0.6.0. Real saves used as test fixtures (`tests/data/*.gci`,
 `tests/fixtures/trilogy/*.bin`) stay untracked: they carry the game's banner and icon.
