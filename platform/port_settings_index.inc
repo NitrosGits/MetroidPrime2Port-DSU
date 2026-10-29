@@ -58,7 +58,6 @@
 {"Controls", "Mouse settings", "Mouse aim", "Mouse DPI", "cpi cm 360 inches readout"},
 {"Controls", "Mouse settings", "Mouse aim", "Invert X", "mouse horizontal flip reverse"},
 {"Controls", "Mouse settings", "Mouse aim", "Invert Y", "mouse vertical flip reverse"},
-{"Controls", "Mouse settings", "Mouse aim", "Weapon buttons", "mouse buttons click fire shoot"},
 {"Controls", "Mouse settings", "Mouse aim", "Crosshair", "reticle cursor"},
 {"Controls", "Mouse settings", "Mouse aim", "Size", "crosshair reticle cursor scale"},
 {"Controls", "Controller settings", "Stick aim", "Twin stick (right stick aims)", "right stick dual analog controller pad camera"},

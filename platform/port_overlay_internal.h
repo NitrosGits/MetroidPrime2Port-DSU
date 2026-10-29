@@ -66,7 +66,6 @@ extern float sGyroSensitivityY;
 extern bool sResetAimBoth;
 extern bool sLockOnFreeAim;
 extern bool sMenuStandardButtons;
-extern bool sMouseButtons;
 extern bool sCardBackup;
 extern float sFirstPersonFov;
 extern bool sHideHelmet;

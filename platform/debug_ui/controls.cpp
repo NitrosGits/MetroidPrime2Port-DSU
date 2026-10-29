@@ -216,10 +216,6 @@ void DrawControlsKeyboardMouse() {
     PortMouse::SetInvertY(invertY);
     Changed(true);
   }
-  ImGui::SameLine();
-  Changed(ImGui::Checkbox("Weapon buttons", &sMouseButtons));
-  ImGui::SetItemTooltip("Mouse buttons are set in Controls > Remap; keyboard and controller weapon "
-                        "bindings also work.");
   // The game's crosshair input is a look control the port never presses, so the port holds the
   // reticle on while its own aim owns the view.
   Changed(ImGui::Checkbox("Crosshair", &sAimCrosshair));
@@ -230,9 +226,6 @@ void DrawControlsKeyboardMouse() {
                            "%d%%"));
   ImGui::EndDisabled();
   ImGui::SetItemTooltip("Applies under mouse aim, twin stick and touch aim.");
-
-  ImGui::SeparatorText("Mouse buttons");
-  ImGui::TextDisabled("Mouse buttons are bound in Controls > Remap (Keyboard & mouse).");
 }
 
 void DrawControlsController() {

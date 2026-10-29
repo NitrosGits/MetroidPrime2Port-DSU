@@ -445,7 +445,7 @@ uint32_t ReadMouseButtons(unsigned mouseHeld) {
   SDL_Window* window = SDL_GetMouseFocus();
   // A pointer screen (pause, map) reads the finger itself: the phone's touch-synthesized left
   // button would otherwise reach the game here as A the moment the finger lands.
-  const bool live = PortMouse::Enabled() && PortOverlay::MouseButtons() && !PortMouse::UiActive() && !PortOverlay::Visible() &&
+  const bool live = PortMouse::Enabled() && !PortMouse::UiActive() && !PortOverlay::Visible() &&
                     !(PortPointer::Enabled() && PortPointer::ScreenActive()) && window != nullptr &&
                     SDL_GetWindowRelativeMouseMode(window);
   return sGate.Poll(live, mouseHeld & PortInputMap::kMouseButtonMask);

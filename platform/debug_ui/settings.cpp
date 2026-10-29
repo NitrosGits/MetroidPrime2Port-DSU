@@ -278,7 +278,6 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sLockOnFreeAim >("lock_on_free_aim"),
     BoolKey< &sResetAimBoth >("reset_aim_both"),
     BoolKey< &sMenuStandardButtons >("menu_standard_buttons"),
-    BoolKey< &sMouseButtons >("mouse_buttons"),
     // The emulator whose card the port shares (System > Memory card); normalised on the way in.
     {"emulator_folder", [](const std::string& value) { PortSave::SetEmulatorFolder(value); },
      [](std::ostream& out) { out << PortSave::EmulatorFolder(); }, true, "/tmp/mp2-emu-a",

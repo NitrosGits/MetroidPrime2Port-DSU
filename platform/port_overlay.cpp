@@ -112,7 +112,6 @@ bool sResetAimBoth = false;
 bool sLockOnFreeAim = false;
 bool sMenuStandardButtons = false;
 bool sRapidCharge = false;
-bool sMouseButtons = true;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
 // System > Memory card, `cardbackup`).
 bool sCardBackup = false;
@@ -1229,11 +1228,6 @@ void SetRapidCharge(bool enabled) {
   ReadEnv();
   sRapidCharge = enabled;
   Persist();
-}
-
-bool MouseButtons() {
-  ReadEnv();
-  return EnvBool("MP2_MOUSE_BUTTONS", sMouseButtons);
 }
 
 bool CardBackup() {

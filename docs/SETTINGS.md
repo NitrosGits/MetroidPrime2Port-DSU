@@ -173,7 +173,6 @@ Controls > Mouse settings:
 - `mouse_sensitivity_split`, `mouse_sensitivity_y`: Mouse aim > Separate vertical speed, Vertical
   sensitivity (same units); env `MP2_MOUSE_SENS_SPLIT`, `MP2_MOUSE_SENS_Y`.
 - `mouse_dpi`: Mouse aim > Mouse DPI (100..64000, default 800), only for the cm/360 readout.
-- `mouse_buttons`: Mouse aim > Weapon buttons.
 - `aim_crosshair`, `crosshair_size`: Mouse aim > Crosshair, Size.
 
 Controls > Controller settings:
