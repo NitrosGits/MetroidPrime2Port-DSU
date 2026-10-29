@@ -1020,6 +1020,12 @@ void CmdGod(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "god mode on\n" : "god mode off\n";
 }
 
+void CmdInfiniteAmmo(CStateManager&, const Args& args, std::string& out) {
+  const bool enabled = args.size() < 2 ? !PortOverlay::InfiniteAmmo() : ArgToInt(args[1], 1) != 0;
+  PortOverlay::SetInfiniteAmmo(enabled);
+  out += enabled ? "infinite ammo on\n" : "infinite ammo off\n";
+}
+
 // `mpforce <0|1>`: CStateManager::IsMultiplayer reports true, so multiplayer-only arms run in
 // single player. The game mode itself stays single player (no score, no split screen).
 void CmdMpForce(CStateManager&, const Args& args, std::string& out) {
@@ -4783,6 +4789,8 @@ const CommandSpec kCommands[] = {
       "layer <n>                   activate a layer of the current area\n"},
     {"god", CmdGod,
       "god <0|1>                   god mode (the F1 cheat)\n"},
+    {"infammo", CmdInfiniteAmmo,
+      "infammo <0|1>               infinite ammo (the F1 cheat)\n"},
     {"mpforce", CmdMpForce,
       "mpforce <0|1>               IsMultiplayer reports true (multiplayer-only arms)\n"},
     {"overlay", CmdOverlay,

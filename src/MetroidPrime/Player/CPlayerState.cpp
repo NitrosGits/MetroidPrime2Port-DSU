@@ -15,6 +15,10 @@
 #include "rstl/algorithm.hpp"
 #include "rstl/math.hpp"
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
+
 struct ScanIdLess {
   bool operator()(const CPlayerState::SPersistentState::SScanState& scan, CAssetId id) const {
     return scan.mAssetId < id;
@@ -660,6 +664,13 @@ void CPlayerState::IncrementChargeBeamFactor(float delta) {
 
 void CPlayerState::DecrementAmmoAndDisplayAlertIfOut(CStateManager& mgr,
                                                      CPlayerState::EItemType type, int quantity) {
+#ifdef TARGET_PC
+  // Port: the MP2_INFINITE_AMMO cheat (F1 > Cheats). Every shot (beams, charge combos,
+  // missiles, power bombs) spends its ammo here; pickups and scripts still change it.
+  if (PortOverlay::InfiniteAmmo()) {
+    return;
+  }
+#endif
   int oldAmount = GetItemAmount(type);
   DecrPickUp(type, quantity);
   if (oldAmount > 0 && GetItemAmount(type) == 0) {

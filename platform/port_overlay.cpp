@@ -216,6 +216,7 @@ namespace PortDebug {
 
 bool sVisible = false;
 bool sGodMode = false; // never saved: a cheat must not persist, so it is not a setting
+bool sInfiniteAmmo = false; // never saved, as sGodMode
 uint32_t sWorldId = 0;
 int sAreaId = -1;
 std::vector< SRoomEntry > sRooms;
@@ -301,6 +302,7 @@ void ReadEnv() {
   }
   sReadEnv = true;
   sGodMode = port::EnvFlag("MP2_GODMODE");
+  sInfiniteAmmo = port::EnvFlag("MP2_INFINITE_AMMO");
   PortOverlaySettings::LoadSettings();
 }
 
@@ -894,6 +896,16 @@ bool GodMode() {
 void SetGodMode(bool enabled) {
   ReadEnv();
   sGodMode = enabled;
+}
+
+bool InfiniteAmmo() {
+  ReadEnv();
+  return sInfiniteAmmo;
+}
+
+void SetInfiniteAmmo(bool enabled) {
+  ReadEnv();
+  sInfiniteAmmo = enabled;
 }
 
 bool FastMorph() {
