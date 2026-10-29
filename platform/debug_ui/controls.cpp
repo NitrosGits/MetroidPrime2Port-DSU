@@ -35,8 +35,20 @@ void DrawControlsOptions() {
   ItemHelp("Turns on mouse aim and the Mouse & keyboard layout: WASD to move, mouse to aim, left "
            "click to fire, Space to jump, Q to lock on. Replaces your own keyboard bindings; "
            "Controls > Remap > Presets... has the others.");
-  ImGui::SameLine();
+  SameLineAfterHelp();
   ImGui::TextDisabled(PortMouse::Enabled() ? "Mouse aim is on." : "Mouse aim is off.");
+  // A GameCube pad has no right stick click for the dual-stick layout (as Remap's Presets...).
+  ImGui::BeginDisabled(PADIsGCAdapter(0) != 0);
+  if (ImGui::Button("Use twin-stick controller")) {
+    PortInputRemap::ApplyPreset(PortInput::Family::Pad, "remastered");
+  }
+  ImGui::EndDisabled();
+  ItemHelp("Turns on Twin Stick Aim and the Remastered layout for all controllers: left stick moves, "
+           "right stick aims, RT fire, LT lock on, A jump, X morph ball, right stick click free look. "
+           "Replaces your own controller bindings; Controls > Remap > Presets... has Modern and the "
+           "others. Not for a GameCube controller, which has no right stick click.");
+  SameLineAfterHelp();
+  ImGui::TextDisabled(PortMouse::StickEnabled() ? "Twin-stick aim is on." : "Twin-stick aim is off.");
 
   ImGui::SeparatorText("On-screen prompts");
   int glyphs = sPromptGlyphs;

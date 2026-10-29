@@ -128,6 +128,9 @@ Controls > Options:
 - Quick setup > Use mouse & keyboard: one click turns on mouse aim (`mouse_aim`, with
   `twin_stick`) and applies the Mouse & keyboard keyboard layout (Remap > Presets...),
   replacing your own keyboard bindings.
+- Quick setup > Use twin-stick controller: one click turns on Twin Stick Aim (`twin_stick`) and
+  applies the Remastered layout to all controllers (Remap > Presets...), replacing your own
+  controller bindings; greyed out with a GameCube adapter.
 - `lockon_toggle`: Buttons > Toggle Lock-On; env `MP2_LOCK_ON_TOGGLE`.
 - `sticky_charge`, `rapid_charge`: Buttons > Sticky Charge, Remastered charge (rapid fire).
 - `auto_aim`: Aiming > Auto-aim.
