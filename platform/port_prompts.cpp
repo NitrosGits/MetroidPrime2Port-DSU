@@ -77,25 +77,45 @@ struct PromptAsset {
   uint32_t id;
   uint32_t prompt;
 };
+// Ids marked "Trilogy only" are Wii art that the GameCube disc draws with other
+// ids; each was paired with its GameCube counterpart by aligning the two discs'
+// STRGs string by string.
 constexpr PromptAsset kAssets[] = {
+    {0x057FAEE3, PROMPT_STICK}, // Trilogy only: Nunchuk stick frame, "Use (stick) and tap B to Dash"
     {0x08BCA722, PROMPT_STICK_RIGHT}, {0x0A254C97, PAD_BUTTON_START}, // the GameCube pause Exit
-    {0x10799395, PAD_TRIGGER_Z}, {0x13AD51E9, PAD_BUTTON_DOWN},
-    {0x17EB2A51, PROMPT_CSTICK_RIGHT}, {0x1B525041, PROMPT_CSTICK}, {0x2187B2A1, PROMPT_STICK_UP},
+    {0x10799395, PAD_TRIGGER_Z}, {0x13AD51E9, PAD_BUTTON_DOWN}, {0x17EB2A51, PROMPT_CSTICK_RIGHT},
+    {0x194E0B59, PROMPT_STICK}, // Trilogy only: Nunchuk stick frame (Dash)
+    {0x1B525041, PROMPT_CSTICK}, {0x2187B2A1, PROMPT_STICK_UP},
     {0x2CB3B7D2, PROMPT_CSTICK}, {0x2DBD0327, PROMPT_CSTICK}, {0x304DEF5A, PAD_TRIGGER_L},
     {0x3AA65ECD, PAD_BUTTON_Y}, {0x3F609B4A, PROMPT_STICK_LEFT},
     {0x4475EAD6, PAD_BUTTON_X}, // Trilogy only: the Nunchuk C, "Press C to turn into the Morph Ball"
     {0x45990439, PROMPT_CSTICK_DOWN}, {0x47F931C8, PROMPT_STICK}, {0x4EFFA9AA, PROMPT_STICK_DOWN},
-    {0x53B7AC95, PAD_BUTTON_B}, {0x59500D0C, PAD_BUTTON_B}, {0x5EA16CAD, PAD_TRIGGER_R},
-    {0x61E49F68, PROMPT_STICK}, {0x6D482337, PAD_BUTTON_A}, {0x72A83A41, PROMPT_STICK},
+    {0x53B7AC95, PAD_BUTTON_B},
+    {0x574CDE37, PAD_BUTTON_A}, // Trilogy only: Wii A, fire / charge / back to Beam mode
+    {0x59500D0C, PAD_BUTTON_B}, {0x5EA16CAD, PAD_TRIGGER_R},
+    // Trilogy only: Nunchuk Z, which scans, grapples and holds the Spider Ball. The
+    // GameCube disc says L for the first two and R for the third; one id takes one.
+    {0x60ACB985, PAD_TRIGGER_L},
+    {0x617D3700, PROMPT_STICK}, // Trilogy only: Nunchuk stick frame (Dash)
+    {0x61E49F68, PROMPT_STICK},
+    {0x637BA080, PROMPT_STICK}, // Trilogy only: Nunchuk stick frame (Dash)
+    {0x6D482337, PAD_BUTTON_A},
+    {0x71AA55E3, PAD_BUTTON_B}, // Trilogy only: Wii B, jump / Space Jump / Screw Attack
+    {0x72A83A41, PROMPT_STICK},
     {0x738A4798, PROMPT_CSTICK_UP}, {0x73E9B3B2, PROMPT_CSTICK_LEFT}, {0x83A73184, PAD_BUTTON_START},
     {0x8D13D507, PROMPT_CSTICK_UP}, {0x8E28D58C, PROMPT_STICK}, {0x9016E5BF, PROMPT_CSTICK_RIGHT},
-    {0x944EBD78, PROMPT_STICK}, {0x967A3516, PAD_TRIGGER_L}, {0xA9CA8654, PROMPT_CSTICK_LEFT},
-    {0xADCBEDAE, PROMPT_CSTICK}, {0xB4EDE4B6, PROMPT_DPAD}, {0xBC322C63, PAD_TRIGGER_Z},
+    {0x944EBD78, PROMPT_STICK}, {0x967A3516, PAD_TRIGGER_L},
+    {0x9FFB4F4D, PROMPT_STICK}, // Trilogy only: Nunchuk stick frame (Dash)
+    {0xA9CA8654, PROMPT_CSTICK_LEFT}, {0xADCBEDAE, PROMPT_CSTICK}, {0xB4EDE4B6, PROMPT_DPAD},
+    {0xB5F3DA09, PROMPT_CSTICK}, // Trilogy only: "hold and point" to pick a Beam (GameCube: C-stick)
+    {0xBC322C63, PAD_TRIGGER_Z},
     {0xC14A95C6, PAD_TRIGGER_Z}, {0xC3E07487, PROMPT_STICK_RIGHT}, {0xC622B06F, PAD_BUTTON_RIGHT},
     {0xC83111AA, PROMPT_CSTICK_DOWN}, {0xC96F93E3, PAD_BUTTON_A}, {0xCDA81421, PROMPT_STICK},
     {0xD212C48A, PAD_BUTTON_X}, {0xD3D8817F, PROMPT_CSTICK}, {0xD523DE3B, PAD_BUTTON_A},
     {0xD89B9F7C, PAD_TRIGGER_R}, {0xDE5170B7, PAD_BUTTON_A}, {0xDEA628DC, PAD_BUTTON_B},
-    {0xDFC47FA2, PAD_BUTTON_A}, {0xE43966EC, PROMPT_CSTICK}, {0xE72B1419, PAD_BUTTON_A},
+    {0xDFC47FA2, PAD_BUTTON_A},
+    {0xE2F4B915, PROMPT_DPAD}, // Trilogy only: "hold and point" to pick a Visor (GameCube: D-pad)
+    {0xE43966EC, PROMPT_CSTICK}, {0xE72B1419, PAD_BUTTON_A},
     {0xF1FA8D68, PAD_BUTTON_X}, {0xF237E982, PAD_TRIGGER_R}, {0xF43C48EF, PROMPT_STICK_LEFT},
     {0xF6E8276F, PAD_TRIGGER_R}, {0xF7D62F50, PAD_BUTTON_UP}, {0xFF73F326, PROMPT_STICK},
     {0xFFFED384, PAD_BUTTON_LEFT},
