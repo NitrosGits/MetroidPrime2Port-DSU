@@ -1258,6 +1258,23 @@ PADStatus Synthesize(const PortInput::Output& out) {
   return s;
 }
 
+// Twin stick aims with the right stick, so the R trigger's free look (a stand-still mode) only
+// gets in the way, most of all with Fire moved onto RT (issue #12): out of the Morph Ball, where R
+// is the Spider Ball, the controller's R trigger stops pressing R and pulling the R analog. Free
+// look on any other input (the presets' right stick click, a key) stays.
+static void ApplyTwinStickFreeAim(Profile& p, uint16_t contexts) {
+  if (!PortMouse::StickEnabled() || (contexts & PortInput::kCtxMorphBall) != 0) return;
+  const auto rTrigger = [](const Input& in) {
+    if (in.device == Device::PadAxis) return in.code == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER;
+    return in.device == Device::PadButton &&
+           (in.code == PAD_RAW_BUTTON_TRIGGER_RIGHT || in.code == PAD_RAW_BUTTON_TRIGGER_RIGHT_CLICK);
+  };
+  for (Binding& b : p.bindings) {
+    if (b.action != Action::PadR && b.action != Action::RAnalog) continue;
+    if (std::any_of(b.inputs.begin(), b.inputs.begin() + b.count, rTrigger)) b.blocked |= PortInput::kCtxGameplay;
+  }
+}
+
 SPoll Poll(unsigned mouseHeld, bool focused) {
   static Profile sProfile;
   static PortInput::Runtime sRuntime;
@@ -1267,6 +1284,8 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
   BuildProfile(next);
   ApplyMenuButtons(next);
   PortInput::ApplyBallButtons(next);
+  const uint16_t contexts = GameContexts();
+  ApplyTwinStickFreeAim(next, contexts);
   if (!sInit || next != sProfile) {
     UpdatePromptBindings(next);
     sProfile = std::move(next);
@@ -1279,7 +1298,6 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
   // MP1 steps its clock by the game's tick period; MP2's loop has none to read, so wall time.
   const double nowMs =
       std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
-  const uint16_t contexts = GameContexts();
   const PortInput::Output& out =
       sRuntime.Poll(raw, contexts, nowMs, 0);
   SPoll r;

@@ -233,8 +233,8 @@ void DrawControlsController() {
     PortMouse::SetStickEnabled(twinStick);
     Changed(true);
   }
-  ItemHelp("Aims with the right stick like the mouse, so it no longer free-looks. Fire stays on A; "
-           "change it in Controls > Remap.");
+  ItemHelp("Aims with the right stick like the mouse, so it no longer free-looks, and the R trigger stops "
+           "free-looking (it stays Spider Ball in the Morph Ball). Fire stays on A; change it in Controls > Remap.");
   // Shown only with twin stick on, as MP1 does.
   if (PortMouse::StickEnabled()) {
     float rate = PortMouse::StickAimRate();
