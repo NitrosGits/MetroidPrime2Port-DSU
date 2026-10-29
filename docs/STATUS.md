@@ -221,8 +221,12 @@ The menu and trigger reports are fixed too:
   It now uses last-used touch activity, as MP1 does: `NoteDevice` activates touch,
   real controller/keyboard/mouse input deactivates it; virtual pads, stick drift and
   synthetic touch/pen mouse events do not. Builds without touch always report inactive.
-  The context path recognizes front-end and paused menus; map and scan-text contexts need a separate
-  completeness review.
+  The context path recognizes paused menus; map and scan-text contexts need a separate
+  completeness review. (Superseded 2026-10-29: the front end was *not* recognized, as reported
+  against 0.6.1. The title and file select run as an in-game CMFGame in the 'FRND' world, so
+  `GameContexts` returned gameplay there. Its `PlayerInPlay` now excludes 'FRND', as
+  `port_touch.cpp`'s copy already did, so the main menu reads the Menu rows. Code-traced and
+  linked with the port tests passing; not run on a Steam Deck.)
 - Trigger capture: Aurora's `PADGetRawState` reports an analog trigger axis and synthetic
   half-pull/click buttons. The recorder previously enumerated both the buttons and
   axes, retaining every distinct input until release (`UpdateCapture`).

@@ -572,9 +572,14 @@ uint16_t QuietContexts(uint16_t before, uint16_t after) {
   return ScanTextOpen(before) || ScanTextOpen(after) ? PortInput::kCtxMenu : 0;
 }
 
-// Player 0's state while the game is in play (PortTouch's PlayerInPlay), else null.
+// Player 0's state while the game is in play (PortTouch's PlayerInPlay), else null. The
+// title and file select are a CMFGame in the 'FRND' front-end world: that is a menu, not
+// play, so its contexts read the Menu rows (#2).
 CPlayerState* PlayerInPlay() {
-  if (gpGameState == nullptr || PortHarness::FlowState() != 1 /* CMFGame::kFS_InGame */) return nullptr;
+  if (gpGameState == nullptr || PortHarness::FlowState() != 1 /* CMFGame::kFS_InGame */ ||
+      gpGameState->GetGameMode().GetGameModeType() == 'FRND') {
+    return nullptr;
+  }
   return gpGameState->PlayerState(0).GetPtr();
 }
 
@@ -589,9 +594,7 @@ uint16_t GameContexts() {
   if (state == nullptr || PortTouch::PauseScreenOpen()) return PortInput::kCtxMenu;
   uint16_t contexts = PortInput::kCtxGameplay;
   if (state->GetCurrentVisor() == CPlayerState::kPV_Scan) contexts |= PortInput::kCtxScan;
-  // The front end's ('FRND') own Samus sits in the ball: that is not play.
-  if (PortTouch::Morphed() && gpGameState->GetGameMode().GetGameModeType() != 'FRND')
-    contexts |= PortInput::kCtxMorphBall;
+  if (PortTouch::Morphed()) contexts |= PortInput::kCtxMorphBall;
   return contexts;
 }
 
