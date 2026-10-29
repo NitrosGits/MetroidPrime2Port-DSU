@@ -317,7 +317,9 @@ int CSandBoss::CountActiveChargeBeams(CStateManager& mgr) {
   for (int i = 0; i < mChargeBeams.size(); ++i) { // 0xE94
     const CPlasmaProjectile* beam =
         TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(mChargeBeams[i].mBeam));
-    if (beam != nullptr && beam->IsFiring()) {
+    // Retail 0x2704-0x2718: firing bit set and the expansion state (0x5E8) is not 3 (kES_Release).
+    if (beam != nullptr && beam->IsFiring() &&
+        beam->GetExpansionState() != CPlasmaProjectile::kES_Release) {
       ++count;
     }
   }
@@ -399,8 +401,15 @@ void CSandBoss::UpdateChargeBeams(CStateManager& mgr, float dt) {
         shrink = 1.f;
       }
       effect->SetGlobalScale(shrink * baseScale);
-      // Retail also writes `shrink` over a CVector3f at beam+0x674; the host class does not identify
-      // that member yet (its particles follow the beam's own expansion), so only the effect scales.
+      // Retail 0x2B3C-0x2B78: every live beam's muzzle scale (CVector3f at +0x674, built as
+      // 1,1,1 in the constructor and read by UpdateFx) is set to `shrink`.
+      for (int i = 0; i < mChargeBeams.size(); ++i) {
+        CPlasmaProjectile* beam =
+            TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(mChargeBeams[i].mBeam));
+        if (beam != nullptr) {
+          beam->SetMuzzleScale(CVector3f(shrink, shrink, shrink));
+        }
+      }
     }
   }
 }
