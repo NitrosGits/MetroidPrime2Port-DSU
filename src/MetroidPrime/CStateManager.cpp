@@ -5830,6 +5830,15 @@ void CStateManager::PortWarpToLayer(TAreaId aid, int layer) {
                layer, static_cast< int >(area->GetLayerPhase(id)));
 }
 
+bool CStateManager::PortLayerFlagOn(TAreaId aid, int layer) const {
+  if (mCurrentWorldLayerState.IsNull() || aid.Value() < 0 ||
+      aid.Value() >= static_cast< int >(mCurrentWorldLayerState->GetAreaLayers().size()) ||
+      layer < 0 || layer >= mCurrentWorldLayerState->GetLayerCount(aid)) {
+    return false;
+  }
+  return mCurrentWorldLayerState->IsLayerActive(aid, TLayerId(layer));
+}
+
 void CStateManager::PortLayerTick() {
   if (mPortLayerArea == kInvalidAreaId) {
     return;

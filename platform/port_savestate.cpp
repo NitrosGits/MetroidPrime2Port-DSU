@@ -957,7 +957,11 @@ void TickRoom(CStateManager& mgr) {
   if (sRoom.nextLayer < sRoom.layers.size() || mgr.PortLayerRequestPending()) {
     if (sRoom.nextLayer < sRoom.layers.size() && !mgr.PortLayerRequestPending() && !idsTight) {
       const std::pair< int, int >& want = sRoom.layers[sRoom.nextLayer++];
-      mgr.PortWarpToLayer(TAreaId(want.first), want.second);
+      // A layer the state's own layer bits have off (the intro cinematic's once it has played)
+      // keeps its saved objects in the room, but switching it on would run its load scripts again.
+      if (mgr.PortLayerFlagOn(TAreaId(want.first), want.second)) {
+        mgr.PortWarpToLayer(TAreaId(want.first), want.second);
+      }
     }
   } else {
     waiting = ApplyRoomState(mgr, sRoom.state, sRoom.progress);
