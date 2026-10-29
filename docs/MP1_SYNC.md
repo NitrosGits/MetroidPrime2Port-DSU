@@ -107,7 +107,7 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
     proportions, front end pillarboxed, HUD lag and HUD scale <100% composing with the spread.
     MP1: `0f1d9b7f3 f359df2d8 c29d9dcc8 284ca7e18 7a7aadd8c fc5bf0b70 ba2db2200 c70260b06 e64c9e4d3
     f420a5862 8ae7c9b44 45ea32a48 cbf3bc8f7 eb6c6a61f 6fa512c72 11bf57639 a653c4390`. MP2 base:
-    `6ae31083e`, `9acd7f669` (gaps in docs/STATUS.md 2026-10-19).
+    `6ae31083e`, `9acd7f669` (gaps in docs/STATUS-history.md, 2026-10-19).
 
 24. **tail1** (user 2026-10-25): portable MP1 commits after 3dde164eb to 8451b25ae: mod-reload
     disc-read reset (`5aba2cad4`), Aurora no-pipeline copy skip, MSAA depth copies, GX array check,
