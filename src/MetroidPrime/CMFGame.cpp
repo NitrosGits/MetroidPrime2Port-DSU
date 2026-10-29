@@ -113,6 +113,7 @@ CMFGame::~CMFGame() {
   // (and anything else reading these) stop seeing the last in-game state: the Ball page on the title.
   PortHarness::GameFlowState(-1, false);
   PortTouch::SetMorphed(false);
+  PortTouch::SetScanTextUp(false);
   // Port: the render mode is widened by the aspect setting.
   CGraphics::SetViewport(0, 0, CGraphics::GetRenderMode().fbWidth,
                          CGraphics::GetRenderMode().efbHeight);

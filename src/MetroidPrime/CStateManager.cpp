@@ -158,6 +158,7 @@
 #include "port_harness.h"
 #include "port_entry.h"
 #include "port_hold_toggle.h"
+#include "port_touch.h"
 #include "port_pointer.h"
 #include "port_mouse.h"
 #include "port_livesplit.h"
@@ -4321,6 +4322,8 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
                            mPortSpawnAtArea == kInvalidAreaId &&
                            mPortWarpQueuedArea == kInvalidAreaId &&
                            !mCameraManagers[0]->IsInCinematicCamera());
+  // The input contexts read the scan text's freeze from here (issue #11).
+  PortTouch::SetScanTextUp(mGameState == kGS_SoftPaused);
   if (mPortDropAreasAtFrame != 0 && mUpdateFrameIdx >= mPortDropAreasAtFrame) {
     mPortDropAreasAtFrame = 0;
     if (CWorld* dropWorld = World(); dropWorld != nullptr) {

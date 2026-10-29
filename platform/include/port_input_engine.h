@@ -93,6 +93,9 @@ enum Context : uint16_t {
   kCtxMap = 1 << 2,
   kCtxMenu = 1 << 3,
   kCtxScan = 1 << 4,
+  // The scan text (the scan freeze), on top of gameplay and scan. Port-internal: no remap
+  // page lists it; with separate menu buttons only Menu A applies there (issue #11).
+  kCtxScanText = 1 << 5,
   kCtxLayer1 = 1 << 8,
   kCtxLayer2 = 1 << 9,
   kCtxLayer3 = 1 << 10,

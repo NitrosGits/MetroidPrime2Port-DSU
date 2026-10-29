@@ -561,17 +561,6 @@ s8 StickY(float down, float up) {
   return static_cast<s8>(std::clamp(static_cast<int>(y), -127, 127));
 }
 
-// The scan text is up (the scan freeze): it reads A while the lock stays held.
-bool ScanTextOpen(uint16_t contexts) {
-  return (contexts & PortInput::kCtxMenu) != 0 && (contexts & PortInput::kCtxScan) != 0;
-}
-
-// The scan text's Menu context comes and goes under the held lock: switching it
-// must not consume the lock's input, which the Menu rows also use.
-uint16_t QuietContexts(uint16_t before, uint16_t after) {
-  return ScanTextOpen(before) || ScanTextOpen(after) ? PortInput::kCtxMenu : 0;
-}
-
 // Player 0's state while the game is in play (PortTouch's PlayerInPlay), else null. The
 // title and file select are a CMFGame in the 'FRND' front-end world: that is a menu, not
 // play, so its contexts read the Menu rows (#2).
@@ -586,14 +575,18 @@ CPlayerState* PlayerInPlay() {
 // Menu (front end, pause screen, or anything that is not in play) or gameplay; the
 // scan visor adds scan to gameplay, and the Morph Ball (or morphing; CPlayer::Update
 // publishes it) adds Morph Ball, which the Morph Ball rows and the touch overlay's
-// Ball page need. MP1 also tells the map screen apart and adds menu while the scan
-// text soft-pauses the game: those read the CStateManager, which nothing outside
-// src/ holds in MP2.
+// Ball page need. The scan text (CStateManager::Update publishes the scan freeze) adds
+// scan text to gameplay and scan rather than switching to menu, so the held lock keeps
+// its gameplay binding (#11). MP1 also tells the map screen apart, which reads the
+// CStateManager.
 uint16_t GameContexts() {
   const CPlayerState* state = PlayerInPlay();
   if (state == nullptr || PortTouch::PauseScreenOpen()) return PortInput::kCtxMenu;
   uint16_t contexts = PortInput::kCtxGameplay;
-  if (state->GetCurrentVisor() == CPlayerState::kPV_Scan) contexts |= PortInput::kCtxScan;
+  if (state->GetCurrentVisor() == CPlayerState::kPV_Scan) {
+    contexts |= PortInput::kCtxScan;
+    if (PortTouch::ScanTextUp()) contexts |= PortInput::kCtxScanText;
+  }
   if (PortTouch::Morphed()) contexts |= PortInput::kCtxMorphBall;
   return contexts;
 }
@@ -1112,8 +1105,9 @@ static bool MenuButtonsActive() { return PortOverlay::MenuStandardButtons() && !
 // those rows cover, and keyboard and mouse bindings for everywhere stop applying
 // there on an input a Menu row uses (bindings the user scoped to menus or the map,
 // Start/Z, the sticks and touch are left alone). Menu rows apply only in menus and
-// the map, and never on Start's or Z's input. With it off, the rows do
-// nothing. Only the game's poll applies this, so a remap page lists the bindings
+// the map, and never on Start's or Z's input. The scan text reads Menu A too, in place
+// of what its input and A do in gameplay; the other gameplay rows (the held lock)
+// still apply there (#11). With it off, the rows do nothing. Only the game's poll applies this, so a remap page lists the bindings
 // as saved.
 static void ApplyMenuButtons(Profile& p) {
   const auto isMenu = [](const Binding& b) { return FindMenuAction(b.action, true) != nullptr; };
@@ -1126,6 +1120,7 @@ static void ApplyMenuButtons(Profile& p) {
     if (isMenu(b)) {
       b.contexts &= kMenus;
       if (b.contexts == 0) b.contexts = kMenus;
+      if (b.action == Action::MenuA) b.contexts |= PortInput::kCtxScanText;
       continue;
     }
     if (b.count != 1 || (b.contexts & kMenus) == 0) continue;
@@ -1134,6 +1129,7 @@ static void ApplyMenuButtons(Profile& p) {
     } else if (IsPadFamily(b.inputs[0]) && FindMenuAction(b.action, false) != nullptr &&
                b.contexts == PortInput::kCtxAll) {
       b.blocked |= kMenus;
+      if (b.action == Action::PadA) b.blocked |= PortInput::kCtxScanText;
     }
   }
   std::erase_if(p.bindings, [&](const Binding& b) {
@@ -1147,6 +1143,9 @@ static void ApplyMenuButtons(Profile& p) {
         return FindMenuAction(b.action, true) != nullptr && b.count == 1 && !IsPadFamily(b.inputs[0]);
       },
       kMenus, true);
+  PortInput::BlockRowInputs(
+      p, [](const Binding& b) { return b.action == Action::MenuA && b.count == 1; }, PortInput::kCtxScanText,
+      true);
 }
 
 // A single pad input as the native button the prompts look up, or invalid.
@@ -1282,7 +1281,7 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
       std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
   const uint16_t contexts = GameContexts();
   const PortInput::Output& out =
-      sRuntime.Poll(raw, contexts, nowMs, QuietContexts(sRuntime.ActiveContexts(), contexts));
+      sRuntime.Poll(raw, contexts, nowMs, 0);
   SPoll r;
   sConsumeRadialPoll = false;
   if (PortInputRemap::Capturing()) {
@@ -1367,8 +1366,7 @@ void PollPortActions() {
   // F1 is the Port menu's default binding and has no other handler.
   raw.keys.reset(SDL_SCANCODE_F12);
   const uint16_t contexts = GameContexts();
-  const PortInput::Output& out = sRuntime.Poll(raw, contexts, static_cast<double>(SDL_GetTicksNS()) / 1e6,
-                                               QuietContexts(sRuntime.ActiveContexts(), contexts));
+  const PortInput::Output& out = sRuntime.Poll(raw, contexts, static_cast<double>(SDL_GetTicksNS()) / 1e6, 0);
   // The F1 Controls page is recording an input: a bound PortMenu would close it.
   if (PortInputRemap::Capturing()) {
     SetGyroButton(false);
