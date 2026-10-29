@@ -1050,6 +1050,13 @@ void CGraphics::EndScene() {
   GXLoadPosMtxImm(model, GX_PNMTX0);
   CGX::SetZMode(true, GX_LEQUAL, false);
   CGX::SetVtxDescv(skPosColorTexDirect);
+#ifdef TARGET_PC
+  // Port (issue #7): retail pads the GP pipeline before the copy with 96 one-unit triangles at
+  // the screen centre. At 1x they cover no pixel centre; at render_scale > 1 they cover one,
+  // coloured by whatever TEV and texture state is left over: the green dot (Dolphin's "Dot in
+  // IR>1"). The padding does nothing on the PC, so skip it.
+  if (false) {
+#endif
   CGX::Begin(GX_TRIANGLES, GX_VTXFMT0, 288);
   for (int i = 0; i < 96; ++i) {
     GXPosition3f32(0.f, 1.f, 1.f);
@@ -1063,6 +1070,9 @@ void CGraphics::EndScene() {
     GXTexCoord2f32(0.f, 0.f);
   }
   CGX::End();
+#ifdef TARGET_PC
+  }
+#endif
   CGX::SetZMode(true, GX_LEQUAL, true);
 
   const float brightness = CMath::Clamp(0.f, mBrightness, 2.f);
