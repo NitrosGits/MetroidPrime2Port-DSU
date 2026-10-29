@@ -65,6 +65,9 @@ bool sLogFile = true;
 bool sFastMorph = false;
 bool sPointerMenus = true;
 bool sMapSwapFingers = false;
+// Controls > Options > Map: flip either map rotate axis, as Prime 1's #225.
+bool sMapInvertX = false;
+bool sMapInvertY = false;
 int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
 int sScanSpeed = PortOverlay::kScanSpeedDefault;
 int sLanguage = 0;
@@ -939,6 +942,28 @@ bool MapSwapFingers() {
 void SetMapSwapFingers(bool swap) {
   ReadEnv();
   sMapSwapFingers = swap;
+  Persist();
+}
+
+bool MapInvertX() {
+  ReadEnv();
+  return EnvBool("MP2_MAP_INVERT_X", sMapInvertX);
+}
+
+void SetMapInvertX(bool invert) {
+  ReadEnv();
+  sMapInvertX = invert;
+  Persist();
+}
+
+bool MapInvertY() {
+  ReadEnv();
+  return EnvBool("MP2_MAP_INVERT_Y", sMapInvertY);
+}
+
+void SetMapInvertY(bool invert) {
+  ReadEnv();
+  sMapInvertY = invert;
   Persist();
 }
 

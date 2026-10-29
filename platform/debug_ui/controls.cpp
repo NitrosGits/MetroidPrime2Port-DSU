@@ -154,6 +154,14 @@ void DrawControlsOptions() {
   }
   ImGui::EndDisabled();
   ItemHelp("Same switch as Rumble in the pause menu.");
+
+  ImGui::SeparatorText("Map");
+  Changed(ImGui::Checkbox("Invert map rotate X", &sMapInvertX));
+  ItemHelp("Flips which way the map turns when you rotate it left and right. The game turns the "
+           "map the opposite way to the stick.");
+  SameLineAfterHelp();
+  Changed(ImGui::Checkbox("Invert map rotate Y", &sMapInvertY));
+  ItemHelp("Flips which way the map tilts up and down. Both on gives camera-style rotation.");
 }
 
 void DrawControlsKeyboardMouse() {

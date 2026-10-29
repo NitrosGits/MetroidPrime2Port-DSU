@@ -88,6 +88,12 @@ bool PointerMenus();
 void SetPointerMenus(bool enabled);
 bool MapSwapFingers();
 void SetMapSwapFingers(bool swap);
+// Map rotate flips (Controls > Options > Map, `MP2_MAP_INVERT_X`/`_Y`): the game turns the map
+// opposite to the stick, so flipping both gives camera-style rotation (CAutoMapper).
+bool MapInvertX();
+void SetMapInvertX(bool invert);
+bool MapInvertY();
+void SetMapInvertY(bool invert);
 // Walk speed (`MP2_WALK_SPEED`, percent, default 100 = retail): scales Samus's on-foot top speed,
 // acceleration and friction together (and the orbit strafe/approach speeds), so she moves k times
 // as fast and gets there in the same time. Jumps, sideways dashes, turning and the Morph Ball are

@@ -159,6 +159,11 @@ Controls > Options:
 - `minimap_tap`: Options > Menus > Tap minimap for map (a tap or click on the HUD minimap opens the
   map screen; default on; env `MP2_MINIMAP_TAP`; console `minimap`, `maptap`).
 - `fast_morph`, `spring_ball`: Morph ball > Fast Morph, Spring Ball (one row; C-stick up, the Spring Ball binding on the Remap page, touch swipe up, or a gyro flick).
+- `map_invert_x`, `map_invert_y`: Map > Invert map rotate X, Invert map rotate Y (off by
+  default; env `MP2_MAP_INVERT_X`, `MP2_MAP_INVERT_Y`). They flip which way the map turns on
+  the rotate inputs, left/right and up/down: the game turns the map opposite to the stick,
+  so both on gives camera-style rotation. The pointer and touch map gestures are not
+  flipped, as in Prime 1.
 
 Controls > Mouse settings:
 

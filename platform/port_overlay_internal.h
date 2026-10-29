@@ -20,6 +20,8 @@ extern bool sLogFile;
 extern bool sFastMorph;
 extern bool sPointerMenus;
 extern bool sMapSwapFingers;
+extern bool sMapInvertX;
+extern bool sMapInvertY;
 extern int sWalkSpeed;
 extern int sScanSpeed;
 extern int sLanguage;

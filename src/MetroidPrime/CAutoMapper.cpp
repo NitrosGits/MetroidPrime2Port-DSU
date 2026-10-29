@@ -1094,6 +1094,23 @@ void CAutoMapper::ProcessMapRotateInput(const CFinalInput& input, const CStateMa
     dirSlot = 3;
   }
 
+#ifdef TARGET_PC
+  // Port: Controls > Options > Map can flip either rotate axis (#225), as in Prime 1. Slots are
+  // 0 up, 1 down, 2 left, 3 right, the same layout as Prime 1's CAutoMapper.
+  if (PortOverlay::MapInvertX()) {
+    if (dirSlot == 2)
+      dirSlot = 3;
+    else if (dirSlot == 3)
+      dirSlot = 2;
+  }
+  if (PortOverlay::MapInvertY()) {
+    if (dirSlot == 0)
+      dirSlot = 1;
+    else if (dirSlot == 1)
+      dirSlot = 0;
+  }
+#endif
+
   left = 0.f;
   right = 0.f;
   down = 0.f;

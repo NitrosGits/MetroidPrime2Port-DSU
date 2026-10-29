@@ -49,6 +49,8 @@
 {"Controls", "Options", "Morph ball", "Fast Morph", "morph ball speed quick transform"},
 {"Controls", "Options", "Morph ball", "Spring Ball", "morph ball jump bomb c-stick cstick"},
 {"Controls", "Options", "Rumble", "Rumble", "vibration controller force feedback haptic"},
+{"Controls", "Options", "Map", "Invert map rotate X", "map rotate turn invert flip reverse horizontal"},
+{"Controls", "Options", "Map", "Invert map rotate Y", "map rotate turn invert flip reverse vertical"},
 {"Controls", "Mouse settings", "Mouse aim", "Mouse aim", "mouselook camera look cursor"},
 {"Controls", "Mouse settings", "Mouse aim", "Sensitivity", "mouse speed dpi"},
 {"Controls", "Mouse settings", "Mouse aim", "Separate vertical speed", "mouse vertical sensitivity split"},
