@@ -480,7 +480,9 @@ std::string FindIconFile(const std::string& name) {
   return std::filesystem::is_regular_file(path, ec) ? PortUtf8::ToUtf8(path) : std::string();
 }
 
-// The icon for `stem`: the one generated at exactly this size, then the unsuffixed one.
+// The icon for `stem`: the one generated for this texture's size, then the unsuffixed one. A
+// sized file is drawn at any whole multiple of that size (IconFitsBound), so "for this size" is
+// the game slot the file is named for, not the file's own dimensions.
 // A single stem can serve textures of different sizes - the C-stick prompts here are one
 // 32x32 and one 64x32 - and a mismatch is not scaled by the game: it reads 64x32 of pixels
 // out of 32x32 of data and draws the right-hand half as noise. tools/make_prompt_glyphs.py
@@ -507,6 +509,20 @@ bool IconDimensions(const std::string& path, uint32_t& width, uint32_t& height) 
   return true;
 }
 
+// Port: whether `iconWidth` x `iconHeight` may stand in for a `width` x `height` texture. Any
+// whole multiple of the texture's size is accepted, the same on both axes: the icons are drawn
+// larger than the game's art so they stay sharp on a scaled-up HUD (#229, from Prime 1), and a
+// file name's `_64x32` suffix is the game texture it serves, not the file's own size. The game
+// does not scale, so a file that is not a whole multiple reads past its data as noise.
+bool IconFitsBound(uint32_t iconWidth, uint32_t iconHeight, uint32_t width, uint32_t height) {
+  if (width == 0 || height == 0 || iconWidth < width || iconWidth % width != 0) {
+    return false;
+  }
+  // The same aspect ratio, so a 64x32 texture takes 128x64 art and not 128x128: one whole
+  // multiple on the width and on the height.
+  return iconHeight * width == iconWidth * height;
+}
+
 // The read callback's userData. Aurora worker threads can still be reading an
 // icon after Apply has unregistered it and moved on to another path, so each
 // path gets storage that is never changed or freed. Only the main thread adds
@@ -519,7 +535,7 @@ const std::string* StablePath(const std::string& path) {
 // Serves one generated icon as if it were a replacement file. Called from
 // Aurora worker threads, so it only touches the filesystem.
 bool ReadIconBytes(void* userData, const char* path, std::vector<uint8_t>& out) {
-  // The prompts are 32x32 with a single mip, so any mip sidecar Aurora probes
+  // The prompts have a single mip, so any mip sidecar Aurora probes
   // for is a miss rather than the same image again.
   if (path != nullptr && std::strstr(path, "_mip") != nullptr) {
     return false;
@@ -775,15 +791,15 @@ void Apply(size_t index, const std::string& stem) {
     // them. Leaving the stem recorded means one attempt and then silence.
     return;
   }
-  // Last line of defence, in case a sized file is ever wrong: refuse art whose
-  // dimensions do not match the texture it is standing in for. As above,
+  // Last line of defence, in case a sized file is ever wrong: refuse art that is
+  // not a whole multiple of the texture it is standing in for. As above,
   // activeStem is left recorded so Poll does not retry, and as above what
   // remains on screen is the static device set if it has one, not necessarily
   // the game's own art.
   uint32_t iconWidth = 0;
   uint32_t iconHeight = 0;
   if (!IconDimensions(reg.iconPath, iconWidth, iconHeight) ||
-      (iconWidth != key.width || iconHeight != key.height)) {
+      !IconFitsBound(iconWidth, iconHeight, key.width, key.height)) {
     return;
   }
   // Above the static device set (priority 0) and the user's texture pack (1).
@@ -831,8 +847,8 @@ void ApplyBound(const void* owner, BoundPrompt& bound, const std::string& stem) 
   const std::string iconPath = FindIconForSize(stem, bound.width, bound.height);
   uint32_t iconWidth = 0;
   uint32_t iconHeight = 0;
-  if (iconPath.empty() || !IconDimensions(iconPath, iconWidth, iconHeight) || iconWidth != bound.width ||
-      iconHeight != bound.height) {
+  if (iconPath.empty() || !IconDimensions(iconPath, iconWidth, iconHeight) ||
+      !IconFitsBound(iconWidth, iconHeight, bound.width, bound.height)) {
     return;
   }
   const std::string* path = StablePath(iconPath);
