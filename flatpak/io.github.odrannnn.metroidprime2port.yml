@@ -9,7 +9,7 @@
 # which is a domain the maintainer controls, as Flathub requires.
 app-id: io.github.odrannnn.metroidprime2port
 runtime: org.freedesktop.Platform
-runtime-version: '24.08'
+runtime-version: '25.08'
 sdk: org.freedesktop.Sdk
 command: metroid_prime2_port
 
