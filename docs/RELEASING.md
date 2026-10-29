@@ -89,7 +89,15 @@ entry (newest first) in `packaging/io.github.odrannnn.metroidprime2port.metainfo
    `summary.tsv` `ok`, exit 0.
 4. Check each artefact's version and that none holds game data (`unzip -l`, `--appimage-extract`),
    then `git tag -a vX` and `git push origin vX`.
-5. `gh release create vX --latest --notes-file …` with every asset passed explicitly, as a normal
+5. Release notes: copy the previous `docs/release-notes/<version>.md` (the user's approved text,
+   as published) and keep its shape exactly. Open with "This is an early release. Please report
+   what you hit and attach the log (F1 > System > Log).", then the short disc line (no extension
+   list, no "experimental" tags). Then **What changed**: bold one-line items with the issue numbers.
+   Then **Downloads**: the asset table, with no sideloading note on the iOS row. Then **Known
+   limitations**: only what is untested on real hardware. Leave out a title or intro paragraph, the
+   decomp/Aurora blurb, the "first game" link and any link to PrimeDecomp/echoes. Commit the
+   published text as `docs/release-notes/<version>.md`.
+6. `gh release create vX --latest --notes-file …` with every asset passed explicitly, as a normal
    release, **not** `--prerelease`: the in-game update check (`platform/port_update_check.cpp`,
    setting `update_check`, env `MP2_UPDATE_CHECK=0`) polls `/repos/<repo>/releases/latest`, which
    GitHub's API answers only from non-pre-releases (it was a 404 while 0.6.0 and 0.6.1 were
