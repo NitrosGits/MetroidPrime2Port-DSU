@@ -62,6 +62,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/Factories/CScannableObjectInfo.hpp"
 #include "Kyoto/Animation/CInt32POINode.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include <musyx/port_voices.h>
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CEntity.hpp"
 #include "MetroidPrime/CEntityInfo.hpp"
@@ -1158,6 +1159,22 @@ void CmdSkipCine(CStateManager&, const Args& args, std::string& out) {
 void CmdSkipPrompt(CStateManager&, const Args&, std::string& out) {
   PortOverlay::SkipConfirmArm();
   out += "skip prompt shown\n";
+}
+
+// sfx: CSfxManager state (channel, mMuted, mDoUpdate, live sounds per channel) and MusyX voices.
+void CmdSfx(CStateManager&, const Args&, std::string& out) {
+  int channel = 0;
+  bool muted = false, doUpdate = false;
+  int live[4];
+  int poolFree[2];
+  CSfxManager::PortDebugState(channel, muted, doUpdate, live, poolFree);
+  PortMusyxVoice voices[64];
+  const int voiceCount = MusyxPortCopyVoices(voices, 64);
+  out += "sfx: channel=" + std::to_string(channel) + " muted=" + std::to_string(muted) +
+         " doUpdate=" + std::to_string(doUpdate) + " live=[" + std::to_string(live[0]) + "," +
+         std::to_string(live[1]) + "," + std::to_string(live[2]) + "," + std::to_string(live[3]) +
+         "] poolFree=" + std::to_string(poolFree[0]) + "/" + std::to_string(poolFree[1]) +
+         " musyxVoices=" + std::to_string(voiceCount) + "\n";
 }
 
 // credits [1|2]: end the game into the credits (CGMSinglePlayer::EndGame's kRM_Credits1/2 route).
@@ -4850,6 +4867,8 @@ const CommandSpec kCommands[] = {
       "credits [1|2]               end the game into the credits (<75% / <100% route)\n"},
     {"skipcine", CmdSkipCine,
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"},
+    {"sfx", CmdSfx,
+      "sfx                         CSfxManager channel, mMuted, live sounds per channel, MusyX voices\n"},
     {"skipprompt", CmdSkipPrompt,
       "skipprompt                  show the cutscene skip prompt for a few seconds\n"},
     {"gunoffset", CmdGunOffset,
