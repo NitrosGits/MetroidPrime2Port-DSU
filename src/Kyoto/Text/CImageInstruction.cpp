@@ -18,11 +18,14 @@ void CImageInstruction::Invoke(CFontRenderState& state, CTextRenderBuffer* buf) 
         // art; the port's prompt icons sit at the quad's centre and rode about a
         // third of their own height above the text. A baseline 2/3 down centres
         // them on the capitals (measured on the hint memo, both devices).
+        // Port: the retail statement stays whole below; a local y changes MWCC's code.
         int y = state.GetY() + state.GetLine()->GetBaseline() - mImage.GetHeight() * 2 / 3;
-#else
-        int y = state.GetY() + state.GetLine()->GetBaseline() - mImage.CalculateBaseline();
-#endif
         buf->AddImage(CVector2i(state.GetX(), y), mImage);
+#else
+        buf->AddImage(CVector2i(state.GetX(), state.GetY() + state.GetLine()->GetBaseline() -
+                                                  mImage.CalculateBaseline()),
+                      mImage);
+#endif
       }
       state.SetX(state.GetX() + mImage.GetWidth());
     } else {
