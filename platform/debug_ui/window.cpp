@@ -13,6 +13,7 @@
 #include "port_savestate.h"
 
 #include <SDL3/SDL.h>
+#include <aurora/imgui.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
@@ -21,6 +22,7 @@
 #include <cfloat>
 #include <cmath>
 #include <ctime>
+#include <map>
 #include <mutex>
 #include <string>
 
@@ -483,27 +485,73 @@ void DrawIgtTimer() {
   draw->AddText(font, size, pos, IM_COL32(255, 255, 255, 230), text);
 }
 
-// "Skip  [A]" in the bottom-right corner while the cinematic skip is armed (PortOverlay::SkipConfirm*).
-// A click or tap on it counts as the second press.
+// The A button's icon on the device in use (PortPrompts::ConfirmIconStem), null without one. Each
+// icon becomes a texture the first time it is asked for and stays for the run: there are only a
+// handful of devices and keys.
+ImTextureID SkipConfirmIcon(float& aspect) {
+  struct Icon {
+    ImTextureID texture{};
+    float aspect = 1.f;
+  };
+  static std::map< std::string, Icon > sIcons;
+  const std::string stem = PortPrompts::ConfirmIconStem();
+  if (stem.empty()) {
+    return {};
+  }
+  auto it = sIcons.find(stem);
+  if (it == sIcons.end()) {
+    Icon icon;
+    std::vector< uint8_t > rgba;
+    uint32_t w = 0, h = 0;
+    if (PortPrompts::LoadIcon(stem, rgba, w, h)) {
+      icon.texture = aurora_imgui_add_texture(w, h, rgba.data());
+      icon.aspect = float(w) / float(h);
+    }
+    it = sIcons.emplace(stem, icon).first;
+  }
+  aspect = it->second.aspect;
+  return it->second.texture;
+}
+
+// "Press [A] to skip" at the bottom centre while the cinematic skip is armed
+// (PortOverlay::SkipConfirm*), with the button's icon when there is one. A click or tap on it
+// counts as the second press.
 void DrawSkipConfirm() {
   const float alpha = PortOverlay::SkipConfirmAlpha();
   if (ImGui::GetCurrentContext() == nullptr || alpha <= 0.f) {
     return;
   }
+  float aspect = 1.f;
+  const ImTextureID icon = SkipConfirmIcon(aspect);
   char text[64];
-  std::snprintf(text, sizeof(text), "Skip  [%s]", PortPrompts::ConfirmLabel());
+  std::snprintf(text, sizeof(text), "Press [%s] to skip", PortPrompts::ConfirmLabel());
   const ImGuiViewport* viewport = ImGui::GetMainViewport();
   const float scale = std::max(1.f, ImGui::GetFontSize() / 13.f);
-  ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x - 20.f * scale,
-                                 viewport->Pos.y + viewport->Size.y - (PortOverlay::IgtTimer() ? 80.f : 20.f) * scale),
-                          ImGuiCond_Always, ImVec2(1.f, 1.f));
+  ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x * 0.5f,
+                                 viewport->Pos.y + viewport->Size.y - 12.f * scale),
+                          ImGuiCond_Always, ImVec2(0.5f, 1.f));
   ImGui::SetNextWindowBgAlpha(0.6f * alpha);
   ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
   if (ImGui::Begin("##skip-confirm", nullptr,
                    ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav |
                        ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoSavedSettings |
                        ImGuiWindowFlags_AlwaysAutoResize)) {
-    ImGui::TextUnformatted(text);
+    if (icon) {
+      // The text centred on an icon a little taller than it.
+      const float size = ImGui::GetTextLineHeight() * 1.6f;
+      const float y = ImGui::GetCursorPosY();
+      const float textY = y + 0.5f * (size - ImGui::GetTextLineHeight());
+      ImGui::SetCursorPosY(textY);
+      ImGui::TextUnformatted("Press");
+      ImGui::SameLine();
+      ImGui::SetCursorPosY(y);
+      ImGui::Image(icon, ImVec2(size * aspect, size));
+      ImGui::SameLine();
+      ImGui::SetCursorPosY(textY);
+      ImGui::TextUnformatted("to skip");
+    } else {
+      ImGui::TextUnformatted(text);
+    }
     if (ImGui::IsWindowHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
       PortOverlay::SkipConfirmTap();
     }

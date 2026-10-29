@@ -1154,6 +1154,12 @@ void CmdSkipCine(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "skip cutscenes on\n" : "skip cutscenes off\n";
 }
 
+// skipprompt: show the "Press [A] to skip" prompt as a first press in a cinematic would, for screenshots.
+void CmdSkipPrompt(CStateManager&, const Args&, std::string& out) {
+  PortOverlay::SkipConfirmArm();
+  out += "skip prompt shown\n";
+}
+
 // credits [1|2]: end the game into the credits (CGMSinglePlayer::EndGame's kRM_Credits1/2 route).
 void CmdCredits(CStateManager& mgr, const Args& args, std::string& out) {
   const int which = args.size() < 2 ? 1 : ArgToInt(args[1], 1);
@@ -4844,6 +4850,8 @@ const CommandSpec kCommands[] = {
       "credits [1|2]               end the game into the credits (<75% / <100% route)\n"},
     {"skipcine", CmdSkipCine,
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"},
+    {"skipprompt", CmdSkipPrompt,
+      "skipprompt                  show the cutscene skip prompt for a few seconds\n"},
     {"gunoffset", CmdGunOffset,
       "gunoffset [<r> <f> <u>]     arm cannon offset in metres (+-1), as the F1 Render row does\n"},
     {"msaa", CmdMsaaAniso,

@@ -54,7 +54,7 @@ void Wheel(float steps);
 bool SkipCinematics();
 void SetSkipCinematics(bool skip);
 // Two-press cinematic skip: the first A/Start press only arms a "Skip [A]" prompt for
-// kSkipConfirmSeconds (real time, bottom right); a second press while armed skips. Armed state
+// kSkipConfirmSeconds (real time, bottom centre); a second press while armed skips. Armed state
 // lives here so CMFGame, CMFGameLoader and the overlay (and a tap on the prompt) share it.
 // Disarmed on expiry or when the cinematic ends. Harness and console skips never use it.
 const float kSkipConfirmSeconds = 3.f;

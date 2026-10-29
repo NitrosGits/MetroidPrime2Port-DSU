@@ -944,6 +944,39 @@ const char* ConfirmLabel() {
   }
 }
 
+std::string ConfirmIconStem() {
+  if (!sEnabled) {
+    return {};
+  }
+  const char* device = ActiveDevice();
+  std::string stem = IconStemForButton(PAD_BUTTON_A, device);
+  // A GameCube pad on its default mapping leaves the game's own art (empty); here there is none.
+  if (stem.empty() && std::strcmp(device, "gamecube") == 0) {
+    stem = GameCubeStemForAction(PAD_BUTTON_A);
+  }
+  return stem;
+}
+
+bool LoadIcon(const std::string& stem, std::vector< uint8_t >& rgba, uint32_t& width, uint32_t& height) {
+  constexpr size_t kHeader = 128; // "DDS " + the 124-byte header (tools/make_prompt_glyphs.py)
+  const std::string path = stem.empty() ? std::string() : FindIconFile(stem + ".dds");
+  std::vector< uint8_t > bytes;
+  if (path.empty() || !IconDimensions(path, width, height) || width == 0 || height == 0 ||
+      !ReadIconFile(path, bytes)) {
+    return false;
+  }
+  const size_t row = size_t(width) * 4;
+  if (bytes.size() < kHeader + row * height) {
+    return false;
+  }
+  // The DDS is stored bottom-up.
+  rgba.resize(row * height);
+  for (uint32_t y = 0; y < height; ++y) {
+    std::memcpy(rgba.data() + row * y, bytes.data() + kHeader + row * (height - 1 - y), row);
+  }
+  return true;
+}
+
 void Initialize(const char* textureRoot) {
   // Tracked even without generated icons, since the static set and rumble
   // (KeyboardActive) follow it too.
