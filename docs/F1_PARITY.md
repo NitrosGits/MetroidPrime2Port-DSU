@@ -144,7 +144,7 @@ Statuses:
 | Item | MP1 | MP2 | Status |
 | --- | --- | --- | --- |
 | Sub-tabs: Options, Mouse, Controller, Touch & gyro, Remap | tabs.cpp:206-231 | tabs.cpp:21-46 | SAME |
-| Swap Scan / X-Ray visor buttons | controls.cpp:64 | "Swap the Scan and Echo visor buttons", controls.cpp:55 | SAME (adapted to Echoes' visor) |
+| Swap Scan / X-Ray visor buttons | controls.cpp:64 | — | REMOVED after v0.6.1 (Superseded 2026-10-29: this row said SAME; the option, the Weapon buttons toggle and the empty Mouse buttons section are gone from `controls.cpp`; rebinding is on the Remap page) |
 | Radial menus label | controls.cpp:70 "Radial beam and visor menus (Trilogy)" | controls.cpp:62 "Native Trilogy radial selectors" | DIFF: label |
 | Remastered movement | controls.cpp:241 | — | MP1-ONLY: Remastered control scheme |
 | Menus / Point and click / Swap map gestures | — | controls.cpp:100-107 | DIFF: MP2-only rows |
