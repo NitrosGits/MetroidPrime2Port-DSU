@@ -1298,6 +1298,28 @@ void CmdElevator(CStateManager&, const Args& args, std::string& out) {
   out += std::string("elevator ") + kNames[PortOverlay::ElevatorRide()] + "\n";
 }
 
+// combocost / combomissiles / beamammo [n]: the F1 Cheats sliders; no argument prints the value.
+void CmdComboCost(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    PortOverlay::SetComboBeamCost(ArgToInt(args[1], PortOverlay::kComboBeamCostMax));
+  }
+  out += "combo beam ammo cost " + std::to_string(PortOverlay::ComboBeamCost()) + "\n";
+}
+
+void CmdComboMissiles(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    PortOverlay::SetComboMissileCost(ArgToInt(args[1], PortOverlay::kComboMissileCostMax));
+  }
+  out += "combo missile cost " + std::to_string(PortOverlay::ComboMissileCost()) + "\n";
+}
+
+void CmdBeamAmmo(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    PortOverlay::SetBeamAmmoPerExpansion(ArgToInt(args[1], PortOverlay::kBeamAmmoPerExpansionDefault));
+  }
+  out += "beam ammo per expansion " + std::to_string(PortOverlay::BeamAmmoPerExpansion()) + "\n";
+}
+
 // rooms [original|fast]: the rotating-room cutscenes (rotating_rooms); no argument prints it.
 void CmdRooms(CStateManager&, const Args& args, std::string& out) {
   static const char* const kNames[] = {"original", "fast"};
@@ -4949,6 +4971,12 @@ const CommandSpec kCommands[] = {
       "scanspeed [50..400]         scan speed in percent (scan_speed); no argument prints it\n"},
     {"language", CmdLanguage,
       "language [0..6]             text language, applied live (language); no argument prints it\n"},
+    {"combocost", CmdComboCost,
+      "combocost [0..30]           beam ammo a combo takes (combo_beam_cost); no argument prints it\n"},
+    {"combomissiles", CmdComboMissiles,
+      "combomissiles [0..5]        missiles a combo takes (combo_missile_cost); no argument prints it\n"},
+    {"beamammo", CmdBeamAmmo,
+      "beamammo [50..100]          Dark/Light ammo per capacity pickup (beam_ammo_per_expansion); no argument prints it\n"},
     {"rooms", CmdRooms,
       "rooms [original|fast]      the energy controller rooms' turning-room cutscene (rotating_rooms); no argument prints it\n"},
     {"portal", CmdPortal,

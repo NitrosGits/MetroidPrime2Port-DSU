@@ -1024,7 +1024,15 @@ bool CPlayerGun::GetBeamAmmoTypeAndCosts(bool combo, CStateManager& mgr,
     return true;
   }
   if (combo) {
+#ifdef TARGET_PC
+    // Port: the Combo beam ammo cost option (F1 > Cheats) caps the retail cost.
     cost = skComboAmmoCosts[mCurrentBeamId];
+    if (cost > PortOverlay::ComboBeamCost()) {
+      cost = PortOverlay::ComboBeamCost();
+    }
+#else
+    cost = skComboAmmoCosts[mCurrentBeamId];
+#endif
   } else if (mChargePhase >= kCP_Charging && mChargePhase <= kCP_Charged) {
     cost = skChargedAmmoCosts[mCurrentBeamId];
   }
@@ -2443,7 +2451,12 @@ void CPlayerGun::FireSecondary(float dt, CStateManager& mgr, TUniqueId target, u
     playerState.DecrementAmmoAndDisplayAlertIfOut(mgr, CPlayerState::kIT_Missile, 1);
   } else {
     bool canFire = true;
+#ifdef TARGET_PC
+    // Port: a combo needs only its own missile cost (the Combo missile cost option can be 0).
+    if (missiles < (mComboFiring ? playerState.GetMissileCostForAltAttack() : 1)) {
+#else
     if (missiles < 1) {
+#endif
       canFire = false;
     } else if (mComboFiring &&
                !GetBeamAmmoTypeAndCosts(mComboFiring, mgr, ammoTypeA, ammoTypeB, ammoCost)) {

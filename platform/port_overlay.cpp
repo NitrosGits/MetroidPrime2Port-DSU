@@ -75,6 +75,9 @@ int sLanguage = 0;
 int sElevatorRide = PortOverlay::kElevatorRide_Original;
 int sPortalTransition = PortOverlay::kPortalTransition_Original;
 int sRotatingRooms = PortOverlay::kRotatingRooms_Original;
+int sComboBeamCost = PortOverlay::kComboBeamCostMax;
+int sComboMissileCost = PortOverlay::kComboMissileCostMax;
+int sBeamAmmoPerExpansion = PortOverlay::kBeamAmmoPerExpansionDefault;
 bool sMinimapTap = true;
 int sPromptGlyphs = 0;
 bool sIgtTimer = false;
@@ -1905,6 +1908,49 @@ void SetElevatorRide(int mode) {
   ReadEnv();
   sElevatorRide = std::clamp(mode, static_cast< int >(kElevatorRide_Original),
                              static_cast< int >(kElevatorRide_Skip));
+  Persist();
+}
+
+int ComboBeamCost() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return kComboBeamCostMax;
+  }
+  return EnvIntIn("MP2_COMBO_BEAM_COST", sComboBeamCost, 0, kComboBeamCostMax);
+}
+
+void SetComboBeamCost(int cost) {
+  ReadEnv();
+  sComboBeamCost = std::clamp(cost, 0, kComboBeamCostMax);
+  Persist();
+}
+
+int ComboMissileCost() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return kComboMissileCostMax;
+  }
+  return EnvIntIn("MP2_COMBO_MISSILE_COST", sComboMissileCost, 0, kComboMissileCostMax);
+}
+
+void SetComboMissileCost(int cost) {
+  ReadEnv();
+  sComboMissileCost = std::clamp(cost, 0, kComboMissileCostMax);
+  Persist();
+}
+
+int BeamAmmoPerExpansion() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return kBeamAmmoPerExpansionDefault;
+  }
+  return EnvIntIn("MP2_BEAM_AMMO_PER_EXPANSION", sBeamAmmoPerExpansion, kBeamAmmoPerExpansionMin,
+                  kBeamAmmoPerExpansionMax);
+}
+
+void SetBeamAmmoPerExpansion(int ammo) {
+  ReadEnv();
+  sBeamAmmoPerExpansion = std::clamp(ammo, kBeamAmmoPerExpansionMin, kBeamAmmoPerExpansionMax);
   Persist();
 }
 

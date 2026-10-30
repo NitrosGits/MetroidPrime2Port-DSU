@@ -95,6 +95,20 @@ Game page:
   room turning) at the game's own double speed: while a cinematic camera is active and a timed,
   one-shot CScriptActorRotate of 5 s or more plays (any such room, no list), `CStateManager::Update`
   doubles dt and the camera's dt. Other cutscenes and gameplay are unchanged.
+- `combo_beam_cost`: Debug > Cheats > Combo beam ammo cost (0 to 30, default 30 = retail); env
+  `MP2_COMBO_BEAM_COST`, console `combocost`. The beam ammo a combo (super missile) takes; a Reset button
+  restores 30. Ignored with Original experience.
+- `combo_missile_cost`: Debug > Cheats > Combo missile cost (0 to 5, default 5 = retail); env
+  `MP2_COMBO_MISSILE_COST`, console `combomissiles`. The missiles a combo takes (0 lets one fire with none).
+- `beam_ammo_per_expansion`: Debug > Cheats > Beam ammo per expansion (50 to 100, default 50 = retail); env
+  `MP2_BEAM_AMMO_PER_EXPANSION`, console `beamammo`. What a Dark/Light ammo capacity pickup (expansion,
+  Dark/Light Beam, Annihilator; a pickup that adds capacity) grants is multiplied by this / 50, and
+  the cap for each is 250 * this / 50 (500 at 100). Ammo drops add no capacity and are unchanged.
+  The save file keeps the retail format: it stores the amounts clamped to 250, and the real amounts
+  live in the sidecar `beam_ammo.sidecar` next to the card (see PortSave `AmmoSidecar`), applied
+  on load only when its record's hash matches the save's bytes. Without the sidecar (or after a
+  copy through another tool) the save loads at the clamped 250. Lowering the slider mid-session
+  only lowers the cap: amounts above the new cap are clamped the next time ammo is added.
 - `portal_transition`: Cutscenes > Portal transition (0 original, 1 fast, 2 skip); env
   `MP2_PORTAL_TRANSITION` (`original|fast|skip`), console `portal`. The ride through a light/dark world
   portal (`CPortalTransition`, run by `CMFGame` kFS_PortalTransition for a dock, or by `CWorldTransManager`
