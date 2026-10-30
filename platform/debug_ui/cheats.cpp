@@ -386,6 +386,22 @@ void DrawCheatsSection() {
       for (int i = 0; i < worlds.size(); ++i) {
         const uint32_t id = static_cast< uint32_t >(worlds[i].first);
         std::string name = PlainWorldName(worlds[i].second.GetFrontEndName());
+        // The six multiplayer arenas (Metroid6.pak, same ids in every release) and the front end
+        // carry no name in the card's table; MLVL names from the disc (tools/world_areas.py --list).
+        static const struct {
+          uint32_t id;
+          const char* name;
+        } kUnnamedWorlds[] = {
+            {0xa50a80cc, "Multiplayer: Sidehopper Station"}, {0xae171602, "Multiplayer: Spires"},
+            {0xe3b0c703, "Multiplayer: Crossfire Chaos"},    {0x233e42be, "Multiplayer: Pipeline"},
+            {0x406add7f, "Multiplayer: Spider Complex"},     {0x7e19ed26, "Multiplayer: Shooting Gallery"},
+            {0x69802220, "Front End"},
+        };
+        for (const auto& known : kUnnamedWorlds) {
+          if (name.empty() && known.id == id) {
+            name = known.name;
+          }
+        }
         if (name.empty()) {
           char buf[32];
           std::snprintf(buf, sizeof(buf), "MLVL %08X", static_cast< unsigned >(id));

@@ -3793,6 +3793,9 @@ void CPlayer::UpdateScanningState(const CFinalInput& input, CStateManager& mgr, 
 
               if (allScanned) {
                 mPlayerState->StartTransitionToVisor(CPlayerState::kPV_Combat);
+#ifdef TARGET_PC
+                if (mgr.IsMultiplayer())
+#endif
                 mPlayerState->ReInitializePowerUp(CPlayerState::kIT_ScanVisor, 0);
                 CPlayerState::CPowerUp& virus = mPlayerState->PowerUp(CPlayerState::kIT_ScanVirus);
                 virus.mTimeLeft = -1.f;
