@@ -115,6 +115,9 @@ Game page:
   (each shot also fires the other beams you own, at no extra ammo cost); env
   `MP2_UNLOCK_HARD_MODE`, `MP2_UNLOCK_GALLERIES`, `MP2_UNLOCK_BEAM_DOORS`, `MP2_STACK_BEAMS`. Not
   written into the save, and Original experience greys them.
+- `stack_beams_skip_dark`: Unlocks > Leave out Dark Beam (#27): stacked shots skip the Dark Beam
+  unless it is in hand, so they don't drain light beacons and crystals; env
+  `MP2_STACK_BEAMS_SKIP_DARK`.
 - `livesplit`, `livesplit_address`, `livesplit_split_upgrades`: Speedrun > LiveSplit, Server
   (host:port), Split on upgrades; the address's env is `MP2_LIVESPLIT_ADDR`.
 - `mods`, `mods_disabled`: Mods > Load mods and one checkbox per mod folder (`mods_disabled` holds

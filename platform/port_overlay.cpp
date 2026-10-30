@@ -82,6 +82,7 @@ bool sUnlockHardMode = false;
 bool sUnlockGalleries = false;
 bool sUnlockBeamDoors = false;
 bool sStackBeams = false;
+bool sStackBeamsSkipDark = false;
 int sHintDelay = 0;
 bool sSpringBall = false;
 bool sSpringFlick = false;
@@ -2014,6 +2015,17 @@ bool StackBeams() {
 void SetStackBeams(bool enabled) {
   ReadEnv();
   sStackBeams = enabled;
+  Persist();
+}
+
+bool StackBeamsSkipDark() {
+  ReadEnv();
+  return EnvBool("MP2_STACK_BEAMS_SKIP_DARK", sStackBeamsSkipDark);
+}
+
+void SetStackBeamsSkipDark(bool enabled) {
+  ReadEnv();
+  sStackBeamsSkipDark = enabled;
   Persist();
 }
 

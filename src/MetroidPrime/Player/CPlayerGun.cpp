@@ -181,6 +181,10 @@ void CPlayerGun::PortFireStackedBeams(float dt, CStateManager& mgr, const CTrans
         !playerState.HasPowerUp(CPlayerState::EItemType(i))) {
       continue;
     }
+    if (i == CPlayerState::kIT_DarkBeam && PortOverlay::StackBeamsSkipDark()) {
+      beam->PortUnlockStackTokens();
+      continue;
+    }
     beam->PortLockStackTokens();
     beam->PortFireStackedProjectile(mUnderwater, dt, mChargeState, xf, mgr, homingTarget,
                                     playerState.GetChargeBeamFactor());

@@ -129,6 +129,14 @@ static void DrawUnlocksSection() {
     PortOverlay::SetStackBeams(stackBeams);
   }
   ImGui::SetItemTooltip("Each shot also fires the other beams you own, at no extra ammo cost.");
+  ImGui::BeginDisabled(!sStackBeams);
+  bool skipDark = sStackBeamsSkipDark;
+  if (ImGui::Checkbox("Leave out Dark Beam", &skipDark)) {
+    PortOverlay::SetStackBeamsSkipDark(skipDark);
+  }
+  ImGui::SetItemTooltip("Stacked shots skip the Dark Beam unless it's the one in hand, so they "
+                        "don't drain light beacons and crystals.");
+  ImGui::EndDisabled();
   ImGui::EndDisabled();
   ImGui::TextDisabled("What finishing the game unlocks. Not written into the save.");
   ItemHelp("Turning an option off locks it again.");

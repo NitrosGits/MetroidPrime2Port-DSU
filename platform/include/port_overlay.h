@@ -200,10 +200,14 @@ void SetUnlockGalleries(bool enabled);
 // the Power, Dark, Light and Annihilator beams hit and others do not) takes any of the four beams.
 // Stack beams (`MP2_STACK_BEAMS`): a beam fired while another is selected also fires the other
 // beams Samus owns, as in Prime 1's stacked beams. Both read false while Original experience is on.
+// Skip Dark (`MP2_STACK_BEAMS_SKIP_DARK`): the stack leaves the Dark Beam out unless it is in hand,
+// so stacked shots don't drain light beacons and crystals.
 bool UnlockBeamDoors();
 void SetUnlockBeamDoors(bool enabled);
 bool StackBeams();
 void SetStackBeams(bool enabled);
+bool StackBeamsSkipDark();
+void SetStackBeamsSkipDark(bool enabled);
 // Hint delay in minutes (`MP2_HINT_DELAY`, 0 = the game's own timing): HintDelaySeconds() caps the
 // wait before a hint first shows (CHintOptions::Update), 0 when off. RequestShowHint() (F1 button,
 // `hintshow`) asks the next CHintOptions::Update to show the hint the game would show next;

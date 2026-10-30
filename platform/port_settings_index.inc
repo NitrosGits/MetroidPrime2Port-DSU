@@ -21,6 +21,7 @@
 {"Game", "", "Unlocks", "Image galleries", "unlock gallery bonus art"},
 {"Game", "", "Unlocks", "Unlock beam doors", "unlock colour locked doors beams"},
 {"Game", "", "Unlocks", "Stack beams", "unlock stack fire all beams at once"},
+{"Game", "", "Unlocks", "Leave out Dark Beam", "stack beams dark light beacon crystal"},
 {"Game", "", "Audio", "Music volume", "sound bgm level"},
 {"Game", "", "Audio", "Sound effects volume", "sfx level"},
 {"Game", "", "Audio", "Sound mode", "mono stereo surround dolby"},

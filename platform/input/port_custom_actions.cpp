@@ -99,6 +99,8 @@ constexpr BoolSetting kBoolSettings[] = {
      &PortOverlay::SetUnlockBeamDoors},
     {"stack_beams", "Stack beams", "Game", &PortOverlay::StackBeams,
      &PortOverlay::SetStackBeams},
+    {"stack_beams_skip_dark", "Leave out Dark Beam", "Game", &PortOverlay::StackBeamsSkipDark,
+     &PortOverlay::SetStackBeamsSkipDark},
     {"unlock_hard_mode", "Unlock Hard mode", "Game", &PortOverlay::UnlockHardMode,
      &PortOverlay::SetUnlockHardMode},
     {"unlock_galleries", "Unlock galleries", "Game", &PortOverlay::UnlockGalleries,

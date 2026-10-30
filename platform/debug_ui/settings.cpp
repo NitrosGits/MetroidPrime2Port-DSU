@@ -192,6 +192,7 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sUnlockGalleries >("unlock_galleries"),
     BoolKey< &sUnlockBeamDoors >("unlock_beam_doors"),
     BoolKey< &sStackBeams >("stack_beams"),
+    BoolKey< &sStackBeamsSkipDark >("stack_beams_skip_dark"),
     IntKey< &sBootLogos, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off >(
         "boot_logos", "0", "2"),
     IntKey< &sWorldNameCard, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off >(

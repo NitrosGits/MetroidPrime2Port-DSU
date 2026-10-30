@@ -35,6 +35,7 @@ extern bool sUnlockHardMode;
 extern bool sUnlockGalleries;
 extern bool sUnlockBeamDoors;
 extern bool sStackBeams;
+extern bool sStackBeamsSkipDark;
 extern int sHintDelay;
 extern bool sSpringBall;
 extern bool sSpringFlick;
