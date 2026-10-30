@@ -240,8 +240,8 @@ void DrawCheatsSection() {
     ImGui::PushID(label);
     ImGui::CheckboxFlags("Infinite", &sInfiniteAmmo, PortOverlay::InfiniteAmmoKind(type));
     ImGui::PopID();
-    ItemHelp("Firing does not use this ammo up; pickups still add to it. An empty counter stays "
-             "empty, so slide it up first. Not saved.");
+    ItemHelp("Firing does not use this ammo up, even at zero, and the HUD shows infinity. The real count "
+             "is kept and pickups still add to it. Not saved.");
   };
   counter("Missiles", CPlayerState::kIT_Missile);
   counter("Power Bombs", CPlayerState::kIT_Powerbomb);

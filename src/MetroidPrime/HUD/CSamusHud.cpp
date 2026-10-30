@@ -59,6 +59,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef TARGET_PC
+// Port: the infinite ammo cheat's HUD. The counter shows an infinity sign and otherwise looks
+// full: the shown amount is the real capacity, so colours, meters and the low-ammo pulse stay
+// calm while expansions still show (and still trigger the pickup pulse). Real counts are never
+// touched.
+static bool IsInfiniteAmmo(CPlayerState::EItemType type) {
+  return PortOverlay::InfiniteAmmo(PortOverlay::InfiniteAmmoKind(type));
+}
+
+// U+221E followed by the narrow text `rest` (digits, "/", newline).
+static rstl::wstring InfinityText(const char* rest) {
+  rstl::wstring text;
+  text.append(1, static_cast< wchar_t >(0x221E));
+  const rstl::wstring tail = CStringExtras::ConvertToUNICODE(rstl::string_l(rest));
+  for (int i = 0; i < static_cast< int >(tail.size()); ++i) {
+    text.append(1, tail.at(i));
+  }
+  return text;
+}
+#endif
+
 // Structure-first scaffold. Unrecovered behavior is marked at each entry point.
 
 // Guessed name; no surviving direct consumer of this native table is identified.
@@ -1162,8 +1183,19 @@ void CSamusHud::UpdateMissile(float dt, const CStateManager& mgr, bool init) {
   const CPlayerState& state = *mgr.GetPlayerState(mPlayerIndex);
   const CPlayerGun& gun = *mgr.GetPlayer(mPlayerIndex)->mGun;
   const int enabled = gun.GetMissileMode() ? 0 : 1;
+#ifdef TARGET_PC
+  const int capacity = state.GetItemCapacity(CPlayerState::kIT_Missile);
+  const bool infinite = IsInfiniteAmmo(CPlayerState::kIT_Missile);
+  const int missiles = infinite ? capacity : state.GetItemAmount(CPlayerState::kIT_Missile, true);
+  static bool sWasInfinite = false;
+  if (infinite != sWasInfinite) {
+    sWasInfinite = infinite;
+    mMissileAmount = -1; // redraw the text
+  }
+#else
   const int missiles = state.GetItemAmount(CPlayerState::kIT_Missile, true);
   const int capacity = state.GetItemCapacity(CPlayerState::kIT_Missile);
+#endif
   if (init || missiles != mMissileAmount || enabled != mMissileEnabled ||
       capacity != mMissileCapacity || !close_enough(mMissilePickupPulse, 0.f) ||
       !close_enough(mMissileModeTransition, 0.f)) {
@@ -1205,6 +1237,13 @@ void CSamusHud::UpdateMissile(float dt, const CStateManager& mgr, bool init) {
       } else {
         sprintf(digits, "%02d\n%02d", missiles, capacity);
       }
+#ifdef TARGET_PC
+      if (infinite) {
+        char rest[16];
+        sprintf(rest, "\n%02d", capacity);
+        mMissileDigits->TextSupport().SetText(InfinityText(mgr.IsMultiplayer() ? "" : rest));
+      } else
+#endif
       mMissileDigits->TextSupport().SetText(
           CStringExtras::ConvertToUNICODE(rstl::string_l(digits)));
       mMissileDigits->TextSupport().SetFontColor(textColor);
@@ -1262,8 +1301,27 @@ void CSamusHud::UpdateBeamAmmo(const CStateManager& mgr, bool init) {
     beam = gun.GetPrimaryWeaponId();
   }
   const float beamFactor = CMath::Clamp(0.f, mBeamMenuTransition, 1.f);
+#ifdef TARGET_PC
+  const bool darkInfinite = IsInfiniteAmmo(CPlayerState::kIT_DarkAmmo);
+  const bool lightInfinite = IsInfiniteAmmo(CPlayerState::kIT_LightAmmo);
+  const int darkAmmo = darkInfinite ? state.GetItemCapacity(CPlayerState::kIT_DarkAmmo)
+                                    : state.GetItemAmount(CPlayerState::kIT_DarkAmmo, true);
+  const int lightAmmo = lightInfinite ? state.GetItemCapacity(CPlayerState::kIT_LightAmmo)
+                                      : state.GetItemAmount(CPlayerState::kIT_LightAmmo, true);
+  static bool sDarkWasInfinite = false;
+  static bool sLightWasInfinite = false;
+  if (darkInfinite != sDarkWasInfinite) {
+    sDarkWasInfinite = darkInfinite;
+    mDarkAmmo = -1; // redraw the text
+  }
+  if (lightInfinite != sLightWasInfinite) {
+    sLightWasInfinite = lightInfinite;
+    mLightAmmo = -1;
+  }
+#else
   const int darkAmmo = state.GetItemAmount(CPlayerState::kIT_DarkAmmo, true);
   const int lightAmmo = state.GetItemAmount(CPlayerState::kIT_LightAmmo, true);
+#endif
   if (init || mDarkAmmo != darkAmmo || beam != mAmmoBeam ||
       float(darkAmmo) <= float(state.GetItemCapacity(CPlayerState::kIT_DarkAmmo)) *
                              gpTweakGui->GetMissileWarningThreshold() ||
@@ -1349,6 +1407,11 @@ void CSamusHud::UpdateBeamAmmo(const CStateManager& mgr, bool init) {
       if (mDarkAmmoDigits != nullptr) {
         char buffer[16];
         sprintf(buffer, "%02d", darkAmmo);
+#ifdef TARGET_PC
+        if (darkInfinite) {
+          mDarkAmmoDigits->TextSupport().SetText(InfinityText(""));
+        } else
+#endif
         mDarkAmmoDigits->TextSupport().SetText(
             CStringExtras::ConvertToUNICODE(rstl::string_l(buffer)));
       }
@@ -1458,6 +1521,11 @@ void CSamusHud::UpdateBeamAmmo(const CStateManager& mgr, bool init) {
       }
       char buffer[16];
       sprintf(buffer, "%02d", lightAmmo);
+#ifdef TARGET_PC
+      if (lightInfinite) {
+        mLightAmmoDigits->TextSupport().SetText(InfinityText(""));
+      } else
+#endif
       mLightAmmoDigits->TextSupport().SetText(
           CStringExtras::ConvertToUNICODE(rstl::string_l(buffer)));
       mLightAmmo = lightAmmo;
@@ -1505,8 +1573,15 @@ void CSamusHud::UpdateBallMode(const CStateManager& mgr, bool) {
 
   const CPlayerState& playerState = *mgr.GetPlayerState(mPlayerIndex);
   const CPlayerGun& gun = *mgr.GetPlayer(mPlayerIndex)->mGun;
-  const int powerBombs = playerState.GetItemAmount(CPlayerState::kIT_Powerbomb, false);
   const int powerBombCapacity = playerState.GetItemCapacity(CPlayerState::kIT_Powerbomb);
+#ifdef TARGET_PC
+  const bool powerBombsInfinite = IsInfiniteAmmo(CPlayerState::kIT_Powerbomb);
+  const int powerBombs = powerBombsInfinite
+                             ? powerBombCapacity
+                             : playerState.GetItemAmount(CPlayerState::kIT_Powerbomb, false);
+#else
+  const int powerBombs = playerState.GetItemAmount(CPlayerState::kIT_Powerbomb, false);
+#endif
   const int bombsAvailable = gun.GetBombsAvailable(const_cast< CStateManager& >(mgr));
   const bool hasBombs = playerState.HasPowerUp(CPlayerState::kIT_MorphBallBombs);
   const bool powerBombReady =
@@ -1521,6 +1596,13 @@ void CSamusHud::UpdateBallMode(const CStateManager& mgr, bool) {
     } else {
       sprintf(buffer, "%d/%d", powerBombs, powerBombCapacity);
     }
+#ifdef TARGET_PC
+    if (powerBombsInfinite) {
+      char rest[16];
+      sprintf(rest, "/%d", powerBombCapacity);
+      mPowerBombDigits->TextSupport().SetText(InfinityText(mgr.IsMultiplayer() ? "" : rest), false);
+    } else
+#endif
     mPowerBombDigits->TextSupport().SetText(rstl::string(buffer), false);
     mPowerBombDigits->TextSupport().SetFontColor(
         powerBombs == 0 ? gpTweakGuiColors->GetMorphBallEmptyPowerBombDigitsForegroundColor()

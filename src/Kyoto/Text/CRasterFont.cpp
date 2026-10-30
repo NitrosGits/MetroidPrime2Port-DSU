@@ -3,6 +3,7 @@
 #include "Kyoto/CFactoryMgr.hpp"
 #ifdef TARGET_PC
 #include "Kyoto/Basics/CBasics.hpp"
+#include "Kyoto/Math/CMath.hpp"
 #endif
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/CVParamTransfer.hpp"
@@ -92,6 +93,14 @@ CRasterFont::CRasterFont(CInputStream& in, IObjectStore* store)
       }
 
       rstl::sort_by_key(mGlyphs);
+#ifdef TARGET_PC
+      // Placeholder for the U+221E the shipped fonts lack; AddInfinityGlyph fills it in.
+      if (InternalGetGlyph(0x221E) == nullptr) {
+        mGlyphs.reserve(mGlyphs.size() + 1);
+        mGlyphs.push_back_unsafe(rstl::pair< wchar_t, CGlyph >(0x221E, CGlyph(0, 0, 0, 0.f, 0.f, 0.f, 0.f, 0, 0, 0, 0, 0)));
+        rstl::sort_by_key(mGlyphs);
+      }
+#endif
 
       int kerningCount = in.ReadInt32();
       mKerning.reserve(kerningCount);
@@ -240,8 +249,235 @@ const CGlyph* CRasterFont::InternalGetGlyph(const wchar_t chr) const {
     return nullptr;
   }
 
+#ifdef TARGET_PC
+  if (chr == 0x221E && it->second.GetCellWidth() == 0) {
+    const_cast< CRasterFont* >(this)->AddInfinityGlyph();
+  }
+#endif
   return &it->second;
 }
+
+#ifdef TARGET_PC
+// Port: the shipped fonts have no U+221E (checked at runtime: the HUD digit fonts hold digits and
+// Latin text only), which the infinite ammo cheat's HUD needs. The constructor registers a
+// zero-size placeholder so the table never reallocates or reorders; once the font texture is
+// loaded, the first lookup paints a lemniscate into a free spot of the C4 atlas and fills in the
+// entry. The atlas is a stack of 1-bit planes (bit L of a texel is layer L; outline fonts keep the
+// outline ring, the 8-neighbour dilation of the fill, in the next plane), so the glyph is drawn the
+// same way as the digits: hard-edged, in the fill plane (and the outline plane where there is one),
+// with the digit '8' as the model for stroke weight and height.
+namespace {
+int PortAtlasTexel(const uchar* data, int width, int x, int y) {
+  const uchar b = data[((y >> 3) * (width >> 3) + (x >> 3)) * 32 + (y & 7) * 4 + ((x & 7) >> 1)];
+  return (x & 1) == 0 ? b >> 4 : b & 15;
+}
+
+void PortAtlasOrTexel(uchar* data, int width, int x, int y, int bits) {
+  uchar& b = data[((y >> 3) * (width >> 3) + (x >> 3)) * 32 + (y & 7) * 4 + ((x & 7) >> 1)];
+  b |= uchar((x & 1) == 0 ? bits << 4 : bits);
+}
+
+// True when no texel of `mask` is set anywhere in the rectangle grown by one texel (texels outside
+// the atlas count as clear).
+bool PortAtlasRectFree(const uchar* data, int width, int height, int x, int y, int w, int h,
+                       int mask) {
+  for (int j = y - 1; j <= y + h; ++j) {
+    for (int i = x - 1; i <= x + w; ++i) {
+      if (i >= 0 && j >= 0 && i < width && j < height &&
+          (PortAtlasTexel(data, width, i, j) & mask) != 0) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+// Fills `fill` (cellW x cellH, row-major) with a lemniscate whose stroke is `stroke` texels thick,
+// centred in a w x h box offset by `margin`.
+void PortRasterizeLemniscate(uchar* fill, int cellW, int cellH, int margin, int w, int h,
+                             float stroke) {
+  enum { kSamples = 720, kSuper = 4 };
+  float px[kSamples];
+  float py[kSamples];
+  const float rx = (float(w) - stroke) * 0.5f;
+  const float ry = (float(h) - stroke) * 0.5f / 0.35355339f;
+  for (int i = 0; i < kSamples; ++i) {
+    const float t = 6.2831853f * float(i) / float(kSamples);
+    const float s = CMath::SlowSineR(t);
+    const float d = 1.f + s * s;
+    px[i] = float(margin) + float(w) * 0.5f + rx * CMath::SlowCosineR(t) / d;
+    py[i] = float(margin) + float(h) * 0.5f + ry * s * CMath::SlowCosineR(t) / d;
+  }
+  const float radius = stroke * 0.5f;
+  for (int y = 0; y < cellH; ++y) {
+    for (int x = 0; x < cellW; ++x) {
+      int covered = 0;
+      for (int sy = 0; sy < kSuper; ++sy) {
+        for (int sx = 0; sx < kSuper; ++sx) {
+          const float cx = float(x) + (float(sx) + 0.5f) / float(kSuper);
+          const float cy = float(y) + (float(sy) + 0.5f) / float(kSuper);
+          for (int i = 0; i < kSamples; ++i) {
+            const float dx = px[i] - cx;
+            const float dy = py[i] - cy;
+            if (dx * dx + dy * dy <= radius * radius) {
+              ++covered;
+              break;
+            }
+          }
+        }
+      }
+      fill[y * cellW + x] = covered * 2 >= kSuper * kSuper ? 1 : 0;
+    }
+  }
+}
+} // namespace
+
+void CRasterFont::AddInfinityGlyph() {
+  const rstl::vector< rstl::pair< wchar_t, CGlyph > >::const_iterator found =
+      rstl::find_by_key(mGlyphs, wchar_t(0x221E));
+  if (found == mGlyphs.end() || found->second.GetCellWidth() != 0 || !mTexture ||
+      !mTexture->IsLoaded()) {
+    return;
+  }
+  CGlyph* infinity = const_cast< CGlyph* >(&found->second);
+  // One try per font: a font that has no room or model glyph keeps its placeholder.
+  static const CRasterFont* sTried[16];
+  static int sTriedCount = 0;
+  for (int i = 0; i < sTriedCount; ++i) {
+    if (sTried[i] == this) {
+      return;
+    }
+  }
+  if (sTriedCount < 16) {
+    sTried[sTriedCount++] = this;
+  }
+
+  const CGlyph* eight = InternalGetGlyph(L'8');
+  TLockedToken< CTexture > texture = *mTexture;
+  if (eight == nullptr || texture->GetTexelFormat() != kTF_C4 || texture->GetBitsPerPixel() != 4) {
+    return;
+  }
+  uchar* data = static_cast< uchar* >(texture->GetBitMapData(0));
+  const int width = texture->GetWidth();
+  const int height = texture->GetHeight();
+  if (data == nullptr || (width & 7) != 0 || (height & 7) != 0) {
+    return;
+  }
+
+  // Measure the '8': the ink box in its own fill plane and its stroke weight.
+  const bool outlined = mMode == kFM_OneLayerOutline || mMode == kFM_TwoLayersOutline;
+  const int eightLayer = eight->GetLayer();
+  const int rx0 = int(eight->GetStartU() * float(width) + 0.5f);
+  const int ry0 = int(eight->GetStartV() * float(height) + 0.5f);
+  const int rx1 = int(eight->GetEndU() * float(width) + 0.5f);
+  const int ry1 = int(eight->GetEndV() * float(height) + 0.5f);
+  int ix0 = rx1, iy0 = ry1, ix1 = rx0 - 1, iy1 = ry0 - 1;
+  for (int y = ry0; y < ry1 && y < height; ++y) {
+    for (int x = rx0; x < rx1 && x < width; ++x) {
+      if ((PortAtlasTexel(data, width, x, y) >> eightLayer & 1) != 0) {
+        ix0 = x < ix0 ? x : ix0;
+        iy0 = y < iy0 ? y : iy0;
+        ix1 = x > ix1 ? x : ix1;
+        iy1 = y > iy1 ? y : iy1;
+      }
+    }
+  }
+  const int inkW = ix1 - ix0 + 1;
+  const int inkH = iy1 - iy0 + 1;
+  if (inkW < 3 || inkH < 3) {
+    return;
+  }
+  int sideRun = 0;
+  for (int x = ix0; x <= ix1 && (PortAtlasTexel(data, width, x, iy0 + inkH / 4) >> eightLayer & 1);
+       ++x) {
+    ++sideRun;
+  }
+  int topRun = 0;
+  for (int y = iy0; y <= iy1 && (PortAtlasTexel(data, width, ix0 + inkW / 2, y) >> eightLayer & 1);
+       ++y) {
+    ++topRun;
+  }
+  const float stroke = float(sideRun + topRun) * 0.5f < 1.5f ? 1.5f : float(sideRun + topRun) * 0.5f;
+
+  // Layer (fill plane) candidates, the '8's first.
+  int layerCount = 1;
+  if (mMode == kFM_FourLayers) {
+    layerCount = 4;
+  } else if (mMode == kFM_TwoLayers) {
+    layerCount = 2;
+  } else if (mMode == kFM_TwoLayersOutline) {
+    layerCount = 4;
+  }
+  const int layerStep = mMode == kFM_TwoLayersOutline ? 2 : 1;
+
+  const int margin = outlined ? 1 : 0;
+  for (int scale = 10; scale >= 6; --scale) {
+    const int w = (inkH * 3 * scale / 40) * 8 / 5; // 75% of the digit height at 10, 1.6 times wider
+    const int h = inkH * 3 * scale / 40;
+    if (h < 3) {
+      break;
+    }
+    const int cellW = w + 2 * margin;
+    const int cellH = h + 2 * margin;
+    for (int k = -1; k * layerStep < layerCount; ++k) {
+      const int layer = k < 0 ? eightLayer : k * layerStep;
+      if (k >= 0 && layer == eightLayer) {
+        continue;
+      }
+      if (layer >= layerCount || (outlined && layer + 1 > 3)) {
+        continue;
+      }
+      const int mask = outlined ? 3 << layer : 1 << layer;
+      for (int y = 0; y + cellH <= height; ++y) {
+        for (int x = 0; x + cellW <= width; ++x) {
+          if (!PortAtlasRectFree(data, width, height, x, y, cellW, cellH, mask)) {
+            continue;
+          }
+          uchar fill[64 * 64];
+          if (cellW > 64 || cellH > 64) {
+            return;
+          }
+          PortRasterizeLemniscate(fill, cellW, cellH, margin, w, h, stroke);
+          for (int j = 0; j < cellH; ++j) {
+            for (int i = 0; i < cellW; ++i) {
+              bool ring = false;
+              if (outlined && fill[j * cellW + i] == 0) {
+                for (int dj = -1; dj <= 1 && !ring; ++dj) {
+                  for (int di = -1; di <= 1; ++di) {
+                    const int yy = j + dj;
+                    const int xx = i + di;
+                    if (yy >= 0 && xx >= 0 && yy < cellH && xx < cellW &&
+                        fill[yy * cellW + xx] != 0) {
+                      ring = true;
+                      break;
+                    }
+                  }
+                }
+              }
+              if (fill[j * cellW + i] != 0) {
+                PortAtlasOrTexel(data, width, x + i, y + j, 1 << layer);
+              } else if (ring) {
+                PortAtlasOrTexel(data, width, x + i, y + j, 1 << (layer + 1));
+              }
+            }
+          }
+          // The '8' sits on the line at its fill bottom (offset by dy8 in outline fonts); the sign
+          // is centred on the digit's height.
+          const int dy8 = (iy1 + 1 - ry0) - int(eight->GetBaseline());
+          int baseline = margin + h - dy8 + (inkH - h + 1) / 2;
+          baseline = baseline < 0 ? 0 : baseline > 255 ? 255 : baseline;
+          *infinity = CGlyph(eight->GetA(), w, eight->GetC(), float(x) / float(width),
+                                    float(y) / float(height), float(x + cellW) / float(width),
+                                    float(y + cellH) / float(height), layer, cellW, cellH,
+                                    baseline, eight->GetKernStart());
+          texture->InitTextureObjects();
+          return;
+        }
+      }
+    }
+  }
+}
+#endif
 
 CFactoryFnReturn FRasterFontFactory(const SObjectTag& tag, CInputStream& in,
                                           const CVParamTransfer& xfer) {
