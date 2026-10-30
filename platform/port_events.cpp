@@ -459,9 +459,9 @@ bool PortPumpEvents() {
     if (event->type == AURORA_SDL_EVENT) {
       const SDL_Event& input = event->sdl;
       const bool virtualPad = input.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN
-                                  ? SDL_IsJoystickVirtual(input.gbutton.which)
+                                  ? PADIsTouchOverlayJoystick(input.gbutton.which)
                                   : input.type == SDL_EVENT_GAMEPAD_AXIS_MOTION &&
-                                        SDL_IsJoystickVirtual(input.gaxis.which);
+                                        PADIsTouchOverlayJoystick(input.gaxis.which);
       if (PortTouch::PhysicalEvent(input, PortOverlay::Visible(), virtualPad)) {
         PortTouch::NotePhysicalInput();
       }

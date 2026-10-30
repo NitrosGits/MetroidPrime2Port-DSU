@@ -222,6 +222,17 @@ Controls > Remap:
 - `menu_standard_buttons`: Separate menu buttons (menus and the map read the "Menus and map"
   rows; ignored while the touch controls are on); env `MP2_MENU_STANDARD_BUTTONS`.
 
+Controls > Controller settings > DSU controllers:
+
+- `dsu_enabled` (default 1), `dsu_server` (default `127.0.0.1:26760`; `host[:port]`, IPv6 in
+  brackets), `dsu_layout` (`gamecube`, the default, or `playstation`): pads another program
+  serves over UDP with the DSU/cemuhook protocol (NSO GC Driver, DS4Windows, BetterJoy, phone
+  and Steam Deck apps). Each connected slot becomes an SDL virtual gamepad named "DSU slot <n>",
+  which takes a port and is chosen under Remap > Active controller like any pad. `gamecube`
+  presents it as Nintendo's GameCube adapter and reads NSO GC Driver's buttons; `playstation`
+  presents a DualShock 4 with the buttons by position. Motion and touch are not read.
+  The client is `platform/port_dsu.cpp`.
+
 Controls > Touch & gyro (Gyro aim):
 
 - `gyro_aim`, `gyro_mode`: Mode (Off, or one of the four modes; Off clears `gyro_aim`).

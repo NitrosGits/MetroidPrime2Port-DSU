@@ -6,6 +6,7 @@
 #include "../port_overlay_internal.h"
 
 #include "port_discord.h"
+#include "port_dsu.h"
 #include "port_env.h"
 #include "port_livesplit.h"
 #include "port_mods.h"
@@ -241,6 +242,34 @@ const SettingKey kSettingKeys[] = {
         "pointer_aim_box", "50", "70"),
     IntKey< &sPointerAimTurn, PortOverlay::kPointerAimTurnMin, PortOverlay::kPointerAimTurnMax >(
         "pointer_aim_turn", "180", "360"),
+    {"dsu_enabled",
+     [](const std::string& value) { PortDsu::Settings().enabled = ParseBool(value); },
+     [](std::ostream& out) { WriteBool(out, PortDsu::Settings().enabled); },
+     false,
+     "1",
+     "0"},
+    {"dsu_server",
+     [](const std::string& value) {
+       // A host:port: printable ASCII without spaces.
+       if (!value.empty() && value.size() <= PortDsu::kServerMaxLen &&
+           std::all_of(value.begin(), value.end(), [](char c) { return c > ' ' && c < 0x7F; }))
+         PortDsu::Settings().server = value;
+     },
+     [](std::ostream& out) { out << PortDsu::Settings().server; },
+     false,
+     "127.0.0.1:26760",
+     "192.168.1.20:26760"},
+    {"dsu_layout",
+     [](const std::string& value) {
+       if (value == "gamecube" || value == "playstation")
+         PortDsu::Settings().layout = value == "playstation" ? PortDsu::kLayoutPlayStation : PortDsu::kLayoutGameCube;
+     },
+     [](std::ostream& out) {
+       out << (PortDsu::Settings().layout == PortDsu::kLayoutPlayStation ? "playstation" : "gamecube");
+     },
+     false,
+     "gamecube",
+     "playstation"},
     BoolKey< &sGyroAim >("gyro_aim"),
     IntKey< &sGyroSource, 0, 2 >("gyro_source", "0", "1"),
     IntKey< &sGyroSpace, 0, 4 >("gyro_space", "1", "2"),

@@ -655,6 +655,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_radial.cpp
         platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp platform/port_disc_replace.cpp
         platform/port_gyro_motion.cpp
+        platform/port_dsu.cpp platform/port_dsu_proto.cpp
         platform/port_dynamic_res.cpp platform/port_video.cpp platform/port_gpu_driver.cpp
         platform/port_data_folder.cpp
         platform/port_json.cpp platform/port_ws.cpp platform/port_update_check.cpp
@@ -911,6 +912,11 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_gyro_motion_tests PRIVATE platform/include)
     add_test(NAME port_gyro_motion_tests COMMAND port_gyro_motion_tests)
     set_tests_properties(port_gyro_motion_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # The DSU packet code (platform/port_dsu_proto.cpp): requests, pad data and slot info.
+    add_executable(port_dsu_tests tests/port_dsu.cpp platform/port_dsu_proto.cpp)
+    target_include_directories(port_dsu_tests PRIVATE platform/include)
+    add_test(NAME port_dsu_tests COMMAND port_dsu_tests)
+    set_tests_properties(port_dsu_tests PROPERTIES TIMEOUT 30 LABELS port)
     # The bindings parser/writer (platform/input/port_input_bindings.cpp): a controls file parses
     # into engine bindings and round-trips, with bad input rejected rather than half-applied.
     add_executable(port_input_bindings_tests tests/port_input_bindings.cpp

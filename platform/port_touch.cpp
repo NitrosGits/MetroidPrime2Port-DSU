@@ -30,6 +30,7 @@
 #include <SDL3/SDL.h>
 #include "port_touch_activity.h"
 #include <aurora/gfx.h>
+#include <dolphin/pad.h>
 
 #include <algorithm>
 #include <atomic>
@@ -530,7 +531,7 @@ void BeginFrame() {
     bool real = false;
     if (SDL_JoystickID* ids = SDL_GetJoysticks(&count)) {
       for (int i = 0; i < count; ++i) {
-        if (!SDL_IsJoystickVirtual(ids[i])) {
+        if (!PADIsTouchOverlayJoystick(ids[i])) {
           real = true;
           break;
         }

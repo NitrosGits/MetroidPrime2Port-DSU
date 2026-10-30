@@ -5,6 +5,7 @@
 
 #include "../input/port_input_devices.h"
 #include "port_controls.h"
+#include "port_dsu.h"
 #include "port_gyro_motion.h"
 #include "port_input_remap_ui.h"
 #include "port_mouse.h"
@@ -22,6 +23,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <string>
 
 namespace PortDebug {
@@ -227,6 +229,52 @@ void DrawControlsKeyboardMouse() {
 }
 
 void DrawControlsController() {
+  ImGui::SeparatorText("DSU controllers");
+  PortDsu::Config& dsu = PortDsu::Settings();
+  if (ImGui::Checkbox("Use DSU controllers", &dsu.enabled)) {
+    Changed(true);
+  }
+  ItemHelp("Controllers that another program serves over the network (DSU/cemuhook, as in Dolphin): "
+           "NSO GC Driver, DS4Windows, BetterJoy, phone or Steam Deck apps. Each one shows up as a "
+           "controller named \"DSU slot <n>\"; if another pad has player 1, pick it under Remap > Active controller.");
+  ImGui::BeginDisabled(!dsu.enabled);
+  // Edited in a buffer and taken on Enter or leaving the field, so a half typed
+  // address doesn't restart the client on every key.
+  static char sDsuServer[PortDsu::kServerMaxLen + 1] = {};
+  static bool sDsuServerEditing = false;
+  if (!sDsuServerEditing) {
+    std::snprintf(sDsuServer, sizeof(sDsuServer), "%s", dsu.server.c_str());
+  }
+  ImGui::InputText("Server##dsu", sDsuServer, sizeof(sDsuServer), ImGuiInputTextFlags_CharsNoBlank);
+  sDsuServerEditing = ImGui::IsItemActive();
+  if (ImGui::IsItemDeactivated() && sDsuServer[0] != '\0' && dsu.server != sDsuServer) {
+    dsu.server = sDsuServer;
+    Changed(true);
+  }
+  ItemHelp("host:port of the DSU server: 127.0.0.1:26760 for one on this computer, or the phone's or "
+           "PC's IP address, e.g. 192.168.1.20:26760.");
+  ImGui::SameLine();
+  if (ImGui::Button("Default##dsu")) {
+    dsu.server = PortDsu::kDefaultServer;
+    Changed(true);
+  }
+  const char* dsuLayouts[] = {"GameCube controller", "PlayStation (DS4) or other pad"};
+  int dsuLayout = std::clamp(dsu.layout, 0, 1);
+  if (ImGui::Combo("Controller layout##dsu", &dsuLayout, dsuLayouts, IM_ARRAYSIZE(dsuLayouts))) {
+    dsu.layout = dsuLayout;
+    Changed(true);
+  }
+  ItemHelp("What the server's controllers are. GameCube controller: a GameCube pad behind the server "
+           "(NSO GC Driver); it gets the GameCube layout. PlayStation: DS4Windows, BetterJoy, phone "
+           "apps; buttons by position.");
+  if (dsu.enabled) {
+    ImGui::Text("%s", PortDsu::ServerStatus().c_str());
+    for (const std::string& line : PortDsu::SlotStatus()) {
+      ImGui::BulletText("%s", line.c_str());
+    }
+  }
+  ImGui::EndDisabled();
+
   ImGui::SeparatorText("Stick aim");
   bool twinStick = PortMouse::StickEnabled();
   if (ImGui::Checkbox("Twin stick (right stick aims)", &twinStick)) {
@@ -269,7 +317,7 @@ void DrawControlsController() {
   }
   const s32 controllerIndex = PADGetIndexForPort(PAD_CHAN0);
   if (SDL_Gamepad* pad = controllerIndex >= 0 ? PADGetSDLGamepadForIndex(static_cast< u32 >(controllerIndex)) : nullptr;
-      pad != nullptr && SDL_IsJoystickVirtual(SDL_GetGamepadID(pad))) {
+      pad != nullptr && PADIsTouchOverlayJoystick(SDL_GetGamepadID(pad))) {
     // Aurora ignores mappings on the virtual touch pad.
     ImGui::TextWrapped("The touch controls always use the GameCube layout; presets and remaps apply to "
                        "real controllers only.");
