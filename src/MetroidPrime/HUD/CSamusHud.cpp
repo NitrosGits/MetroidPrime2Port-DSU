@@ -68,6 +68,13 @@ static bool IsInfiniteAmmo(CPlayerState::EItemType type) {
   return PortOverlay::InfiniteAmmo(PortOverlay::InfiniteAmmoKind(type));
 }
 
+// The amount the HUD pretends to hold: the real capacity, but never 0 (a counter with no capacity
+// would show the depletion colour).
+static int InfiniteShownAmount(const CPlayerState& state, CPlayerState::EItemType type) {
+  const int capacity = state.GetItemCapacity(type);
+  return capacity > 0 ? capacity : 1;
+}
+
 // U+221E followed by the narrow text `rest` (digits, "/", newline).
 static rstl::wstring InfinityText(const char* rest) {
   rstl::wstring text;
@@ -1186,7 +1193,8 @@ void CSamusHud::UpdateMissile(float dt, const CStateManager& mgr, bool init) {
 #ifdef TARGET_PC
   const int capacity = state.GetItemCapacity(CPlayerState::kIT_Missile);
   const bool infinite = IsInfiniteAmmo(CPlayerState::kIT_Missile);
-  const int missiles = infinite ? capacity : state.GetItemAmount(CPlayerState::kIT_Missile, true);
+  const int missiles = infinite ? InfiniteShownAmount(state, CPlayerState::kIT_Missile)
+                                : state.GetItemAmount(CPlayerState::kIT_Missile, true);
   static bool sWasInfinite = false;
   if (infinite != sWasInfinite) {
     sWasInfinite = infinite;
@@ -1304,9 +1312,9 @@ void CSamusHud::UpdateBeamAmmo(const CStateManager& mgr, bool init) {
 #ifdef TARGET_PC
   const bool darkInfinite = IsInfiniteAmmo(CPlayerState::kIT_DarkAmmo);
   const bool lightInfinite = IsInfiniteAmmo(CPlayerState::kIT_LightAmmo);
-  const int darkAmmo = darkInfinite ? state.GetItemCapacity(CPlayerState::kIT_DarkAmmo)
+  const int darkAmmo = darkInfinite ? InfiniteShownAmount(state, CPlayerState::kIT_DarkAmmo)
                                     : state.GetItemAmount(CPlayerState::kIT_DarkAmmo, true);
-  const int lightAmmo = lightInfinite ? state.GetItemCapacity(CPlayerState::kIT_LightAmmo)
+  const int lightAmmo = lightInfinite ? InfiniteShownAmount(state, CPlayerState::kIT_LightAmmo)
                                       : state.GetItemAmount(CPlayerState::kIT_LightAmmo, true);
   static bool sDarkWasInfinite = false;
   static bool sLightWasInfinite = false;
@@ -1577,7 +1585,7 @@ void CSamusHud::UpdateBallMode(const CStateManager& mgr, bool) {
 #ifdef TARGET_PC
   const bool powerBombsInfinite = IsInfiniteAmmo(CPlayerState::kIT_Powerbomb);
   const int powerBombs = powerBombsInfinite
-                             ? powerBombCapacity
+                             ? InfiniteShownAmount(playerState, CPlayerState::kIT_Powerbomb)
                              : playerState.GetItemAmount(CPlayerState::kIT_Powerbomb, false);
 #else
   const int powerBombs = playerState.GetItemAmount(CPlayerState::kIT_Powerbomb, false);
