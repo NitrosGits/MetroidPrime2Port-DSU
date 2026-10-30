@@ -440,6 +440,8 @@ bool Capture(CStateManager& mgr, State& s, std::string& error) {
     CBitStreamWriter writer(stream);
     gpGameState->PutTo(writer);
   }
+  // Dark/Light ammo above 250 (Beam ammo per expansion) does not fit the retail blob.
+  gpGameState->GetPlayerState()->PortRememberBeamAmmo(s.blob.data(), s.blob.size(), true);
   worldState.SetDesiredAreaAssetId(desired);
   if (PortOverlay::SaveStateRoomState()) {
     CaptureRoomState(mgr, s.roomState);
@@ -487,6 +489,7 @@ void SwapGameState(const State& s) {
     CBitStreamReader reader(stream);
     owner = rs_new CGameState(reader);
   }
+  owner->GetPlayerState()->PortApplyBeamAmmo(s.blob.data(), s.blob.size());
   gpGameState = owner.get();
   gpGameState->SystemOptions() = systemOptions;
   gpGameState->SetCompressedGameStates(states);

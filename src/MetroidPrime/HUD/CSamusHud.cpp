@@ -1386,8 +1386,15 @@ void CSamusHud::UpdateBeamAmmo(const CStateManager& mgr, bool init) {
             darkAmmo != 0 ? digits : gpTweakGuiColors->GetDarkAmmoDepletionColor());
       }
       if (mDarkAmmoSegments.size() != 0) {
+#ifdef TARGET_PC
+        // Port: the tanks span the slider's maximum (Beam ammo per expansion), so there are never
+        // more than the HUD has.
+        const int perTank =
+            CPlayerState::PortPowerUpMaxValue(CPlayerState::kIT_DarkAmmo) / mDarkAmmoSegments.size();
+#else
         const int perTank =
             CPlayerState::GetPowerUpMaxValue(CPlayerState::kIT_DarkAmmo) / mDarkAmmoSegments.size();
+#endif
         const int capacity = state.GetItemCapacity(CPlayerState::kIT_DarkAmmo);
         const int capacityTanks = (capacity + perTank - 1) / perTank;
         const int activeTanks = darkAmmo / perTank + 1;
@@ -1501,8 +1508,13 @@ void CSamusHud::UpdateBeamAmmo(const CStateManager& mgr, bool init) {
             lightAmmo != 0 ? digits : gpTweakGuiColors->GetLightAmmoDepletionColor());
       }
       if (mLightAmmoMeters.size() != 0) {
+#ifdef TARGET_PC
+        const int perTank = CPlayerState::PortPowerUpMaxValue(CPlayerState::kIT_LightAmmo) /
+                            mLightAmmoSegments.size();
+#else
         const int perTank = CPlayerState::GetPowerUpMaxValue(CPlayerState::kIT_LightAmmo) /
                             mLightAmmoSegments.size();
+#endif
         const int capacity = state.GetItemCapacity(CPlayerState::kIT_LightAmmo);
         const int capacityTanks = (capacity + perTank - 1) / perTank;
         const int activeTanks = lightAmmo / perTank + 1;

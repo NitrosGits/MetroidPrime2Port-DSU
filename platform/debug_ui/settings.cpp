@@ -210,6 +210,11 @@ const SettingKey kSettingKeys[] = {
         "elevator_ride", "0", "2"),
     IntKey< &sRotatingRooms, PortOverlay::kRotatingRooms_Original, PortOverlay::kRotatingRooms_Fast >(
         "rotating_rooms", "0", "1"),
+    IntKey< &sComboBeamCost, 0, PortOverlay::kComboBeamCostMax >("combo_beam_cost", "0", "30"),
+    IntKey< &sComboMissileCost, 0, PortOverlay::kComboMissileCostMax >("combo_missile_cost", "0",
+                                                                       "5"),
+    IntKey< &sBeamAmmoPerExpansion, PortOverlay::kBeamAmmoPerExpansionMin,
+            PortOverlay::kBeamAmmoPerExpansionMax >("beam_ammo_per_expansion", "50", "100"),
     IntKey< &sPortalTransition, PortOverlay::kPortalTransition_Original,
             PortOverlay::kPortalTransition_Skip >("portal_transition", "0", "2"),
     IntKey< &sPromptGlyphs, PortOverlay::kPromptGlyphs_Auto, PortOverlay::kPromptGlyphs_Keyboard >(

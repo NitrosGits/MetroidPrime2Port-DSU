@@ -131,6 +131,20 @@ void SetMapInvertY(bool invert);
 const int kWalkSpeedMin = 50;
 const int kWalkSpeedMax = 200;
 const int kWalkSpeedDefault = 100;
+
+// Ammo costs and beam ammo capacity (the F1 Cheats page, #27). The defaults are retail.
+const int kComboBeamCostMax = 30;      // combo beam ammo cost: 0..30, 30 = retail
+const int kComboMissileCostMax = 5;    // combo missile cost: 0..5, 5 = retail
+const int kBeamAmmoPerExpansionMin = 50; // percent of 50 ammo per pickup: 50 (retail) .. 100
+const int kBeamAmmoPerExpansionMax = 100;
+const int kBeamAmmoPerExpansionDefault = 50;
+int ComboBeamCost();
+void SetComboBeamCost(int cost);
+int ComboMissileCost();
+void SetComboMissileCost(int cost);
+// Dark/Light ammo a capacity pickup grants is multiplied by this / 50 (retail: 50).
+int BeamAmmoPerExpansion();
+void SetBeamAmmoPerExpansion(int ammo);
 int WalkSpeed();
 void SetWalkSpeed(int percent);
 // Scan speed in percent (`MP2_SCAN_SPEED`, 100 = retail): ScanSpeed() scales the time a scan takes
