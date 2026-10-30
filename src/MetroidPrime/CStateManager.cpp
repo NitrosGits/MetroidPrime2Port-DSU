@@ -823,7 +823,10 @@ float PortPresentedWorldTime(float time) {
 
 void CStateManager::PreRender(uint playerIndex) {
   #ifdef TARGET_PC
-  CTimeProvider timeProvider(PortPresentedWorldTime(mCurTimeMod900));
+  // A named local: CTimeProvider keeps a `const float&`, so a temporary would dangle once this
+  // declaration ends and every material UV animation would read a dead stack slot (issue #21).
+  const float presentedTime = PortPresentedWorldTime(mCurTimeMod900);
+  CTimeProvider timeProvider(presentedTime);
 #else
   CTimeProvider timeProvider(mCurTimeMod900);
 #endif
@@ -1312,7 +1315,9 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
 
   const CPlayerState::EPlayerVisor visor = mPlayerState->GetActiveVisor(*this);
   #ifdef TARGET_PC
-  CTimeProvider timeProvider(PortPresentedWorldTime(mCurTimeMod900));
+  // Named for the reason PreRender gives: CTimeProvider holds a reference (issue #21).
+  const float presentedTime = PortPresentedWorldTime(mCurTimeMod900);
+  CTimeProvider timeProvider(presentedTime);
 #else
   CTimeProvider timeProvider(mCurTimeMod900);
 #endif
