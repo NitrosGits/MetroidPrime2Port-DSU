@@ -129,12 +129,15 @@ Game page:
   loaded save. Needs the in-game hint system on. Show current hint (Cutscenes button; console
   `hintshow`) shows the hint the game would show next: a hint already on screen comes back,
   otherwise the waiting hint due soonest shows now.
-- `unlock_hard_mode`, `unlock_galleries`, `unlock_beam_doors`, `stack_beams`: Unlocks > Hard mode
-  (offered when starting a file, as after finishing the game), Image galleries (all of them), Unlock
-  beam doors (colour-locked doors open to any of the four beams; missile locks stay), Stack beams
-  (each shot also fires the other beams you own, at no extra ammo cost); env
-  `MP2_UNLOCK_HARD_MODE`, `MP2_UNLOCK_GALLERIES`, `MP2_UNLOCK_BEAM_DOORS`, `MP2_STACK_BEAMS`. Not
-  written into the save, and Original experience greys them.
+- `unlock_hard_mode`, `unlock_galleries`, `stack_beams`: Unlocks > Hard mode (offered when
+  starting a file, as after finishing the game), Image galleries (all of them), Stack beams (each
+  shot also fires the other beams you own, at no extra ammo cost); env `MP2_UNLOCK_HARD_MODE`,
+  `MP2_UNLOCK_GALLERIES`, `MP2_STACK_BEAMS`. Not written into the save, and Original experience
+  greys them.
+- `unlock_beam_doors`: Debug > Cheats > Unlock beam doors; env `MP2_UNLOCK_BEAM_DOORS`.
+  Colour-locked doors (the door's own vulnerability, or a damageable-trigger lock) open to any of
+  the four beams; missile locks stay. Saved, not written into the save file; Original experience
+  greys it.
 - `stack_beams_skip_dark`: Unlocks > Leave out Dark Beam (#27): stacked shots skip the Dark Beam
   unless it is in hand, so they don't drain light beacons and crystals; env
   `MP2_STACK_BEAMS_SKIP_DARK`.

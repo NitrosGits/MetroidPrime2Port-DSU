@@ -192,6 +192,13 @@ void DrawCheatsSection() {
   ImGui::Checkbox("No Dark Aether damage", &sNoDarkAetherDamage);
   ItemHelp("Dark Aether's air does not hurt, as with the Light Suit; light crystals still heal. "
            "Not saved.");
+  ImGui::BeginDisabled(PortOverlay::OriginalExperience());
+  bool beamDoors = sUnlockBeamDoors;
+  if (ImGui::Checkbox("Unlock beam doors", &beamDoors)) {
+    PortOverlay::SetUnlockBeamDoors(beamDoors);
+  }
+  ImGui::EndDisabled();
+  ItemHelp("Colour-locked doors open to any of the four beams. Missile locks stay.");
 
   CPlayerState* ps = gpGameState != nullptr ? gpGameState->GetPlayerState().GetPtr() : nullptr;
   // The front end has its own player state and its own Samus; the page is about the game's.

@@ -118,12 +118,6 @@ static void DrawUnlocksSection() {
     PortOverlay::SetUnlockGalleries(galleries);
   }
   ImGui::SetItemTooltip("All of them.");
-  bool beamDoors = sUnlockBeamDoors;
-  if (ImGui::Checkbox("Unlock beam doors", &beamDoors)) {
-    PortOverlay::SetUnlockBeamDoors(beamDoors);
-  }
-  ImGui::SetItemTooltip("Colour-locked doors open to any of the four beams. Missile locks stay.");
-  ImGui::SameLine();
   bool stackBeams = sStackBeams;
   if (ImGui::Checkbox("Stack beams", &stackBeams)) {
     PortOverlay::SetStackBeams(stackBeams);

@@ -95,7 +95,7 @@ static_assert(std::size(kPresets) == size_t(PresetId::Count));
 constexpr BoolSetting kBoolSettings[] = {
     {"skip_cinematics", "Skip cinematics", "Game", &PortOverlay::SkipCinematics,
      &PortOverlay::SetSkipCinematics},
-    {"unlock_beam_doors", "Beam doors stay unlocked", "Game", &PortOverlay::UnlockBeamDoors,
+    {"unlock_beam_doors", "Unlock beam doors", "Debug", &PortOverlay::UnlockBeamDoors,
      &PortOverlay::SetUnlockBeamDoors},
     {"stack_beams", "Stack beams", "Game", &PortOverlay::StackBeams,
      &PortOverlay::SetStackBeams},

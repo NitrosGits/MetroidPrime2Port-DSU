@@ -227,8 +227,8 @@ bool UnlockHardMode();
 void SetUnlockHardMode(bool enabled);
 bool UnlockGalleries();
 void SetUnlockGalleries(bool enabled);
-// Beam doors (`MP2_UNLOCK_BEAM_DOORS`): a colour-locked door lock (a damageable trigger that some of
-// the Power, Dark, Light and Annihilator beams hit and others do not) takes any of the four beams.
+// Beam doors (`MP2_UNLOCK_BEAM_DOORS`): a colour-locked door (a door or damageable trigger that some
+// of the Power, Dark, Light and Annihilator beams hit and others do not) takes any of the four beams.
 // Stack beams (`MP2_STACK_BEAMS`): a beam fired while another is selected also fires the other
 // beams Samus owns, as in Prime 1's stacked beams. Both read false while Original experience is on.
 // Skip Dark (`MP2_STACK_BEAMS_SKIP_DARK`): the stack leaves the Dark Beam out unless it is in hand,
