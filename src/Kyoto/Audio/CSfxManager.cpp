@@ -265,8 +265,12 @@ void CSfxManager::Initialize() {
 }
 
 void CSfxManager::Shutdown() {
+#ifndef TARGET_PC
+  // The table is loaded once at boot (CMain::FillInAssetIDs); nothing reloads it after a quit to
+  // title, so deleting it here left TranslateSFXID returning invalid for every id (silent SFX).
   delete mpTranslationTable;
   mpTranslationTable = nullptr;
+#endif
   StopAndRemoveAllEmitters();
   mAuxEffectManager.Shutdown();
   for (rstl::reserved_vector< CAuxEffect, 10 >::iterator it = mAuxEffects.begin();
