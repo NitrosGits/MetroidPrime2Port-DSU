@@ -208,9 +208,13 @@
 {"System", "", "Memory card", "Import file...", "save import gci card dolphin primehack"},
 {"System", "", "Memory card", "Import from Dolphin/PrimeHack", "save import dolphin emulator card gci"},
 {"System", "", "Memory card", "Export as", "save export format gci trilogy wii save.bin"},
+#if defined(__ANDROID__)
+{"System", "", "Memory card", "Export...", "save export gci card backup file trilogy"},
+#else
 {"System", "", "Memory card", "Export to folder...", "save export gci card backup dolphin"},
 {"System", "", "Memory card", "Export to Dolphin/PrimeHack", "save export dolphin emulator card gci"},
 {"System", "", "Memory card", "Open card folder", "save card folder files open"},
+#endif
 {"System", "", "Data folder", "Open data folder", "user data folder directory path settings open"},
 {"System", "", "Discord", "Rich Presence", "discord profile activity presence status rich"},
 {"System", "", "Log", "Write the log to a file", "logging output stdout stderr debug log file"},

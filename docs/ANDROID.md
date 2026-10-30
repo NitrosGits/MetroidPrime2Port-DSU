@@ -100,6 +100,18 @@ allocated)` every 30 s or when process memory moves 64 MiB or system memory 128 
 (`aurora_reduce_gpu_memory`). Android always builds pipelines lazily, so the 5-s pressure check
 (SETTINGS.md, "Pipeline memory") runs there too. Not run on a device (no installs from this lane).
 
+### Memory card export (issue #23)
+
+SDL3 has no folder picker on Android, so "Export to folder..." did nothing there. F1 > System >
+Memory card shows "Export..." instead (`platform/debug_ui/card_data.cpp`): the card's files are
+queued (`PortSave::ExportBytes`) and `SDL_ShowSaveFileDialog` opens once per file with its name
+suggested through `SDLActivity.setNextSaveDialogSuggestedFilename` (EXTRA_TITLE of
+ACTION_CREATE_DOCUMENT). The Trilogy choice picks a source save.bin with the open dialog, then saves
+the updated copy through the save dialog. The content:// URI is written with `SDL_IOFromFile`.
+"Export to Dolphin/PrimeHack", "Open card folder" and the emulator section are hidden on Android.
+On every platform a dialog that fails now says why in the status line. Compiled for desktop only;
+not built or run on a device (no NDK here, no installs from this lane).
+
 ### Data folder move to shared storage (MP1 sync, gpu-misc)
 
 F1 > System > Data folder (`platform/port_data_folder.cpp`, Android only) moves `user/` (settings,
