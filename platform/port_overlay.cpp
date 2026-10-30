@@ -74,6 +74,7 @@ int sScanSpeed = PortOverlay::kScanSpeedDefault;
 int sLanguage = 0;
 int sElevatorRide = PortOverlay::kElevatorRide_Original;
 int sPortalTransition = PortOverlay::kPortalTransition_Original;
+int sRotatingRooms = PortOverlay::kRotatingRooms_Original;
 bool sMinimapTap = true;
 int sPromptGlyphs = 0;
 bool sIgtTimer = false;
@@ -1905,6 +1906,40 @@ void SetElevatorRide(int mode) {
   sElevatorRide = std::clamp(mode, static_cast< int >(kElevatorRide_Original),
                              static_cast< int >(kElevatorRide_Skip));
   Persist();
+}
+
+int RotatingRooms() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return kRotatingRooms_Original;
+  }
+  const char* env = port::EnvString("MP2_ROTATING_ROOMS");
+  if (env != nullptr && std::strcmp(env, "original") == 0) {
+    return kRotatingRooms_Original;
+  }
+  if (env != nullptr && std::strcmp(env, "fast") == 0) {
+    return kRotatingRooms_Fast;
+  }
+  return EnvIntIn("MP2_ROTATING_ROOMS", sRotatingRooms, kRotatingRooms_Original, kRotatingRooms_Fast);
+}
+
+void SetRotatingRooms(int mode) {
+  ReadEnv();
+  sRotatingRooms = std::clamp(mode, static_cast< int >(kRotatingRooms_Original),
+                              static_cast< int >(kRotatingRooms_Fast));
+  Persist();
+}
+
+static unsigned sRotatingSequenceFrame = 0;
+static bool sRotatingSequenceSeen = false;
+
+void NoteRotatingSequence(unsigned frame) {
+  sRotatingSequenceFrame = frame;
+  sRotatingSequenceSeen = true;
+}
+
+bool RotatingSequenceActive(unsigned frame) {
+  return sRotatingSequenceSeen && frame - sRotatingSequenceFrame <= 2;
 }
 
 int PortalTransition() {

@@ -194,6 +194,15 @@ void DrawCutscenesSection() {
   }
   ItemHelp("The ride between worlds. Fast plays it at double speed; Skip leaves as soon as the next "
            "world has loaded. Applies from the next ride.");
+  int rotatingRooms = sRotatingRooms;
+  ImGui::SetNextItemWidth(rideWidth);
+  if (ImGui::Combo("Rotating rooms", &rotatingRooms, "Original\0" "Fast\0")) {
+    sRotatingRooms = std::clamp(rotatingRooms, static_cast< int >(PortOverlay::kRotatingRooms_Original),
+                                static_cast< int >(PortOverlay::kRotatingRooms_Fast));
+    Changed(true);
+  }
+  ItemHelp("The energy controller rooms' bomb-slot cutscene, where the room turns. Fast plays it at "
+           "double speed.");
   SameLineAfterHelp();
   int portalTransition = sPortalTransition;
   ImGui::SetNextItemWidth(rideWidth);
