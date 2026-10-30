@@ -87,7 +87,8 @@ struct Output {
 )";
 
 // Port (issue #24): Compatibility variants of the resolve. A Compatibility device cannot bind a
-// multisampled depth texture, so the MSAA variant has no depth input and writes a fixed depth of 0.
+// multisampled depth texture, so the MSAA variant has no depth input and writes a fixed far-plane depth (FAR_DEPTH, patched to the
+// raw far value for the depth convention), the 'no data' value the Splitter beam expects.
 // It reads the already-resolved single-sample colour (the multisampled view holds no ids there),
 // so ids at silhouettes are averaged; the 1x variant reads depth like the Core one.
 constexpr std::string_view CompatResolveShaderNoDepth = R"(
@@ -104,7 +105,7 @@ struct Output {
 };
 @fragment fn fs_main(@builtin(position) pos: vec4f) -> Output {
     let coord = vec2i(pos.xy) + vec2i(origin);
-    return Output(textureLoad(color, coord, 0), 0.0);
+    return Output(textureLoad(color, coord, 0), FAR_DEPTH);
 }
 )";
 
@@ -127,10 +128,10 @@ struct Output {
 @fragment fn fs_main(@builtin(position) pos: vec4f) -> Output {
     let coord = vec2i(pos.xy) + vec2i(origin);
     let uv = (vec2f(coord) + vec2f(0.5)) / vec2f(textureDimensions(depth));
-    // Compat allows only comparison samplers on depth: bisect the texel (ref <= depth), 20 steps.
+    // Compat allows only comparison samplers on depth: bisect the texel (ref <= depth), 24 steps (z24 precision).
     var lo = 0.0;
     var hi = 1.0;
-    for (var i = 0; i < 20; i++) {
+    for (var i = 0; i < 24; i++) {
         let mid = (lo + hi) * 0.5;
         if (textureSampleCompareLevel(depth, depthSampler, uv, mid) > 0.5) {
             lo = mid;
@@ -149,6 +150,9 @@ wgpu::RenderPipeline resolve_pipeline(bool multisampled, bool compat) {
   }
   std::string shader{compat ? (multisampled ? CompatResolveShaderNoDepth : CompatResolveShader1x)
                             : ResolveShader};
+  if (compat && multisampled) {
+    shader.replace(shader.find("FAR_DEPTH"), 9, gx::UseReversedZ ? "0.0" : "1.0");
+  }
   if (!multisampled && !compat) {
     const std::string colorType = "texture_multisampled_2d<f32>";
     const std::string depthType = "texture_depth_multisampled_2d";
@@ -339,7 +343,8 @@ void write_snapshot(Slot& slot, const uint8_t* colorData, const float* depthData
         // byte-swaps that half, so the high byte goes first here. Z8L is the bottom 8 bits.
         const float sampled = depthRow[sx];
         const float normalized = std::clamp(gx::UseReversedZ ? 1.f - sampled : sampled, 0.f, 1.f);
-        const uint32_t z24 = static_cast<uint32_t>(normalized * 16777215.f + 0.5f);
+        // [port #24] float32 rounds 16777215.5 up to 2^24, which wrapped far-plane depth to 0
+        const uint32_t z24 = std::min(static_cast<uint32_t>(normalized * 16777215.f + 0.5f), 0xFFFFFFu);
         const uint32_t high = z24 >> 8;
         depthHighOut[index] = static_cast<uint16_t>(((high >> 8) & 0xff) | ((high & 0xff) << 8));
         depthLowOut[index] = static_cast<uint8_t>(z24 & 0xff);
