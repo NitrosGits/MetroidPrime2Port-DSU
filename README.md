@@ -1,5 +1,10 @@
 # Echoes Unbound - Metroid Prime 2 native port
 
+> **Disclaimer:** this is an independent project, not affiliated with or endorsed
+> by [PrimeDecomp](https://github.com/PrimeDecomp). It builds on their
+> decompilation, but they don't maintain or support this port: please report
+> problems here, not to them.
+
 **[Latest release: 0.6.2](https://github.com/Odrannnn/MetroidPrime2Port/releases)**
 
 **Looking for the first game? See the [Metroid Prime Unbound](https://github.com/Odrannnn/MetroidPrimePort).**
@@ -115,11 +120,43 @@ intact; every port change to an upstream file sits in a `#ifdef TARGET_PC` block
 - **Settings in a bad state**: F1 > System > Settings > **Reset configuration...**
   backs up and resets every setting and mapping; saves are not touched.
 
-## Credits and licensing
+## Credits
 
-This took the old echoes decomp as a base, expanded to get a fully playable port. Aurora (`extern/aurora`) is a vendored snapshot, and MusyX
-(`extern/musyx-port`) provides the audio engine; third-party licences are kept
-alongside them and copied into release packages.
+This port would not exist without the work of these projects. Thank you.
+
+**Foundation**
+
+- [PrimeDecomp](https://github.com/PrimeDecomp): the Echoes decompilation the
+  game code is built from, expanded here into a fully playable port, and the
+  decompiled Dolphin SDK.
+- [Aurora](https://github.com/encounter/aurora): the GameCube graphics, input and
+  platform layer over SDL3 and WebGPU.
+- [MusyX](https://github.com/AxioDL/musyx): the audio engine.
+- [nod](https://github.com/encounter/nod): the disc image reader.
+
+**Platform and input**
+
+- [libadrenotools](https://github.com/bylaws/libadrenotools): custom Vulkan drivers on Android.
+- [GamepadMotionHelpers](https://github.com/JibbSmart/GamepadMotionHelpers): gyro
+  calibration and aiming spaces.
+- [Kenney Input Prompts](https://kenney.nl/assets/input-prompts) (CC0): the
+  controller button icons.
+- [Dolphin](https://dolphin-emu.org) and [PrimeHack](https://github.com/shiiion/dolphin):
+  the memory card folders the port imports from and exports to.
+
+**Libraries**
+
+[SDL3](https://libsdl.org), [Dawn](https://dawn.googlesource.com/dawn),
+[Dear ImGui](https://github.com/ocornut/imgui), [fmt](https://github.com/fmtlib/fmt),
+[Abseil](https://abseil.io), [FreeType](https://freetype.org), libpng,
+[zstd](https://github.com/facebook/zstd), [xxHash](https://github.com/Cyan4973/xxHash),
+[SQLite](https://sqlite.org) and [Tracy](https://github.com/wolfpld/tracy).
+
+## Licensing
+
+Every third-party component keeps its own licence; the full list, with where each
+licence text lives, is in [`NOTICE`](NOTICE), and the texts are copied into every
+release package.
 
 `LICENSE` (MIT) covers this project's own work — the platform layer, the build and
 packaging scripts, and the Android integration. It does **not** cover the game code

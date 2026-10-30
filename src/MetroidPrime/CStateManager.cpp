@@ -4290,7 +4290,14 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
     if ((camera->GetFlags() & 0x200) != 0) {
       dt *= camera->GetSlowMotionScale();
     }
-    if (gpMain->IsMaxSpeed()) {
+    if (gpMain->IsMaxSpeed()
+#ifdef TARGET_PC
+        // Port: Rotating rooms = Fast runs the energy controller rooms' cutscene at the
+        // game's own double speed.
+        || (PortOverlay::RotatingRooms() == PortOverlay::kRotatingRooms_Fast &&
+            PortOverlay::RotatingSequenceActive(mUpdateFrameIdx))
+#endif
+    ) {
       dt *= 2.f;
       cameraDt *= 2.f;
     }
@@ -4441,6 +4448,20 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
       }
     }
 
+#ifdef TARGET_PC
+    // Hacker Mode (scan virus) is a multiplayer power-up: in the campaign it would force the Scan
+    // visor and block the morph ball, so drop it where it cannot belong.
+    if (!IsMultiplayer() && mPlayerStates[0] != nullptr) {
+      CPlayerState::CPowerUp& virus = mPlayerStates[0]->PowerUp(CPlayerState::kIT_ScanVirus);
+      if (virus.mAmount != 0 || virus.mCapacity != 0 || virus.mTimeLeft != 0.f) {
+        virus.mTimeLeft = 0.f;
+        virus.mAmount = 0;
+        virus.mCapacity = 0;
+        mPlayerStates[0]->StartTransitionToVisor(CPlayerState::kPV_Combat);
+      }
+    }
+#endif
+
     for (int item = 0; item < CPlayerState::kIT_Max; ++item) {
       for (uint player = 0; player < mNumPlayers; ++player) {
         const CPlayerState::EItemType type = static_cast< CPlayerState::EItemType >(item);
@@ -4465,6 +4486,10 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
             }
             if (item == CPlayerState::kIT_ScanVirus) {
               mPlayerStates[player]->StartTransitionToVisor(CPlayerState::kPV_Combat);
+#ifdef TARGET_PC
+              // A virus carried out of a multiplayer map must not take the campaign's Scan Visor.
+              if (IsMultiplayer())
+#endif
               mPlayerStates[player]->ReInitializePowerUp(CPlayerState::kIT_ScanVisor, 0);
             }
             DisplayAlertAboutOutOfAmmo(*mPlayers[player], type);

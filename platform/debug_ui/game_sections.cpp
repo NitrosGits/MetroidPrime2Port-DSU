@@ -118,17 +118,19 @@ static void DrawUnlocksSection() {
     PortOverlay::SetUnlockGalleries(galleries);
   }
   ImGui::SetItemTooltip("All of them.");
-  bool beamDoors = sUnlockBeamDoors;
-  if (ImGui::Checkbox("Unlock beam doors", &beamDoors)) {
-    PortOverlay::SetUnlockBeamDoors(beamDoors);
-  }
-  ImGui::SetItemTooltip("Colour-locked doors open to any of the four beams. Missile locks stay.");
-  ImGui::SameLine();
   bool stackBeams = sStackBeams;
   if (ImGui::Checkbox("Stack beams", &stackBeams)) {
     PortOverlay::SetStackBeams(stackBeams);
   }
   ImGui::SetItemTooltip("Each shot also fires the other beams you own, at no extra ammo cost.");
+  ImGui::BeginDisabled(!sStackBeams);
+  bool skipDark = sStackBeamsSkipDark;
+  if (ImGui::Checkbox("Leave out Dark Beam", &skipDark)) {
+    PortOverlay::SetStackBeamsSkipDark(skipDark);
+  }
+  ImGui::SetItemTooltip("Stacked shots skip the Dark Beam unless it's the one in hand, so they "
+                        "don't drain light beacons and crystals.");
+  ImGui::EndDisabled();
   ImGui::EndDisabled();
   ImGui::TextDisabled("What finishing the game unlocks. Not written into the save.");
   ItemHelp("Turning an option off locks it again.");
@@ -186,6 +188,15 @@ void DrawCutscenesSection() {
   }
   ItemHelp("The ride between worlds. Fast plays it at double speed; Skip leaves as soon as the next "
            "world has loaded. Applies from the next ride.");
+  int rotatingRooms = sRotatingRooms;
+  ImGui::SetNextItemWidth(rideWidth);
+  if (ImGui::Combo("Rotating rooms", &rotatingRooms, "Original\0" "Fast\0")) {
+    sRotatingRooms = std::clamp(rotatingRooms, static_cast< int >(PortOverlay::kRotatingRooms_Original),
+                                static_cast< int >(PortOverlay::kRotatingRooms_Fast));
+    Changed(true);
+  }
+  ItemHelp("The energy controller rooms' bomb-slot cutscene, where the room turns. Fast plays it at "
+           "double speed.");
   SameLineAfterHelp();
   int portalTransition = sPortalTransition;
   ImGui::SetNextItemWidth(rideWidth);
@@ -400,7 +411,7 @@ void DrawOverlaySection() {
   Changed(ImGui::Checkbox("Overlay as a floating window", &sOverlayWindowed));
 #endif
   int theme = sUiTheme;
-  if (ImGui::Combo("Menu theme", &theme, "Auto\0Metroid Prime\0Plain\0")) {
+  if (ImGui::Combo("Menu theme", &theme, "Auto\0Metroid Prime\0Plain\0Echoes\0")) {
     sUiTheme = theme;
     Changed(true);
   }

@@ -193,6 +193,7 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sUnlockGalleries >("unlock_galleries"),
     BoolKey< &sUnlockBeamDoors >("unlock_beam_doors"),
     BoolKey< &sStackBeams >("stack_beams"),
+    BoolKey< &sStackBeamsSkipDark >("stack_beams_skip_dark"),
     IntKey< &sBootLogos, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off >(
         "boot_logos", "0", "2"),
     IntKey< &sWorldNameCard, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off >(
@@ -208,6 +209,13 @@ const SettingKey kSettingKeys[] = {
                                                                                   "400"),
     IntKey< &sElevatorRide, PortOverlay::kElevatorRide_Original, PortOverlay::kElevatorRide_Skip >(
         "elevator_ride", "0", "2"),
+    IntKey< &sRotatingRooms, PortOverlay::kRotatingRooms_Original, PortOverlay::kRotatingRooms_Fast >(
+        "rotating_rooms", "0", "1"),
+    IntKey< &sComboBeamCost, 0, PortOverlay::kComboBeamCostMax >("combo_beam_cost", "0", "30"),
+    IntKey< &sComboMissileCost, 0, PortOverlay::kComboMissileCostMax >("combo_missile_cost", "0",
+                                                                       "5"),
+    IntKey< &sBeamAmmoPerExpansion, PortOverlay::kBeamAmmoPerExpansionMin,
+            PortOverlay::kBeamAmmoPerExpansionMax >("beam_ammo_per_expansion", "50", "100"),
     IntKey< &sPortalTransition, PortOverlay::kPortalTransition_Original,
             PortOverlay::kPortalTransition_Skip >("portal_transition", "0", "2"),
     IntKey< &sPromptGlyphs, PortOverlay::kPromptGlyphs_Auto, PortOverlay::kPromptGlyphs_Keyboard >(
@@ -464,9 +472,14 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sOverlayWindowed >("overlay_windowed"),
     {"ui_theme",
      [](const std::string& value) {
-       sUiTheme = value == "prime" ? 1 : value == "plain" ? 2 : 0;
+       sUiTheme = value == "prime" ? 1 : value == "plain" ? 2 : value == "echoes" ? 3 : 0;
      },
-     [](std::ostream& out) { out << (sUiTheme == 1 ? "prime" : sUiTheme == 2 ? "plain" : "auto"); },
+     [](std::ostream& out) {
+       out << (sUiTheme == 1   ? "prime"
+               : sUiTheme == 2 ? "plain"
+               : sUiTheme == 3 ? "echoes"
+                               : "auto");
+     },
      false, "plain", "auto"},
     BoolKey< &sAimCrosshair >("aim_crosshair"),
     IntKey< &sCrosshairStyle, PortOverlay::kCrosshairStyle_Classic,

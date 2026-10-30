@@ -1021,6 +1021,13 @@ void CmdGod(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "god mode on\n" : "god mode off\n";
 }
 
+void CmdNoDarkAether(CStateManager&, const Args& args, std::string& out) {
+  const bool enabled =
+      args.size() < 2 ? !PortOverlay::NoDarkAetherDamage() : ArgToInt(args[1], 1) != 0;
+  PortOverlay::SetNoDarkAetherDamage(enabled);
+  out += enabled ? "no dark aether damage on\n" : "no dark aether damage off\n";
+}
+
 // infammo [all|missile|powerbomb|dark|light] [0|1]: the F1 Cheats "Infinite" boxes; no 0|1 flips.
 void CmdInfiniteAmmo(CStateManager&, const Args& args, std::string& out) {
   struct Kind {
@@ -1296,6 +1303,47 @@ void CmdElevator(CStateManager&, const Args& args, std::string& out) {
     PortOverlay::SetElevatorRide(mode);
   }
   out += std::string("elevator ") + kNames[PortOverlay::ElevatorRide()] + "\n";
+}
+
+// combocost / combomissiles / beamammo [n]: the F1 Cheats sliders; no argument prints the value.
+void CmdComboCost(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    PortOverlay::SetComboBeamCost(ArgToInt(args[1], PortOverlay::kComboBeamCostMax));
+  }
+  out += "combo beam ammo cost " + std::to_string(PortOverlay::ComboBeamCost()) + "\n";
+}
+
+void CmdComboMissiles(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    PortOverlay::SetComboMissileCost(ArgToInt(args[1], PortOverlay::kComboMissileCostMax));
+  }
+  out += "combo missile cost " + std::to_string(PortOverlay::ComboMissileCost()) + "\n";
+}
+
+void CmdBeamAmmo(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    PortOverlay::SetBeamAmmoPerExpansion(ArgToInt(args[1], PortOverlay::kBeamAmmoPerExpansionDefault));
+  }
+  out += "beam ammo per expansion " + std::to_string(PortOverlay::BeamAmmoPerExpansion()) + "\n";
+}
+
+// rooms [original|fast]: the rotating-room cutscenes (rotating_rooms); no argument prints it.
+void CmdRooms(CStateManager&, const Args& args, std::string& out) {
+  static const char* const kNames[] = {"original", "fast"};
+  if (args.size() > 1) {
+    int mode = -1;
+    for (int i = 0; i < 2; ++i) {
+      if (args[1] == kNames[i]) {
+        mode = i;
+      }
+    }
+    if (mode < 0) {
+      Fail("usage: rooms [original|fast]");
+      return;
+    }
+    PortOverlay::SetRotatingRooms(mode);
+  }
+  out += std::string("rooms ") + kNames[PortOverlay::RotatingRooms()] + "\n";
 }
 
 void CmdPortal(CStateManager&, const Args& args, std::string& out) {
@@ -2212,6 +2260,19 @@ struct PortConsoleDoor {
                   : lock->GetModelData()->IsAnimating()    ? " animating"
                                                            : " still",
                   door.mOpenRequestCount, door.mResetPending ? ", reset pending" : "");
+    out += line;
+    // Which of the four beams the door's own vulnerability takes, and what the shots see (the
+    // Unlock beam doors cheat swaps a colour lock for any beam).
+    static const char kBeam[] = "PDLA";
+    char base[5] = "----", seen[5] = "----";
+    const CDamageVulnerability* shot = door.GetDamageVulnerability();
+    for (int type = kWT_Power; type <= kWT_Annihilator; ++type) {
+      const CWeaponMode mode(static_cast< EWeaponType >(type));
+      if (door.mCurrentVulnerability.WeaponHits(mode, 0)) base[type] = kBeam[type];
+      if (shot->WeaponHits(mode, 0)) seen[type] = kBeam[type];
+    }
+    std::snprintf(line, sizeof(line), "  beams %s%s, shots see %s\n", base,
+                  door.mCurrentVulnerability.PortIsColorLock() ? " (colour lock)" : "", seen);
     out += line;
   }
 };
@@ -4846,6 +4907,8 @@ const CommandSpec kCommands[] = {
       "layer <n>                   activate a layer of the current area\n"},
     {"god", CmdGod,
       "god <0|1>                   god mode (the F1 cheat)\n"},
+    {"nodarkair", CmdNoDarkAether,
+      "nodarkair <0|1>             no Dark Aether air damage (the F1 cheat)\n"},
     {"infammo", CmdInfiniteAmmo,
       "infammo [kind] [0|1]        infinite ammo (F1 Cheats); kind all (default), missile,\n"
       "                            powerbomb, dark or light\n"},
@@ -4930,6 +4993,14 @@ const CommandSpec kCommands[] = {
       "scanspeed [50..400]         scan speed in percent (scan_speed); no argument prints it\n"},
     {"language", CmdLanguage,
       "language [0..6]             text language, applied live (language); no argument prints it\n"},
+    {"combocost", CmdComboCost,
+      "combocost [0..30]           beam ammo a combo takes (combo_beam_cost); no argument prints it\n"},
+    {"combomissiles", CmdComboMissiles,
+      "combomissiles [0..5]        missiles a combo takes (combo_missile_cost); no argument prints it\n"},
+    {"beamammo", CmdBeamAmmo,
+      "beamammo [50..100]          Dark/Light ammo per capacity pickup (beam_ammo_per_expansion); no argument prints it\n"},
+    {"rooms", CmdRooms,
+      "rooms [original|fast]      the energy controller rooms' turning-room cutscene (rotating_rooms); no argument prints it\n"},
     {"portal", CmdPortal,
       "portal [original|fast|skip] the light/dark world portal ride (portal_transition); no argument prints it\n"},
     {"elevator", CmdElevator,
@@ -4959,7 +5030,7 @@ const CommandSpec kCommands[] = {
     {"objs", CmdObjs,
       "objs [filter]               objects of the world: uid, editor id, class, area, position\n"},
     {"obj", CmdObj,
-      "obj <id>                    one object (an id as `objs` prints it: u046e, or e<editor id>): health, fsm, messages\n"},
+      "obj <id>                    one object (an id as `objs` prints it: u046e, or e<editor id>): health, fsm, messages, door beams\n"},
     {"send", CmdSend,
       "send <id> <msg> [from <id>] deliver a script message to an object (name or number), from a sender\n"},
     {"covdump", CmdCovdump,

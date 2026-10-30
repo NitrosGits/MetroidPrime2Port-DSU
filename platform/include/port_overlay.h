@@ -45,6 +45,9 @@ std::string RoomName(uint32_t worldId, int areaIndex);
 bool ShowPage(const std::string& name);
 // Toggles the window; safe to call from the event loop (F1).
 void Toggle();
+// Toggles it on the game thread's next frame (MP1's PortDebug::RequestToggle): for the Android
+// UI thread, whose direct Toggle raced the frame (ImGui's input queue, PortMouse) (#27).
+void RequestToggle();
 // Scrolls the open window by `steps` rows: the phone's two-finger drag, since a finger cannot turn
 // a mouse wheel and the window is taller than the screen. Queued in ImGui's input queue.
 void Wheel(float steps);
@@ -85,6 +88,10 @@ void SetWorldNameCard(int mode);
 // test run in the lose-game screen (CStateManager::ApplyLocalDamage). Never saved.
 bool GodMode();
 void SetGodMode(bool enabled);
+// Cheat (`MP2_NO_DARK_AETHER_DAMAGE=1`, F1 > Cheats): Dark Aether's air does not hurt, as with the
+// Light Suit (CPlayer::UpdateDarkAetherDamage); safe zones still heal. Never saved.
+bool NoDarkAetherDamage();
+void SetNoDarkAetherDamage(bool enabled);
 // Cheat (F1 > Cheats, a checkbox per counter; `MP2_INFINITE_AMMO=1` turns on all four): firing
 // spends none of the chosen ammo (CPlayerState::DecrementAmmoAndDisplayAlertIfOut). Never saved.
 enum : unsigned {
@@ -128,6 +135,20 @@ void SetMapInvertY(bool invert);
 const int kWalkSpeedMin = 50;
 const int kWalkSpeedMax = 200;
 const int kWalkSpeedDefault = 100;
+
+// Ammo costs and beam ammo capacity (the F1 Cheats page, #27). The defaults are retail.
+const int kComboBeamCostMax = 30;      // combo beam ammo cost: 0..30, 30 = retail
+const int kComboMissileCostMax = 5;    // combo missile cost: 0..5, 5 = retail
+const int kBeamAmmoPerExpansionMin = 50; // percent of 50 ammo per pickup: 50 (retail) .. 100
+const int kBeamAmmoPerExpansionMax = 100;
+const int kBeamAmmoPerExpansionDefault = 50;
+int ComboBeamCost();
+void SetComboBeamCost(int cost);
+int ComboMissileCost();
+void SetComboMissileCost(int cost);
+// Dark/Light ammo a capacity pickup grants is multiplied by this / 50 (retail: 50).
+int BeamAmmoPerExpansion();
+void SetBeamAmmoPerExpansion(int ammo);
 int WalkSpeed();
 void SetWalkSpeed(int percent);
 // Scan speed in percent (`MP2_SCAN_SPEED`, 100 = retail): ScanSpeed() scales the time a scan takes
@@ -161,6 +182,16 @@ void SetElevatorRide(int mode);
 enum EPortalTransition { kPortalTransition_Original, kPortalTransition_Fast, kPortalTransition_Skip };
 int PortalTransition();
 void SetPortalTransition(int mode);
+// Rotating rooms (`MP2_ROTATING_ROOMS`: original|fast): the energy controller access rooms'
+// bomb-slot cutscene, where the room turns. Fast runs the cutscene's clock (camera, platforms,
+// timers) at double speed while a timed, one-shot CScriptActorRotate plays under a cinematic camera.
+enum ERotatingRooms { kRotatingRooms_Original, kRotatingRooms_Fast };
+int RotatingRooms();
+void SetRotatingRooms(int mode);
+// CScriptActorRotate::Think reports a timed one-shot rotation each update; CStateManager::Update
+// asks whether one played in the last updates (frame is CStateManager::GetUpdateFrameIdx).
+void NoteRotatingSequence(unsigned frame);
+bool RotatingSequenceActive(unsigned frame);
 // Text language (`MP2_LANGUAGE`: 0 English, 1 German, 2 French, 3 Spanish, 4 Italian, 5 Dutch,
 // 6 Japanese): CMain::GetLanguage returns it at startup and the overlay re-applies it every frame
 // (CStringTable::SetLanguage), so a change shows at once in text read from then on; a screen that
@@ -196,14 +227,18 @@ bool UnlockHardMode();
 void SetUnlockHardMode(bool enabled);
 bool UnlockGalleries();
 void SetUnlockGalleries(bool enabled);
-// Beam doors (`MP2_UNLOCK_BEAM_DOORS`): a colour-locked door lock (a damageable trigger that some of
-// the Power, Dark, Light and Annihilator beams hit and others do not) takes any of the four beams.
+// Beam doors (`MP2_UNLOCK_BEAM_DOORS`): a colour-locked door (a door or damageable trigger that some
+// of the Power, Dark, Light and Annihilator beams hit and others do not) takes any of the four beams.
 // Stack beams (`MP2_STACK_BEAMS`): a beam fired while another is selected also fires the other
 // beams Samus owns, as in Prime 1's stacked beams. Both read false while Original experience is on.
+// Skip Dark (`MP2_STACK_BEAMS_SKIP_DARK`): the stack leaves the Dark Beam out unless it is in hand,
+// so stacked shots don't drain light beacons and crystals.
 bool UnlockBeamDoors();
 void SetUnlockBeamDoors(bool enabled);
 bool StackBeams();
 void SetStackBeams(bool enabled);
+bool StackBeamsSkipDark();
+void SetStackBeamsSkipDark(bool enabled);
 // Hint delay in minutes (`MP2_HINT_DELAY`, 0 = the game's own timing): HintDelaySeconds() caps the
 // wait before a hint first shows (CHintOptions::Update), 0 when off. RequestShowHint() (F1 button,
 // `hintshow`) asks the next CHintOptions::Update to show the hint the game would show next;

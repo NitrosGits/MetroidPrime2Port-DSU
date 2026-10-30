@@ -24,7 +24,9 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `damage <id> <n> [kb] [w]` — hit an actor for n as a player shot (w = power, missile, cannonball, dark, light, annihilator, powerbomb, bomb, boostball, screwattack, darkburst, sunburst, sonicboom, supermissile; kb = knockback power)
 - `layer <n>` — activate a layer of the current area
 - `god <0|1>` — god mode (the F1 cheat)
-- `infammo [all|missile|powerbomb|dark|light] [0|1]` — infinite ammo per counter (F1 Cheats); no 0|1 flips
+- `nodarkair <0|1>` — no Dark Aether air damage (the F1 cheat)
+- `combocost [0..30]`, `combomissiles [0..5]`, `beamammo [50..100]` — combo beam ammo cost, combo missile cost, Dark/Light ammo per capacity pickup (F1 Cheats, each with a Reset); no argument prints it
+- `infammo [all|missile|powerbomb|dark|light] [0|1]` — infinite ammo per counter (fire at zero, HUD shows ∞, real counts and pickups kept; F1 Cheats); no 0|1 flips
 - `mpforce <0|1>` — IsMultiplayer reports true (multiplayer-only arms)
 - `overlay <page>[/<sub>]|off` — open the F1 window on a page (name prefixes: `overlay video/qual`)
 - `gpuselftest` — run the GPU self-test next frame; PASS/FAIL lines go to the log
@@ -54,7 +56,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `noise <type> [x y z]` — InformListeners at the player (6 = safe-zone noise)
 - `gameevent <ev> [src] [tgt] [value] [as <proxyType>]` — deliver a game event to every CScriptPlayerProxy listener (ev: score kill generic scan damage stop spawn; value: float for damage, state for generic)
 - `fastmorph <0|1>` — fast morph: the morph transition takes 0.2 s, not a second
-- `scanspeed [50..400]`, `elevator [original|fast|skip]`, `portal [original|fast|skip]`, `original [0|1]`, `igt [0|1]`, `language [0..6]` — the Game page's
+- `scanspeed [50..400]`, `elevator [original|fast|skip]`, `portal [original|fast|skip]`, `rooms [original|fast]`, `original [0|1]`, `igt [0|1]`, `language [0..6]` — the Game page's
   scan speed, elevator ride, Original experience and on-screen time (`scan_speed`, `elevator_ride`,
   `original_experience`, `igt_timer` in SETTINGS.md); no argument prints the value
 - `walkspeed [50..200]` — walk speed in percent (shows the value with no argument); `walk_speed` in SETTINGS.md
