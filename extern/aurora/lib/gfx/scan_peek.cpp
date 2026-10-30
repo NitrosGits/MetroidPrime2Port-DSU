@@ -58,7 +58,11 @@ std::atomic<uint64_t> g_writtenGeneration{0};
 uint64_t g_peekCount = 0;
 uint32_t g_skippedWarned = 0;
 bool g_loggedFirstRequest = false;
-std::array<wgpu::RenderPipeline, 2> g_resolvePipelines;
+// [multisampled][compat]; a Core device uses the first column only.
+std::array<std::array<wgpu::RenderPipeline, 2>, 2> g_resolvePipelines;
+// Port (issue #24): the Compatibility variants below are kept apart from the Core shader so Core
+// behaviour is untouched.
+wgpu::Sampler g_depthSampler;
 
 // Alpha is an integer scan ID, not opacity. A normal MSAA colour resolve averages IDs into
 // unrelated IDs at silhouettes. Pick sample zero for BOTH ID and depth, as GX depth copies do.
@@ -82,13 +86,70 @@ struct Output {
 }
 )";
 
-wgpu::RenderPipeline resolve_pipeline(bool multisampled) {
-  auto& pipeline = g_resolvePipelines[multisampled ? 1 : 0];
+// Port (issue #24): Compatibility variants of the resolve. A Compatibility device cannot bind a
+// multisampled depth texture, so the MSAA variant has no depth input and writes a fixed depth of 0.
+// It reads the already-resolved single-sample colour (the multisampled view holds no ids there),
+// so ids at silhouettes are averaged; the 1x variant reads depth like the Core one.
+constexpr std::string_view CompatResolveShaderNoDepth = R"(
+@group(0) @binding(0) var color: texture_2d<f32>;
+@group(0) @binding(2) var<uniform> origin: vec2u;
+
+@vertex fn vs_main(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
+    var corners = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+    return vec4f(corners[i], 0.0, 1.0);
+}
+struct Output {
+    @location(0) color: vec4f,
+    @location(1) depth: f32,
+};
+@fragment fn fs_main(@builtin(position) pos: vec4f) -> Output {
+    let coord = vec2i(pos.xy) + vec2i(origin);
+    return Output(textureLoad(color, coord, 0), 0.0);
+}
+)";
+
+// Compatibility 1x: textureLoad and non-comparison samplers are both rejected on depth textures,
+// so depth is recovered by bisecting with a LessEqual comparison sampler at the texel centre.
+constexpr std::string_view CompatResolveShader1x = R"(
+@group(0) @binding(0) var color: texture_2d<f32>;
+@group(0) @binding(1) var depth: texture_depth_2d;
+@group(0) @binding(2) var<uniform> origin: vec2u;
+@group(0) @binding(3) var depthSampler: sampler_comparison;
+
+@vertex fn vs_main(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
+    var corners = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+    return vec4f(corners[i], 0.0, 1.0);
+}
+struct Output {
+    @location(0) color: vec4f,
+    @location(1) depth: f32,
+};
+@fragment fn fs_main(@builtin(position) pos: vec4f) -> Output {
+    let coord = vec2i(pos.xy) + vec2i(origin);
+    let uv = (vec2f(coord) + vec2f(0.5)) / vec2f(textureDimensions(depth));
+    // Compat allows only comparison samplers on depth: bisect the texel (ref <= depth), 20 steps.
+    var lo = 0.0;
+    var hi = 1.0;
+    for (var i = 0; i < 20; i++) {
+        let mid = (lo + hi) * 0.5;
+        if (textureSampleCompareLevel(depth, depthSampler, uv, mid) > 0.5) {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    return Output(textureLoad(color, coord, 0), lo);
+}
+)";
+
+wgpu::RenderPipeline resolve_pipeline(bool multisampled, bool compat) {
+  auto& pipeline = g_resolvePipelines[multisampled ? 1 : 0][compat ? 1 : 0];
   if (pipeline) {
     return pipeline;
   }
-  std::string shader{ResolveShader};
-  if (!multisampled) {
+  std::string shader{compat ? (multisampled ? CompatResolveShaderNoDepth : CompatResolveShader1x)
+                            : ResolveShader};
+  if (!multisampled && !compat) {
     const std::string colorType = "texture_multisampled_2d<f32>";
     const std::string depthType = "texture_depth_multisampled_2d";
     shader.replace(shader.find(colorType), colorType.size(), "texture_2d<f32>");
@@ -114,7 +175,10 @@ wgpu::RenderPipeline resolve_pipeline(bool multisampled) {
 
 void resolve_snapshot(const wgpu::CommandEncoder& cmd, Slot& slot, const wgpu::TextureView& color,
                       const wgpu::Texture& depth, const Request& req, bool multisampled) {
-  const auto pipeline = resolve_pipeline(multisampled);
+  // Port (issue #24): `compat` selects the Compatibility variants; the multisampled one has no depth.
+  const bool compat = !webgpu::g_hasCoreFeatures;
+  const bool noDepthInput = compat && multisampled;
+  const auto pipeline = resolve_pipeline(multisampled, compat);
   const uint32_t width = static_cast<uint32_t>(req.srcWidth);
   const uint32_t height = static_cast<uint32_t>(req.srcHeight);
   if (!slot.resolvedColor || slot.resolvedColor.GetWidth() != width || slot.resolvedColor.GetHeight() != height) {
@@ -140,13 +204,26 @@ void resolve_snapshot(const wgpu::CommandEncoder& cmd, Slot& slot, const wgpu::T
   const std::array origin{static_cast<uint32_t>(req.srcX), static_cast<uint32_t>(req.srcY)};
   g_device.GetQueue().WriteBuffer(slot.resolveParams, 0, origin.data(), sizeof(origin));
   const wgpu::TextureViewDescriptor depthDescriptor{.aspect = wgpu::TextureAspect::DepthOnly};
-  const std::array entries{
+  auto& nearest = g_depthSampler;
+  if (compat && !multisampled && !nearest) {
+    const wgpu::SamplerDescriptor samplerDescriptor{.label = "Scan Peek Depth",
+                                                    .compare = wgpu::CompareFunction::LessEqual};
+    nearest = g_device.CreateSampler(&samplerDescriptor);
+  }
+  std::array<wgpu::BindGroupEntry, 4> entries{
       wgpu::BindGroupEntry{.binding = 0, .textureView = color},
-      wgpu::BindGroupEntry{.binding = 1, .textureView = depth.CreateView(&depthDescriptor)},
+      wgpu::BindGroupEntry{.binding = 1},
       wgpu::BindGroupEntry{.binding = 2, .buffer = slot.resolveParams, .size = 8},
+      wgpu::BindGroupEntry{.binding = 3, .sampler = nearest},
   };
+  // [port] the no-depth shader declares no binding 1, so it is left out of the group
+  if (noDepthInput) {
+    entries[1] = entries[2];
+  } else {
+    entries[1].textureView = depth.CreateView(&depthDescriptor);
+  }
   const wgpu::BindGroupDescriptor bindGroupDescriptor{
-      .layout = pipeline.GetBindGroupLayout(0), .entryCount = entries.size(), .entries = entries.data()};
+      .layout = pipeline.GetBindGroupLayout(0), .entryCount = noDepthInput ? 2u : (compat ? 4u : 3u), .entries = entries.data()};
   const auto bindGroup = g_device.CreateBindGroup(&bindGroupDescriptor);
   const std::array attachments{
       wgpu::RenderPassColorAttachment{.view = slot.resolvedColor.CreateView(),
@@ -350,9 +427,11 @@ void encode(const wgpu::CommandEncoder& cmd, const wgpu::Texture& color, const w
       request.height == 0) {
     return;
   }
-  if (msaaSamples > 1 && (!webgpu::g_hasCoreFeatures || !multisampledColor)) {
+  // [port #24] Compatibility devices now resolve too (see resolve_snapshot); only a missing EFB
+  // colour view skips.
+  if (msaaSamples > 1 && !multisampledColor) {
     if (g_skippedWarned++ == 0) {
-      Log.warn("Scan peek skipped: multisampled readback requires Core features and an EFB color view");
+      Log.warn("Scan peek skipped: multisampled readback requires an EFB color view");
     }
     return;
   }
@@ -403,10 +482,11 @@ void encode(const wgpu::CommandEncoder& cmd, const wgpu::Texture& color, const w
   const bool multisampled = msaaSamples > 1;
   // Even at 1x, WebGPU only permits whole-subresource copies from depth formats. Convert the
   // requested depth region to R32Float before copying it; this also handles HDR colour safely.
-  const bool resolved = webgpu::g_hasCoreFeatures;
-  if (resolved) {
-    resolve_snapshot(cmd, slot, multisampled ? multisampledColor : color.CreateView(), depth, req, multisampled);
-  }
+  // [port #24] Always resolved: the old Compatibility path copied a partial depth region straight
+  // out of the depth texture, which WebGPU rejects.
+  const bool resolved = true;
+  resolve_snapshot(cmd, slot, (multisampled && webgpu::g_hasCoreFeatures) ? multisampledColor : color.CreateView(), depth,
+                   req, multisampled);
   const wgpu::Extent3D copySize{
       .width = static_cast<uint32_t>(req.srcWidth),
       .height = static_cast<uint32_t>(req.srcHeight),
@@ -497,6 +577,7 @@ void after_submit() noexcept {
 
 void shutdown() noexcept {
   g_resolvePipelines = {};
+  g_depthSampler = {};
   // The buffers are released after the lock: releasing one with a map still pending runs
   // complete_map at once, which takes g_mutex (it then sees an Available slot and returns).
   std::array<Slot, SlotCount> released;

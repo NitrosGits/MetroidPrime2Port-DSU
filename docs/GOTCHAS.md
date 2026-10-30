@@ -197,7 +197,13 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   samples can invent another target's ID at an edge. Keep both source attachment stores alive
   when a peek follows the pass, even if the next pass clears them. Core devices use the region
   conversion at 1x too: WebGPU forbids partial texture-to-buffer copies of depth subresources.
-  Compatibility devices retain their previous 1x path (no multisampled depth texture binding).
+  Compatibility devices (`MP2_GPU_NO_CORE=1` to test; Android Adreno/Mali, issue #24) use the
+  same resolve pass with `[port #24]` shader variants in scan_peek.cpp: compat rejects
+  `textureLoad` and non-comparison samplers on depth and any multisampled depth binding, so 1x
+  bisects depth (20 steps) with a LessEqual comparison sampler, and 4x reads the already-resolved
+  single-sample colour (ids averaged at silhouettes) with depth fixed at 0. The old compat path (partial depth
+  copy, and no peek at all at MSAA) never delivered ids. Test with `MP2_DAWN_DISABLE=skip_validation`
+  to turn validation on (release builds hide these errors).
   Preserve this resolve, its encoder input view and the store guards on an Aurora re-vendor.
 - **A model shadow's light mask is built from the actor-light array slot, not the area-light index.**
   `CWorldShadow::EnableModelProjectedShadow` does `const uchar lightMask = 1 << lightIndex` and hands
