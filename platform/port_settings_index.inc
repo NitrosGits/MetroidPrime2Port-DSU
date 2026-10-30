@@ -13,6 +13,7 @@
 {"Game", "", "Cutscenes", "Walk speed", "movement run fast slow strafe velocity samus"},
 {"Game", "", "Cutscenes", "Scan speed", "scanning visor faster slower scan time"},
 {"Game", "", "Cutscenes", "Elevator ride", "world transition skip fast loading speed"},
+{"Game", "", "Cutscenes", "Rotating rooms", "energy controller room bomb slot cutscene rotate turn fast speed"},
 {"Game", "", "Cutscenes", "Portal transition", "light dark world portal ride skip fast speed"},
 {"Game", "", "Cutscenes", "Language", "text strings translation german french spanish italian dutch japanese"},
 {"Game", "", "Cutscenes", "Hint delay", "hints help wait timer minutes scan"},

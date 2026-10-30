@@ -72,7 +72,7 @@ Game page:
 - `original_experience`: Cutscenes > Original experience (default off); env
   `MP2_ORIGINAL_EXPERIENCE`, console `original`. While on, the port's gameplay and cutscene tweaks read
   as retail and their rows are greyed: skippable cutscenes, world name on load, walk speed, hint
-  delay, scan speed, elevator ride, portal transition, fast morph, spring ball, toggle lock-on, sticky charge, remastered
+  delay, scan speed, elevator ride, portal transition, rotating rooms, fast morph, spring ball, toggle lock-on, sticky charge, remastered
   charge, auto-aim (on). Your saved values are kept and return when it is switched off. Mods, input,
   video and audio settings are not affected.
 - `skip_cinematics`: Cutscenes > Skippable cutscenes.
@@ -90,6 +90,11 @@ Game page:
 - `elevator_ride`: Cutscenes > Elevator ride (0 original, 1 fast, 2 skip); env `MP2_ELEVATOR_RIDE`
   (`original|fast|skip`). Fast runs the world-transition ride at double speed; Skip ends it as soon as
   the next world has loaded (the load itself still takes its time). Text transitions are unchanged.
+- `rotating_rooms`: Cutscenes > Rotating rooms (0 original, 1 fast); env `MP2_ROTATING_ROOMS`
+  (`original|fast`), console `rooms`. Fast runs the energy controller rooms' bomb-slot cutscene (the
+  room turning) at the game's own double speed: while a cinematic camera is active and a timed,
+  one-shot CScriptActorRotate of 5 s or more plays (any such room, no list), `CStateManager::Update`
+  doubles dt and the camera's dt. Other cutscenes and gameplay are unchanged.
 - `portal_transition`: Cutscenes > Portal transition (0 original, 1 fast, 2 skip); env
   `MP2_PORTAL_TRANSITION` (`original|fast|skip`), console `portal`. The ride through a light/dark world
   portal (`CPortalTransition`, run by `CMFGame` kFS_PortalTransition for a dock, or by `CWorldTransManager`

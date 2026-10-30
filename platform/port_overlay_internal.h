@@ -27,6 +27,7 @@ extern int sScanSpeed;
 extern int sLanguage;
 extern int sElevatorRide;
 extern int sPortalTransition;
+extern int sRotatingRooms;
 extern bool sMinimapTap;
 extern int sPromptGlyphs;
 extern bool sIgtTimer;

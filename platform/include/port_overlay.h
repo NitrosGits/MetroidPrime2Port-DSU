@@ -164,6 +164,16 @@ void SetElevatorRide(int mode);
 enum EPortalTransition { kPortalTransition_Original, kPortalTransition_Fast, kPortalTransition_Skip };
 int PortalTransition();
 void SetPortalTransition(int mode);
+// Rotating rooms (`MP2_ROTATING_ROOMS`: original|fast): the energy controller access rooms'
+// bomb-slot cutscene, where the room turns. Fast runs the cutscene's clock (camera, platforms,
+// timers) at double speed while a timed, one-shot CScriptActorRotate plays under a cinematic camera.
+enum ERotatingRooms { kRotatingRooms_Original, kRotatingRooms_Fast };
+int RotatingRooms();
+void SetRotatingRooms(int mode);
+// CScriptActorRotate::Think reports a timed one-shot rotation each update; CStateManager::Update
+// asks whether one played in the last updates (frame is CStateManager::GetUpdateFrameIdx).
+void NoteRotatingSequence(unsigned frame);
+bool RotatingSequenceActive(unsigned frame);
 // Text language (`MP2_LANGUAGE`: 0 English, 1 German, 2 French, 3 Spanish, 4 Italian, 5 Dutch,
 // 6 Japanese): CMain::GetLanguage returns it at startup and the overlay re-applies it every frame
 // (CStringTable::SetLanguage), so a change shows at once in text read from then on; a screen that

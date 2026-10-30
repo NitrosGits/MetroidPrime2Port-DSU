@@ -4290,7 +4290,14 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
     if ((camera->GetFlags() & 0x200) != 0) {
       dt *= camera->GetSlowMotionScale();
     }
-    if (gpMain->IsMaxSpeed()) {
+    if (gpMain->IsMaxSpeed()
+#ifdef TARGET_PC
+        // Port: Rotating rooms = Fast runs the energy controller rooms' cutscene at the
+        // game's own double speed.
+        || (PortOverlay::RotatingRooms() == PortOverlay::kRotatingRooms_Fast &&
+            PortOverlay::RotatingSequenceActive(mUpdateFrameIdx))
+#endif
+    ) {
       dt *= 2.f;
       cameraDt *= 2.f;
     }

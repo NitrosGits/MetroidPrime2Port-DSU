@@ -1298,6 +1298,25 @@ void CmdElevator(CStateManager&, const Args& args, std::string& out) {
   out += std::string("elevator ") + kNames[PortOverlay::ElevatorRide()] + "\n";
 }
 
+// rooms [original|fast]: the rotating-room cutscenes (rotating_rooms); no argument prints it.
+void CmdRooms(CStateManager&, const Args& args, std::string& out) {
+  static const char* const kNames[] = {"original", "fast"};
+  if (args.size() > 1) {
+    int mode = -1;
+    for (int i = 0; i < 2; ++i) {
+      if (args[1] == kNames[i]) {
+        mode = i;
+      }
+    }
+    if (mode < 0) {
+      Fail("usage: rooms [original|fast]");
+      return;
+    }
+    PortOverlay::SetRotatingRooms(mode);
+  }
+  out += std::string("rooms ") + kNames[PortOverlay::RotatingRooms()] + "\n";
+}
+
 void CmdPortal(CStateManager&, const Args& args, std::string& out) {
   static const char* const kNames[] = {"original", "fast", "skip"};
   if (args.size() > 1) {
@@ -4930,6 +4949,8 @@ const CommandSpec kCommands[] = {
       "scanspeed [50..400]         scan speed in percent (scan_speed); no argument prints it\n"},
     {"language", CmdLanguage,
       "language [0..6]             text language, applied live (language); no argument prints it\n"},
+    {"rooms", CmdRooms,
+      "rooms [original|fast]      the energy controller rooms' turning-room cutscene (rotating_rooms); no argument prints it\n"},
     {"portal", CmdPortal,
       "portal [original|fast|skip] the light/dark world portal ride (portal_transition); no argument prints it\n"},
     {"elevator", CmdElevator,
