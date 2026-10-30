@@ -359,7 +359,7 @@ Video > Compatibility (read once, when the GPU starts: a change applies after a 
 System and Debug:
 
 - `overlay_windowed`, `ui_theme`, `ui_scale`: System > Overlay > Overlay as a floating window
-  (desktop), Menu theme, UI scale.
+  (desktop), Menu theme (`auto`, `prime`, `plain`, `echoes`), UI scale.
 - `emulator_folder`, `share_emulator_card`, `mirror_trilogy_save` (desktop only): System > Memory
   card > Installed emulators (which Dolphin or PrimeHack install to use; empty = Auto, the first
   one found), Share memory card with emulator (the port and the emulator use the same saves: never

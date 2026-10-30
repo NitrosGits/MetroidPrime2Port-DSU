@@ -436,9 +436,14 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sOverlayWindowed >("overlay_windowed"),
     {"ui_theme",
      [](const std::string& value) {
-       sUiTheme = value == "prime" ? 1 : value == "plain" ? 2 : 0;
+       sUiTheme = value == "prime" ? 1 : value == "plain" ? 2 : value == "echoes" ? 3 : 0;
      },
-     [](std::ostream& out) { out << (sUiTheme == 1 ? "prime" : sUiTheme == 2 ? "plain" : "auto"); },
+     [](std::ostream& out) {
+       out << (sUiTheme == 1   ? "prime"
+               : sUiTheme == 2 ? "plain"
+               : sUiTheme == 3 ? "echoes"
+                               : "auto");
+     },
      false, "plain", "auto"},
     BoolKey< &sAimCrosshair >("aim_crosshair"),
     IntKey< &sCrosshairStyle, PortOverlay::kCrosshairStyle_Classic,

@@ -408,7 +408,7 @@ void DrawOverlaySection() {
   Changed(ImGui::Checkbox("Overlay as a floating window", &sOverlayWindowed));
 #endif
   int theme = sUiTheme;
-  if (ImGui::Combo("Menu theme", &theme, "Auto\0Metroid Prime\0Plain\0")) {
+  if (ImGui::Combo("Menu theme", &theme, "Auto\0Metroid Prime\0Plain\0Echoes\0")) {
     sUiTheme = theme;
     Changed(true);
   }

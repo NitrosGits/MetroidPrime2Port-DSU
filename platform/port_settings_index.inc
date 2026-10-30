@@ -196,7 +196,7 @@
 #if !defined(PORT_MOBILE)
 {"System", "", "Overlay", "Overlay as a floating window", "window detach float desktop"},
 #endif
-{"System", "", "Overlay", "Menu theme", "look style plain prime imgui"},
+{"System", "", "Overlay", "Menu theme", "look style plain prime echoes imgui"},
 {"System", "", "Overlay", "UI scale", "overlay menu window text size zoom dpi"},
 {"System", "", "Settings", "Save settings now", "settings file unsaved write persist"},
 {"System", "", "Settings", "Reset configuration...", "reset defaults configuration factory"},
