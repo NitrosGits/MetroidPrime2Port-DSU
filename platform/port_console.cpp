@@ -1021,6 +1021,13 @@ void CmdGod(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "god mode on\n" : "god mode off\n";
 }
 
+void CmdNoDarkAether(CStateManager&, const Args& args, std::string& out) {
+  const bool enabled =
+      args.size() < 2 ? !PortOverlay::NoDarkAetherDamage() : ArgToInt(args[1], 1) != 0;
+  PortOverlay::SetNoDarkAetherDamage(enabled);
+  out += enabled ? "no dark aether damage on\n" : "no dark aether damage off\n";
+}
+
 // infammo [all|missile|powerbomb|dark|light] [0|1]: the F1 Cheats "Infinite" boxes; no 0|1 flips.
 void CmdInfiniteAmmo(CStateManager&, const Args& args, std::string& out) {
   struct Kind {
@@ -4887,6 +4894,8 @@ const CommandSpec kCommands[] = {
       "layer <n>                   activate a layer of the current area\n"},
     {"god", CmdGod,
       "god <0|1>                   god mode (the F1 cheat)\n"},
+    {"nodarkair", CmdNoDarkAether,
+      "nodarkair <0|1>             no Dark Aether air damage (the F1 cheat)\n"},
     {"infammo", CmdInfiniteAmmo,
       "infammo [kind] [0|1]        infinite ammo (F1 Cheats); kind all (default), missile,\n"
       "                            powerbomb, dark or light\n"},

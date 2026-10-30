@@ -223,6 +223,7 @@ namespace PortDebug {
 bool sVisible = false;
 bool sGodMode = false; // never saved: a cheat must not persist, so it is not a setting
 unsigned sInfiniteAmmo = 0; // InfiniteAmmoKind bits; never saved, as sGodMode
+bool sNoDarkAetherDamage = false; // never saved, as sGodMode
 uint32_t sWorldId = 0;
 int sAreaId = -1;
 std::vector< SRoomEntry > sRooms;
@@ -309,6 +310,7 @@ void ReadEnv() {
   sReadEnv = true;
   sGodMode = port::EnvFlag("MP2_GODMODE");
   sInfiniteAmmo = port::EnvFlag("MP2_INFINITE_AMMO") ? PortOverlay::kInfAmmoAll : 0;
+  sNoDarkAetherDamage = port::EnvFlag("MP2_NO_DARK_AETHER_DAMAGE");
   PortOverlaySettings::LoadSettings();
 }
 
@@ -939,6 +941,16 @@ bool GodMode() {
 void SetGodMode(bool enabled) {
   ReadEnv();
   sGodMode = enabled;
+}
+
+bool NoDarkAetherDamage() {
+  ReadEnv();
+  return sNoDarkAetherDamage;
+}
+
+void SetNoDarkAetherDamage(bool enabled) {
+  ReadEnv();
+  sNoDarkAetherDamage = enabled;
 }
 
 unsigned InfiniteAmmoKind(int itemType) {

@@ -88,6 +88,10 @@ void SetWorldNameCard(int mode);
 // test run in the lose-game screen (CStateManager::ApplyLocalDamage). Never saved.
 bool GodMode();
 void SetGodMode(bool enabled);
+// Cheat (`MP2_NO_DARK_AETHER_DAMAGE=1`, F1 > Cheats): Dark Aether's air does not hurt, as with the
+// Light Suit (CPlayer::UpdateDarkAetherDamage); safe zones still heal. Never saved.
+bool NoDarkAetherDamage();
+void SetNoDarkAetherDamage(bool enabled);
 // Cheat (F1 > Cheats, a checkbox per counter; `MP2_INFINITE_AMMO=1` turns on all four): firing
 // spends none of the chosen ammo (CPlayerState::DecrementAmmoAndDisplayAlertIfOut). Never saved.
 enum : unsigned {

@@ -189,6 +189,9 @@ void DrawRendering() {
 void DrawCheatsSection() {
   ImGui::Checkbox("God mode", &sGodMode);
   ItemHelp("The player takes no damage; other actors still do. Not saved.");
+  ImGui::Checkbox("No Dark Aether damage", &sNoDarkAetherDamage);
+  ItemHelp("Dark Aether's air does not hurt, as with the Light Suit; light crystals still heal. "
+           "Not saved.");
 
   CPlayerState* ps = gpGameState != nullptr ? gpGameState->GetPlayerState().GetPtr() : nullptr;
   // The front end has its own player state and its own Samus; the page is about the game's.

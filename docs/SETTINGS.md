@@ -51,6 +51,7 @@ for binding examples, lifecycle rules, harness commands and desktop-only limitat
   (`platform/include/port_config_reset.h`, test `port_config_reset_tests`). Saves, save states and
   the card are not touched.
 - `MP2_GODMODE=1` starts with Cheats > God mode on (not saved).
+- `MP2_NO_DARK_AETHER_DAMAGE=1` starts with Cheats > No Dark Aether damage on (not saved): the air does not hurt, as with the Light Suit; light crystals still heal.
 - `MP2_INFINITE_AMMO=1` starts with every Cheats > Infinite ammo box ticked (not saved): you can fire at zero, the HUD shows ∞, real counts and pickups are kept.
 
 ## Keys

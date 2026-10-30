@@ -4735,7 +4735,14 @@ void CPlayer::UpdateDarkAetherDamage(float dt, CStateManager& mgr) {
     }
   }
 
+#ifdef TARGET_PC
+  // Port: the No Dark Aether damage cheat (F1 > Cheats) treats the air as the Light Suit does: no
+  // damage, tint or particles. Safe zones above still heal.
+  if (!mgr.GetIsDarkWorld() || mPlayerState->HasPowerUp(CPlayerState::kIT_LightSuit) ||
+      PortOverlay::NoDarkAetherDamage()) {
+#else
   if (!mgr.GetIsDarkWorld() || mPlayerState->HasPowerUp(CPlayerState::kIT_LightSuit)) {
+#endif
     mDarkWorldDamageExposureTime = 0.f;
     mDarkAetherDamageFlashTime = 0.f;
     if (mDarkAetherParticles.get()) {
