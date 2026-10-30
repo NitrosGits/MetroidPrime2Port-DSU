@@ -131,6 +131,8 @@ public:
   void ProcessControllerInput(const CFinalInput& input, CStateManager& mgr);
 #ifdef TARGET_PC
   void PortPointerInput(CFinalInput& input, const CStateManager& mgr);
+  // How much wider than authored the map screen's window is drawn (its frame's spread panel).
+  float PortMapScreenWindowWiden() const;
 #endif
   void Update(float dt, CStateManager& mgr);
   void Draw(const CStateManager& mgr, const CTransform4f& xf, float alpha) const;

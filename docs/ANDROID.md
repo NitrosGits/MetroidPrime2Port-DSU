@@ -109,8 +109,17 @@ suggested through `SDLActivity.setNextSaveDialogSuggestedFilename` (EXTRA_TITLE 
 ACTION_CREATE_DOCUMENT). The Trilogy choice picks a source save.bin with the open dialog, then saves
 the updated copy through the save dialog. The content:// URI is written with `SDL_IOFromFile`.
 "Export to Dolphin/PrimeHack", "Open card folder" and the emulator section are hidden on Android.
-On every platform a dialog that fails now says why in the status line. Compiled for desktop only;
-not built or run on a device (no NDK here, no installs from this lane).
+On every platform a dialog that fails now says why in the status line. The APK builds
+(`tools/android_apk.sh :app:assembleRelease -PmpDebugSigning=true`, 2026-10-30); not yet run on a device.
+
+### Map screen on wide screens (issue #23)
+
+The map screen's window is spread with the screen (`SetSpreadPanel` in `CAutoMapper`), but the map
+is depth-tested against the HUD's automapper mask, which stayed at its authored size, so on a wide
+screen the map was cut to a central box. `CInGameGuiManager` now widens the mask in view-space X by
+`CAutoMapper::PortMapScreenWindowWiden()` (the window's spread over its authored half-width, 0.83),
+blended in as the minimap grows into the map screen. Checked at 2340x1080 under Xvfb: a zoomed,
+panned map reaches the frame's inner edges on both sides.
 
 ### Data folder move to shared storage (MP1 sync, gpu-misc)
 
