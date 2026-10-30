@@ -457,8 +457,13 @@ void CRasterFont::AddInfinityGlyph() {
   // The sign: the '8''s fill height and stroke, 1.5-1.7 times its width; the candidate whose two
   // counters stay open (background left after the ring) is picked, threshold tuned for the size.
   const int margin = ringR;
+  // Outline fonts draw a wider sign (two open ovals and a pinched crossing, not two slits) with a
+  // thinner fill stroke; the other fonts keep the '8''s width and stroke.
   int bestW = 0, bestThreshold = 50, bestScore = -1;
-  for (int wTenths = 15; wTenths <= 17; ++wTenths) {
+  float bestStroke = stroke;
+  for (int wTenths = outlined ? 20 : 15; wTenths <= (outlined ? 22 : 17); ++wTenths) {
+   for (int si = 0; si < (outlined ? 2 : 1); ++si) {
+    const float strokeTry = outlined ? (si == 0 ? 2.f : si == 1 ? 1.7f : 1.4f) : stroke;
     const int w = (inkW * wTenths + 5) / 10;
     const int h = inkH;
     if (w + 2 * margin > 44 || h + 2 * margin > 44) {
@@ -467,7 +472,7 @@ void CRasterFont::AddInfinityGlyph() {
     for (int t = 0; t < 5; ++t) {
       static const int kThresholds[5] = {50, 40, 60, 30, 70};
       uchar trial[44 * 44];
-      PortRasterizeLemniscate(trial, w + 2 * margin, h + 2 * margin, margin, w, h, stroke,
+      PortRasterizeLemniscate(trial, w + 2 * margin, h + 2 * margin, margin, w, h, strokeTry,
                               kThresholds[t]);
       // The counters as the screen shows them: fill plus its ring is ink.
       uchar ink[44 * 44];
@@ -490,15 +495,28 @@ void CRasterFont::AddInfinityGlyph() {
         }
       }
       int counter = PortSmallestCounter(ink, cw, ch);
-      counter = counter > eightCounter ? eightCounter : counter;
-      const int wOff = wTenths > 16 ? wTenths - 16 : 16 - wTenths;
-      const int score = counter * 1000 - wOff * 5 - t;
+      const int cap = outlined ? 12 : eightCounter;
+      counter = counter > cap ? cap : counter;
+      const int wOff = outlined ? (wTenths > 21 ? wTenths - 21 : 21 - wTenths)
+                                : (wTenths > 16 ? wTenths - 16 : 16 - wTenths);
+      // An outline font's crossing should be a pinched X, so fill in its middle costs.
+      int blob = 0;
+      if (outlined) {
+        for (int y = ch / 2 - 3; y < ch / 2 + 3; ++y) {
+          for (int x = cw / 2 - 3; x < cw / 2 + 3; ++x) {
+            blob += trial[y * cw + x] != 0 ? 1 : 0;
+          }
+        }
+      }
+      const int score = (outlined ? counter * 100 - blob * 20 : counter * 1000) - wOff * 5 - t - si * 2;
       if (score > bestScore) {
         bestScore = score;
         bestW = w;
         bestThreshold = kThresholds[t];
+        bestStroke = strokeTry;
       }
     }
+   }
   }
   if (bestScore < 0) {
     return;
@@ -532,7 +550,7 @@ void CRasterFont::AddInfinityGlyph() {
   const int py = height;
   const int pl = eightLayer;
   uchar fill[44 * 44];
-  PortRasterizeLemniscate(fill, cellW, cellH, margin, w, h, stroke, bestThreshold);
+  PortRasterizeLemniscate(fill, cellW, cellH, margin, w, h, bestStroke, bestThreshold);
   for (int j = 0; j < cellH; ++j) {
     for (int i = 0; i < cellW; ++i) {
       bool ring = false;
