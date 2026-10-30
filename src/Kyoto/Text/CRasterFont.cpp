@@ -261,8 +261,8 @@ const CGlyph* CRasterFont::InternalGetGlyph(const wchar_t chr) const {
 // Port: the shipped fonts have no U+221E (checked at runtime: the HUD digit fonts hold digits and
 // Latin text only), which the infinite ammo cheat's HUD needs. The constructor registers a
 // zero-size placeholder so the table never reallocates or reorders; once the font texture is
-// loaded, the first lookup paints a lemniscate into a free spot of the C4 atlas and fills in the
-// entry. The atlas is a stack of 1-bit planes (bit L of a texel is layer L; outline fonts keep the
+// loaded, the first lookup grows the C4 atlas by a few rows, paints a lemniscate into them and fills
+// in the entry (the other glyphs only get their V coordinates rescaled). The atlas is a stack of 1-bit planes (bit L of a texel is layer L; outline fonts keep the
 // outline ring, the 8-neighbour dilation of the fill, in the next plane), so the glyph is drawn the
 // same way as the digits: hard-edged, in the fill plane (and the outline plane where there is one),
 // with the digit '8' as the model for stroke weight and height.
@@ -275,21 +275,6 @@ int PortAtlasTexel(const uchar* data, int width, int x, int y) {
 void PortAtlasOrTexel(uchar* data, int width, int x, int y, int bits) {
   uchar& b = data[((y >> 3) * (width >> 3) + (x >> 3)) * 32 + (y & 7) * 4 + ((x & 7) >> 1)];
   b |= uchar((x & 1) == 0 ? bits << 4 : bits);
-}
-
-// True when no texel of `mask` is set anywhere in the rectangle grown by one texel (texels outside
-// the atlas count as clear).
-bool PortAtlasRectFree(const uchar* data, int width, int height, int x, int y, int w, int h,
-                       int mask) {
-  for (int j = y; j < y + h; ++j) {
-    for (int i = x; i < x + w; ++i) {
-      if (i >= 0 && j >= 0 && i < width && j < height &&
-          (PortAtlasTexel(data, width, i, j) & mask) != 0) {
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
 // Fills `fill` (cellW x cellH, row-major) with a figure-eight (Gerono lemniscate: x = cos t,
@@ -386,7 +371,7 @@ void CRasterFont::AddInfinityGlyph() {
     return;
   }
   CGlyph* infinity = const_cast< CGlyph* >(&found->second);
-  // One try per font: a font that has no room or model glyph keeps its placeholder.
+  // One try per font: a font that has no model glyph keeps its placeholder.
   static const CRasterFont* sTried[16];
   static int sTriedCount = 0;
   for (int i = 0; i < sTriedCount; ++i) {
@@ -400,17 +385,18 @@ void CRasterFont::AddInfinityGlyph() {
 
   const CGlyph* eight = InternalGetGlyph(L'8');
   TLockedToken< CTexture > texture = *mTexture;
-  if (eight == nullptr || texture->GetTexelFormat() != kTF_C4 || texture->GetBitsPerPixel() != 4) {
+  if (eight == nullptr || texture->GetTexelFormat() != kTF_C4 || texture->GetBitsPerPixel() != 4 ||
+      texture->GetNumberOfMipMaps() != 1) {
     return;
   }
-  uchar* data = static_cast< uchar* >(texture->GetBitMapData(0));
+  const uchar* data = static_cast< const uchar* >(texture->GetBitMapData(0));
   const int width = texture->GetWidth();
   const int height = texture->GetHeight();
   if (data == nullptr || (width & 7) != 0 || (height & 7) != 0) {
     return;
   }
 
-  // Measure the '8': the ink box in its own fill plane and its stroke weight.
+  // Measure the '8': the ink box of its fill plane, its stroke, its outline thickness and counters.
   const bool outlined = mMode == kFM_OneLayerOutline || mMode == kFM_TwoLayersOutline;
   const int eightLayer = eight->GetLayer();
   const int rx0 = int(eight->GetStartU() * float(width) + 0.5f);
@@ -430,7 +416,7 @@ void CRasterFont::AddInfinityGlyph() {
   }
   const int inkW = ix1 - ix0 + 1;
   const int inkH = iy1 - iy0 + 1;
-  if (inkW < 3 || inkH < 3) {
+  if (inkW < 3 || inkH < 3 || inkW > 40 || inkH > 40) {
     return;
   }
   int sideRun = 0;
@@ -446,54 +432,71 @@ void CRasterFont::AddInfinityGlyph() {
   // The sign's strokes run diagonally, so the '8''s thinner run is the thickness across the stroke.
   const int thin = sideRun < topRun ? sideRun : topRun;
   const float stroke = thin < 2 ? 2.f : float(thin);
-
-  // The '8''s counters, as the yardstick for the sign's.
-  uchar eightBits[64 * 64];
-  if (inkW > 64 || inkH > 64) {
-    return;
+  // The outline ring: how far it reaches left of the '8''s first fill texel on the mid row.
+  int ringR = 0;
+  if (outlined) {
+    for (int x = ix0 - 1; x >= rx0 && (PortAtlasTexel(data, width, x, iy0 + inkH / 2) >>
+                                       (eightLayer + 1) & 1);
+         --x) {
+      ++ringR;
+    }
+    ringR = ringR < 1 ? 1 : ringR;
   }
-  for (int y = 0; y < inkH; ++y) {
-    for (int x = 0; x < inkW; ++x) {
-      eightBits[y * inkW + x] = uchar(PortAtlasTexel(data, width, ix0 + x, iy0 + y) >> eightLayer & 1);
+  // The '8''s counters (background enclosed by fill and ring), as the yardstick for the sign's.
+  uchar eightBits[44 * 44];
+  const int boxW = inkW + 2 * ringR;
+  const int boxH = inkH + 2 * ringR;
+  for (int y = 0; y < boxH; ++y) {
+    for (int x = 0; x < boxW; ++x) {
+      const int t = PortAtlasTexel(data, width, ix0 - ringR + x, iy0 - ringR + y);
+      eightBits[y * boxW + x] = uchar(((t >> eightLayer) | (outlined ? t >> (eightLayer + 1) : 0)) & 1);
     }
   }
-  const int eightCounter = PortSmallestCounter(eightBits, inkW, inkH);
+  const int eightCounter = PortSmallestCounter(eightBits, boxW, boxH);
 
-  // Pick the shape: 1.5-1.7 times the '8' wide and 70-80% of its height, with the stroke of the
-  // '8'; the best candidate keeps two open counters as large as the '8''s with the 1-bit threshold
-  // tuned for this size.
-  const int margin = outlined ? 1 : 0;
-  int bestW = 0, bestH = 0, bestThreshold = 50, bestScore = -1;
-  for (int h = (inkH * 7 + 9) / 10; h <= (inkH * 8) / 10 + 1; ++h) {
-    for (int wTenths = 15; wTenths <= 17; ++wTenths) {
-      const int w = (inkW * wTenths + 5) / 10;
-      if (w + 2 * margin > 64 || h + 2 * margin > 64) {
-        continue;
-      }
-      for (int t = 0; t < 5; ++t) {
-        static const int kThresholds[5] = {50, 40, 60, 30, 70};
-        uchar trial[64 * 64];
-        PortRasterizeLemniscate(trial, w, h, 0, w, h, stroke, kThresholds[t]);
-        // A solid row all the way across would hide the crossing.
-        bool bar = false;
-        for (int y = 0; y < h && !bar; ++y) {
-          bar = true;
-          for (int x = 0; x < w; ++x) {
-            bar = bar && trial[y * w + x] != 0;
+  // The sign: the '8''s fill height and stroke, 1.5-1.7 times its width; the candidate whose two
+  // counters stay open (background left after the ring) is picked, threshold tuned for the size.
+  const int margin = ringR;
+  int bestW = 0, bestThreshold = 50, bestScore = -1;
+  for (int wTenths = 15; wTenths <= 17; ++wTenths) {
+    const int w = (inkW * wTenths + 5) / 10;
+    const int h = inkH;
+    if (w + 2 * margin > 44 || h + 2 * margin > 44) {
+      continue;
+    }
+    for (int t = 0; t < 5; ++t) {
+      static const int kThresholds[5] = {50, 40, 60, 30, 70};
+      uchar trial[44 * 44];
+      PortRasterizeLemniscate(trial, w + 2 * margin, h + 2 * margin, margin, w, h, stroke,
+                              kThresholds[t]);
+      // The counters as the screen shows them: fill plus its ring is ink.
+      uchar ink[44 * 44];
+      const int cw = w + 2 * margin;
+      const int ch = h + 2 * margin;
+      for (int y = 0; y < ch; ++y) {
+        for (int x = 0; x < cw; ++x) {
+          uchar v = 0;
+          for (int dj = -ringR; dj <= ringR && v == 0; ++dj) {
+            for (int di = -ringR; di <= ringR; ++di) {
+              const int yy = y + dj;
+              const int xx = x + di;
+              if (yy >= 0 && xx >= 0 && yy < ch && xx < cw && trial[yy * cw + xx] != 0) {
+                v = 1;
+                break;
+              }
+            }
           }
+          ink[y * cw + x] = v;
         }
-        int counter = bar ? 0 : PortSmallestCounter(trial, w, h);
-        counter = counter > eightCounter ? eightCounter : counter;
-        // Counters first, then the nearest to 75% of the height, 1.6 times the width, threshold 50.
-        const int hOff = (h * 40 - inkH * 30) < 0 ? inkH * 30 - h * 40 : h * 40 - inkH * 30;
-        const int wOff = wTenths > 16 ? wTenths - 16 : 16 - wTenths;
-        const int score = counter * 1000 - hOff * 3 - wOff * 5 - t;
-        if (counter > 0 && score > bestScore) {
-          bestScore = score;
-          bestW = w;
-          bestH = h;
-          bestThreshold = kThresholds[t];
-        }
+      }
+      int counter = PortSmallestCounter(ink, cw, ch);
+      counter = counter > eightCounter ? eightCounter : counter;
+      const int wOff = wTenths > 16 ? wTenths - 16 : 16 - wTenths;
+      const int score = counter * 1000 - wOff * 5 - t;
+      if (score > bestScore) {
+        bestScore = score;
+        bestW = w;
+        bestThreshold = kThresholds[t];
       }
     }
   }
@@ -501,150 +504,63 @@ void CRasterFont::AddInfinityGlyph() {
     return;
   }
   const int w = bestW;
-  const int h = bestH;
+  const int h = inkH;
   const int cellW = w + 2 * margin;
   const int cellH = h + 2 * margin;
 
-  // Layer (fill plane) candidates, the '8's first.
-  int layerCount = 1;
-  if (mMode == kFM_FourLayers) {
-    layerCount = 4;
-  } else if (mMode == kFM_TwoLayers) {
-    layerCount = 2;
-  } else if (mMode == kFM_TwoLayersOutline) {
-    layerCount = 4;
+  // Grow the atlas by the rows the cell needs: they are appended below the old ones, so the
+  // existing texels stay put and the glyph table only needs its V coordinates rescaled. Nothing in
+  // the old part is touched, so no other glyph changes.
+  const int extraRows = (cellH + 7) & ~7;
+  const int newHeight = height + extraRows;
+  if (!texture->PortGrowRows(extraRows)) {
+    return;
   }
-  const int layerStep = mMode == kFM_TwoLayersOutline ? 2 : 1;
-  int px = 0, py = 0, pl = 0;
-  // A crowded atlas (the outline fonts) only gets the fill bit checked on the second pass.
-  for (int pass = 0; pass < 2; ++pass)
-  for (int k = -1; k * layerStep < layerCount; ++k) {
-    const int layer = k < 0 ? eightLayer : k * layerStep;
-    if ((k >= 0 && layer == eightLayer) || layer >= layerCount || (outlined && layer + 1 > 3)) {
+  uchar* grown = static_cast< uchar* >(texture->GetBitMapData(0));
+  const float scale = float(height) / float(newHeight);
+  for (int gi = 0; gi < int(mGlyphs.size()); ++gi) {
+    CGlyph& g = mGlyphs[gi].second;
+    if (g.GetCellWidth() == 0) {
       continue;
     }
-    const int mask = outlined && pass == 0 ? 3 << layer : 1 << layer;
-    for (int y = 0; y + cellH <= height; ++y) {
-      for (int x = 0; x + cellW <= width; ++x) {
-        if (!PortAtlasRectFree(data, width, height, x, y, cellW, cellH, mask)) {
-          continue;
+    g = CGlyph(g.GetA(), g.GetB(), g.GetC(), g.GetStartU(), g.GetStartV() * scale,
+                        g.GetEndU(), g.GetEndV() * scale, g.GetLayer(), g.GetCellWidth(),
+                        g.GetCellHeight(), g.GetBaseline(), g.GetKernStart());
+  }
+
+  const int px = 0;
+  const int py = height;
+  const int pl = eightLayer;
+  uchar fill[44 * 44];
+  PortRasterizeLemniscate(fill, cellW, cellH, margin, w, h, stroke, bestThreshold);
+  for (int j = 0; j < cellH; ++j) {
+    for (int i = 0; i < cellW; ++i) {
+      bool ring = false;
+      for (int dj = -ringR; dj <= ringR && outlined && !ring; ++dj) {
+        for (int di = -ringR; di <= ringR; ++di) {
+          const int yy = j + dj;
+          const int xx = i + di;
+          if (yy >= 0 && xx >= 0 && yy < cellH && xx < cellW && fill[yy * cellW + xx] != 0) {
+            ring = true;
+            break;
+          }
         }
-        px = x;
-        py = y;
-        pl = layer;
-        goto place;
+      }
+      if (fill[j * cellW + i] != 0) {
+        PortAtlasOrTexel(grown, width, px + i, py + j, 1 << pl);
+      } else if (ring) {
+        PortAtlasOrTexel(grown, width, px + i, py + j, 1 << (pl + 1));
       }
     }
   }
-  // The atlas is full (outline fonts pack every plane): take over the cells of glyphs the HUD never
-  // draws, as long as the cell fits where they (and free space) are.
-  {
-    static const wchar_t kVictims[] = {L'~', L'`', L'^', L'|', L'\\', L'{', L'}', L'[', L']',
-                                       L'<', L'>', L'@', L'#', L'$', L'%', L'&', L'*', L'_'};
-    enum { kVictimCount = sizeof(kVictims) / sizeof(kVictims[0]) };
-    CGlyph* victims[kVictimCount];
-    int vx[kVictimCount], vy[kVictimCount], vw[kVictimCount], vh[kVictimCount];
-    int count = 0;
-    for (int v = 0; v < kVictimCount; ++v) {
-      const CGlyph* g = InternalGetGlyph(kVictims[v]);
-      if (g == nullptr || g == eight || g->GetCellWidth() == 0) {
-        continue;
-      }
-      vx[count] = int(g->GetStartU() * float(width) + 0.5f);
-      vy[count] = int(g->GetStartV() * float(height) + 0.5f);
-      vw[count] = int(g->GetEndU() * float(width) + 0.5f) - vx[count];
-      vh[count] = int(g->GetEndV() * float(height) + 0.5f) - vy[count];
-      victims[count++] = const_cast< CGlyph* >(g);
-    }
-    const int bytes = (width >> 1) * height;
-    static uchar scratch[1 << 16];
-    if (bytes <= int(sizeof(scratch))) {
-      for (int k = 0; k * layerStep < layerCount; ++k) {
-        const int layer = k * layerStep;
-        const int vmask = outlined ? 3 << layer : 1 << layer;
-        for (int i = 0; i < bytes; ++i) {
-          scratch[i] = data[i];
-        }
-        for (int v = 0; v < count; ++v) {
-          if (victims[v]->GetLayer() != layer) {
-            continue;
-          }
-          for (int j = 0; j < vh[v]; ++j) {
-            for (int i = 0; i < vw[v]; ++i) {
-              const int x = vx[v] + i;
-              const int y = vy[v] + j;
-              if (x >= 0 && y >= 0 && x < width && y < height) {
-                scratch[((y >> 3) * (width >> 3) + (x >> 3)) * 32 + (y & 7) * 4 + ((x & 7) >> 1)] &=
-                    uchar(~((x & 1) == 0 ? vmask << 4 : vmask));
-              }
-            }
-          }
-        }
-        for (int y = 0; y + cellH <= height; ++y) {
-          for (int x = 0; x + cellW <= width; ++x) {
-            if (!PortAtlasRectFree(scratch, width, height, x, y, cellW, cellH, 1 << layer)) {
-              continue;
-            }
-            for (int v = 0; v < count; ++v) {
-              if (victims[v]->GetLayer() != layer || vx[v] >= x + cellW || vx[v] + vw[v] <= x ||
-                  vy[v] >= y + cellH || vy[v] + vh[v] <= y) {
-                continue;
-              }
-              for (int j = 0; j < vh[v]; ++j) {
-                for (int i = 0; i < vw[v]; ++i) {
-                  const int xx = vx[v] + i;
-                  const int yy = vy[v] + j;
-                  data[((yy >> 3) * (width >> 3) + (xx >> 3)) * 32 + (yy & 7) * 4 + ((xx & 7) >> 1)] &=
-                      uchar(~((xx & 1) == 0 ? vmask << 4 : vmask));
-                }
-              }
-              *victims[v] = CGlyph(0, 0, 0, 0.f, 0.f, 0.f, 0.f, 0, 0, 0, 0, 0);
-            }
-            // Whatever of the cell still holds other glyphs' ring bits is wiped too.
-            px = x;
-            py = y;
-            pl = layer;
-            goto place;
-          }
-        }
-      }
-    }
-  }
-  return;
-place:
-    uchar fill[64 * 64];
-    PortRasterizeLemniscate(fill, cellW, cellH, margin, w, h, stroke, bestThreshold);
-    for (int j = 0; j < cellH; ++j) {
-      for (int i = 0; i < cellW; ++i) {
-        bool ring = false;
-        if (outlined && fill[j * cellW + i] == 0) {
-          for (int dj = -1; dj <= 1 && !ring; ++dj) {
-            for (int di = -1; di <= 1; ++di) {
-              const int yy = j + dj;
-              const int xx = i + di;
-              if (yy >= 0 && xx >= 0 && yy < cellH && xx < cellW && fill[yy * cellW + xx] != 0) {
-                ring = true;
-                break;
-              }
-            }
-          }
-        }
-        if (fill[j * cellW + i] != 0) {
-          PortAtlasOrTexel(data, width, px + i, py + j, 1 << pl);
-        } else if (ring) {
-          PortAtlasOrTexel(data, width, px + i, py + j, 1 << (pl + 1));
-        }
-      }
-    }
-    // The '8' sits on the line at its fill bottom (offset by dy8 in outline fonts); the sign
-    // is centred on the digit's height.
-    const int dy8 = (iy1 + 1 - ry0) - int(eight->GetBaseline());
-    int baseline = margin + h - dy8 + (inkH - h + 1) / 2;
-    baseline = baseline < 0 ? 0 : baseline > 255 ? 255 : baseline;
-    *infinity = CGlyph(eight->GetA(), w, eight->GetC(), float(px) / float(width),
-                       float(py) / float(height), float(px + cellW) / float(width),
-                       float(py + cellH) / float(height), pl, cellW, cellH, baseline,
-                       eight->GetKernStart());
+    // The '8' sits on the line at its fill bottom (offset by dy8 in outline fonts).
+  const int dy8 = (iy1 + 1 - ry0) - int(eight->GetBaseline());
+  int baseline = margin + h - dy8;
+  baseline = baseline < 0 ? 0 : baseline > 255 ? 255 : baseline;
+  *infinity = CGlyph(eight->GetA(), w, eight->GetC(), float(px) / float(width),
+                     float(py) * scale / float(height), float(px + cellW) / float(width),
+                     float(py + cellH) / float(newHeight), pl, cellW, cellH, baseline,
+                     eight->GetKernStart());
   texture->InitTextureObjects();
 }
 #endif
