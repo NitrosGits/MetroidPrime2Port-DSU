@@ -45,6 +45,9 @@ std::string RoomName(uint32_t worldId, int areaIndex);
 bool ShowPage(const std::string& name);
 // Toggles the window; safe to call from the event loop (F1).
 void Toggle();
+// Toggles it on the game thread's next frame (MP1's PortDebug::RequestToggle): for the Android
+// UI thread, whose direct Toggle raced the frame (ImGui's input queue, PortMouse) (#27).
+void RequestToggle();
 // Scrolls the open window by `steps` rows: the phone's two-finger drag, since a finger cannot turn
 // a mouse wheel and the window is taller than the screen. Queued in ImGui's input queue.
 void Wheel(float steps);

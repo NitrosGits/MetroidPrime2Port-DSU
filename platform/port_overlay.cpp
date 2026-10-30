@@ -632,6 +632,9 @@ bool ShowPage(const std::string& name) {
 // Called on the UI thread (the two-finger scroll), but ImGui's input queue is only safe on the game
 // thread, so the steps wait here until Draw() hands them over.
 static std::atomic< int > sPendingWheelMilli{0};
+static std::atomic< bool > sToggleRequested{false};
+
+void RequestToggle() { sToggleRequested.store(true, std::memory_order_release); }
 
 void Wheel(float steps) {
   sPendingWheelMilli.fetch_add(static_cast< int >(std::lround(steps * 1000.f)),
@@ -1724,6 +1727,9 @@ void Draw() {
   ApplyLanguage();
   if (const int milli = sPendingWheelMilli.exchange(0, std::memory_order_relaxed); milli != 0) {
     ImGui::GetIO().AddMouseWheelEvent(0.f, static_cast< float >(milli) / 1000.f);
+  }
+  if (sToggleRequested.exchange(false, std::memory_order_acq_rel)) {
+    Toggle();
   }
   PortPhoto::Frame();
   // Even with the window closed: the env vars are settings, and a headless run never opens it.

@@ -220,7 +220,7 @@ Java_org_metroidprime2_port_TouchControlsView_nativeDebugOverlayVisible(JNIEnv*,
 
 JNIEXPORT void JNICALL
 Java_org_metroidprime2_port_TouchControlsView_nativeToggleDebugOverlay(JNIEnv*, jclass) {
-  PortOverlay::Toggle();
+  PortOverlay::RequestToggle();
 }
 
 JNIEXPORT void JNICALL
