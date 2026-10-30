@@ -329,6 +329,15 @@ void CSamusHud::InitializeFrameGlueMutable(const CStateManager& mgr) {
       mLoadedHudFrame->SetSpreadAnchor(mEmptyEnergyTanks[i], mEnergyBar);
     }
   }
+  // The threat gauge is a quad judged at its origin, its track and icon are models judged at their
+  // bounds' centre: in the ball HUD the track slid out and the gauge stayed, so the fill ran past
+  // the track's end (#25). The icon, at the outer end, carries the cluster, so it slides out with
+  // the energy readout above it.
+  if (mThreatIcon != nullptr) {
+    mLoadedHudFrame->SetSpreadAnchorTree(mThreatIcon);
+    mLoadedHudFrame->SetSpreadAnchorTree(mThreatBar, mThreatIcon);
+    mLoadedHudFrame->SetSpreadAnchorTree(mThreatGauge, mThreatIcon);
+  }
   // The visor frame's glass (model_frame) and the energy bar's U brackets (model_energy) are cut
   // past the energy bar: brackets and ledges slide whole beside the radar and map instead of
   // stretching to reach them.
