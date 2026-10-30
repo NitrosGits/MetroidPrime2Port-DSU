@@ -61,7 +61,7 @@ constexpr Preset kPresets[] = {
      false, ArgKind::Setting, true},
     {"invulnerable", "Cheats", "God mode", "Samus takes no damage, until turned off again", true,
      ArgKind::None, true},
-    {"infinite_ammo", "Cheats", "Infinite ammo", "Shots spend no ammo of any kind, until turned off again", true,
+    {"infinite_ammo", "Cheats", "Infinite ammo", "Fire with empty ammo; the HUD shows infinity, real counts and pickups are kept, until turned off again", true,
      ArgKind::None, true},
     {"free_camera", "Cheats", "Free camera", "Fly the view away from Samus to look around", true, ArgKind::None,
      true},

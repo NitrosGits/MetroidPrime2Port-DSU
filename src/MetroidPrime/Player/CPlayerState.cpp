@@ -399,6 +399,23 @@ CPlayerState::EPowerUpFieldToQuery CPlayerState::GetPowerUpFieldToQuery(EItemTyp
     }
     break;
   }
+#ifdef TARGET_PC
+  // Port: the infinite ammo cheat takes the game's own unlimited-ammo path, so every gate that
+  // asks for ammo (beams, combos, missiles, seekers, power bombs) passes at a real count of 0.
+  // The disabled / death ball minimums above already won. Real counts are never changed.
+  switch (itemType) {
+  case kIT_Missile:
+  case kIT_DarkAmmo:
+  case kIT_LightAmmo:
+  case kIT_Powerbomb:
+    if (PortOverlay::InfiniteAmmo(PortOverlay::InfiniteAmmoKind(itemType))) {
+      return kFQ_Maximum;
+    }
+    break;
+  default:
+    break;
+  }
+#endif
   return kFQ_Actual;
 }
 
