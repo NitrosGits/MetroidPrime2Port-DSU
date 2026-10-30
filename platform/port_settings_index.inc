@@ -183,6 +183,7 @@
 {"Video", "Compatibility", "Compatibility", "GPU self-test", "gpu test check diagnose"},
 {"Debug", "", "Cheats", "Show cheats (items, health, teleport)", "cheats debug items health teleport"},
 {"Debug", "", "Cheats", "God mode", "invincible damage health cheat"},
+{"Debug", "", "Cheats", "No Dark Aether damage", "dark world aether air atmosphere damage light suit cheat"},
 {"Debug", "", "Cheats", "Full health", "heal energy refill"},
 {"Debug", "", "Cheats", "Grant everything", "items all upgrades"},
 {"Debug", "", "Cheats", "Combo beam ammo cost", "super combo beam ammo cost cheat reset"},
